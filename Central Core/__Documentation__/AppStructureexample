@@ -1,0 +1,32 @@
+﻿//ignore file used only to show example structure
+
+app/
+├── core/          # shared services, config, logging
+│   ├── bus.js     # event bus (e.g., mitt/tinybus) for loose coupling
+│   ├���─ config.js
+│   └── logger.js
+├── modules/       # self-contained plugins, hot-reloadable
+│   ├── mod-a/
+│   │   ├── index.js     # exports { init, destroy, events }
+│   │   ├── state.js     # module-local redux/zustand
+│   │   └── ui/          # optional tray/menu hooks
+│   └── mod-b/      # same pattern
+├── tray/          # single system tray icon (electron/win/linux)
+│   └── tray.js    # context menu -> trigger module actions
+├── cli/           # tui fallback (blessed/ink)
+└── main.js        # orchestrator: bus up, scan/load modules, tray spawn
+// ADD MCP SERVER'
+
+[├── core/          # bus, config, mcp server
+│   ├── bus.js
+│   ├── mcp-server.js  # https://modelcontextprotocol.io (ws/http)
+│   └── minecraft.js   # prismarinejs for mc proxy
+├── modules/       # now dual-purpose: app logic + mcp tools
+│   ├── chat-bot/
+│   │   ├── index.js     # { init(bus), mcp_tool: { name, schema, exec } }
+│   │   └── ai.js        # llm agent calls mcp
+│   └── world-scanner/
+│       └── mcp_tool.js  # exposes /scan_chunk rpc
+├── tray/          # unchanged
+├── main.js        # bus + mcp server + tray + scan modules
+└── package.json   # + "prismarine-viewer", "@modelcontextprotocol/server"

@@ -1,0 +1,29 @@
+﻿// ignore-firle used only to show example structure
+
+project_root/
+├── src/
+│   └── my_mcp_server/
+│       ├── __init__.py      # Initializes the package
+│       ├── server.py        # Main entry point (instantiates FastMCP)
+│       ├── tools/           # Individual tool definitions
+│       │   ├── __init__.py
+│       │   └── weather.py
+│       ├── resources/       # Data resource definitions
+│     d  │   ├── __init__.py
+│       │   └── documents.py
+│       └── prompts/         # LLM instruction templates
+│           ├── __init__.py
+│           └── review.py
+├── tests/                   # Unit and integration tests
+├── pyproject.toml           # Dependency and server configuration (uv recommended)
+└── README.md
+Recommended Architecture
+Component 	Recommended Setup	Why?
+
+Long Term Memory (LTM)	Dedicated Server	Memory requir	des specialized vector storage and semantic indexing. Keeping it separate allows you to optimize retrieval without slowing down other tools.
+
+Resource Bank			Dedicated Server	Resources are data-heavy. A separate server prevents high-traffic data fetching from blocking real-time conversational responses or tool execution.
+
+Agent Tools				Grouped by Domain	Group tools by functionality (e.g., a "Productivity Server" for your agents). This prevents "token bloat" where the AI is overwhelmed by too many tool descriptions at once.
+
+0TTS Models				Async / Standalone	TTS involves heavy media processing. It is best handled by an async server that can manage audio streams without timing out the main context protocol.
