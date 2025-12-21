@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llmod_mcp_servers"
+version = "1.0.0"
+description = "LLMOD MCP Servers for AI integration"
+authors = [
+    {name = "LLMOD Team"}
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "asyncio",
+    "json5",
+    "requests",
+    "aiohttp"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "LtmMcpServer",
+    "ResourceBankServer", 
+    "AgentToolsServer",
+    "ttsModelsServer"
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = "src"

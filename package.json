@@ -1,0 +1,36 @@
+{
+  "name": "llmod",
+  "version": "1.0.0",
+  "description": "LLMOD - Modular LLM Application with Desktop Overlay Styling",
+  "main": "main.js",
+  "scripts": {
+    "start": "node start-all.js",
+    "dev": "node start-all.js",
+    "stop": "pkill -f 'node.*server.js'",
+    "restart": "npm run stop && npm start",
+    "install-python": "pip install -e &quot;Central Core/MainAccessToMcpServer&quot;",
+    "setup": "npm install && npm run install-python"
+  },
+  "keywords": [
+    "llm",
+    "modular",
+    "desktop",
+    "overlay",
+    "mcp",
+    "ai"
+  ],
+  "author": "LLMOD Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "systeminformation": "^5.21.20",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
