@@ -174,7 +174,7 @@ function createOverlayWindow(moduleConfig) {
             </head>
             <body>
                 <div class="error-container">
-                    <h1>⚠️ Connection Error</h1>
+                    <h1>Connection Error</h1>
                     <p>Could not connect to ${moduleConfig.name}</p>
                     <p>Make sure the server is running on ${moduleConfig.url}</p>
                     <button class="retry-btn" onclick="location.reload()">Retry</button>
@@ -267,14 +267,14 @@ async function checkModuleStatus(moduleConfig) {
 }
 
 async function initializeOverlays() {
-    console.log('🚀 Initializing LLMOD Desktop Overlay...');
+    console.log('Initializing LLMOD Desktop Overlay...');
     
     // Check status of all modules
     const moduleStatus = await Promise.all(modules.map(checkModuleStatus));
     
-    console.log('📊 Module Status:');
+    console.log('Module Status:');
     moduleStatus.forEach(module => {
-        console.log(\`  \${module.status === 'online' ? '✅' : '❌'} \${module.name}: \${module.status}\`);
+        console.log(`  ${module.status === 'online' ? '[ONLINE]' : '[OFFLINE]'} ${module.name}: ${module.status}`);
     });
     
     // Create overlay windows for running modules
@@ -286,7 +286,7 @@ async function initializeOverlays() {
     });
     
     isInitialized = true;
-    console.log(\`✨ Created \${overlayWindows.length} overlay windows\`);
+    console.log(`Created ${overlayWindows.length} overlay windows`);
 }
 
 // IPC handlers
