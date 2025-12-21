@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMOD App Tray</title>
+    <link rel="stylesheet" href="../../shared-styles.css">
+    <style>
+        .tray-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .system-controls {
+            padding: 15px;
+            background: rgba(26, 35, 50, 0.8);
+            border-bottom: 1px solid var(--rust-primary);
+        }
+        
+        .control-button {
+            width: 100%;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .modules-grid {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .module-card {
+            background: rgba(47, 79, 79, 0.6);
+            border: 1px solid var(--metal-silver);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .module-card:hover {
+            background: rgba(47, 79, 79, 0.8);
+            border-color: var(--rust-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .module-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .module-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .module-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-running {
+            background: #4CAF50;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+        
+        .status-stopped {
+            background: #f44336;
+            box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+        }
+        
+        .status-pending {
+            background: #ff9800;
+            box-shadow: 0 0 8px rgba(255, 152, 0, 0.6);
+        }
+        
+        .module-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .info-item {
+            font-size: 11px;
+        }
+        
+        .info-label {
+            color: var(--text-secondary);
+            display: block;
+        }
+        
+        .info-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .module-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-button {
+            flex: 1;
+            padding: 6px 12px;
+            font-size: 11px;
+            background: rgba(183, 65, 14, 0.2);
+            border: 1px solid var(--rust-primary);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .action-button:hover {
+            background: var(--rust-primary);
+            transform: translateY(-1px);
+        }
+        
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .quick-actions {
+            padding: 15px;
+            background: rgba(26, 35, 50, 0.8);
+            border-top: 1px solid var(--rust-primary);
+        }
+        
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .system-stats {
+            background: rgba(26, 35, 50, 0.6);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+        }
+        
+        .stat-value {
+            color: var(--rust-light);
+            font-weight: 500;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: var(--text-primary);
+            font-size: 13px;
+            z-index: 1000;
+            animation: slideDown 0.3s ease-out;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -100%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+        
+        .notification.success {
+            border-color: #4CAF50;
+            box-shadow: 0 4px 16px rgba(76, 175, 80, 0.3);
+        }
+        
+        .notification.error {
+            border-color: #f44336;
+            box-shadow: 0 4px 16px rgba(244, 67, 54, 0.3);
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--metal-silver);
+            border-top: 3px solid var(--rust-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+    <div class="overlay-container">
+        <div class="metal-frame">
+            <div class="module-header">
+                <h1 class="module-title">App Tray</h1>
+            </div>
+            <div class="system-controls">
+                <button class="rust-button control-button" onclick="startAllModules()">Start All Modules</button>
+                <button class="rust-button control-button" onclick="stopAllModules()">Stop All Modules</button>
+                <button class="rust-button control-button" onclick="refreshStatus()">Refresh Status</button>
+            </div>
+            <div class="module-content">
+                <div class="tray-container">
+                    <div class="system-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Running Modules:</span>
+                            <span class="stat-value" id="runningCount">0/0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">System Status:</span>
+                            <span class="stat-value" id="systemStatus">Unknown</span>
+                        </div>
+                    </div>
+                    <div class="modules-grid" id="modulesList">
+                        <div class="glass-card" style="text-align: center; padding: 20px;">
+                            <p>Loading module status...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="quick-actions">
+                <div class="quick-actions-grid">
+                    <button class="rust-button" onclick="openSystemLogs()">System Logs</button>
+                    <button class="rust-button" onclick="openSettings()">Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script>
+        let modules = [];
+        let refreshInterval;
+        
+        const moduleConfigs = {
+            'Chat Module': { port: 8080, icon: '💬', url: 'http://localhost:8080' },
+            'Contacts Module': { port: 8081, icon: '👥', url: 'http://localhost:8081' },
+            'ViewPort Module': { port: 8082, icon: '👁️', url: 'http://localhost:8082' },
+            'Systems Module': { port: 8083, icon: '⚙️', url: 'http://localhost:8083' },
+            'Context Data Module': { port: 8084, icon: '📁', url: 'http://localhost:8084' }
+        };
+        
+        async function fetchModuleStatus() {
+            showLoading();
+            try {
+                const response = await fetch('/api/modules/status');
+                modules = await response.json();
+                renderModules();
+                updateSystemStats();
+            } catch (error) {
+                console.error('Error fetching module status:', error);
+                showNotification('Failed to fetch module status', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function renderModules() {
+            const modulesList = document.getElementById('modulesList');
+            
+            if (modules.length === 0) {
+                modulesList.innerHTML = `
+                    <div class="glass-card" style="text-align: center; padding: 20px;">
+                        <p>No modules found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            modulesList.innerHTML = modules.map(module => {
+                const config = moduleConfigs[module.name] || {};
+                const statusClass = module.status === 'running' ? 'status-running' : 
+                                  module.status === 'stopped' ? 'status-stopped' : 'status-pending';
+                
+                return `
+                    <div class="module-card">
+                        <div class="module-header-info">
+                            <span class="module-name">
+                                ${config.icon || '📦'} ${module.name}
+                            </span>
+                            <div class="module-status">
+                                <span class="status-indicator ${statusClass}"></span>
+                                <span>${module.status}</span>
+                            </div>
+                        </div>
+                        <div class="module-info">
+                            <div class="info-item">
+                                <span class="info-label">Port:</span>
+                                <span class="info-value">${config.port || 'N/A'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">PID:</span>
+                                <span class="info-value">${module.pid || 'N/A'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Memory:</span>
+                                <span class="info-value">${module.memory || 'N/A'}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Uptime:</span>
+                                <span class="info-value">${module.uptime || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div class="module-actions">
+                            ${module.status === 'running' ? 
+                                `<button class="action-button" onclick="stopModule('${module.name}')">Stop</button>
+                                 <button class="action-button" onclick="restartModule('${module.name}')">Restart</button>` :
+                                `<button class="action-button" onclick="startModule('${module.name}')">Start</button>`
+                            }
+                            ${config.url ? `<button class="action-button" onclick="openModule('${config.url}')">Open</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateSystemStats() {
+            const runningCount = modules.filter(m => m.status === 'running').length;
+            document.getElementById('runningCount').textContent = `${runningCount}/${modules.length}`;
+            
+            const systemStatus = runningCount === modules.length ? 'All Running' : 
+                                runningCount > 0 ? 'Partial' : 'All Stopped';
+            document.getElementById('systemStatus').textContent = systemStatus;
+        }
+        
+        async function startModule(moduleName) {
+            showLoading();
+            try {
+                const response = await fetch(`/api/modules/${encodeURIComponent(moduleName)}/start`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`${moduleName} started successfully`, 'success');
+                    setTimeout(fetchModuleStatus, 2000); // Delay to allow startup
+                } else {
+                    showNotification(`Failed to start ${moduleName}: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting module:', error);
+                showNotification(`Failed to start ${moduleName}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function stopModule(moduleName) {
+            showLoading();
+            try {
+                const response = await fetch(`/api/modules/${encodeURIComponent(moduleName)}/stop`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`${moduleName} stopped successfully`, 'success');
+                    setTimeout(fetchModuleStatus, 1000);
+                } else {
+                    showNotification(`Failed to stop ${moduleName}: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error stopping module:', error);
+                showNotification(`Failed to stop ${moduleName}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function restartModule(moduleName) {
+            showLoading();
+            try {
+                const response = await fetch(`/api/modules/${encodeURIComponent(moduleName)}/restart`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`${moduleName} restarted successfully`, 'success');
+                    setTimeout(fetchModuleStatus, 3000); // Delay to allow restart
+                } else {
+                    showNotification(`Failed to restart ${moduleName}: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error restarting module:', error);
+                showNotification(`Failed to restart ${moduleName}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function startAllModules() {
+            showLoading();
+            try {
+                const response = await fetch('/api/modules/start-all', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('All modules started successfully', 'success');
+                    setTimeout(fetchModuleStatus, 5000); // Longer delay for all modules
+                } else {
+                    showNotification(`Failed to start all modules: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error starting all modules:', error);
+                showNotification('Failed to start all modules', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        async function stopAllModules() {
+            if (!confirm('Are you sure you want to stop all modules?')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/modules/stop-all', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('All modules stopped successfully', 'success');
+                    setTimeout(fetchModuleStatus, 2000);
+                } else {
+                    showNotification(`Failed to stop all modules: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error stopping all modules:', error);
+                showNotification('Failed to stop all modules', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        function refreshStatus() {
+            fetchModuleStatus();
+        }
+        
+        function openModule(url) {
+            window.open(url, '_blank');
+        }
+        
+        function openSystemLogs() {
+            window.open('/api/logs', '_blank');
+        }
+        
+        function openSettings() {
+            showNotification('Settings panel coming soon', 'success');
+        }
+        
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        function startAutoRefresh() {
+            // Auto-refresh every 10 seconds
+            refreshInterval = setInterval(fetchModuleStatus, 10000);
+        }
+        
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchModuleStatus();
+            startAutoRefresh();
+        });
+        
+        // Clean up when page is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>

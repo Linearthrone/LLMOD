@@ -1,0 +1,48 @@
+{
+  "name": "llmod-desktop-overlay",
+  "version": "1.0.0",
+  "description": "LLMOD Desktop Overlay - Floating Panels for Desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": [
+    "electron",
+    "desktop",
+    "overlay",
+    "llmod",
+    "floating"
+  ],
+  "author": "LLMOD Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.8.1"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  },
+  "build": {
+    "appId": "com.llmod.desktop-overlay",
+    "productName": "LLMOD Desktop Overlay",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

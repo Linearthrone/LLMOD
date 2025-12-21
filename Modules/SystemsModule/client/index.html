@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMOD Systems Module</title>
+    <link rel="stylesheet" href="../../shared-styles.css">
+    <style>
+        .systems-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            padding: 15px;
+            height: 100%;
+        }
+        
+        .system-card {
+            background: rgba(47, 79, 79, 0.6);
+            border: 1px solid var(--metal-silver);
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .system-card:hover {
+            background: rgba(47, 79, 79, 0.8);
+            border-color: var(--rust-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .system-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .system-icon {
+            font-size: 16px;
+        }
+        
+        .system-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--rust-light);
+            margin-bottom: 5px;
+        }
+        
+        .system-description {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(26, 35, 50, 0.8);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--rust-primary) 0%, var(--rust-light) 100%);
+            transition: width 0.5s ease;
+            box-shadow: 0 0 8px rgba(183, 65, 14, 0.6);
+        }
+        
+        .services-list {
+            grid-column: 1 / -1;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(183, 65, 14, 0.2);
+        }
+        
+        .service-name {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-running {
+            background: #4CAF50;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+        
+        .status-stopped {
+            background: #f44336;
+            box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+        }
+        
+        .refresh-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(183, 65, 14, 0.2);
+            border: 1px solid var(--rust-primary);
+            color: var(--text-primary);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-button:hover {
+            background: var(--rust-primary);
+            transform: translateY(-1px);
+        }
+        
+        .module-header {
+            position: relative;
+        }
+        
+        .last-update {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+        
+        @media (max-width: 480px) {
+            .systems-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .services-list {
+                grid-column: 1;
+            }
+        }
+    </style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+    <div class="overlay-container">
+        <div class="metal-frame">
+            <div class="module-header">
+                <h1 class="module-title">Systems Module</h1>
+                <button class="refresh-button" onclick="refreshStats()">Refresh</button>
+                <span class="last-update" id="lastUpdate">Never</span>
+            </div>
+            <div class="module-content">
+                <div class="systems-grid">
+                    <div class="system-card">
+                        <div class="system-title">
+                            <span class="system-icon">💻</span>
+                            CPU Usage
+                        </div>
+                        <div class="system-value" id="cpuUsage">0%</div>
+                        <div class="system-description">Processor load</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cpuProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="system-card">
+                        <div class="system-title">
+                            <span class="system-icon">🧠</span>
+                            Memory Usage
+                        </div>
+                        <div class="system-value" id="memoryUsage">0%</div>
+                        <div class="system-description">RAM utilization</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="memoryProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="system-card">
+                        <div class="system-title">
+                            <span class="system-icon">📊</span>
+                            System Load
+                        </div>
+                        <div class="system-value" id="systemLoad">0.00</div>
+                        <div class="system-description">Average load</div>
+                    </div>
+                    
+                    <div class="system-card">
+                        <div class="system-title">
+                            <span class="system-icon">⏱️</span>
+                            Uptime
+                        </div>
+                        <div class="system-value" id="uptime">0d 0h</div>
+                        <div class="system-description">System running time</div>
+                    </div>
+                    
+                    <div class="system-card services-list">
+                        <div class="system-title">
+                            <span class="system-icon">🔧</span>
+                            Module Services
+                        </div>
+                        <div id="servicesList">
+                            <div class="service-item">
+                                <span class="service-name">Loading services...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+        
+        async function fetchSystemStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                // Update CPU
+                document.getElementById('cpuUsage').textContent = `${stats.cpu}%`;
+                document.getElementById('cpuProgress').style.width = `${stats.cpu}%`;
+                
+                // Update Memory
+                document.getElementById('memoryUsage').textContent = `${stats.memory}%`;
+                document.getElementById('memoryProgress').style.width = `${stats.memory}%`;
+                
+                // Update System Load
+                document.getElementById('systemLoad').textContent = stats.load.toFixed(2);
+                
+                // Update Uptime
+                const uptime = formatUptime(stats.uptime);
+                document.getElementById('uptime').textContent = uptime;
+                
+                // Update services
+                updateServicesList(stats.services);
+                
+                // Update last update time
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+                
+            } catch (error) {
+                console.error('Error fetching system stats:', error);
+                // Show error state
+                document.getElementById('cpuUsage').textContent = 'Error';
+                document.getElementById('memoryUsage').textContent = 'Error';
+                document.getElementById('systemLoad').textContent = 'Error';
+                document.getElementById('uptime').textContent = 'Error';
+                document.getElementById('servicesList').innerHTML = `
+                    <div class="service-item">
+                        <span class="service-name">Failed to load services</span>
+                    </div>
+                `;
+            }
+        }
+        
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) {
+                return `${days}d ${hours}h`;
+            } else if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else {
+                return `${minutes}m`;
+            }
+        }
+        
+        function updateServicesList(services) {
+            const servicesList = document.getElementById('servicesList');
+            
+            if (!services || services.length === 0) {
+                servicesList.innerHTML = `
+                    <div class="service-item">
+                        <span class="service-name">No services found</span>
+                    </div>
+                `;
+                return;
+            }
+            
+            servicesList.innerHTML = services.map(service => `
+                <div class="service-item">
+                    <span class="service-name">${service.name}</span>
+                    <div class="service-status">
+                        <span class="status-dot ${service.status === 'running' ? 'status-running' : 'status-stopped'}"></span>
+                        <span>${service.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function refreshStats() {
+            fetchSystemStats();
+        }
+        
+        function startAutoRefresh() {
+            // Update every 5 seconds
+            updateInterval = setInterval(fetchSystemStats, 5000);
+        }
+        
+        function stopAutoRefresh() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchSystemStats();
+            startAutoRefresh();
+        });
+        
+        // Clean up when page is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>

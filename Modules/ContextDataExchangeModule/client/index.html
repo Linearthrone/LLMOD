@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMOD Context Data Exchange Module</title>
+    <link rel="stylesheet" href="../../shared-styles.css">
+    <style>
+        .data-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .toolbar {
+            padding: 15px;
+            background: rgba(26, 35, 50, 0.8);
+            border-bottom: 1px solid var(--rust-primary);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-button {
+            padding: 8px 15px;
+            font-size: 12px;
+            background: rgba(183, 65, 14, 0.2);
+            border: 1px solid var(--rust-primary);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tool-button:hover {
+            background: var(--rust-primary);
+            transform: translateY(-1px);
+        }
+        
+        .tool-button.active {
+            background: var(--rust-primary);
+            box-shadow: 0 0 8px rgba(183, 65, 14, 0.6);
+        }
+        
+        .data-content {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        /* Upload Section */
+        .upload-area {
+            border: 2px dashed var(--rust-primary);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            background: rgba(183, 65, 14, 0.1);
+            border-color: var(--rust-light);
+        }
+        
+        .upload-area.dragover {
+            background: rgba(183, 65, 14, 0.2);
+            border-color: var(--rust-light);
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+        
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-formats {
+            font-size: 12px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        /* File List */
+        .file-list {
+            margin-top: 20px;
+        }
+        
+        .file-item {
+            background: rgba(47, 79, 79, 0.6);
+            border: 1px solid var(--metal-silver);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-item:hover {
+            background: rgba(47, 79, 79, 0.8);
+            border-color: var(--rust-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .file-icon {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(183, 65, 14, 0.2);
+            border-radius: 8px;
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .file-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-button {
+            padding: 6px 12px;
+            font-size: 11px;
+            background: rgba(183, 65, 14, 0.2);
+            border: 1px solid var(--rust-primary);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .action-button:hover {
+            background: var(--rust-primary);
+            transform: translateY(-1px);
+        }
+        
+        /* Data Exchange */
+        .exchange-panel {
+            background: rgba(47, 79, 79, 0.6);
+            border: 1px solid var(--metal-silver);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .exchange-header {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .endpoint-input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .data-format-select {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .data-textarea {
+            width: 100%;
+            height: 100px;
+            background: rgba(26, 35, 50, 0.8);
+            border: 1px solid var(--metal-silver);
+            color: var(--text-primary);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+        
+        .data-textarea:focus {
+            outline: none;
+            border-color: var(--rust-primary);
+            box-shadow: 0 0 0 2px rgba(183, 65, 14, 0.3);
+        }
+        
+        .exchange-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        /* Statistics */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(47, 79, 79, 0.6);
+            border: 1px solid var(--metal-silver);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            background: rgba(47, 79, 79, 0.8);
+            border-color: var(--rust-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--rust-light);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* Progress */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(26, 35, 50, 0.8);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--rust-primary) 0%, var(--rust-light) 100%);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 6px rgba(183, 65, 14, 0.6);
+        }
+        
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: var(--text-primary);
+            font-size: 13px;
+            z-index: 1000;
+            animation: slideDown 0.3s ease-out;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -100%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+        
+        .notification.success {
+            border-color: #4CAF50;
+            box-shadow: 0 4px 16px rgba(76, 175, 80, 0.3);
+        }
+        
+        .notification.error {
+            border-color: #f44336;
+            box-shadow: 0 4px 16px rgba(244, 67, 54, 0.3);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+    </style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+    <div class="overlay-container">
+        <div class="metal-frame">
+            <div class="module-header">
+                <h1 class="module-title">Context Data Exchange</h1>
+            </div>
+            <div class="toolbar">
+                <button class="tool-button active" onclick="showUploadSection()">Upload</button>
+                <button class="tool-button" onclick="showFilesSection()">Files</button>
+                <button class="tool-button" onclick="showExchangeSection()">Exchange</button>
+                <button class="tool-button" onclick="showStatsSection()">Statistics</button>
+                <button class="tool-button" onclick="refreshData()">Refresh</button>
+            </div>
+            <div class="module-content">
+                <div class="data-container">
+                    <!-- Upload Section -->
+                    <div class="data-content" id="uploadSection">
+                        <div class="upload-area" onclick="document.getElementById('fileInput').click()" 
+                             ondrop="handleDrop(event)" ondragover="handleDragOver(event)" 
+                             ondragleave="handleDragLeave(event)">
+                            <div class="upload-icon">📁</div>
+                            <div class="upload-text">
+                                Drag & drop files here or click to browse
+                            </div>
+                            <div class="upload-formats">
+                                Supported formats: JSON, CSV, XML, TXT, PDF, Images (Max 10MB per file)
+                            </div>
+                            <input type="file" id="fileInput" class="file-input" multiple 
+                                   accept=".json,.csv,.xml,.txt,.pdf,.jpg,.jpeg,.png,.gif" 
+                                   onchange="handleFileSelect(event)">
+                        </div>
+                        
+                        <div class="exchange-panel">
+                            <div class="exchange-header">Upload Progress</div>
+                            <div id="uploadProgress" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 12px;">
+                                    <span id="progressText">Uploading...</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Files Section -->
+                    <div class="data-content" id="filesSection" style="display: none;">
+                        <div class="file-list" id="filesList">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📄</div>
+                                <p>No files uploaded yet. Upload some files to get started.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exchange Section -->
+                    <div class="data-content" id="exchangeSection" style="display: none;">
+                        <div class="exchange-panel">
+                            <div class="exchange-header">Send Data</div>
+                            <input type="text" id="endpointUrl" class="metal-input endpoint-input" 
+                                   placeholder="Endpoint URL (e.g., http://localhost:8080/api/data)">
+                            <select id="dataFormat" class="metal-input data-format-select">
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV</option>
+                                <option value="xml">XML</option>
+                                <option value="text">Plain Text</option>
+                            </select>
+                            <textarea id="dataContent" class="data-textarea" 
+                                      placeholder="Enter your data here..."></textarea>
+                            <div class="exchange-actions">
+                                <button class="rust-button" onclick="sendData()">Send Data</button>
+                                <button class="rust-button" onclick="validateData()">Validate</button>
+                                <button class="rust-button" onclick="clearExchange()">Clear</button>
+                            </div>
+                        </div>
+                        
+                        <div class="exchange-panel">
+                            <div class="exchange-header">Receive Data</div>
+                            <input type="text" id="receiveUrl" class="metal-input endpoint-input" 
+                                   placeholder="URL to fetch data from">
+                            <div class="exchange-actions">
+                                <button class="rust-button" onclick="fetchData()">Fetch Data</button>
+                                <button class="rust-button" onclick="saveReceivedData()">Save</button>
+                            </div>
+                            <textarea id="receivedData" class="data-textarea" 
+                                      placeholder="Received data will appear here..." readonly></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Section -->
+                    <div class="data-content" id="statsSection" style="display: none;">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalFiles">0</div>
+                                <div class="stat-label">Total Files</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalSize">0 MB</div>
+                                <div class="stat-label">Total Size</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="todayUploads">0</div>
+                                <div class="stat-label">Today's Uploads</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="exchanges">0</div>
+                                <div class="stat-label">Data Exchanges</div>
+                            </div>
+                        </div>
+                        
+                        <div class="exchange-panel">
+                            <div class="exchange-header">File Types Distribution</div>
+                            <div id="fileTypeStats">
+                                <p style="color: var(--text-secondary); font-size: 12px;">Loading statistics...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 'upload';
+        let files = [];
+        let statistics = {};
+
+        // Section Navigation
+        function showUploadSection() {
+            hideAllSections();
+            document.getElementById('uploadSection').style.display = 'block';
+            setActiveButton(0);
+            currentSection = 'upload';
+        }
+
+        function showFilesSection() {
+            hideAllSections();
+            document.getElementById('filesSection').style.display = 'block';
+            setActiveButton(1);
+            currentSection = 'files';
+            loadFiles();
+        }
+
+        function showExchangeSection() {
+            hideAllSections();
+            document.getElementById('exchangeSection').style.display = 'block';
+            setActiveButton(2);
+            currentSection = 'exchange';
+        }
+
+        function showStatsSection() {
+            hideAllSections();
+            document.getElementById('statsSection').style.display = 'block';
+            setActiveButton(3);
+            currentSection = 'stats';
+            loadStatistics();
+        }
+
+        function hideAllSections() {
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('filesSection').style.display = 'none';
+            document.getElementById('exchangeSection').style.display = 'none';
+            document.getElementById('statsSection').style.display = 'none';
+        }
+
+        function setActiveButton(index) {
+            const buttons = document.querySelectorAll('.tool-button');
+            buttons.forEach((btn, i) => {
+                if (i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // File Upload Functions
+        function handleFileSelect(event) {
+            const selectedFiles = event.target.files;
+            uploadFiles(selectedFiles);
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            const droppedFiles = event.dataTransfer.files;
+            uploadFiles(droppedFiles);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        async function uploadFiles(fileList) {
+            if (fileList.length === 0) return;
+
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressPercent = document.getElementById('progressPercent');
+
+            progressDiv.style.display = 'block';
+            
+            const formData = new FormData();
+            Array.from(fileList).forEach(file => {
+                formData.append('files', file);
+            });
+
+            try {
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.onprogress = function(event) {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        progressFill.style.width = percentComplete + '%';
+                        progressPercent.textContent = percentComplete + '%';
+                        progressText.textContent = `Uploading ${percentComplete}%...`;
+                    }
+                };
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        progressText.textContent = 'Upload complete!';
+                        showNotification('Files uploaded successfully', 'success');
+                        setTimeout(() => {
+                            progressDiv.style.display = 'none';
+                            progressFill.style.width = '0%';
+                            progressPercent.textContent = '0%';
+                        }, 2000);
+                    } else {
+                        progressText.textContent = 'Upload failed';
+                        showNotification('Upload failed', 'error');
+                    }
+                };
+
+                xhr.onerror = function() {
+                    progressText.textContent = 'Upload failed';
+                    showNotification('Upload failed', 'error');
+                };
+
+                xhr.open('POST', '/api/upload');
+                xhr.send(formData);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showNotification('Upload failed', 'error');
+            }
+        }
+
+        // Files Management
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                files = await response.json();
+                renderFiles();
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+
+        function renderFiles() {
+            const filesList = document.getElementById('filesList');
+            
+            if (files.length === 0) {
+                filesList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📄</div>
+                        <p>No files uploaded yet. Upload some files to get started.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filesList.innerHTML = files.map(file => {
+                const icon = getFileIcon(file.type);
+                const size = formatFileSize(file.size);
+                const date = new Date(file.uploadedAt).toLocaleDateString();
+                
+                return `
+                    <div class="file-item">
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-meta">
+                                <span>${size}</span>
+                                <span>${date}</span>
+                                <span>${file.type.toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="action-button" onclick="downloadFile('${file.id}')">Download</button>
+                            <button class="action-button" onclick="deleteFile('${file.id}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getFileIcon(type) {
+            const icons = {
+                'json': '📋',
+                'csv': '📊',
+                'xml': '🏷️',
+                'txt': '📝',
+                'pdf': '📕',
+                'jpg': '🖼️',
+                'jpeg': '🖼️',
+                'png': '🖼️',
+                'gif': '🖼️'
+            };
+            return icons[type] || '📄';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function downloadFile(fileId) {
+            try {
+                window.open(`/api/files/${fileId}/download`, '_blank');
+            } catch (error) {
+                console.error('Error downloading file:', error);
+                showNotification('Download failed', 'error');
+            }
+        }
+
+        async function deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) return;
+            
+            try {
+                const response = await fetch(`/api/files/${fileId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showNotification('File deleted successfully', 'success');
+                    loadFiles();
+                } else {
+                    showNotification('Failed to delete file', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                showNotification('Failed to delete file', 'error');
+            }
+        }
+
+        // Data Exchange Functions
+        async function sendData() {
+            const endpoint = document.getElementById('endpointUrl').value;
+            const format = document.getElementById('dataFormat').value;
+            const data = document.getElementById('dataContent').value;
+
+            if (!endpoint || !data) {
+                showNotification('Please provide endpoint URL and data', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': `application/${format}`,
+                    },
+                    body: data
+                });
+
+                if (response.ok) {
+                    showNotification('Data sent successfully', 'success');
+                    updateExchangeStats();
+                } else {
+                    showNotification('Failed to send data', 'error');
+                }
+            } catch (error) {
+                console.error('Error sending data:', error);
+                showNotification('Failed to send data', 'error');
+            }
+        }
+
+        function validateData() {
+            const format = document.getElementById('dataFormat').value;
+            const data = document.getElementById('dataContent').value;
+
+            try {
+                switch (format) {
+                    case 'json':
+                        JSON.parse(data);
+                        break;
+                    case 'xml':
+                        // Basic XML validation
+                        if (!data.trim().startsWith('<')) {
+                            throw new Error('Invalid XML format');
+                        }
+                        break;
+                }
+                showNotification('Data is valid', 'success');
+            } catch (error) {
+                showNotification('Data validation failed: ' + error.message, 'error');
+            }
+        }
+
+        function clearExchange() {
+            document.getElementById('endpointUrl').value = '';
+            document.getElementById('dataContent').value = '';
+            document.getElementById('receiveUrl').value = '';
+            document.getElementById('receivedData').value = '';
+        }
+
+        async function fetchData() {
+            const url = document.getElementById('receiveUrl').value;
+
+            if (!url) {
+                showNotification('Please provide a URL to fetch data from', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                document.getElementById('receivedData').value = data;
+                showNotification('Data fetched successfully', 'success');
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showNotification('Failed to fetch data', 'error');
+            }
+        }
+
+        function saveReceivedData() {
+            const data = document.getElementById('receivedData').value;
+            if (!data) {
+                showNotification('No data to save', 'error');
+                return;
+            }
+
+            // Create a blob and download
+            const blob = new Blob([data], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'received_data.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('Data saved successfully', 'success');
+        }
+
+        // Statistics Functions
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                document.getElementById('totalFiles').textContent = stats.totalFiles || 0;
+                document.getElementById('totalSize').textContent = formatFileSize(stats.totalSize || 0);
+                document.getElementById('todayUploads').textContent = stats.todayUploads || 0;
+                document.getElementById('exchanges').textContent = stats.dataExchanges || 0;
+                
+                // Render file type distribution
+                const typeStats = document.getElementById('fileTypeStats');
+                if (stats.fileTypes && Object.keys(stats.fileTypes).length > 0) {
+                    typeStats.innerHTML = Object.entries(stats.fileTypes).map(([type, count]) => `
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px;">
+                            <span>${getFileIcon(type)} ${type.toUpperCase()}</span>
+                            <span>${count} files</span>
+                        </div>
+                    `).join('');
+                } else {
+                    typeStats.innerHTML = '<p style="color: var(--text-secondary); font-size: 12px;">No file statistics available</p>';
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        function updateExchangeStats() {
+            // Update local exchange count
+            const exchangesElement = document.getElementById('exchanges');
+            if (exchangesElement) {
+                exchangesElement.textContent = parseInt(exchangesElement.textContent) + 1;
+            }
+        }
+
+        // Utility Functions
+        function refreshData() {
+            if (currentSection === 'files') {
+                loadFiles();
+            } else if (currentSection === 'stats') {
+                loadStatistics();
+            }
+            showNotification('Data refreshed', 'success');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial section
+            showUploadSection();
+        });
+    </script>
+</body>
+</html>

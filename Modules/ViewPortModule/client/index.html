@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLMOD ViewPort Module</title>
+    <link rel="stylesheet" href="../../shared-styles.css">
+    <style>
+        .viewport-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .toolbar {
+            padding: 15px;
+            background: rgba(26, 35, 50, 0.8);
+            border-bottom: 1px solid var(--rust-primary);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tool-button {
+            padding: 8px 15px;
+            font-size: 12px;
+            background: rgba(183, 65, 14, 0.2);
+            border: 1px solid var(--rust-primary);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tool-button:hover {
+            background: var(--rust-primary);
+            transform: translateY(-1px);
+        }
+        
+        .tool-button.active {
+            background: var(--rust-primary);
+            box-shadow: 0 0 8px rgba(183, 65, 14, 0.6);
+        }
+        
+        .viewport-canvas {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .avatar-display {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--rust-primary) 0%, var(--rust-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            font-size: 72px;
+            font-weight: bold;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 2px 4px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .avatar-display img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .avatar-display:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 12px 48px rgba(0, 0, 0, 0.4),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        }
+        
+        .avatar-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .avatar-info {
+            background: rgba(26, 35, 50, 0.6);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .info-label {
+            color: var(--text-secondary);
+        }
+        
+        .info-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--rust-primary);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            background: rgba(183, 65, 14, 0.1);
+            border-color: var(--rust-light);
+        }
+        
+        .upload-area.dragover {
+            background: rgba(183, 65, 14, 0.2);
+            border-color: var(--rust-light);
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+        
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .preview-item {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(47, 79, 79, 0.6);
+            border: 1px solid var(--metal-silver);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .preview-item:hover {
+            transform: scale(1.1);
+            border-color: var(--rust-primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .avatar-generator {
+            text-align: center;
+        }
+        
+        .generator-controls {
+            margin-bottom: 20px;
+        }
+        
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+            border-color: var(--text-primary);
+        }
+        
+        .color-option.selected {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+        }
+        
+        .text-input {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+    </style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+    <div class="overlay-container">
+        <div class="metal-frame">
+            <div class="module-header">
+                <h1 class="module-title">ViewPort Module</h1>
+            </div>
+            <div class="toolbar">
+                <button class="tool-button active" onclick="showAvatarDisplay()">Display</button>
+                <button class="tool-button" onclick="showUploadSection()">Upload</button>
+                <button class="tool-button" onclick="showGeneratorSection()">Generate</button>
+                <button class="tool-button" onclick="showGallery()">Gallery</button>
+                <button class="tool-button" onclick="refreshAvatars()">Refresh</button>
+            </div>
+            <div class="module-content">
+                <div class="viewport-container">
+                    <!-- Avatar Display Section -->
+                    <div class="viewport-canvas" id="avatarDisplay">
+                        <div class="avatar-display" id="mainAvatar">
+                            👤
+                        </div>
+                        <div class="avatar-controls">
+                            <button class="rust-button" onclick="rotateAvatar()">Rotate</button>
+                            <button class="rust-button" onclick="resetAvatar()">Reset</button>
+                            <button class="rust-button" onclick="toggleAnimation()">Animate</button>
+                        </div>
+                    </div>
+
+                    <!-- Upload Section -->
+                    <div class="viewport-canvas" id="uploadSection" style="display: none;">
+                        <div class="upload-area" onclick="document.getElementById('fileInput').click()" 
+                             ondrop="handleDrop(event)" ondragover="handleDragOver(event)" 
+                             ondragleave="handleDragLeave(event)">
+                            <div class="upload-icon">📤</div>
+                            <div class="upload-text">
+                                Click to upload or drag & drop avatar images<br>
+                                Supports: JPG, PNG, GIF (Max 5MB)
+                            </div>
+                            <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileSelect(event)">
+                        </div>
+                        <div class="preview-grid" id="uploadPreview"></div>
+                    </div>
+
+                    <!-- Generator Section -->
+                    <div class="viewport-canvas" id="generatorSection" style="display: none;">
+                        <div class="avatar-generator">
+                            <div class="generator-controls">
+                                <div class="text-input">
+                                    <input type="text" id="avatarText" class="metal-input" placeholder="Enter text for avatar" maxlength="2">
+                                </div>
+                                <div class="color-picker">
+                                    <div class="color-option" style="background: linear-gradient(135deg, #b7410e, #8b2f0a)" onclick="selectColor(this, 'rust')"></div>
+                                    <div class="color-option" style="background: linear-gradient(135deg, #2c3e50, #1a2332)" onclick="selectColor(this, 'navy')"></div>
+                                    <div class="color-option" style="background: linear-gradient(135deg, #708090, #2f4f4f)" onclick="selectColor(this, 'metal')"></div>
+                                    <div class="color-option" style="background: linear-gradient(135deg, #4CAF50, #2E7D32)" onclick="selectColor(this, 'green')"></div>
+                                    <div class="color-option" style="background: linear-gradient(135deg, #2196F3, #1565C0)" onclick="selectColor(this, 'blue')"></div>
+                                    <div class="color-option" style="background: linear-gradient(135deg, #9C27B0, #6A1B9A)" onclick="selectColor(this, 'purple')"></div>
+                                </div>
+                            </div>
+                            <div class="avatar-display" id="generatedAvatar" style="width: 150px; height: 150px; font-size: 48px;">
+                                A
+                            </div>
+                            <div class="modal-actions">
+                                <button class="rust-button" onclick="generateAvatar()">Generate</button>
+                                <button class="rust-button" onclick="saveGeneratedAvatar()">Save Avatar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gallery Section -->
+                    <div class="viewport-canvas" id="gallerySection" style="display: none;">
+                        <div id="galleryContent">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🖼️</div>
+                                <p>No avatars in gallery yet. Upload or generate some avatars to get started.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 'display';
+        let selectedColor = 'rust';
+        let avatarRotation = 0;
+        let isAnimating = false;
+        let uploadedImages = [];
+        let savedAvatars = [];
+
+        // Section Navigation
+        function showAvatarDisplay() {
+            hideAllSections();
+            document.getElementById('avatarDisplay').style.display = 'flex';
+            setActiveButton(0);
+            currentSection = 'display';
+        }
+
+        function showUploadSection() {
+            hideAllSections();
+            document.getElementById('uploadSection').style.display = 'flex';
+            setActiveButton(1);
+            currentSection = 'upload';
+        }
+
+        function showGeneratorSection() {
+            hideAllSections();
+            document.getElementById('generatorSection').style.display = 'flex';
+            setActiveButton(2);
+            currentSection = 'generator';
+        }
+
+        function showGallery() {
+            hideAllSections();
+            document.getElementById('gallerySection').style.display = 'flex';
+            setActiveButton(3);
+            currentSection = 'gallery';
+            loadGallery();
+        }
+
+        function hideAllSections() {
+            document.getElementById('avatarDisplay').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('generatorSection').style.display = 'none';
+            document.getElementById('gallerySection').style.display = 'none';
+        }
+
+        function setActiveButton(index) {
+            const buttons = document.querySelectorAll('.tool-button');
+            buttons.forEach((btn, i) => {
+                if (i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Avatar Display Functions
+        function rotateAvatar() {
+            const avatar = document.getElementById('mainAvatar');
+            avatarRotation += 45;
+            avatar.style.transform = `rotate(${avatarRotation}deg)`;
+        }
+
+        function resetAvatar() {
+            const avatar = document.getElementById('mainAvatar');
+            avatarRotation = 0;
+            avatar.style.transform = 'rotate(0deg)';
+            avatar.style.animation = 'none';
+            isAnimating = false;
+        }
+
+        function toggleAnimation() {
+            const avatar = document.getElementById('mainAvatar');
+            if (isAnimating) {
+                avatar.style.animation = 'none';
+            } else {
+                avatar.style.animation = 'pulse 2s infinite';
+            }
+            isAnimating = !isAnimating;
+        }
+
+        // Upload Functions
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            processFiles(files);
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            const files = event.dataTransfer.files;
+            processFiles(files);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        function processFiles(files) {
+            const preview = document.getElementById('uploadPreview');
+            
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/') && file.size <= 5 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('div');
+                        img.className = 'preview-item';
+                        img.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                        img.onclick = () => setMainAvatar(e.target.result);
+                        preview.appendChild(img);
+                        uploadedImages.push(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function setMainAvatar(imageSrc) {
+            const mainAvatar = document.getElementById('mainAvatar');
+            mainAvatar.innerHTML = `<img src="${imageSrc}" alt="Avatar">`;
+            showAvatarDisplay(); // Switch back to display view
+        }
+
+        // Generator Functions
+        function selectColor(element, color) {
+            document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedColor = color;
+        }
+
+        function generateAvatar() {
+            const text = document.getElementById('avatarText').value || 'A';
+            const avatar = document.getElementById('generatedAvatar');
+            avatar.textContent = text.substring(0, 2).toUpperCase();
+            
+            const colorGradients = {
+                rust: 'linear-gradient(135deg, #b7410e, #8b2f0a)',
+                navy: 'linear-gradient(135deg, #2c3e50, #1a2332)',
+                metal: 'linear-gradient(135deg, #708090, #2f4f4f)',
+                green: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                blue: 'linear-gradient(135deg, #2196F3, #1565C0)',
+                purple: 'linear-gradient(135deg, #9C27B0, #6A1B9A)'
+            };
+            
+            avatar.style.background = colorGradients[selectedColor];
+        }
+
+        function saveGeneratedAvatar() {
+            const avatar = document.getElementById('generatedAvatar');
+            const avatarData = {
+                text: avatar.textContent,
+                color: selectedColor,
+                timestamp: Date.now()
+            };
+            
+            savedAvatars.push(avatarData);
+            
+            // Also set it as main avatar
+            const mainAvatar = document.getElementById('mainAvatar');
+            mainAvatar.innerHTML = avatar.innerHTML;
+            mainAvatar.style.background = avatar.style.background;
+            mainAvatar.textContent = avatar.textContent;
+            
+            showAvatarDisplay();
+            showNotification('Avatar saved successfully', 'success');
+        }
+
+        // Gallery Functions
+        async function loadGallery() {
+            try {
+                const response = await fetch('/api/avatars');
+                const avatars = await response.json();
+                
+                const galleryContent = document.getElementById('galleryContent');
+                
+                if (avatars.length === 0) {
+                    galleryContent.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🖼️</div>
+                            <p>No avatars in gallery yet. Upload or generate some avatars to get started.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                galleryContent.innerHTML = `
+                    <div class="preview-grid">
+                        ${avatars.map(avatar => `
+                            <div class="preview-item" onclick="selectGalleryAvatar('${avatar.id}')">
+                                <img src="${avatar.url}" alt="${avatar.name}">
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading gallery:', error);
+            }
+        }
+
+        function selectGalleryAvatar(avatarId) {
+            // Load the selected avatar as main avatar
+            fetch(`/api/avatars/${avatarId}`)
+                .then(response => response.json())
+                .then(avatar => {
+                    const mainAvatar = document.getElementById('mainAvatar');
+                    mainAvatar.innerHTML = `<img src="${avatar.url}" alt="${avatar.name}">`;
+                    showAvatarDisplay();
+                })
+                .catch(error => console.error('Error loading avatar:', error));
+        }
+
+        // Utility Functions
+        function refreshAvatars() {
+            if (currentSection === 'gallery') {
+                loadGallery();
+            }
+            showNotification('Avatars refreshed', 'success');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--glass-bg);
+                backdrop-filter: blur(10px);
+                border: 1px solid var(--glass-border);
+                border-radius: 8px;
+                padding: 12px 20px;
+                color: var(--text-primary);
+                font-size: 13px;
+                z-index: 1000;
+                animation: slideDown 0.3s ease-out;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Select first color option by default
+            document.querySelector('.color-option').classList.add('selected');
+        });
+    </script>
+</body>
+</html>

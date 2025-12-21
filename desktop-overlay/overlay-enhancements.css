@@ -1,0 +1,305 @@
+/* Desktop Overlay Enhancements */
+/* Injected by Electron to make modules true desktop overlays */
+
+/* Make the entire window draggable from header */
+.module-header {
+    -webkit-app-region: drag !important;
+    cursor: move !important;
+    user-select: none !important;
+}
+
+/* Make buttons interactive (not draggable) */
+.module-header button,
+.module-header a,
+.module-header input {
+    -webkit-app-region: no-drag !important;
+    cursor: pointer !important;
+}
+
+/* Remove browser window styling */
+body {
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Enhanced overlay container */
+.overlay-container {
+    background: rgba(26, 35, 50, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(183, 65, 14, 0.3) !important;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 40px rgba(183, 65, 14, 0.2) !important;
+    animation: overlaySlideIn 0.5s ease-out !important;
+}
+
+@keyframes overlaySlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Enhanced metal frame */
+.metal-frame {
+    background: linear-gradient(135deg, 
+        rgba(112, 128, 144, 0.9) 0%, 
+        rgba(47, 79, 79, 0.9) 50%, 
+        rgba(112, 128, 144, 0.9) 100%) !important;
+    animation: metalGlow 4s ease-in-out infinite !important;
+}
+
+@keyframes metalGlow {
+    0%, 100% { 
+        box-shadow: 
+            0 0 20px rgba(183, 65, 14, 0.3),
+            inset 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+    50% { 
+        box-shadow: 
+            0 0 30px rgba(183, 65, 14, 0.5),
+            inset 0 0 15px rgba(255, 255, 255, 0.2);
+    }
+}
+
+/* Floating window controls */
+.overlay-window-controls {
+    position: fixed !important;
+    top: 8px !important;
+    right: 8px !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    gap: 6px !important;
+    background: rgba(26, 35, 50, 0.9) !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(183, 65, 14, 0.4) !important;
+    -webkit-app-region: no-drag !important;
+}
+
+.window-control-btn {
+    width: 24px !important;
+    height: 24px !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    -webkit-app-region: no-drag !important;
+}
+
+.window-control-btn:hover {
+    transform: scale(1.1) !important;
+}
+
+.window-control-minimize {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.9), rgba(255, 152, 0, 0.9)) !important;
+    color: white !important;
+}
+
+.window-control-close {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.9), rgba(179, 18, 18, 0.9)) !important;
+    color: white !important;
+}
+
+/* Enhanced glass effect */
+.glass-card {
+    background: rgba(26, 35, 50, 0.5) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(183, 65, 14, 0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+.glass-card:hover {
+    background: rgba(26, 35, 50, 0.7) !important;
+    border-color: rgba(183, 65, 14, 0.5) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Enhanced module header */
+.module-header {
+    background: linear-gradient(135deg, 
+        rgba(26, 35, 50, 0.95) 0%, 
+        rgba(44, 62, 80, 0.95) 100%) !important;
+    border-bottom: 2px solid rgba(183, 65, 14, 0.6) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.module-header::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: -100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(183, 65, 14, 0.3), 
+        transparent) !important;
+    animation: headerShine 4s infinite !important;
+}
+
+@keyframes headerShine {
+    0% { left: -100%; }
+    50%, 100% { left: 100%; }
+}
+
+/* Enhanced buttons */
+.rust-button {
+    background: linear-gradient(135deg, 
+        rgba(183, 65, 14, 0.9) 0%, 
+        rgba(139, 47, 10, 0.9) 100%) !important;
+    border: 1px solid rgba(210, 105, 30, 0.8) !important;
+    color: rgba(232, 232, 232, 0.95) !important;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    transition: all 0.3s ease !important;
+}
+
+.rust-button:hover {
+    background: linear-gradient(135deg, 
+        rgba(210, 105, 30, 0.9) 0%, 
+        rgba(183, 65, 14, 0.9) 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Enhanced input fields */
+.metal-input {
+    background: rgba(47, 79, 79, 0.8) !important;
+    border: 1px solid rgba(112, 128, 144, 0.8) !important;
+    color: rgba(232, 232, 232, 0.95) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+.metal-input:focus {
+    border-color: rgba(183, 65, 14, 0.8) !important;
+    box-shadow: 
+        0 0 0 2px rgba(183, 65, 14, 0.3),
+        inset 0 0 10px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enhanced scrollbars */
+.module-content::-webkit-scrollbar {
+    width: 10px !important;
+}
+
+.module-content::-webkit-scrollbar-track {
+    background: rgba(26, 35, 50, 0.6) !important;
+    border-radius: 5px !important;
+}
+
+.module-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, 
+        rgba(183, 65, 14, 0.8) 0%, 
+        rgba(139, 47, 10, 0.8) 100%) !important;
+    border-radius: 5px !important;
+    border: 1px solid rgba(112, 128, 144, 0.6) !important;
+}
+
+.module-content::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, 
+        rgba(210, 105, 30, 0.9) 0%, 
+        rgba(183, 65, 14, 0.9) 100%) !important;
+}
+
+/* Floating animation for active elements */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-3px); }
+}
+
+.floating {
+    animation: float 3s ease-in-out infinite !important;
+}
+
+/* Pulse animation for status indicators */
+@keyframes pulse {
+    0%, 100% { 
+        opacity: 1; 
+        box-shadow: 0 0 10px rgba(183, 65, 14, 0.6);
+    }
+    50% { 
+        opacity: 0.7; 
+        box-shadow: 0 0 20px rgba(183, 65, 14, 0.8);
+    }
+}
+
+.status-indicator {
+    animation: pulse 2s infinite !important;
+}
+
+/* Remove browser scrollbar and add custom */
+::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* Make content scrollable with custom styling */
+.scrollable {
+    overflow-y: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(183, 65, 14, 0.8) rgba(26, 35, 50, 0.6) !important;
+}
+
+/* Firefox scrollbar */
+.scrollable::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.scrollable::-webkit-scrollbar-track {
+    background: rgba(26, 35, 50, 0.6) !important;
+    border-radius: 4px !important;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+    background: rgba(183, 65, 14, 0.8) !important;
+    border-radius: 4px !important;
+}
+
+/* Window state animations */
+@keyframes windowMinimize {
+    to {
+        opacity: 0;
+        transform: scale(0.8) translateY(50px);
+    }
+}
+
+@keyframes windowRestore {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.window-minimizing {
+    animation: windowMinimize 0.3s ease-out !important;
+}
+
+.window-restoring {
+    animation: windowRestore 0.3s ease-out !important;
+}
