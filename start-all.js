@@ -41,6 +41,12 @@ const modules = [
         script: 'Modules/AppTray/server.js',
         port: 8085,
         color: '\x1b[31m' // Red
+    },
+    {
+        name: 'Prompt Settings Module',
+        script: 'Modules/PromptSettingsModule/server.js',
+        port: 8086,
+        color: '\x1b[95m' // Bright Magenta
     }
 ];
 
