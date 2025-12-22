@@ -104,7 +104,8 @@ function createOverlayWindow(moduleConfig) {
             nodeIntegration: false,
             contextIsolation: true,
             enableRemoteModule: false,
-            webSecurity: true
+            webSecurity: true,
+            preload: path.join(__dirname, 'preload.js')
         },
         ...moduleConfig,
         titleBarStyle: 'hiddenInset',
@@ -187,71 +188,83 @@ function createOverlayWindow(moduleConfig) {
     // Inject overlay control script
     window.webContents.on('did-finish-load', () => {
         window.webContents.executeJavaScript(`
-            // Add window controls to the page
-            if (!document.getElementById('overlay-controls')) {
-                const controls = document.createElement('div');
-                controls.id = 'overlay-controls';
-                controls.style.cssText = \`
-                    position: fixed;
-                    top: 5px;
-                    right: 5px;
-                    z-index: 10000;
-                    display: flex;
-                    gap: 5px;
-                    background: rgba(26, 35, 50, 0.8);
-                    border-radius: 8px;
-                    padding: 5px;
-                    backdrop-filter: blur(10px);
-                \`;
+            try {
+                // Add window controls to the page
+                if (!document.getElementById('overlay-controls') && window.electronAPI) {
+                    const controls = document.createElement('div');
+                    controls.id = 'overlay-controls';
+                    controls.style.cssText = \`
+                        position: fixed;
+                        top: 5px;
+                        right: 5px;
+                        z-index: 10000;
+                        display: flex;
+                        gap: 5px;
+                        background: rgba(26, 35, 50, 0.8);
+                        border-radius: 8px;
+                        padding: 5px;
+                        backdrop-filter: blur(10px);
+                    \`;
+                    
+                    // Minimize button
+                    const minimizeBtn = document.createElement('button');
+                    minimizeBtn.innerHTML = '－';
+                    minimizeBtn.style.cssText = \`
+                        width: 20px;
+                        height: 20px;
+                        border: none;
+                        border-radius: 4px;
+                        background: rgba(255, 193, 7, 0.8);
+                        color: white;
+                        cursor: pointer;
+                        font-size: 12px;
+                    \`;
+                    minimizeBtn.onclick = () => {
+                        if (window.electronAPI) {
+                            window.electronAPI.minimize();
+                        }
+                    };
+                    
+                    // Close button
+                    const closeBtn = document.createElement('button');
+                    closeBtn.innerHTML = '×';
+                    closeBtn.style.cssText = \`
+                        width: 20px;
+                        height: 20px;
+                        border: none;
+                        border-radius: 4px;
+                        background: rgba(220, 53, 69, 0.8);
+                        color: white;
+                        cursor: pointer;
+                        font-size: 12px;
+                    \`;
+                    closeBtn.onclick = () => {
+                        if (window.electronAPI) {
+                            window.electronAPI.close();
+                        }
+                    };
+                    
+                    controls.appendChild(minimizeBtn);
+                    controls.appendChild(closeBtn);
+                    document.body.appendChild(controls);
+                }
                 
-                // Minimize button
-                const minimizeBtn = document.createElement('button');
-                minimizeBtn.innerHTML = '－';
-                minimizeBtn.style.cssText = \`
-                    width: 20px;
-                    height: 20px;
-                    border: none;
-                    border-radius: 4px;
-                    background: rgba(255, 193, 7, 0.8);
-                    color: white;
-                    cursor: pointer;
-                    font-size: 12px;
-                \`;
-                minimizeBtn.onclick = () => {
-                    window.electronAPI.minimize();
-                };
-                
-                // Close button
-                const closeBtn = document.createElement('button');
-                closeBtn.innerHTML = '×';
-                closeBtn.style.cssText = \`
-                    width: 20px;
-                    height: 20px;
-                    border: none;
-                    border-radius: 4px;
-                    background: rgba(220, 53, 69, 0.8);
-                    color: white;
-                    cursor: pointer;
-                    font-size: 12px;
-                \`;
-                closeBtn.onclick = () => {
-                    window.electronAPI.close();
-                };
-                
-                controls.appendChild(minimizeBtn);
-                controls.appendChild(closeBtn);
-                document.body.appendChild(controls);
+                // Make window draggable from header
+                if (window.electronAPI) {
+                    const headers = document.querySelectorAll('.module-header, h1, .header');
+                    headers.forEach(header => {
+                        header.style.cursor = 'move';
+                        header.addEventListener('mousedown', (e) => {
+                            window.electronAPI.startDrag(e.clientX, e.clientY);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error injecting overlay controls:', error);
             }
-            
-            // Make window draggable from header
-            const headers = document.querySelectorAll('.module-header, h1, .header');
-            headers.forEach(header => {
-                header.style.cursor = 'move';
-                header.addEventListener('mousedown', (e) => {
-                    window.electronAPI.startDrag(e.clientX, e.clientY);
-                });
-            });
-        `);
+        `).catch(err => {
+            console.error('Failed to inject overlay controls:', err);
+        });
     });
 
     return window;
