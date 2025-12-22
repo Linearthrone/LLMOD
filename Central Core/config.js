@@ -53,6 +53,13 @@ module.exports = {
             command: 'node',
             args: ['server.js'],
             healthCheck: '/health'
+        },
+        promptSettings: {
+            port: 8086,
+            script: './Modules/PromptSettingsModule/server.js',
+            command: 'node',
+            args: ['server.js'],
+            healthCheck: '/health'
         }
     },
     orchestrator: {
