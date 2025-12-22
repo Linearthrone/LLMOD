@@ -88,7 +88,7 @@ let overlayWindows = [];
 let isInitialized = false;
 
 function createOverlayWindow(moduleConfig) {
-    const { primaryDisplay } = screen;
+    const primaryDisplay = screen.getPrimaryDisplay();
     const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
     
     // Ensure window stays within screen bounds
