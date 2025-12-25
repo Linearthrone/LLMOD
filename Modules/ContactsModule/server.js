@@ -1,38 +1,26 @@
-const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../../Central Core/logger');
+const BaseServer = require('../../Central Core/BaseServer');
 
-class ContactsServer {
+class ContactsServer extends BaseServer {
     constructor() {
-        this.app = express();
-        this.port = process.env.CONTACTS_PORT || 8081;
+        super('Contacts', process.env.CONTACTS_PORT || 8081);
         this.contactsFile = path.join(__dirname, 'contacts.json');
         this.contacts = [];
         
-        this.setupMiddleware();
+        this.setupBaseRoutes();
         this.setupRoutes();
         this.loadContacts();
     }
 
-    setupMiddleware() {
-        this.app.use(express.json());
-        this.app.use(express.static(path.join(__dirname, 'client')));
-        this.app.use((req, res, next) => {
-            logger.log(`[Contacts] ${req.method} ${req.path}`);
-            next();
-        });
+    getHealthData() {
+        return {
+            contacts: this.contacts.length
+        };
     }
 
     setupRoutes() {
-        // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'healthy', 
-                timestamp: new Date().toISOString(),
-                contacts: this.contacts.length
-            });
-        });
 
         // Get all contacts
         this.app.get('/api/contacts', (req, res) => {
@@ -204,10 +192,6 @@ class ContactsServer {
             res.json({ success: true });
         });
 
-        // Serve client interface
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'client', 'index.html'));
-        });
     }
 
     getSettings() {
@@ -252,36 +236,16 @@ class ContactsServer {
             throw error;
         }
     }
-
-    start() {
-        this.app.listen(this.port, () => {
-            logger.log(`Contacts server running on port ${this.port}`);
-        });
-    }
-
-    stop() {
-        // In a real implementation, you'd close the server
-        logger.log('Contacts server stopped');
-    }
 }
 
 // Start server if run directly
 if (require.main === module) {
     const server = new ContactsServer();
-    
-    process.on('SIGINT', () => {
-        logger.log('Shutting down contacts server...');
-        server.stop();
-        process.exit(0);
+    server.setupSignalHandlers();
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     });
-    
-    process.on('SIGTERM', () => {
-        logger.log('Shutting down contacts server...');
-        server.stop();
-        process.exit(0);
-    });
-    
-    server.start();
 }
 
 module.exports = ContactsServer;
