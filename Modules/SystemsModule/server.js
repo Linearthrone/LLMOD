@@ -1,12 +1,11 @@
-const express = require('express');
 const si = require('systeminformation');
 const logger = require('../../Central Core/logger');
 const path = require('path');
+const BaseServer = require('../../Central Core/BaseServer');
 
-class SystemsServer {
+class SystemsServer extends BaseServer {
     constructor() {
-        this.app = express();
-        this.port = process.env.SYSTEMS_PORT || 8083;
+        super('Systems', process.env.SYSTEMS_PORT || 8083, { modulePath: __dirname });
         this.monitoringInterval = null;
         this.currentStats = {
             cpu: { usage: 0, temperature: 0 },
@@ -25,29 +24,18 @@ class SystemsServer {
             }
         };
         
-        this.setupMiddleware();
+        this.setupBaseRoutes();
         this.setupRoutes();
         this.startMonitoring();
     }
 
-    setupMiddleware() {
-        this.app.use(express.json());
-        this.app.use(express.static(path.join(__dirname, 'client')));
-        this.app.use((req, res, next) => {
-            logger.log(`[Systems] ${req.method} ${req.path}`);
-            next();
-        });
+    getHealthData() {
+        return {
+            monitoring: this.monitoringInterval ? 'active' : 'inactive'
+        };
     }
 
     setupRoutes() {
-        // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'healthy', 
-                timestamp: new Date().toISOString(),
-                monitoring: this.monitoringInterval ? 'active' : 'inactive'
-            });
-        });
 
         // Get current system stats
         this.app.get('/api/stats', (req, res) => {
@@ -218,10 +206,6 @@ class SystemsServer {
             }
         });
 
-        // Serve client interface
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'client', 'index.html'));
-        });
     }
 
     async updateStats() {
@@ -358,35 +342,20 @@ class SystemsServer {
         }
     }
 
-    start() {
-        this.app.listen(this.port, () => {
-            logger.log(`Systems server running on port ${this.port}`);
-        });
-    }
-
-    stop() {
+    async stop() {
         this.stopMonitoring();
-        logger.log('Systems server stopped');
+        await super.stop();
     }
 }
 
 // Start server if run directly
 if (require.main === module) {
     const server = new SystemsServer();
-    
-    process.on('SIGINT', () => {
-        logger.log('Shutting down systems server...');
-        server.stop();
-        process.exit(0);
+    server.setupSignalHandlers();
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     });
-    
-    process.on('SIGTERM', () => {
-        logger.log('Shutting down systems server...');
-        server.stop();
-        process.exit(0);
-    });
-    
-    server.start();
 }
 
 module.exports = SystemsServer;

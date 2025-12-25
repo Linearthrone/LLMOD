@@ -1,39 +1,30 @@
-const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
+const express = require('express');
 const logger = require('../../Central Core/logger');
+const BaseServer = require('../../Central Core/BaseServer');
 
-class ViewPortServer {
+class ViewPortServer extends BaseServer {
     constructor() {
-        this.app = express();
-        this.port = process.env.VIEWPORT_PORT || 8082;
+        super('ViewPort', process.env.VIEWPORT_PORT || 8082, { modulePath: __dirname });
         this.currentAvatar = null;
         this.avatarDir = path.join(__dirname, 'avatars');
         
-        this.setupMiddleware();
+        // Add avatar directory to static files
+        this.app.use('/avatars', express.static(this.avatarDir));
+        
+        this.setupBaseRoutes();
         this.setupRoutes();
         this.ensureAvatarDir();
     }
 
-    setupMiddleware() {
-        this.app.use(express.json());
-        this.app.use('/avatars', express.static(this.avatarDir));
-        this.app.use(express.static(path.join(__dirname, 'client')));
-        this.app.use((req, res, next) => {
-            logger.log(`[ViewPort] ${req.method} ${req.path}`);
-            next();
-        });
+    getHealthData() {
+        return {
+            currentAvatar: this.currentAvatar ? 'set' : 'none'
+        };
     }
 
     setupRoutes() {
-        // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'healthy', 
-                timestamp: new Date().toISOString(),
-                currentAvatar: this.currentAvatar ? 'set' : 'none'
-            });
-        });
 
         // Get current avatar
         this.app.get('/api/avatar', (req, res) => {
@@ -114,10 +105,6 @@ class ViewPortServer {
             res.json({ success: true });
         });
 
-        // Serve client interface
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'client', 'index.html'));
-        });
     }
 
     generateAvatarPlaceholder(name) {
@@ -160,35 +147,16 @@ class ViewPortServer {
     updateSettings(newSettings) {
         logger.log('Settings updated:', newSettings);
     }
-
-    start() {
-        this.app.listen(this.port, () => {
-            logger.log(`ViewPort server running on port ${this.port}`);
-        });
-    }
-
-    stop() {
-        logger.log('ViewPort server stopped');
-    }
 }
 
 // Start server if run directly
 if (require.main === module) {
     const server = new ViewPortServer();
-    
-    process.on('SIGINT', () => {
-        logger.log('Shutting down ViewPort server...');
-        server.stop();
-        process.exit(0);
+    server.setupSignalHandlers();
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     });
-    
-    process.on('SIGTERM', () => {
-        logger.log('Shutting down ViewPort server...');
-        server.stop();
-        process.exit(0);
-    });
-    
-    server.start();
 }
 
 module.exports = ViewPortServer;

@@ -1,43 +1,31 @@
-const express = require('express');
 const { Server } = require('ws');
 const http = require('http');
 const path = require('path');
 const logger = require('../../Central Core/logger');
+const BaseServer = require('../../Central Core/BaseServer');
 
-class ChatServer {
+class ChatServer extends BaseServer {
     constructor() {
-        this.app = express();
+        super('Chat', process.env.CHAT_PORT || 8080, { hasClient: true, modulePath: __dirname });
         this.server = http.createServer(this.app);
         this.wss = new Server({ server: this.server });
-        this.port = process.env.CHAT_PORT || 8080;
         this.messages = [];
         this.clients = new Map();
         
-        this.setupMiddleware();
+        this.setupBaseRoutes();
         this.setupRoutes();
         this.setupWebSocket();
         this.loadHistory();
     }
 
-    setupMiddleware() {
-        this.app.use(express.json());
-        this.app.use(express.static(path.join(__dirname, 'client')));
-        this.app.use((req, res, next) => {
-            logger.log(`[Chat] ${req.method} ${req.path}`);
-            next();
-        });
+    getHealthData() {
+        return {
+            clients: this.clients.size,
+            messages: this.messages.length
+        };
     }
 
     setupRoutes() {
-        // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'healthy', 
-                timestamp: new Date().toISOString(),
-                clients: this.clients.size,
-                messages: this.messages.length
-            });
-        });
 
         // Get all messages
         this.app.get('/api/messages', (req, res) => {
@@ -78,8 +66,7 @@ class ChatServer {
 
                 res.json(message);
             } catch (error) {
-                logger.error('Error sending message:', error);
-                res.status(500).json({ error: 'Failed to send message' });
+                this.handleError(res, error, 'Failed to send message');
             }
         });
 
@@ -105,19 +92,13 @@ class ChatServer {
         // Get models from Ollama
         this.app.get('/api/models', async (req, res) => {
             try {
-                const response = await fetch('http://localhost:11434/api/tags');
-                const data = await response.json();
-                res.json(data.models || []);
+                const models = await this.getOllamaModels();
+                res.json(models);
             } catch (error) {
-                logger.error('Failed to fetch models:', error);
-                res.status(500).json({ error: 'Failed to fetch models' });
+                this.handleError(res, error, 'Failed to fetch models');
             }
         });
 
-        // Serve client interface
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'client', 'index.html'));
-        });
     }
 
     setupWebSocket() {
@@ -261,15 +242,39 @@ class ChatServer {
         logger.log(`Saved ${this.messages.length} messages to history`);
     }
 
+    // Override start() to use the http.Server instead of the Express app.listen()
+    // This is necessary for WebSocket support
     start() {
-        this.server.listen(this.port, () => {
-            logger.log(`Chat server running on port ${this.port}`);
+        return new Promise((resolve, reject) => {
+            try {
+                this.server.listen(this.port, () => {
+                    logger.log(`${this.moduleName} server running on port ${this.port}`);
+                    resolve();
+                });
+                
+                this.server.on('error', (error) => {
+                    logger.error(`${this.moduleName} server error:`, error);
+                    reject(error);
+                });
+            } catch (error) {
+                logger.error(`Failed to start ${this.moduleName} server:`, error);
+                reject(error);
+            }
         });
     }
 
+    // Override stop() to properly close the http.Server
     stop() {
-        this.server.close(() => {
-            logger.log('Chat server stopped');
+        return new Promise((resolve) => {
+            if (this.server) {
+                this.server.close(() => {
+                    logger.log(`${this.moduleName} server stopped`);
+                    resolve();
+                });
+            } else {
+                logger.log(`${this.moduleName} server was not running`);
+                resolve();
+            }
         });
     }
 }
@@ -277,20 +282,11 @@ class ChatServer {
 // Start server if run directly
 if (require.main === module) {
     const server = new ChatServer();
-    
-    process.on('SIGINT', () => {
-        logger.log('Shutting down chat server...');
-        server.stop();
-        process.exit(0);
+    server.setupSignalHandlers();
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     });
-    
-    process.on('SIGTERM', () => {
-        logger.log('Shutting down chat server...');
-        server.stop();
-        process.exit(0);
-    });
-    
-    server.start();
 }
 
 module.exports = ChatServer;
