@@ -1,12 +1,13 @@
 const multer = require('multer');
 const fs = require('fs').promises;
 const path = require('path');
+const express = require('express');
 const logger = require('../../Central Core/logger');
 const BaseServer = require('../../Central Core/BaseServer');
 
 class ContextDataServer extends BaseServer {
     constructor() {
-        super('ContextData', process.env.CONTEXT_PORT || 8084);
+        super('ContextData', process.env.CONTEXT_PORT || 8084, { modulePath: __dirname });
         this.contextDir = path.join(__dirname, 'context_data');
         this.maxFileSize = 10 * 1024 * 1024; // 10MB
         this.allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'txt', 'doc', 'docx', 'mp4', 'avi', 'mov'];
@@ -45,7 +46,7 @@ class ContextDataServer extends BaseServer {
         });
 
         // Serve uploaded files
-        this.app.use('/files', require('express').static(this.contextDir));
+        this.app.use('/files', express.static(this.contextDir));
     }
 
     getHealthData() {

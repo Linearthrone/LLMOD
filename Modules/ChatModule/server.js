@@ -6,7 +6,7 @@ const BaseServer = require('../../Central Core/BaseServer');
 
 class ChatServer extends BaseServer {
     constructor() {
-        super('Chat', process.env.CHAT_PORT || 8080, { hasClient: true });
+        super('Chat', process.env.CHAT_PORT || 8080, { hasClient: true, modulePath: __dirname });
         this.server = http.createServer(this.app);
         this.wss = new Server({ server: this.server });
         this.messages = [];
@@ -242,6 +242,8 @@ class ChatServer extends BaseServer {
         logger.log(`Saved ${this.messages.length} messages to history`);
     }
 
+    // Override start() to use the http.Server instead of the Express app.listen()
+    // This is necessary for WebSocket support
     start() {
         return new Promise((resolve, reject) => {
             try {
@@ -261,6 +263,7 @@ class ChatServer extends BaseServer {
         });
     }
 
+    // Override stop() to properly close the http.Server
     stop() {
         return new Promise((resolve) => {
             if (this.server) {

@@ -14,6 +14,7 @@ class BaseServer {
         this.server = null;
         this.options = {
             hasClient: true,
+            modulePath: null, // Will be set by subclass
             ...options
         };
         
@@ -27,8 +28,8 @@ class BaseServer {
         this.app.use(express.json());
         
         // Serve static client files if module has a client
-        if (this.options.hasClient) {
-            this.app.use(express.static(path.join(this.getModulePath(), 'client')));
+        if (this.options.hasClient && this.options.modulePath) {
+            this.app.use(express.static(path.join(this.options.modulePath, 'client')));
         }
         
         // Request logging middleware
@@ -53,9 +54,9 @@ class BaseServer {
         });
 
         // Serve client interface if available
-        if (this.options.hasClient) {
+        if (this.options.hasClient && this.options.modulePath) {
             this.app.get('/', (req, res) => {
-                res.sendFile(path.join(this.getModulePath(), 'client', 'index.html'));
+                res.sendFile(path.join(this.options.modulePath, 'client', 'index.html'));
             });
         }
     }
@@ -66,15 +67,6 @@ class BaseServer {
      */
     getHealthData() {
         return {};
-    }
-
-    /**
-     * Get the module's directory path
-     */
-    getModulePath() {
-        // This assumes the server.js is in the module directory
-        // Override if your module structure is different
-        return path.dirname(require.main.filename);
     }
 
     /**

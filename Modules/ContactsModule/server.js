@@ -5,7 +5,7 @@ const BaseServer = require('../../Central Core/BaseServer');
 
 class ContactsServer extends BaseServer {
     constructor() {
-        super('Contacts', process.env.CONTACTS_PORT || 8081);
+        super('Contacts', process.env.CONTACTS_PORT || 8081, { modulePath: __dirname });
         this.contactsFile = path.join(__dirname, 'contacts.json');
         this.contacts = [];
         

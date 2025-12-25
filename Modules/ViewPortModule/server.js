@@ -1,16 +1,17 @@
 const fs = require('fs').promises;
 const path = require('path');
+const express = require('express');
 const logger = require('../../Central Core/logger');
 const BaseServer = require('../../Central Core/BaseServer');
 
 class ViewPortServer extends BaseServer {
     constructor() {
-        super('ViewPort', process.env.VIEWPORT_PORT || 8082);
+        super('ViewPort', process.env.VIEWPORT_PORT || 8082, { modulePath: __dirname });
         this.currentAvatar = null;
         this.avatarDir = path.join(__dirname, 'avatars');
         
         // Add avatar directory to static files
-        this.app.use('/avatars', require('express').static(this.avatarDir));
+        this.app.use('/avatars', express.static(this.avatarDir));
         
         this.setupBaseRoutes();
         this.setupRoutes();

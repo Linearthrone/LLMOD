@@ -5,7 +5,7 @@ const BaseServer = require('../../Central Core/BaseServer');
 
 class SystemsServer extends BaseServer {
     constructor() {
-        super('Systems', process.env.SYSTEMS_PORT || 8083);
+        super('Systems', process.env.SYSTEMS_PORT || 8083, { modulePath: __dirname });
         this.monitoringInterval = null;
         this.currentStats = {
             cpu: { usage: 0, temperature: 0 },

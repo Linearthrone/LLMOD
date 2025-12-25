@@ -5,7 +5,7 @@ const BaseServer = require('../../Central Core/BaseServer');
 
 class AppTrayServer extends BaseServer {
     constructor() {
-        super('AppTray', process.env.APPTRAY_PORT || 8085);
+        super('AppTray', process.env.APPTRAY_PORT || 8085, { modulePath: __dirname });
         this.modules = new Map();
         this.config = require('../../Central Core/config');
         
