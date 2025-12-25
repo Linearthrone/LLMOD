@@ -1,23 +1,23 @@
-const express = require('express');
 const multer = require('multer');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../../Central Core/logger');
+const BaseServer = require('../../Central Core/BaseServer');
 
-class ContextDataServer {
+class ContextDataServer extends BaseServer {
     constructor() {
-        this.app = express();
-        this.port = process.env.CONTEXT_PORT || 8084;
+        super('ContextData', process.env.CONTEXT_PORT || 8084);
         this.contextDir = path.join(__dirname, 'context_data');
         this.maxFileSize = 10 * 1024 * 1024; // 10MB
         this.allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'txt', 'doc', 'docx', 'mp4', 'avi', 'mov'];
         
-        this.setupMiddleware();
+        this.setupMulter();
+        this.setupBaseRoutes();
         this.setupRoutes();
         this.ensureContextDir();
     }
 
-    setupMiddleware() {
+    setupMulter() {
         // Configure multer for file uploads
         this.storage = multer.diskStorage({
             destination: (req, file, cb) => {
@@ -44,24 +44,18 @@ class ContextDataServer {
             }
         });
 
-        this.app.use(express.json());
-        this.app.use('/files', express.static(this.contextDir));
-        this.app.use(express.static(path.join(__dirname, 'client')));
-        this.app.use((req, res, next) => {
-            logger.log(`[ContextData] ${req.method} ${req.path}`);
-            next();
-        });
+        // Serve uploaded files
+        this.app.use('/files', require('express').static(this.contextDir));
+    }
+
+    getHealthData() {
+        return {
+            timestamp: new Date().toISOString(),
+            storage: this.contextDir
+        };
     }
 
     setupRoutes() {
-        // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'healthy', 
-                timestamp: new Date().toISOString(),
-                storage: this.contextDir
-            });
-        });
 
         // Get all files
         this.app.get('/api/files', async (req, res) => {
@@ -188,10 +182,6 @@ class ContextDataServer {
             res.json({ success: true });
         });
 
-        // Serve client interface
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'client', 'index.html'));
-        });
     }
 
     async getFileList() {
@@ -248,35 +238,16 @@ class ContextDataServer {
         
         logger.log('Settings updated:', newSettings);
     }
-
-    start() {
-        this.app.listen(this.port, () => {
-            logger.log(`Context Data server running on port ${this.port}`);
-        });
-    }
-
-    stop() {
-        logger.log('Context Data server stopped');
-    }
 }
 
 // Start server if run directly
 if (require.main === module) {
     const server = new ContextDataServer();
-    
-    process.on('SIGINT', () => {
-        logger.log('Shutting down Context Data server...');
-        server.stop();
-        process.exit(0);
+    server.setupSignalHandlers();
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     });
-    
-    process.on('SIGTERM', () => {
-        logger.log('Shutting down Context Data server...');
-        server.stop();
-        process.exit(0);
-    });
-    
-    server.start();
 }
 
 module.exports = ContextDataServer;

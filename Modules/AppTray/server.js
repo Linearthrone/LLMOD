@@ -1,38 +1,26 @@
-const express = require('express');
 const { spawn } = require('child_process');
 const logger = require('../../Central Core/logger');
 const path = require('path');
+const BaseServer = require('../../Central Core/BaseServer');
 
-class AppTrayServer {
+class AppTrayServer extends BaseServer {
     constructor() {
-        this.app = express();
-        this.port = process.env.APPTRAY_PORT || 8085;
+        super('AppTray', process.env.APPTRAY_PORT || 8085);
         this.modules = new Map();
         this.config = require('../../Central Core/config');
         
-        this.setupMiddleware();
+        this.setupBaseRoutes();
         this.setupRoutes();
         this.discoverModules();
     }
 
-    setupMiddleware() {
-        this.app.use(express.json());
-        this.app.use(express.static(path.join(__dirname, 'client')));
-        this.app.use((req, res, next) => {
-            logger.log(`[AppTray] ${req.method} ${req.path}`);
-            next();
-        });
+    getHealthData() {
+        return {
+            modules: this.modules.size
+        };
     }
 
     setupRoutes() {
-        // Health check
-        this.app.get('/health', (req, res) => {
-            res.json({ 
-                status: 'healthy', 
-                timestamp: new Date().toISOString(),
-                modules: this.modules.size
-            });
-        });
 
         // Get all modules
         this.app.get('/api/modules', (req, res) => {
@@ -154,10 +142,6 @@ class AppTrayServer {
             res.json({ success: true });
         });
 
-        // Serve client interface
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'client', 'index.html'));
-        });
     }
 
     discoverModules() {
@@ -286,35 +270,16 @@ class AppTrayServer {
     updateSettings(newSettings) {
         logger.log('Settings updated:', newSettings);
     }
-
-    start() {
-        this.app.listen(this.port, () => {
-            logger.log(`AppTray server running on port ${this.port}`);
-        });
-    }
-
-    stop() {
-        logger.log('AppTray server stopped');
-    }
 }
 
 // Start server if run directly
 if (require.main === module) {
     const server = new AppTrayServer();
-    
-    process.on('SIGINT', () => {
-        logger.log('Shutting down AppTray server...');
-        server.stop();
-        process.exit(0);
+    server.setupSignalHandlers();
+    server.start().catch((error) => {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
     });
-    
-    process.on('SIGTERM', () => {
-        logger.log('Shutting down AppTray server...');
-        server.stop();
-        process.exit(0);
-    });
-    
-    server.start();
 }
 
 module.exports = AppTrayServer;
