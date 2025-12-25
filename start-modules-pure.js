@@ -7,7 +7,6 @@
  */
 
 const ModuleWebSocketServer = require('./Central Core/websocket-server');
-const bus = require('./Central Core/bus');
 const logger = require('./Central Core/logger');
 const config = require('./Central Core/config');
 
@@ -101,11 +100,3 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the server
 startServer();
-
-// Example: Test chat module after 2 seconds
-setTimeout(async () => {
-    if (modules.chat) {
-        logger.info('Testing Chat Module...');
-        await modules.chat.sendMessage('Hello, this is a test message!');
-    }
-}, 2000);

@@ -161,12 +161,10 @@ class ContactsServer extends BaseServer {
         // Get available models
         this.app.get('/api/models', async (req, res) => {
             try {
-                const response = await fetch('http://localhost:11434/api/tags');
-                const data = await response.json();
-                res.json(data.models || []);
+                const models = await this.getOllamaModels();
+                res.json(models);
             } catch (error) {
-                logger.error('Failed to fetch models:', error);
-                res.status(500).json({ error: 'Failed to fetch models' });
+                this.handleError(res, error, 'Failed to fetch models');
             }
         });
 

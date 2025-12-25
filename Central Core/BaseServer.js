@@ -128,7 +128,22 @@ class BaseServer {
     }
 
     /**
-     * Setup process signal handlers for graceful shutdown
+     * Common endpoint to fetch Ollama models
+     * Can be used by any module that needs model information
+     */
+    async getOllamaModels() {
+        try {
+            const response = await fetch('http://localhost:11434/api/tags');
+            const data = await response.json();
+            return data.models || [];
+        } catch (error) {
+            logger.error(`[${this.moduleName}] Failed to fetch Ollama models:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Setup common signal handlers for graceful shutdown
      */
     setupSignalHandlers() {
         const shutdown = () => {
