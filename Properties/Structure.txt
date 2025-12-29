@@ -1,0 +1,16 @@
+﻿/LLMOD
+  ├── LLMOD.csproj
+  ├── App.xaml
+  ├── App.xaml.cs
+  ├── MainWindow.xaml
+  ├── MainWindow.xaml.cs
+  ├── Models
+  │     └── ChatMessage.cs
+  ├── ViewModels
+  │     ├── ChatViewModel.cs
+  │     └── MainViewModel.cs
+  ├── Views
+  │     ├── ChatWindow.xaml
+  │     └── ChatWindow.xaml.cs
+  └── Helpers
+        └── WindowHelper.cs

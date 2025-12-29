@@ -1,0 +1,37 @@
+﻿<Window
+    x:Class="LLMOD.Views.ProcessConfigWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Process Config"
+    Width="400"
+    Height="300"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Topmost="True"
+    WindowStyle="None">
+    <Border Background="#CC141414" Style="{StaticResource LLMOD_Border}">
+        <StackPanel Margin="10">
+            <TextBlock
+                Margin="0,0,0,10"
+                FontSize="16"
+                Foreground="White"
+                Text="PRIORITY CONFIGURATOR" />
+            <Border Padding="10" Background="#222">
+                <StackPanel>
+                    <TextBlock Foreground="#888" Text="Chromium (Browser) Category:" />
+                    <ComboBox Background="#333" Foreground="White" />
+
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        Foreground="#888"
+                        Text="Python/LLM Service Category:" />
+                    <ComboBox Background="#333" Foreground="White" />
+                </StackPanel>
+            </Border>
+            <Button
+                Margin="0,10,0,0"
+                HorizontalAlignment="Right"
+                Content="Finished" />
+        </StackPanel>
+    </Border>
+</Window>

@@ -1,0 +1,146 @@
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Timers;
+using System.Windows;
+using System.ComponentModel;
+
+namespace LLMOD.ViewModels
+{
+    public enum PerfMode { Normal, Silent, Performance, Turbo }
+    public enum PriorityMode { Off, LLM, Game }
+    public enum MonitorView { Full, GaugesOnly, Tray }
+    public enum ComponentStatus { Online = 0, Offline = 1 }
+
+    public partial class KaiaComponent : ObservableObject
+    {
+        [ObservableProperty] private string _name = string.Empty;
+        [ObservableProperty] private ComponentStatus _status = ComponentStatus.Online;
+        [ObservableProperty] private bool _isTrendingUp = true;
+        public DateTime? StartTime { get; set; }
+
+        public string UptimeDisplay
+        {
+            get
+            {
+                if (!StartTime.HasValue || Status == ComponentStatus.Offline) return "OFFLINE";
+                var ts = DateTime.Now - StartTime.Value;
+                return $"{ts.Days}d {ts.Hours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
+            }
+        }
+        public string StatusColor => Status == ComponentStatus.Online ? "#00FF00" : "#FF0000";
+        public string UptimeColor => Status == ComponentStatus.Online ? (IsTrendingUp ? "#00FF00" : "#FF0000") : "#550000";
+        public string TrendSymbol => (IsTrendingUp && Status == ComponentStatus.Online) ? "▲" : "▼";
+    }
+
+    [DebuggerDisplay($"{{{nameof(GetDebuggerDisplay)}(),nq}}")]
+    public partial class SystemMonitorViewModel : ObservableObject
+    {
+        // --- Operational State ---
+        [ObservableProperty] private MonitorView _currentView = MonitorView.Full;
+        [ObservableProperty] private PerfMode _currentPerfMode = PerfMode.Normal;
+        [ObservableProperty] private PriorityMode _currentPriorityMode = PriorityMode.Off;
+
+        // --- CPU Data ---
+        [ObservableProperty] private double _cpuPercent = 25.0;
+        [ObservableProperty] private double _cpuTemp = 45.0;
+        [ObservableProperty] private double _cpuFanSpeed = 1200;
+        [ObservableProperty] private double _cpuClock = 3.5; // GHz
+
+        // --- GPU Data ---
+        [ObservableProperty] private double _gpuPercent = 45.0;
+        [ObservableProperty] private double _gpuTemp = 65.0;
+        [ObservableProperty] private double _gpuFanSpeed = 2000;
+        [ObservableProperty] private double _gpuClock = 1500; // MHz
+
+        // --- RAM Data ---
+        [ObservableProperty] private double _ramPercent = 40.0;
+        [ObservableProperty] private string _ramTotalMB = "32768";
+        [ObservableProperty] private string _ramUsedMB = "12450";
+
+        // --- Network ---
+        [ObservableProperty] private string _networkIcon = "Wifi";
+        [ObservableProperty] private string _networkName = "KAIA_NET_5G";
+        [ObservableProperty] private double _upSpeed = 0.0;
+        [ObservableProperty] private double _downSpeed = 0.0;
+        [ObservableProperty] private int _latency = 12;
+        [ObservableProperty] private int _signal = 98;
+
+        // --- Health Monitor ---
+        [ObservableProperty] private string _loadedModel = "LLama-3-70B-KAIA";
+        [ObservableProperty] private ObservableCollection<KaiaComponent> _kaiaServices = new();
+
+        private readonly Timer _statsTimer;
+
+        public SystemMonitorViewModel()
+        {
+            _statsTimer = new Timer(1000) { AutoReset = true };
+
+            KaiaServices = new ObservableCollection<KaiaComponent>
+            {
+                new() { Name = "LLM Engine", Status = ComponentStatus.Online, StartTime = DateTime.Now.AddHours(-2) },
+                new() { Name = "Vector DB", Status = ComponentStatus.Online, StartTime = DateTime.Now.AddHours(-5) },
+                new() { Name = "Speech", Status = ComponentStatus.Online, StartTime = DateTime.Now.AddMinutes(-45) }
+            };
+
+            StartSimulation();
+        }
+
+        private void StartSimulation()
+        {
+            _statsTimer.Elapsed += (sender, e) =>
+            {
+                CpuPercent = Math.Min(100, Math.Max(0, CpuPercent + (Random.Shared.NextDouble() - 0.5) * 10));
+                CpuTemp = 40 + (CpuPercent * 0.6);
+                CpuFanSpeed = 1000 + (CpuTemp * 40);
+                CpuClock = 3.4 + ((CpuPercent / 100) * 0.5);
+
+                GpuPercent = Math.Min(100, Math.Max(0, GpuPercent + (Random.Shared.NextDouble() - 0.5) * 15));
+                GpuTemp = 50 + (GpuPercent * 0.5);
+                GpuFanSpeed = 1500 + (GpuTemp * 35);
+                GpuClock = 1200 + (GpuPercent * 4);
+
+                UpSpeed = Random.Shared.NextDouble() * 5;
+                DownSpeed = Random.Shared.NextDouble() * 50;
+
+                foreach (var service in KaiaServices)
+                {
+                    if (service.Status == ComponentStatus.Online)
+                        service.OnPropertyChanged(nameof(KaiaComponent.UptimeDisplay));
+                }
+            };
+            _statsTimer.Start();
+        }
+
+        [RelayCommand]
+        private void CyclePriority() => CurrentPriorityMode = CurrentPriorityMode switch
+        {
+            PriorityMode.Off => PriorityMode.LLM,
+            PriorityMode.LLM => PriorityMode.Game,
+            PriorityMode.Game => PriorityMode.Off,
+            _ => PriorityMode.Off
+        };
+
+        [RelayCommand] private void FreeMem() => GC.Collect();
+        [RelayCommand] private void SetPerfMode(PerfMode mode) => CurrentPerfMode = mode;
+        [RelayCommand] private void KillApp() => Application.Current.Shutdown();
+        [RelayCommand] private void ToggleView() { }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SystemMonitorViewModel;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(CurrentView, CurrentPerfMode, CurrentPriorityMode);
+        }
+
+        private string GetDebuggerDisplay()
+        {
+            return ToString() ?? string.Empty;
+        }
+    }
+}

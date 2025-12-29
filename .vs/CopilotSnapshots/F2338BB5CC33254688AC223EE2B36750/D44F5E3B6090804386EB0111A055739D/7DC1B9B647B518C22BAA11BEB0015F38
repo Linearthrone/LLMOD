@@ -1,0 +1,512 @@
+﻿<Window
+    x:Class="LLMOD.Views.SystemMonitorWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:LLMOD.ViewModels"
+    Title="KAIA"
+    Width="1100"
+    Height="800"
+    MinWidth="900"
+    MinHeight="600"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Loaded="Window_Loaded"
+    Topmost="True"
+    WindowStyle="None"
+    mc:Ignorable="d">
+
+    <Window.DataContext>
+        <vm:SystemMonitorViewModel />
+    </Window.DataContext>
+
+    <Border
+        Background="#CC1A1A1A"
+        BorderBrush="#00FFAA"
+        BorderThickness="2"
+        CornerRadius="0">
+        <Border.Effect>
+            <DropShadowEffect
+                BlurRadius="15"
+                ShadowDepth="5"
+                Color="Black" />
+        </Border.Effect>
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!--  Header  -->
+                <RowDefinition Height="Auto" />
+                <!--  Gauges Cluster  -->
+                <RowDefinition Height="Auto" />
+                <!--  Controls  -->
+                <RowDefinition Height="Auto" />
+                <!--  Network  -->
+                <RowDefinition Height="*" />
+                <!--  Health Table  -->
+            </Grid.RowDefinitions>
+
+            <!--  0. HEADER: KAIA  -->
+            <!--  REMOVED TextEffect HERE  -->
+            <TextBlock
+                Grid.Row="0"
+                Margin="0,10"
+                HorizontalAlignment="Center"
+                FontFamily="Impact"
+                FontSize="28"
+                Foreground="{DynamicResource AccentColor}"
+                Text="KAIA" />
+
+            <!--  1. GAUGE CLUSTER (CPU | RAM | GPU)  -->
+            <Grid Grid.Row="1" Margin="0,10,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="5" />
+                    <!--  Spacer  -->
+                    <ColumnDefinition Width="0.6*" />
+                    <!--  RAM is narrower  -->
+                    <ColumnDefinition Width="5" />
+                    <!--  Spacer  -->
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--  CPU BLOCK  -->
+                <Border
+                    Grid.Column="0"
+                    Padding="10"
+                    Background="#1A1A1A"
+                    BorderBrush="#333"
+                    BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="#888"
+                            Text="CPU DIAL GAUGE" />
+                        <Grid
+                            Width="150"
+                            Height="150"
+                            Margin="5">
+                            <!--  Outer Ring (Fan)  -->
+                            <Ellipse
+                                Margin="5"
+                                Fill="Transparent"
+                                Stroke="#AA00AA"
+                                StrokeDashArray="300 400"
+                                StrokeThickness="5" />
+                            <!--  Inner Ring (Temp)  -->
+                            <Ellipse
+                                Margin="25"
+                                Fill="Transparent"
+                                Stroke="#FF4400"
+                                StrokeDashArray="150 400"
+                                StrokeThickness="5" />
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontFamily="Consolas"
+                                    FontSize="32"
+                                    Foreground="White"
+                                    Text="{Binding CpuPercent, StringFormat='{}{0:F0}%'}" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="#AA00AA"
+                                    Text="FAN" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="#FF4400"
+                                    Text="TEMP" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="Red"
+                            Text="{Binding CpuTemp, StringFormat='TEMP: {0:F0}°C'}" />
+                        <ProgressBar
+                            Height="8"
+                            Background="#222"
+                            Foreground="#00FF00"
+                            Maximum="100"
+                            Value="{Binding CpuPercent}" />
+                        <TextBlock
+                            Margin="0,5"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="Cyan"
+                            Text="{Binding CpuClock, StringFormat='CLOCK: {0:F2} GHz'}" />
+                    </StackPanel>
+                </Border>
+
+                <!--  RAM BLOCK  -->
+                <Border
+                    Grid.Column="2"
+                    Padding="10"
+                    Background="#1A1A1A"
+                    BorderBrush="#333"
+                    BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="#888"
+                            Text="RAM % USED/FREE" />
+                        <ProgressBar
+                            Width="40"
+                            Height="150"
+                            Margin="0,10"
+                            VerticalAlignment="Center"
+                            Background="#222"
+                            Foreground="#0088FF"
+                            Maximum="100"
+                            Orientation="Vertical"
+                            Value="{Binding RamPercent}">
+                            <ProgressBar.Effect>
+                                <DropShadowEffect BlurRadius="10" Color="#0088FF" />
+                            </ProgressBar.Effect>
+                        </ProgressBar>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="20"
+                            Foreground="White"
+                            Text="{Binding RamPercent, StringFormat='{}{0:F0}%'}" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="#DDDDDD"
+                            Text="{Binding RamUsedMB, StringFormat='USED: {0} MB'}" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="#888888"
+                            Text="{Binding RamTotalMB, StringFormat='FREE: CALC'}" />
+                    </StackPanel>
+                </Border>
+
+                <!--  GPU BLOCK  -->
+                <Border
+                    Grid.Column="4"
+                    Padding="10"
+                    Background="#1A1A1A"
+                    BorderBrush="#333"
+                    BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="#888"
+                            Text="GPU DIAL GAUGE" />
+                        <Grid
+                            Width="150"
+                            Height="150"
+                            Margin="5">
+                            <!--  Outer Ring (Fan)  -->
+                            <Ellipse
+                                Margin="5"
+                                Fill="Transparent"
+                                Stroke="#00FF00"
+                                StrokeDashArray="300 400"
+                                StrokeThickness="5" />
+                            <!--  Inner Ring (Temp)  -->
+                            <Ellipse
+                                Margin="25"
+                                Fill="Transparent"
+                                Stroke="#FF0000"
+                                StrokeDashArray="150 400"
+                                StrokeThickness="5" />
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontFamily="Consolas"
+                                    FontSize="32"
+                                    Foreground="White"
+                                    Text="{Binding GpuPercent, StringFormat='{}{0:F0}%'}" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="#00FF00"
+                                    Text="FAN" />
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="10"
+                                    Foreground="Red"
+                                    Text="TEMP" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="Red"
+                            Text="{Binding GpuTemp, StringFormat='TEMP: {0:F0}°C'}" />
+                    
+                            
+                        <ProgressBar
+                            Height="8"
+                            Background="#222"
+                            Maximum="100"
+                            Value="{Binding GpuPercent}">
+                            <ProgressBar.Foreground>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Offset="0" Color="#00FF00" />
+                                    <GradientStop Offset="1" Color="#FF0000" />
+                                </LinearGradientBrush>
+                            </ProgressBar.Foreground>
+                        </ProgressBar>
+                        <TextBlock
+                            Margin="0,5"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="Cyan"
+                            Text="{Binding GpuClock, StringFormat='CLOCK: {0:F0} MHz'}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+                                                                                                                                                                                                                                                                                                                                                                                                   
+            <StackPanel
+                Grid.Row="2"
+                Margin="0,5,0,15"
+                HorizontalAlignment="Center"
+                Orientation="Horizontal">
+              
+                <StackPanel Background="#222" Orientation="Horizontal">
+                    <Button
+                        Width="70"
+                        Command="{Binding SetPerfModeCommand}"
+                        CommandParameter="Normal"
+                        Content="NORMAL" />
+                    <Button
+                        Width="70"
+                        Margin="2,0"
+                        Command="{Binding SetPerfModeCommand}"
+                        CommandParameter="Silent"
+                        Content="SILENT" />
+                    <Button
+                        Width="70"
+                        Margin="2,0"
+                        Command="{Binding SetPerfModeCommand}"
+                        CommandParameter="Performance"
+                        Content="PERF" />
+                    <Button
+                        Width="70"
+                        Margin="2,0,0,0"
+                        Command="{Binding SetPerfModeCommand}"
+                        CommandParameter="Turbo"
+                        Content="TURBO"
+                        Foreground="Orange" />
+                </StackPanel>
+
+                <!--  Priority  -->
+                <Button
+                    Width="120"
+                    Margin="10,0"
+                    Background="#333"
+                    Command="{Binding CyclePriorityCommand}"
+                    Content="{Binding PriorityMode}">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PriorityMode}" Value="LLM">
+                                    <Setter Property="BorderBrush" Value="#00FF00" />
+                                    <Setter Property="BorderThickness" Value="2" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding PriorityMode}" Value="Game">
+                                    <Setter Property="BorderBrush" Value="#FF0000" />
+                                    <Setter Property="BorderThickness" Value="2" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!--  Free Mem  -->
+                <Button
+                    Background="#330000"
+                    Command="{Binding FreeMemCommand}"
+                    Content="FREE MEMORY"
+                    Foreground="Red" />
+            </StackPanel>
+
+            <!--  3. NETWORK  -->
+            <Border
+                Grid.Row="3"
+                Margin="0,10"
+                Padding="10,5"
+                Background="#111"
+                BorderBrush="#333"
+                BorderThickness="0,1,0,1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Margin="10,0,15,0"
+                        VerticalAlignment="Center"
+                        FontSize="20"
+                        Foreground="#00FF00"
+                        Text="WIFI" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="{Binding NetworkName}" />
+                        <TextBlock FontSize="12">
+                            <Run Text="UP: " /><Run Foreground="Yellow" Text="{Binding UpSpeed, StringFormat='{}{0:F1} MB/s'}" />
+                            <Run Text="  DOWN: " /><Run Foreground="Cyan" Text="{Binding DownSpeed, StringFormat='{}{0:F1} MB/s'}" />
+                            <Run Text="  PING: " /><Run Foreground="Red" Text="{Binding Latency, StringFormat='{}{0}ms'}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <TextBlock
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        FontSize="14"
+                        Foreground="White"
+                        Text="{Binding Signal}" />
+                </Grid>
+            </Border>
+
+            <!--  4. LLMOD HEALTH MONITOR  -->
+            <StackPanel Grid.Row="4" Margin="0,10,0,0">
+                <TextBlock
+                    Margin="0,0,0,5"
+                    FontSize="14"
+                    Foreground="#00FFAA"
+                    Text="LLMOD HEALTH MONITOR" />
+
+                <!--  Header Row  -->
+                <Grid Height="25" Background="#222">
+                    <TextBlock
+                        Width="120"
+                        Margin="5,0"
+                        VerticalAlignment="Center"
+                        Foreground="#888"
+                        Text="COMPONENT" />
+                    <TextBlock
+                        Width="60"
+                        Margin="5,0"
+                        VerticalAlignment="Center"
+                        Text="STATUS" />
+                    <TextBlock
+                        Width="60"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Foreground="#888"
+                        Text="UP/DOWN" />
+                    <TextBlock
+                        Width="80"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Foreground="#888"
+                        Text="UPTIME" />
+                    <TextBlock
+                        Margin="0,0,10,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Foreground="#888"
+                        Text="ACTIONS" />
+                </Grid>
+
+                <ScrollViewer Height="200" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding KaiaServices}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border
+                                    Padding="0,5"
+                                    Background="#1A1A1A"
+                                    BorderBrush="#333"
+                                    BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <TextBlock
+                                            Width="120"
+                                            Margin="5,0"
+                                            VerticalAlignment="Center"
+                                            FontWeight="SemiBold"
+                                            Foreground="White"
+                                            Text="{Binding Name}" />
+
+                                        <Border
+                                            Grid.Column="1"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="140,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Background="{Binding StatusColor}"
+                                            CornerRadius="10" />
+
+                                        <TextBlock
+                                            Width="20"
+                                            Margin="180,0,0,0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="White"
+                                            Text="{Binding TrendSymbol}" />
+
+                                        <TextBlock
+                                            Width="100"
+                                            Margin="210,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontFamily="Consolas"
+                                            FontSize="11"
+                                            Foreground="{Binding UptimeColor}"
+                                            Text="{Binding UptimeDisplay}" />
+
+                                        <StackPanel
+                                            Margin="0,0,10,0"
+                                            HorizontalAlignment="Right"
+                                            Orientation="Horizontal">
+                                            <Button
+                                                Width="60"
+                                                Height="20"
+                                                Margin="0,0,2,0"
+                                                Content="RESTART"
+                                                FontSize="9" />
+                                            <Button
+                                                Width="50"
+                                                Height="20"
+                                                Background="#400000"
+                                                Content="KILL"
+                                                FontSize="9"
+                                                Foreground="Red" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!--  Footer: Model & KillSwitch  -->
+                <Grid
+                    Height="35"
+                    Margin="0,5,0,0"
+                    Background="#000">
+                    <StackPanel
+                        Margin="10,0"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock Foreground="#555" Text="MODEL: " />
+                        <TextBlock
+                            FontWeight="Bold"
+                            Foreground="#00FF00"
+                            Text="{Binding LoadedModel}" />
+                    </StackPanel>
+                    <Button
+                        Width="100"
+                        Margin="0,0,0,0"
+                        HorizontalAlignment="Right"
+                        Background="Red"
+                        Command="{Binding KillAppCommand}"
+                        Content="KILL LLMOD"
+                        FontWeight="Bold"
+                        Foreground="Black" />
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

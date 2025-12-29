@@ -1,0 +1,92 @@
+﻿<UserControl
+    x:Class="LLMOD.Controls.NestedGauge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="150"
+    d:DesignWidth="150"
+    mc:Ignorable="d">
+    <Grid Width="150" Height="150">
+        <!--  Background Ring  -->
+        <Ellipse
+            Fill="Transparent"
+            Stroke="#222"
+            StrokeThickness="10" />
+
+        <!--  Outer Ring: Fan Speed (Green -> Purple)  -->
+        <!--  FIX: Removed invalid StrokeLineCap property and duplicate StrokeThickness  -->
+        <Ellipse
+            Fill="Transparent"
+            Stroke="Transparent"
+            StrokeDashArray="360 1000">
+            <Ellipse.Effect>
+                <DropShadowEffect BlurRadius="6" Color="#00FF00" />
+            </Ellipse.Effect>
+            <Ellipse.Style>
+                <Style TargetType="Ellipse">
+                    <Setter Property="Stroke" Value="#333" />
+                    <Setter Property="StrokeDashArray" Value="320 360" />
+                    <Setter Property="StrokeThickness" Value="10" />
+                    <!--  We simulate the gradient arc by using a ConicGradient Brush (Requires .NET 8 or custom Path)  -->
+                    <!--  For simplicity in WPF standard, we use color binding based on value  -->
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding FanPercent}" Value="0">
+                            <Setter Property="Stroke" Value="#22000000" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Ellipse.Style>
+        </Ellipse>
+
+        <!--  Inner Ring: Temp (Blue -> Red)  -->
+        <Ellipse
+            Width="100"
+            Height="100"
+            Margin="{Binding ElementName=OuterR, Path=Margin}"
+            Fill="Transparent"
+            Stroke="#444"
+            StrokeThickness="6" />
+
+        <!--  Center Text  -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock
+                FontFamily="Consolas"
+                FontSize="24"
+                FontWeight="Bold"
+                Foreground="White"
+                Text="{Binding MainValue}" />
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontSize="10"
+                Foreground="#888"
+                Text="{Binding Label}" />
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontSize="09"
+                Foreground="{DynamicResource AccentColor}"
+                Text="{Binding SubValue}" />
+        </StackPanel>
+
+        <!--  Simulated Arc Paths (The industrial look)  -->
+        <!--  Outer Arc (Fan)  -->
+        <Path
+            Fill="Transparent"
+            Stroke="#800080"
+            StrokeStartLineCap="Round"
+            StrokeThickness="10">
+            <Path.Data>
+                <PathGeometry>
+                    <PathFigure StartPoint="75,10">
+                        <ArcSegment
+                            IsLargeArc="False"
+                            Point="140,75"
+                            RotationAngle="0"
+                            Size="65,65"
+                            SweepDirection="Clockwise" />
+                    </PathFigure>
+                </PathGeometry>
+            </Path.Data>
+        </Path>
+    </Grid>
+</UserControl>

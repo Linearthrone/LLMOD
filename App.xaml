@@ -1,0 +1,99 @@
+﻿<Application
+    x:Class="LLMOD.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:System="clr-namespace:System;assembly=System.Runtime"
+    xmlns:helpers="clr-namespace:LLMOD.Helpers"
+    StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+
+            <!--  ================= PASTE THIS SECTION EXACTLY HERE =================  -->
+
+            <helpers:BoolToColorConverter x:Key="BoolToColorConverter" />
+            <helpers:TrendConverter x:Key="TrendConverter" />
+            <helpers:InverseTrayConverter x:Key="InverseTrayConverter" />
+
+            <!--  ====================================================================  -->
+
+
+            <!--  Keep your existing Resources below here  -->
+
+
+            <SolidColorBrush x:Key="BgColor" Color="#FF141414" />
+            <SolidColorBrush x:Key="BorderColor" Color="#FF333333" />
+            <SolidColorBrush x:Key="AccentColor" Color="#590949" />
+            <!--  Cyberpunk Green  -->
+            <SolidColorBrush x:Key="TextPrimary" Color="#FFE0E0E0" />
+            <SolidColorBrush x:Key="TextSecondary" Color="#FF888888" />
+
+            <!--  Chat Specific  -->
+            <System:String x:Key="ButtonContent1">L</System:String>
+            <SolidColorBrush x:Key="ChatTint" Color="#EE1A1A1A" />
+            <!--  Dark semi-transparent  -->
+            <SolidColorBrush x:Key="UserBubble" Color="#FF21151B" />
+            <SolidColorBrush x:Key="AIBubble" Color="#FF252525" />
+
+            <!--  Styles  -->
+            <Style x:Key="LLMOD_Border" TargetType="Border">
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Background" Value="{DynamicResource BgColor}" />
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect
+                            BlurRadius="6"
+                            Opacity="0.8"
+                            ShadowDepth="2"
+                            Color="Black" />
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!--  BoolToColorConverter  -->
+
+            <!--  Custom Code-Behind Converter or similar if BoolToColor isn't direct  -->
+
+            <Style TargetType="Button">
+                <Setter Property="Background" Value="#FF222222" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="#FF444444" />
+                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource AccentColor}" />
+                        <Setter Property="Foreground" Value="Black" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="LLMOD_ScrollViewer" TargetType="ScrollViewer">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollViewer">
+                            <Grid Background="{TemplateBinding Background}">
+                                <ScrollContentPresenter Margin="{TemplateBinding Padding}" />
+                                <ScrollBar Name="PART_VerticalScrollBar" Visibility="Visible" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
