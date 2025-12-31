@@ -58,11 +58,11 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
             },
             {
               "$type": "Document",
@@ -74,8 +74,7 @@
               "RelativeToolTip": "Helpers\\Converters.cs",
               "ViewState": "AgIAABYAAAAAAAAAAAAkwCgAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-29T08:38:37.658Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-29T08:38:37.658Z"
             },
             {
               "$type": "Document",
@@ -87,8 +86,7 @@
               "RelativeToolTip": "ViewModels\\SystemMonitorViewModel.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAWwBsAAABCAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-29T08:21:20.914Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-29T08:21:20.914Z"
             },
             {
               "$type": "Document",

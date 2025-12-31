@@ -51,7 +51,7 @@ namespace LLMOD.Views {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/LLMOD;V1.0.0.0;component/views/processconfigwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/LLMOD;component/views/processconfigwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\Views\ProcessConfigWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

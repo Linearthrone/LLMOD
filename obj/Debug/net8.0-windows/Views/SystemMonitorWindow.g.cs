@@ -52,7 +52,7 @@ namespace LLMOD.Views {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/LLMOD;V1.0.0.0;component/views/systemmonitorwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/LLMOD;component/views/systemmonitorwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\Views\SystemMonitorWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
