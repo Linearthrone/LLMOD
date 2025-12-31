@@ -33,3 +33,4 @@ C:\Users\kurtw\StudioProjects\LLMOD\LLMOD\obj\Debug\net8.0-windows\refint\LLMOD.
 C:\Users\kurtw\StudioProjects\LLMOD\LLMOD\obj\Debug\net8.0-windows\LLMOD.pdb
 C:\Users\kurtw\StudioProjects\LLMOD\LLMOD\obj\Debug\net8.0-windows\LLMOD.genruntimeconfig.cache
 C:\Users\kurtw\StudioProjects\LLMOD\LLMOD\obj\Debug\net8.0-windows\ref\LLMOD.dll
+C:\Users\kurtw\StudioProjects\LLMOD\LLMOD\obj\Debug\net8.0-windows\LLMOD.sourcelink.json

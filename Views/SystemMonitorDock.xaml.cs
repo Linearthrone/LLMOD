@@ -21,9 +21,17 @@ namespace LLMOD.Views
             // Snap Bottom Left
             this.Top = SystemParameters.PrimaryScreenHeight - h;
             this.Left = 0;
+
+            // Auto-open the monitor window
+            ToggleMonitor();
         }
 
         private void Toggle_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleMonitor();
+        }
+
+        private void ToggleMonitor()
         {
             if (_monWindow == null || !_monWindow.IsVisible)
             {
@@ -32,8 +40,8 @@ namespace LLMOD.Views
             }
             else
             {
-                var vm = _monWindow.DataContext as SystemMonitorViewModel;
-                vm?.ToggleViewCommand.Execute(null);
+                _monWindow.Close();
+                _monWindow = null;
             }
         }
     }

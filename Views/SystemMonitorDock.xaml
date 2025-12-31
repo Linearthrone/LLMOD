@@ -8,6 +8,23 @@
     Title="SystemMonitorDock"
     Width="800"
     Height="450"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Loaded="Window_Loaded"
+    ShowInTaskbar="False"
+    Topmost="True"
+    WindowStyle="None"
     mc:Ignorable="d">
-    <Grid />
+    <Border Background="{DynamicResource BgColor}" Style="{StaticResource LLMOD_Border}">
+        <Grid>
+            <Button
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Click="Toggle_Click"
+                Content="OPEN SYSTEM MONITOR"
+                FontFamily="Consolas"
+                FontWeight="Bold"
+                Padding="20,10" />
+        </Grid>
+    </Border>
 </Window>

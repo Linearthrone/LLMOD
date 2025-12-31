@@ -276,25 +276,25 @@
                     <Button
                         Width="70"
                         Command="{Binding SetPerfModeCommand}"
-                        CommandParameter="Normal"
+                        CommandParameter="{x:Static vm:PerfMode.Normal}"
                         Content="NORMAL" />
                     <Button
                         Width="70"
                         Margin="2,0"
                         Command="{Binding SetPerfModeCommand}"
-                        CommandParameter="Silent"
+                        CommandParameter="{x:Static vm:PerfMode.Silent}"
                         Content="SILENT" />
                     <Button
                         Width="70"
                         Margin="2,0"
                         Command="{Binding SetPerfModeCommand}"
-                        CommandParameter="Performance"
+                        CommandParameter="{x:Static vm:PerfMode.Performance}"
                         Content="PERF" />
                     <Button
                         Width="70"
                         Margin="2,0,0,0"
                         Command="{Binding SetPerfModeCommand}"
-                        CommandParameter="Turbo"
+                        CommandParameter="{x:Static vm:PerfMode.Turbo}"
                         Content="TURBO"
                         Foreground="Orange" />
                 </StackPanel>
