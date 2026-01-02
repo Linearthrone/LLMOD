@@ -44,7 +44,7 @@
                     Margin="10,0,10,0"
                     Padding="0"
                     Click="OpenChat_Click"
-                    Content="⌘"
+                    Content="💬"
                     FontSize="32"
                     FontWeight="Light"
                     ToolTip="Toggle LLMOD Interface">
@@ -89,7 +89,7 @@
                     Margin="10,0,10,0"
                     Padding="0"
                     Click="OpenSettings_Click"
-                    Content="⚙"
+                    Content="⏱"
                     FontSize="28"
                     ToolTip="System Monitor">
                     <Button.Style>
@@ -129,7 +129,7 @@
                 <Button
                     Margin="10,0,10,0"
                     Padding="0"
-                    Content="💾"
+                    Content="🔧"
                     FontSize="24"
                     ToolTip="LLM Database">
                     <Button.Style>
