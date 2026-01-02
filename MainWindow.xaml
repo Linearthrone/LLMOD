@@ -129,6 +129,7 @@
                 <Button
                     Margin="10,0,10,0"
                     Padding="0"
+                    Click="OpenSetup_Click"
                     Content="🔧"
                     FontSize="24"
                     ToolTip="LLM Database">

@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\kurtw\StudioProjects\LLMOD\LLMOD\App.xaml
-742667952
+6746876207
 
-18-577832396
+17-1364992233
 204-320853321
-Controls\NestedGage.xaml;MainWindow.xaml;Views\ChatWindow.xaml;Views\GPUOverlay.xaml;Views\ProcessConfigWindow.xaml;Views\SystemMonitorDock.xaml;Views\SystemMonitorWindow.xaml;
+Controls\NestedGage.xaml;MainWindow.xaml;Views\ChatWindow.xaml;Views\ProcessConfigWindow.xaml;Views\SystemMonitorDock.xaml;Views\SystemMonitorWindow.xaml;
 
-True
+False
 

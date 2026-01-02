@@ -3,20 +3,60 @@
   "WorkspaceRootPath": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:obj\\Debug\\net8.0-windows\\LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.i.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.i.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\gpuoverlay.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\gpuoverlay.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\gpuoverlay.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\gpuoverlay.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\processconfigwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\processconfigwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitordock.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitordock.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\chatwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\chatwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,7 +66,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 11,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Bookmark",
@@ -70,7 +110,130 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs",
+              "RelativeDocumentMoniker": "obj\\Debug\\net8.0-windows\\LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs",
+              "RelativeToolTip": "obj\\Debug\\net8.0-windows\\LLMOD_q0cnz3da_wpftmp.GlobalUsings.g.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-02T14:52:03.883Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props",
+              "RelativeDocumentMoniker": "obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props",
+              "RelativeToolTip": "obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.g.props",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
+              "WhenOpened": "2026-01-02T14:51:50.809Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json",
+              "RelativeDocumentMoniker": "obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json",
+              "RelativeToolTip": "obj\\LLMOD_jtszoucx_wpftmp.csproj.nuget.dgspec.json",
+              "ViewState": "AgIAAFEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-01-02T14:51:41.316Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "NestedGage.g.i.cs",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.i.cs",
+              "RelativeDocumentMoniker": "obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.i.cs",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.i.cs",
+              "RelativeToolTip": "obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.i.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-02T14:51:04.401Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "NestedGage.g.cs",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.cs",
+              "RelativeDocumentMoniker": "obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.cs",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.cs",
+              "RelativeToolTip": "obj\\Debug\\net8.0-windows\\Controls\\NestedGage.g.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-02T14:50:55.166Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": ".gitignore",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\.gitignore",
+              "RelativeDocumentMoniker": ".gitignore",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\.gitignore",
+              "RelativeToolTip": ".gitignore",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-01-02T14:45:05.181Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "App.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\App.xaml",
+              "RelativeDocumentMoniker": "App.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\App.xaml",
+              "RelativeToolTip": "App.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T12:25:23.383Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "GPUOverlay.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml",
+              "RelativeDocumentMoniker": "Views\\GPUOverlay.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml",
+              "RelativeToolTip": "Views\\GPUOverlay.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T13:19:18.359Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "GPUOverlay.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\GPUOverlay.xaml.cs",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml.cs",
+              "RelativeToolTip": "Views\\GPUOverlay.xaml.cs",
+              "ViewState": "AgIAABkAAAAAAAAAAAAswCcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-02T13:27:00.197Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "SystemMonitorDock.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorDock.xaml",
+              "RelativeDocumentMoniker": "Views\\SystemMonitorDock.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorDock.xaml",
+              "RelativeToolTip": "Views\\SystemMonitorDock.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T12:22:14.983Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
               "Title": "SystemMonitorWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml.cs",
               "RelativeDocumentMoniker": "Views\\SystemMonitorWindow.xaml.cs",
@@ -78,44 +241,40 @@
               "RelativeToolTip": "Views\\SystemMonitorWindow.xaml.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-02T11:56:44.769Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-02T11:56:44.769Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 8,
               "Title": "SystemMonitorWindow.xaml",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml",
               "RelativeDocumentMoniker": "Views\\SystemMonitorWindow.xaml",
               "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml",
               "RelativeToolTip": "Views\\SystemMonitorWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-01-02T11:56:23.805Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-02T11:56:23.805Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 9,
               "Title": "ProcessConfigWindow.xaml",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ProcessConfigWindow.xaml",
               "RelativeDocumentMoniker": "Views\\ProcessConfigWindow.xaml",
               "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ProcessConfigWindow.xaml",
               "RelativeToolTip": "Views\\ProcessConfigWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-01-02T11:56:21.702Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-02T11:56:21.702Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 12,
               "Title": "ChatWindow.xaml",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ChatWindow.xaml",
               "RelativeDocumentMoniker": "Views\\ChatWindow.xaml",
               "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ChatWindow.xaml",
               "RelativeToolTip": "Views\\ChatWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-01-02T11:56:16.357Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-02T11:56:16.357Z"
             }
           ]
         },

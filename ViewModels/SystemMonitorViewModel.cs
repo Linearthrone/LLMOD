@@ -73,7 +73,7 @@ namespace LLMOD.ViewModels
         [ObservableProperty] private string _loadedModel = "LLama-3-70B-KAIA";
         [ObservableProperty] private ObservableCollection<KaiaComponent> _kaiaServices = new();
 
-        private System.Threading.Timer _statsTimer;
+        private System.Threading.Timer _statsTimer = null!;
 
         public SystemMonitorViewModel()
         {

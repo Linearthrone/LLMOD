@@ -14,16 +14,11 @@ namespace LLMOD.Views
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // Height 25% of screen
-            double h = SystemParameters.PrimaryScreenHeight * 0.25;
-            this.Height = h;
-
-            // Snap Bottom Left
-            this.Top = SystemParameters.PrimaryScreenHeight - h;
+            // Position just above the Windows taskbar at bottom-left
             this.Left = 0;
+            this.Top = SystemParameters.PrimaryScreenHeight - this.Height - 40;
 
-            // Auto-open the monitor window
-            ToggleMonitor();
+            // Don't auto-open the monitor window - it's now a toggle button
         }
 
         private void Toggle_Click(object sender, RoutedEventArgs e)
