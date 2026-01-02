@@ -4,6 +4,8 @@ namespace LLMOD.Views
 {
     public partial class SystemMonitorWindow : Window
     {
+        public Action? OnRequestClose { get; set; }
+
         public SystemMonitorWindow()
         {
             InitializeComponent();
@@ -22,5 +24,8 @@ namespace LLMOD.Views
             // this.Width = 1100;
             // this.Height = 800;
         }
-    }
+        private void MinimizeToTray_Click(object sender, RoutedEventArgs e)
+        {
+            OnRequestClose?.Invoke();
+        }    }
 }
