@@ -7,12 +7,16 @@
       "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\helpers\\converters.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:helpers\\converters.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\viewmodels\\systemmonitorviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:viewmodels\\systemmonitorviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\processconfigwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\processconfigwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\chatwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\chatwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,7 +26,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 12,
+          "SelectedChildIndex": 11,
           "Children": [
             {
               "$type": "Bookmark",
@@ -67,26 +71,15 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Converters.cs",
-              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Helpers\\Converters.cs",
-              "RelativeDocumentMoniker": "Helpers\\Converters.cs",
-              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Helpers\\Converters.cs",
-              "RelativeToolTip": "Helpers\\Converters.cs",
-              "ViewState": "AgIAABYAAAAAAAAAAAAkwCgAAAAFAAAAAAAAAA==",
+              "Title": "SystemMonitorWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\SystemMonitorWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml.cs",
+              "RelativeToolTip": "Views\\SystemMonitorWindow.xaml.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-29T08:38:37.658Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "SystemMonitorViewModel.cs",
-              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\ViewModels\\SystemMonitorViewModel.cs",
-              "RelativeDocumentMoniker": "ViewModels\\SystemMonitorViewModel.cs",
-              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\ViewModels\\SystemMonitorViewModel.cs",
-              "RelativeToolTip": "ViewModels\\SystemMonitorViewModel.cs",
-              "ViewState": "AgIAAAwAAAAAAAAAAAAWwBsAAABCAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-29T08:21:20.914Z"
+              "WhenOpened": "2026-01-02T11:56:44.769Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -97,7 +90,31 @@
               "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml",
               "RelativeToolTip": "Views\\SystemMonitorWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-12-29T08:21:09.19Z",
+              "WhenOpened": "2026-01-02T11:56:23.805Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ProcessConfigWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ProcessConfigWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\ProcessConfigWindow.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ProcessConfigWindow.xaml",
+              "RelativeToolTip": "Views\\ProcessConfigWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T11:56:21.702Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ChatWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ChatWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\ChatWindow.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ChatWindow.xaml",
+              "RelativeToolTip": "Views\\ChatWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T11:56:16.357Z",
               "EditorCaption": ""
             }
           ]
