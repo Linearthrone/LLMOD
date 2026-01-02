@@ -6,8 +6,8 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="clr-namespace:LLMOD.ViewModels"
     Title="KAIA"
-    Width="556"
-    Height="763"
+    Width="616"
+    Height="665"
     MinWidth="900"
     MinHeight="600"
     AllowsTransparency="True"
@@ -22,9 +22,9 @@
     </Window.DataContext>
 
     <Border
-        Background="#CC1A1A1A"
-        BorderBrush="#00FFAA"
-        BorderThickness="2"
+        Background="Transparent"
+        BorderBrush="Transparent"
+        BorderThickness="0"
         CornerRadius="0">
         <Border.Effect>
             <DropShadowEffect
@@ -375,7 +375,8 @@
                 <TextBlock
                     Margin="0,0,0,5"
                     FontSize="14"
-                    Foreground="#00FFAA"
+                    Foreground="#863eb8"
+                    TextAlignment="Center"
                     Text="LLMOD HEALTH MONITOR" />
 
                 <!--  Header Row  -->
@@ -411,8 +412,8 @@
                         Text="ACTIONS" />
                 </Grid>
 
-                <ScrollViewer Height="200" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding KaiaServices}">
+                <ScrollViewer Height="98" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding KaiaServices}" Height="94">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border
