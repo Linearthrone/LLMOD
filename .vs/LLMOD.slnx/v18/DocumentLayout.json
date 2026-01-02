@@ -3,16 +3,28 @@
   "WorkspaceRootPath": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\gpuoverlay.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\gpuoverlay.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\processconfigwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\processconfigwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\gpuoverlay.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\gpuoverlay.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitordock.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitordock.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|solutionrelative:views\\systemmonitorwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8EFE9738-D7A6-DA22-CBF7-5F979E906785}|LLMOD.csproj|c:\\users\\kurtw\\studioprojects\\llmod\\llmod\\views\\chatwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
@@ -70,7 +82,44 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
+              "Title": "GPUOverlay.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\GPUOverlay.xaml.cs",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml.cs",
+              "RelativeToolTip": "Views\\GPUOverlay.xaml.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAswCMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-02T13:27:00.197Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "GPUOverlay.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml",
+              "RelativeDocumentMoniker": "Views\\GPUOverlay.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\GPUOverlay.xaml",
+              "RelativeToolTip": "Views\\GPUOverlay.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T13:19:18.359Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "SystemMonitorDock.xaml",
+              "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorDock.xaml",
+              "RelativeDocumentMoniker": "Views\\SystemMonitorDock.xaml",
+              "ToolTip": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorDock.xaml",
+              "RelativeToolTip": "Views\\SystemMonitorDock.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-02T12:22:14.983Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "SystemMonitorWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml.cs",
               "RelativeDocumentMoniker": "Views\\SystemMonitorWindow.xaml.cs",
@@ -83,7 +132,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "SystemMonitorWindow.xaml",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\SystemMonitorWindow.xaml",
               "RelativeDocumentMoniker": "Views\\SystemMonitorWindow.xaml",
@@ -107,7 +156,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 6,
               "Title": "ChatWindow.xaml",
               "DocumentMoniker": "C:\\Users\\kurtw\\StudioProjects\\LLMOD\\LLMOD\\Views\\ChatWindow.xaml",
               "RelativeDocumentMoniker": "Views\\ChatWindow.xaml",

@@ -23,6 +23,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0">
       <GeneratePathProperty>True</GeneratePathProperty>
     </PackageReference>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
   </ItemGroup>
 
   <ItemGroup>

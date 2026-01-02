@@ -9,6 +9,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
+using LLMOD.Helpers;
 using System;
 using System.Diagnostics;
 using System.Windows;
