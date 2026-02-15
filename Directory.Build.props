@@ -1,0 +1,6 @@
+<Project>
+  <!-- Avoid WPF BAML race when building the solution in parallel (BG1002) -->
+  <PropertyGroup>
+    <MSBuildMaxNodeCount>1</MSBuildMaxNodeCount>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,470 @@
+<Window x:Class="HouseVictoria.App.Screens.Windows.ProjectDetailDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+        mc:Ignorable="d"
+        Title="Project Details" Height="900" Width="1200"
+        Style="{StaticResource OverlayWindow}"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        
+        <!-- ComboBox styles -->
+        <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
+            <Setter Property="Background" Value="#383838"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </Window.Resources>
+    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+                <Grid>
+                    <StackPanel>
+                        <TextBlock Text="{Binding ProjectName, StringFormat='📋 {0}'}" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="{Binding ProjectTypePhase, FallbackValue=''}" FontSize="12" Foreground="#FFE0E0" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Content Area with Tabs -->
+            <TabControl Grid.Row="1" Margin="10" Background="Transparent" BorderBrush="#CC444444" 
+                       Style="{StaticResource MaterialDesignTabControl}">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem" BasedOn="{StaticResource MaterialDesignTabItem}">
+                        <Setter Property="Background" Value="#CC222222"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="BorderBrush" Value="#CC444444"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#CC333333"/>
+                                <Setter Property="Foreground" Value="#e94560"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TabControl.Resources>
+
+                <!-- Overview Tab -->
+                <TabItem Header="Overview">
+                    <ScrollViewer Padding="20" Style="{StaticResource ModernScrollViewer}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Basic Info -->
+                            <GroupBox Grid.Row="0" Grid.ColumnSpan="2" Header="Basic Information" Margin="0,0,0,15">
+                                <GroupBox.Resources>
+                                    <Style TargetType="GroupBox">
+                                        <Setter Property="BorderBrush" Value="#CC444444"/>
+                                        <Setter Property="HeaderTemplate">
+                                            <Setter.Value>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" Foreground="White" FontWeight="Bold"/>
+                                                </DataTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </GroupBox.Resources>
+                                <Grid Margin="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Name:" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" 
+                                            Background="{StaticResource DarkInputBrush}" Foreground="White" 
+                                            Padding="8" Margin="0,0,0,10" IsReadOnly="{Binding IsReadOnly}"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Description:" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
+                                            Background="{StaticResource DarkInputBrush}" Foreground="White" 
+                                            Padding="8" TextWrapping="Wrap" AcceptsReturn="True" 
+                                            VerticalScrollBarVisibility="Hidden" Height="80" Margin="0,0,0,10"
+                                            IsReadOnly="{Binding IsReadOnly}"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Type:" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ProjectTypes}" 
+                                             SelectedItem="{Binding SelectedType}" Margin="0,0,0,10"
+                                             IsEnabled="{Binding IsEditable}"/>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Priority:" FontWeight="Bold" Foreground="White"/>
+                                    <StackPanel Grid.Row="3" Grid.Column="1">
+                                        <Slider Minimum="1" Maximum="10" Value="{Binding Priority}" 
+                                               TickFrequency="1" IsSnapToTickEnabled="True"
+                                               Foreground="#e94560" Background="#CC222222"
+                                               IsEnabled="{Binding IsEditable}"/>
+                                        <TextBlock Text="{Binding Priority, StringFormat='Priority: {0}'}" 
+                                                  Foreground="#CCCCCC" FontSize="12" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Dates and Phase -->
+                            <GroupBox Grid.Row="1" Grid.Column="0" Header="Timeline" Margin="0,0,10,15">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="{Binding StartDate, StringFormat='Start: {0:MMM dd, yyyy}'}" 
+                                              Foreground="White" Margin="0,0,0,10"/>
+                                    <TextBlock Grid.Row="1" Text="{Binding Deadline, StringFormat='Deadline: {0:MMM dd, yyyy}'}" 
+                                              Foreground="White" Margin="0,0,0,10"/>
+                                    <TextBlock Grid.Row="2" Text="{Binding CreatedAt, StringFormat='Created: {0:MMM dd, yyyy}'}" 
+                                              Foreground="#CCCCCC" FontSize="11"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Phase and Progress -->
+                            <GroupBox Grid.Row="1" Grid.Column="1" Header="Phase &amp; Progress" Margin="10,0,0,15">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="Current Phase:" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                                    <ComboBox Grid.Row="1" ItemsSource="{Binding ProjectPhases}" 
+                                             SelectedItem="{Binding SelectedPhase}" Margin="0,0,0,10"
+                                             IsEnabled="{Binding IsEditable}"/>
+
+                                    <TextBlock Grid.Row="2" Text="Completion:" FontWeight="Bold" Foreground="White" Margin="0,10,0,5"/>
+                                    <TextBlock Text="{Binding CompletionPercentage, StringFormat='{}{0:F0}%'}" 
+                                              FontSize="24" FontWeight="Bold" Foreground="#4CAF50" Margin="0,0,0,5"/>
+                                    <ProgressBar Value="{Binding CompletionPercentage, Mode=OneWay}" Maximum="100" 
+                                                Height="15" Foreground="#4CAF50" Background="#222222"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Assigned AI -->
+                            <GroupBox Grid.Row="2" Grid.Column="0" Header="Assigned AI" Margin="0,0,10,15">
+                                <Grid Margin="10">
+                                    <ComboBox ItemsSource="{Binding AIContactsWithNone}" 
+                                             SelectedItem="{Binding SelectedAIContact}"
+                                             DisplayMemberPath="Name" SelectedValuePath="Id"
+                                             IsEnabled="{Binding IsEditable}"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Roadblocks Summary -->
+                            <GroupBox Grid.Row="2" Grid.Column="1" Header="Roadblocks" Margin="10,0,0,15">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="{Binding RoadblocksCount, StringFormat='{}{0} Roadblock(s)'}" 
+                                              FontWeight="Bold" Foreground="#FF6B6B" Margin="0,0,0,10"/>
+                                    <ScrollViewer Grid.Row="1" MaxHeight="150" VerticalScrollBarVisibility="Hidden">
+                                        <ItemsControl ItemsSource="{Binding Roadblocks}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="#FF6B6B" BorderThickness="1" 
+                                                           Background="#33FF6B6B" CornerRadius="3" Padding="8" Margin="0,0,0,5">
+                                                        <TextBlock Text="{Binding}" Foreground="White" TextWrapping="Wrap"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Statistics -->
+                            <GroupBox Grid.Row="3" Grid.ColumnSpan="2" Header="Statistics" Margin="0,0,0,15">
+                                <Grid Margin="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Artifacts" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                                        <TextBlock Text="{Binding ArtifactsCount, StringFormat='{}{0} files'}" 
+                                                  FontSize="18" Foreground="#4CAF50"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="AI Interactions" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                                        <TextBlock Text="{Binding LogsCount, StringFormat='{}{0} entries'}" 
+                                                  FontSize="18" Foreground="#9575CD"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Days Remaining" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                                        <TextBlock Text="{Binding DaysRemaining, StringFormat='{}{0} days'}" 
+                                                  FontSize="18" 
+                                                  Foreground="{Binding DaysRemainingColor}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+                        </Grid>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Roadblocks Tab -->
+                <TabItem Header="Roadblocks">
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Add Roadblock -->
+                        <Grid Grid.Row="0" Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding NewRoadblockText, UpdateSourceTrigger=PropertyChanged}" 
+                                    Background="{StaticResource DarkInputBrush}" Foreground="White" 
+                                    Padding="8" Margin="0,0,10,0" IsEnabled="{Binding IsEditable}"/>
+                            <Button Grid.Column="1" Content="Add Roadblock" Style="{StaticResource GlassButton}" 
+                                   Command="{Binding AddRoadblockCommand}" Width="150"
+                                   IsEnabled="{Binding IsEditable}"/>
+                        </Grid>
+
+                        <!-- Roadblocks List -->
+                        <ScrollViewer Grid.Row="1" Style="{StaticResource ModernScrollViewer}">
+                            <Grid>
+                                <ItemsControl ItemsSource="{Binding Roadblocks}"
+                                             Visibility="{Binding HasRoadblocks, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#FF6B6B" BorderThickness="1" 
+                                                   Background="#33FF6B6B" CornerRadius="3" 
+                                                   Padding="12" Margin="0,0,0,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" Foreground="White" 
+                                                              TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="1" Content="Remove" Style="{StaticResource GlassButton}" 
+                                                           Command="{Binding DataContext.RemoveRoadblockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           CommandParameter="{Binding}" Width="80" Margin="10,0,0,0"
+                                                           IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No roadblocks" Foreground="#888888" FontSize="14" 
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Visibility="{Binding HasRoadblocks, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+
+                <!-- Artifacts Tab -->
+                <TabItem Header="Artifacts">
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Upload Button -->
+                        <Button Grid.Row="0" Content="📁 Upload Artifact" Style="{StaticResource GlassButton}" 
+                               Command="{Binding UploadArtifactCommand}" HorizontalAlignment="Left" 
+                               Margin="0,0,0,15" IsEnabled="{Binding IsEditable}"/>
+
+                        <!-- Artifacts List -->
+                        <ScrollViewer Grid.Row="1" Style="{StaticResource ModernScrollViewer}">
+                            <Grid>
+                                <ItemsControl ItemsSource="{Binding Artifacts}"
+                                             Visibility="{Binding HasArtifacts, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#4CAF50" BorderThickness="1" 
+                                                   Background="#334CAF50" CornerRadius="3" 
+                                                   Padding="12" Margin="0,0,0,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding TypeIcon, FallbackValue='📄'}" 
+                                                              FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Name, FallbackValue='Unnamed'}" 
+                                                                  FontWeight="Bold" Foreground="White"/>
+                                                        <TextBlock Text="{Binding Description, FallbackValue=''}" 
+                                                                  Foreground="#CCCCCC" FontSize="11" Margin="0,3,0,0"/>
+                                                        <TextBlock Text="{Binding FileSizeFormatted, StringFormat='{}{0} • {1}', FallbackValue=''}" 
+                                                                  Foreground="#888888" FontSize="10" Margin="0,3,0,0"/>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="2" Content="Preview" Style="{StaticResource GlassButton}" 
+                                                           Command="{Binding DataContext.PreviewArtifactCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           CommandParameter="{Binding}" Width="80" Margin="10,0,5,0"/>
+                                                    <Button Grid.Column="3" Content="Download" Style="{StaticResource GlassButton}" 
+                                                           Command="{Binding DataContext.DownloadArtifactCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           CommandParameter="{Binding}" Width="90" Margin="5,0,5,0"/>
+                                                    <Button Grid.Column="4" Content="Delete" Style="{StaticResource GlassButton}" 
+                                                           Command="{Binding DataContext.DeleteArtifactCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           CommandParameter="{Binding}" Width="80" Margin="5,0,0,0"
+                                                           IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No artifacts" Foreground="#888888" FontSize="14" 
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Visibility="{Binding HasArtifacts, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+
+                <!-- AI Logs Tab -->
+                <TabItem Header="AI Collaboration Logs">
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Filter -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                            <TextBlock Text="Filter by AI:" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0"/>
+                            <ComboBox ItemsSource="{Binding AIContactsWithNone}" 
+                                     SelectedItem="{Binding SelectedFilterAIContact}"
+                                     DisplayMemberPath="Name" SelectedValuePath="Id"
+                                     Width="200"/>
+                        </StackPanel>
+
+                        <!-- Search -->
+                        <Grid Grid.Row="1" Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding LogSearchText, UpdateSourceTrigger=PropertyChanged}" 
+                                    Background="{StaticResource DarkInputBrush}" Foreground="White" 
+                                    Padding="8" Margin="0,0,10,0"/>
+                            <Button Grid.Column="1" Content="Clear" Style="{StaticResource GlassButton}" 
+                                   Command="{Binding ClearLogSearchCommand}" Width="80"/>
+                        </Grid>
+
+                        <!-- Logs Timeline -->
+                        <ScrollViewer Grid.Row="2" Style="{StaticResource ModernScrollViewer}">
+                            <Grid>
+                                <ItemsControl ItemsSource="{Binding FilteredLogs}">
+                                    <ItemsControl.Style>
+                                        <Style TargetType="ItemsControl">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasLogs}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ItemsControl.Style>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#9575CD" BorderThickness="1" 
+                                                   Background="#339575CD" CornerRadius="3" 
+                                                   Padding="12" Margin="0,0,0,10">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,5">
+                                                        <TextBlock Text="{Binding PerformedBy, FallbackValue='System'}" 
+                                                                  FontWeight="Bold" Foreground="#FFE0E0" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding Timestamp}" 
+                                                                  Foreground="#CCCCCC" FontSize="11"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Row="1" Text="{Binding Action, FallbackValue='Action'}" 
+                                                              FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                                                    <TextBlock Grid.Row="2" Text="{Binding Details, FallbackValue=''}" 
+                                                              Foreground="#CCCCCC" TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No logs" Foreground="#888888" FontSize="14" 
+                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasLogs}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- Footer Buttons -->
+            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <Button Content="✏️ Edit" Style="{StaticResource GlassButton}" 
+                               Command="{Binding ToggleEditCommand}" Width="100" 
+                               Margin="0,0,10,0" Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <Button Content="💾 Save" Style="{StaticResource GlassButton}" 
+                               Command="{Binding SaveProjectCommand}" Width="100" 
+                               Margin="0,0,10,0" Visibility="{Binding IsEditable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <Button Content="❌ Cancel" Style="{StaticResource GlassButton}" 
+                               Command="{Binding CancelEditCommand}" Width="100" 
+                               Visibility="{Binding IsEditable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="🗑️ Delete Project" Style="{StaticResource GlassButton}" 
+                               Command="{Binding DeleteProjectCommand}" Width="150" 
+                               Margin="0,0,10,0" Background="#CCCC0000" BorderBrush="#CCFF0000"/>
+                        <Button Content="Close" Style="{StaticResource GlassButton}" 
+                               Width="100" Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

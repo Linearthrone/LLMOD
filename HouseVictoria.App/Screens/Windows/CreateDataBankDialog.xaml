@@ -1,0 +1,78 @@
+<Window x:Class="HouseVictoria.App.Screens.Windows.CreateDataBankDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+        mc:Ignorable="d"
+        Title="Create Data Bank" Height="400" Width="600"
+        Style="{StaticResource OverlayWindow}"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Window.Resources>
+    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+                <TextBlock Text="🗄️ Create Data Bank" FontSize="18" FontWeight="Bold" Foreground="White"/>
+            </Border>
+
+            <!-- Content Area -->
+            <ScrollViewer Grid.Row="1" Padding="20" Style="{StaticResource ModernScrollViewer}">
+                <StackPanel>
+                    <!-- Name -->
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Name:" FontSize="14" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" 
+                                Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
+                                Foreground="White" Padding="8" Margin="10,0,0,0"/>
+                    </Grid>
+
+                    <!-- Description -->
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Description:" FontSize="14" FontWeight="Bold" Foreground="White" VerticalAlignment="Top" Margin="0,8,0,0"/>
+                        <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
+                                Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
+                                Foreground="White" Padding="8" Margin="10,0,0,0"
+                                TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Hidden"
+                                Height="120"/>
+                    </Grid>
+
+                    <!-- Validation Error -->
+                    <TextBlock Text="{Binding ValidationError}" 
+                             Foreground="#FF6B6B" FontSize="12" 
+                             Margin="0,10,0,0"
+                             TextWrapping="Wrap"
+                             Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer Buttons -->
+            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource GlassButton}" Content="💾 Save" 
+                           Width="120" Height="35" Margin="0,0,10,0"
+                           Click="SaveButton_Click"/>
+                    <Button Style="{StaticResource GlassButton}" Content="❌ Cancel" 
+                           Width="120" Height="35"
+                           Click="CancelButton_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

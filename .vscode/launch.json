@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C#: HouseVictoria.App",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/HouseVictoria.App/bin/Debug/net8.0-windows/HouseVictoria.App.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/HouseVictoria.App/bin/Debug/net8.0-windows",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "DOTNET_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/HouseVictoria.App/bin/Debug/net8.0-windows/HouseVictoria.App.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/HouseVictoria.App/bin/Debug/net8.0-windows",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}

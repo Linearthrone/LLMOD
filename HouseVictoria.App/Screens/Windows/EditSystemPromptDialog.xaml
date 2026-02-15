@@ -1,0 +1,67 @@
+<Window x:Class="HouseVictoria.App.Screens.Windows.EditSystemPromptDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Edit System Prompt" Height="500" Width="700"
+        Style="{StaticResource OverlayWindow}"
+        WindowStartupLocation="CenterScreen">
+    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+                <Grid>
+                    <TextBlock Text="✏️ Edit System Prompt" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="{Binding ContactName, StringFormat='Editing: {0}'}" 
+                              FontSize="14" Foreground="White" 
+                              VerticalAlignment="Center" Margin="200,0,0,0"/>
+                </Grid>
+            </Border>
+
+            <!-- Content Area -->
+            <ScrollViewer Grid.Row="1" Padding="20" Style="{StaticResource ModernScrollViewer}">
+                <StackPanel>
+                    <TextBlock Text="Piper Voice (TTS):" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                    <ComboBox ItemsSource="{Binding AvailablePiperVoices}" 
+                              Text="{Binding PiperVoiceId, UpdateSourceTrigger=PropertyChanged}"
+                              IsEditable="True"
+                              Background="#CC222222" BorderBrush="#CC444444" 
+                              Foreground="White" Padding="10" Margin="0,0,0,15"/>
+                    <TextBlock Text="System Prompt:" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                    <TextBox Text="{Binding SystemPrompt, UpdateSourceTrigger=PropertyChanged}" 
+                            Background="#CC222222" BorderBrush="#CC444444" 
+                            Foreground="White" Padding="10" 
+                            TextWrapping="Wrap" 
+                            AcceptsReturn="True"
+                            VerticalScrollBarVisibility="Hidden"
+                            Height="300"
+                            FontFamily="Consolas"
+                            FontSize="12"/>
+                    <TextBlock Text="Enter the system prompt that defines how this AI contact behaves and responds." 
+                              FontSize="11" Foreground="#CCCCCC" 
+                              Margin="0,10,0,0" 
+                              TextWrapping="Wrap"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Footer Buttons -->
+            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource GlassButton}" Content="💾 Save" 
+                           Width="120" Height="35" Margin="0,0,10,0"
+                           Click="SaveButton_Click"/>
+                    <Button Style="{StaticResource GlassButton}" Content="❌ Cancel" 
+                           Width="120" Height="35"
+                           Click="CancelButton_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

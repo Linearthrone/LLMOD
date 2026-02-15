@@ -1,0 +1,280 @@
+<UserControl x:Class="HouseVictoria.App.Screens.Trays.SystemMonitorDrawer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="800" d:DesignWidth="350"
+             Unloaded="Control_Unloaded">
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- Toggle Button (Left Edge) -->
+        <ToggleButton x:Name="DrawerToggle"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Top"
+                      Width="80" Height="80"
+                      Margin="10,100,0,0"
+                      IsChecked="{Binding IsDrawerOpen, Mode=TwoWay}"
+                      Style="{StaticResource TrayToggleButton}">
+            <ToggleButton.Content>
+                <TextBlock Text="📊" FontSize="48"/>
+            </ToggleButton.Content>
+        </ToggleButton>
+
+        <!-- Drawer Panel -->
+        <Border x:Name="DrawerPanel"
+                Background="#CC0A0E27"
+                Width="330"
+                Height="800"
+                MaxHeight="900"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="95,100,0,0"
+                CornerRadius="6"
+                Padding="10"
+                Visibility="Collapsed"
+                BorderThickness="0"
+                BorderBrush="Transparent">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header with "House Victoria" -->
+                <TextBlock Grid.Row="0" Text="House Victoria" 
+                           Style="{StaticResource CalligraphyText}"
+                           FontSize="32"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,8"/>
+
+                <!-- Tabs: System Health | Components -->
+                <TabControl Grid.Row="1" Padding="0" Margin="0,0,0,0"
+                            Background="Transparent" BorderThickness="0">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TabItem">
+                                        <Border x:Name="Border" Background="#1A2332" Padding="12,8" Margin="2,0"
+                                                BorderBrush="#00D4FF" BorderThickness="0,0,0,2"
+                                                CornerRadius="3,3,0,0">
+                                            <ContentPresenter ContentSource="Header"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="#0A0E27"/>
+                                                <Setter TargetName="Border" Property="BorderThickness" Value="0,0,0,2"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Foreground" Value="#E0F7FF"/>
+                            <Setter Property="FontSize" Value="12"/>
+                        </Style>
+                    </TabControl.Resources>
+
+                    <!-- Tab 1: System Health (gauges) -->
+                    <TabItem Header="System Health">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5">
+                            <StackPanel>
+                                <!-- System Uptime -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="System Uptime" FontSize="12" Foreground="#80C4D4" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SystemUptime}" FontSize="18" Foreground="#E0F7FF" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- CPU Metrics -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="CPU" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding CPUUsage}" FontSize="16" Foreground="#E0F7FF"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding CPUTemperature}" FontSize="14" Foreground="#80C4D4"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding CPUUsageValue}" Maximum="100" Height="8" 
+                                                     Foreground="#00D4FF" Background="#1A2332" Margin="0,5,0,0"/>
+                                        <TextBlock FontSize="12" Foreground="#80C4D4" Margin="0,2,0,0">
+                                            <Run Text="Fan: "/><Run Text="{Binding CPUFanSpeed}"/><Run Text=" RPM"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- GPU Metrics -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="GPU" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding GPUVendor}" FontSize="10" Foreground="#80C4D4" 
+                                                      Visibility="{Binding GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </Grid>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding GPUUsage}" FontSize="16" Foreground="#E0F7FF"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding GPUTemperature}" FontSize="14" Foreground="#80C4D4"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding GPUUsageValue}" Maximum="100" Height="8" 
+                                                     Foreground="#00D4FF" Background="#1A2332" Margin="0,5,0,0"
+                                                     Visibility="{Binding GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <TextBlock FontSize="12" Foreground="#80C4D4" Margin="0,2,0,0">
+                                            <Run Text="Fan: "/><Run Text="{Binding GPUFanSpeed}"/>
+                                        </TextBlock>
+                                        <TextBlock Text="GPU monitoring not available" FontSize="11" Foreground="#888888" Margin="0,5,0,0"
+                                                  Visibility="{Binding GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- RAM Metrics -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="RAM" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <TextBlock Text="{Binding RAMUsage}" FontSize="16" Foreground="#E0F7FF"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding RAMUsagePercentage}" Maximum="100" Height="8" 
+                                                     Foreground="#00D4FF" Background="#1A2332" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Tab 2: Components (status indicators) -->
+                    <TabItem Header="Components">
+                        <StackPanel Margin="0,5">
+                                <!-- Primary AI Status -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="#4CAF50">
+                                    <StackPanel>
+                                        <TextBlock Text="Primary AI" FontSize="14" Foreground="#4CAF50" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
+                                                     Fill="{Binding PrimaryAIStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding PrimaryAIStatusText}" FontSize="12" Foreground="#E0F7FF"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Current AI Contact Status -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="Current AI Contact" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
+                                                     Fill="{Binding CurrentAIStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding CurrentAIStatusText}" FontSize="12" Foreground="#E0F7FF"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Virtual Environment Status -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="#00D4FF">
+                                    <StackPanel>
+                                        <TextBlock Text="Virtual Environment" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
+                                                     Fill="{Binding VirtualEnvironmentStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding VirtualEnvironmentStatusText}" FontSize="12" Foreground="White"/>
+                                        </Grid>
+                                        <TextBlock Text="{Binding VirtualEnvironmentDetails}" FontSize="10" Foreground="#80C4D4" Margin="0,2,0,5"/>
+                                        <Border Background="#CC0A0E27" Padding="5" Margin="0,5,0,5" CornerRadius="3" 
+                                               Visibility="{Binding VirtualEnvironmentIsConnected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <TextBlock Text="Scene Info" FontSize="11" Foreground="#00D4FF" FontWeight="Bold" Margin="0,0,0,3"/>
+                                                <TextBlock Text="{Binding VirtualEnvironmentSceneName}" FontSize="10" Foreground="#E0F7FF" Margin="0,0,0,2"/>
+                                                <TextBlock Text="{Binding VirtualEnvironmentSceneDetails}" FontSize="9" Foreground="#80C4D4"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <Button Content="{Binding VirtualEnvironmentConnectButtonText}" 
+                                                   Style="{StaticResource GlassButton}"
+                                                   Command="{Binding VirtualEnvironmentConnectCommand}"
+                                                   Width="100" Height="28" FontSize="11" Margin="0,0,5,0"/>
+                                            <Button Content="Disconnect" Style="{StaticResource GlassButton}"
+                                                   Command="{Binding VirtualEnvironmentDisconnectCommand}"
+                                                   IsEnabled="{Binding VirtualEnvironmentIsConnected}"
+                                                   Width="80" Height="28" FontSize="11" Margin="0,0,5,0"/>
+                                            <Button Content="Controls" Style="{StaticResource GlassButton}"
+                                                   Command="{Binding VirtualEnvironmentOpenControlsCommand}"
+                                                   IsEnabled="{Binding VirtualEnvironmentIsConnected}"
+                                                   Width="70" Height="28" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Separator Margin="0,8,0,8" Background="#1A2332"/>
+
+                                <!-- Server Status -->
+                                <TextBlock Text="Server Status" FontSize="14" Foreground="#00D4FF" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <ItemsControl ItemsSource="{Binding ServerStatuses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource Card}" Margin="0,2">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
+                                                             Fill="{Binding StatusColor}" Width="24" Height="24" Margin="0,4,8,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,5,0">
+                                                        <Button Command="{Binding RestartCommand}" Style="{StaticResource GlassButton}"
+                                                                Width="24" Height="24" Padding="0" Margin="2,0">🔄</Button>
+                                                        <Button Command="{Binding StopCommand}" Style="{StaticResource GlassButton}"
+                                                                Width="24" Height="24" Padding="0" Margin="2,0">⏸️</Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Button Style="{StaticResource GlassButton}"
+                                        Content="Shutdown All Servers"
+                                        Command="{Binding ShutdownAllCommand}"
+                                        Margin="0,10,0,0"
+                                        Foreground="#FF3366"
+                                        BorderBrush="#FF3366">
+                                    <Button.Background>
+                                        <SolidColorBrush Color="#FF3366" Opacity="0.2"/>
+                                    </Button.Background>
+                                    </Button>
+                            </StackPanel>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Border>
+    </Grid>
+
+</UserControl>

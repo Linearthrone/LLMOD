@@ -1,0 +1,22 @@
+<Application x:Class="HouseVictoria.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:HouseVictoria.App.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Custom Material Design Styles -->
+                <ResourceDictionary Source="Styles/MaterialDesign.xaml" />
+                <ResourceDictionary Source="Styles/MaterialDesignButtons.xaml" />
+                <ResourceDictionary Source="Styles/MaterialDesignControls.xaml" />
+                <!-- App Custom Styles -->
+                <ResourceDictionary Source="Styles/GlassEffect.xaml" />
+                <ResourceDictionary Source="Styles/OverlayStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Converters -->
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <converters:IncomingToAlignmentConverter x:Key="IncomingToAlignmentConverter"/>
+            <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
