@@ -64,3 +64,9 @@
 - Phase 3: Introduce summarizer/retention workers and pinning; wire conversation/task logging to new interfaces; add lineage tags.
 - Phase 4: Expose MCP tools that call the shared broker; add quotas/metrics/health; roll out encryption at rest.
 - Phase 5: Tune policies; enable backup/export; iterate on observability and redaction defaults.
+
+### Current implementation (stubs)
+- **PgVectorClient** (`HouseVictoria.Services/Memory/PgVectorClient.cs`): No-op stub until a real Postgres+pgvector client is implemented. When `EnablePgVector` is true, upsert/search/delete are still no-ops.
+- **EmbeddingHelper** (`HouseVictoria.Services/Memory/EmbeddingHelper.cs`): Hash-based pseudo-embeddings only; not semantic. Replace with a real embedding model for semantic search.
+- **MCP vector_search** (`MCPServer/house_victoria_mcp/memory/vector_search.py`): Stub; `index` and `search` are no-ops; `search` returns `[]`. Implement with a real vector store for MCP semantic memory.
+- See **House Victoria – Comprehensive Functionality Documentation** § “Memory and vector search – implementation status” for details.

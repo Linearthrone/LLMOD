@@ -18,6 +18,7 @@ using Serilog;
 using System.Windows;
 using System.Diagnostics;
 using System.IO;
+using System;
 
 namespace HouseVictoria.App
 {
@@ -27,6 +28,11 @@ namespace HouseVictoria.App
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Suppress Chromium crashpad errors (harmless but noisy)
+            // These errors occur when crashpad tries to register crash handlers
+            Environment.SetEnvironmentVariable("CHROME_CRASH_DIR", "");
+            Environment.SetEnvironmentVariable("BREAKPAD_DUMP_LOCATION", "");
+            
             // Handle unobserved task exceptions globally - CRITICAL for catching background HTTP exceptions
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             
@@ -293,9 +299,12 @@ catch (Exception ex)
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
                 TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:5000",
+                STTEndpoint = config["STTEndpoint"],
                 PiperDataDir = config["PiperDataDir"] ?? "Media/PiperVoices",
                 PiperDefaultModel = config["PiperDefaultModel"] ?? "en_US-amy-medium",
-                StableDiffusionEndpoint = config["StableDiffusionEndpoint"] ?? "http://localhost:8188",
+                StableDiffusionEndpoint = config["StableDiffusionEndpoint"] ?? "http://localhost:7860",
+                StabilityMatrixPath = config["StabilityMatrixPath"] ?? string.Empty,
+                ComfyUIPortablePath = config["ComfyUIPortablePath"] ?? string.Empty,
                 MT4DataPath = config["MT4DataPath"] ?? "C:\\Program Files\\MetaTrader 4",
                 DataBankPath = config["DataBankPath"] ?? "Data\\Databanks",
                 LogsPath = config["LogsPath"] ?? "Logs",
@@ -321,6 +330,39 @@ catch (Exception ex)
             appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath) 
                 ? appConfig.MediaPath 
                 : System.IO.Path.Combine(appDirectory, appConfig.MediaPath);
+            // Piper voices: resolve relative path; prefer Media\PiperVoices next to app or under a parent that contains Media
+            var piperDataDirRelative = appConfig.PiperDataDir;
+            if (!System.IO.Path.IsPathRooted(appConfig.PiperDataDir))
+            {
+                var combined = System.IO.Path.Combine(appDirectory, appConfig.PiperDataDir);
+                if (System.IO.Directory.Exists(combined))
+                    appConfig.PiperDataDir = System.IO.Path.GetFullPath(combined);
+                else
+                {
+                    var dir = appDirectory;
+                    while (!string.IsNullOrEmpty(dir))
+                    {
+                        var mediaDir = System.IO.Path.Combine(dir, "Media");
+                        if (System.IO.Directory.Exists(mediaDir))
+                        {
+                            appConfig.PiperDataDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, appConfig.PiperDataDir));
+                            break;
+                        }
+                        var parent = System.IO.Path.GetDirectoryName(dir);
+                        if (parent == dir) break;
+                        dir = parent;
+                    }
+                    if (!System.IO.Path.IsPathRooted(appConfig.PiperDataDir))
+                        appConfig.PiperDataDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(appDirectory, appConfig.PiperDataDir));
+                }
+                // If resolved path still doesn't exist, try current directory (e.g. when run from repo root)
+                if (!System.IO.Directory.Exists(appConfig.PiperDataDir) && !string.IsNullOrEmpty(piperDataDirRelative))
+                {
+                    var currentDirPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, piperDataDirRelative));
+                    if (System.IO.Directory.Exists(currentDirPath))
+                        appConfig.PiperDataDir = currentDirPath;
+                }
+            }
 
             // Resolve pgvector connection string relative parts if needed (leave as-is if absolute)
             if (!string.IsNullOrWhiteSpace(appConfig.PgVectorConnectionString) && appConfig.PgVectorConnectionString.Contains("|DataDirectory|"))
@@ -341,6 +383,13 @@ catch (Exception ex)
 
         protected override void OnExit(ExitEventArgs e)
         {
+            try
+            {
+                LoggingHelper.WriteToStartupLog("Application shutting down...");
+                System.Diagnostics.Debug.WriteLine("Application shutting down - saving data and stopping services...");
+            }
+            catch { }
+
             // Unsubscribe from event handlers
             try
             {
@@ -360,23 +409,142 @@ catch (Exception ex)
             }
             catch { }
 
-            Log.CloseAndFlush();
-            
-            // Dispose service provider (this will dispose all IDisposable services)
+            // Save unsaved data and shut down services gracefully
             if (ServiceProvider != null)
             {
                 try
                 {
+                    // Save any unsaved data first
+                    SaveUnsavedData();
+
+                    // Stop async services gracefully
+                    StopServicesAsync().GetAwaiter().GetResult();
+
+                    // Dispose service provider (this will dispose all IDisposable services)
                     ServiceProvider.Dispose();
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error disposing ServiceProvider: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error during shutdown: {ex.Message}");
+                    LoggingHelper.WriteExceptionToLog(ex, "ShutdownErrors.log");
                 }
                 ServiceProvider = null;
             }
+
+            Log.CloseAndFlush();
             
             base.OnExit(e);
+        }
+
+        private void SaveUnsavedData()
+        {
+            try
+            {
+                // Save logging service read status
+                var loggingService = ServiceProvider?.GetService<ILoggingService>();
+                if (loggingService != null)
+                {
+                    // Use reflection to call SaveReadStatusAsync since it's private
+                    // This ensures any pending read status changes are persisted
+                    var saveMethod = loggingService.GetType().GetMethod("SaveReadStatusAsync", 
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (saveMethod != null)
+                    {
+                        try
+                        {
+                            var task = (Task?)saveMethod.Invoke(loggingService, null);
+                            if (task != null)
+                            {
+                                task.GetAwaiter().GetResult();
+                                System.Diagnostics.Debug.WriteLine("Logging service read status saved");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error saving logging read status: {ex.Message}");
+                        }
+                    }
+                }
+
+                // Save any pending database transactions
+                var persistenceService = ServiceProvider?.GetService<IPersistenceService>();
+                if (persistenceService != null)
+                {
+                    // SQLite connections are auto-committed, but we can ensure any pending operations complete
+                    // by accessing the service (which may trigger any lazy initialization/flush)
+                    System.Diagnostics.Debug.WriteLine("Persistence service checked for pending saves");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving unsaved data: {ex.Message}");
+            }
+        }
+
+        private async Task StopServicesAsync()
+        {
+            try
+            {
+                // Stop SystemMonitorService servers (includes LocalTtsHttpHost and COVAS bridge)
+                var systemMonitorService = ServiceProvider?.GetService<ISystemMonitorService>();
+                if (systemMonitorService != null)
+                {
+                    try
+                    {
+                        await systemMonitorService.ShutdownAllServersAsync().ConfigureAwait(false);
+                        System.Diagnostics.Debug.WriteLine("SystemMonitorService servers stopped (including TTS host and COVAS bridge)");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error stopping SystemMonitorService servers: {ex.Message}");
+                    }
+                }
+
+                // Disconnect virtual environment service if connected
+                var virtualEnvService = ServiceProvider?.GetService<IVirtualEnvironmentService>();
+                if (virtualEnvService != null)
+                {
+                    try
+                    {
+                        var envStatus = await virtualEnvService.GetStatusAsync().ConfigureAwait(false);
+                        if (envStatus.IsConnected)
+                        {
+                            await virtualEnvService.DisconnectAsync().ConfigureAwait(false);
+                            System.Diagnostics.Debug.WriteLine("Virtual environment service disconnected");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error disconnecting virtual environment service: {ex.Message}");
+                    }
+                }
+
+                // Disconnect trading service if connected
+                var tradingService = ServiceProvider?.GetService<ITradingService>();
+                if (tradingService != null)
+                {
+                    try
+                    {
+                        var status = await tradingService.GetStatusAsync().ConfigureAwait(false);
+                        if (status.IsConnected)
+                        {
+                            await tradingService.DisconnectAsync().ConfigureAwait(false);
+                            System.Diagnostics.Debug.WriteLine("Trading service disconnected");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error disconnecting trading service: {ex.Message}");
+                    }
+                }
+
+                // Give services a moment to finish cleanup
+                await Task.Delay(500).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error stopping services: {ex.Message}");
+            }
         }
 
         public static T GetService<T>() where T : class

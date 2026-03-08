@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
@@ -348,18 +349,75 @@ namespace HouseVictoria.App.Screens.Windows
 
                 try
                 {
-                    // Convert to window coordinates
+                    // Ensure window is loaded and elements are initialized
+                    if (!IsLoaded)
+                    {
+                        // Window not fully loaded yet - let WPF handle normally
+                        handled = false;
+                        return IntPtr.Zero;
+                    }
+
+                    // Convert to window coordinates (DPI-aware via WPF)
                     var point = PointFromScreen(screenPoint);
 
                     // Use InputHitTest to find what element was hit
                     var hitElement = InputHitTest(point);
                     
+                    // When hit test returns null (e.g. DPI/coordinate edge case), let WPF handle the click
+                    // so the app stays clickable instead of passing through to desktop
+                    if (hitElement == null)
+                    {
+                        handled = false;
+                        return IntPtr.Zero;
+                    }
+                    
+                    // Helper: is the point inside any of our tray/container bounds?
+                    bool IsPointInTrayBounds(Point pt)
+                    {
+                        if (PullHandle != null && PullHandle.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p0)
+                        {
+                            var rect = new Rect(p0, new Size(PullHandle.ActualWidth, PullHandle.ActualHeight));
+                            if (rect.Contains(pt)) return true;
+                        }
+                        if (MainTrayElement != null && MainTrayElement.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p1)
+                        {
+                            var rect = new Rect(p1, new Size(MainTrayElement.ActualWidth, MainTrayElement.ActualHeight));
+                            if (rect.Contains(pt)) return true;
+                        }
+                        if (TopTrayElement != null && TopTrayElement.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p2)
+                        {
+                            var rect = new Rect(p2, new Size(TopTrayElement.ActualWidth, TopTrayElement.ActualHeight));
+                            if (rect.Contains(pt)) return true;
+                        }
+                        if (SystemMonitorDrawerElement != null && SystemMonitorDrawerElement.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p3)
+                        {
+                            var rect = new Rect(p3, new Size(SystemMonitorDrawerElement.ActualWidth, SystemMonitorDrawerElement.ActualHeight));
+                            if (rect.Contains(pt)) return true;
+                        }
+                        if (WindowContainer != null && WindowContainer.Visibility == Visibility.Visible
+                            && WindowContainer.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p4)
+                        {
+                            var rect = new Rect(p4, new Size(WindowContainer.ActualWidth, WindowContainer.ActualHeight));
+                            if (rect.Contains(pt)) return true;
+                        }
+                        return false;
+                    }
+                    
                     // Helper function to check if an element is within one of our interactive elements
                     bool IsWithinInteractiveElement(DependencyObject element)
                     {
+                        if (element == null)
+                            return false;
+                            
                         var current = element;
-                        while (current != null && current != this)
+                        int maxDepth = 50; // Prevent infinite loops
+                        int depth = 0;
+                        
+                        while (current != null && current != this && depth < maxDepth)
                         {
+                            depth++;
+                            
+                            // Check if this is an interactive element
                             if (current == PullHandle ||
                                 current == MainTrayElement ||
                                 current == TopTrayElement ||
@@ -369,6 +427,19 @@ namespace HouseVictoria.App.Screens.Windows
                                 return true;
                             }
                             
+                            // Check if element is a button, textbox, or other interactive control
+                            // (Do not treat every UIElement with IsHitTestVisible/IsEnabled as interactive,
+                            // or Borders/Grids/panels would block click-through on glass overlay areas.)
+                            if (current is Button || current is TextBox || current is ToggleButton ||
+                                current is CheckBox || current is RadioButton || current is ComboBox ||
+                                current is ListBox || current is ListView || current is ScrollViewer ||
+                                current is Slider || current is TabItem || current is Expander ||
+                                current is System.Windows.Documents.Hyperlink)
+                            {
+                                return true;
+                            }
+                            
+                            // Traverse up the visual tree
                             var parent = VisualTreeHelper.GetParent(current);
                             if (parent == null)
                             {
@@ -380,13 +451,26 @@ namespace HouseVictoria.App.Screens.Windows
                     }
                     
                     // If we hit something, check if it's within an interactive element
-                    if (hitElement != null && hitElement is DependencyObject hitObj)
+                    if (hitElement is DependencyObject hitObj)
                     {
-                        // Special case: if we hit the Window or Grid (Content) directly, allow click-through
-                        // unless we're actually within an interactive element
+                        // Special case: if we hit the Window or Grid (Content) directly
                         if (hitObj == this || hitObj == Content)
                         {
-                            // Hit the window/grid directly - allow click-through (empty space)
+                            // Only allow click-through if we're clearly in empty space (not over any tray)
+                            if (IsPointInTrayBounds(point))
+                            {
+                                handled = false;
+                                return IntPtr.Zero;
+                            }
+                            // Check if there's an interactive element at this point
+                            var hitTestResult = VisualTreeHelper.HitTest(this, point);
+                            if (hitTestResult != null && hitTestResult.VisualHit != null
+                                && IsWithinInteractiveElement(hitTestResult.VisualHit as DependencyObject))
+                            {
+                                handled = false;
+                                return IntPtr.Zero;
+                            }
+                            // Empty space on the grid - allow click-through
                             handled = true;
                             return new IntPtr(HTTRANSPARENT);
                         }
@@ -394,22 +478,22 @@ namespace HouseVictoria.App.Screens.Windows
                         // Check if the hit element is within any interactive element
                         if (IsWithinInteractiveElement(hitObj))
                         {
-                            // Found an interactive element - let WPF handle the click normally
                             handled = false;
                             return IntPtr.Zero;
                         }
                     }
 
-                    // If we didn't find any interactive element, allow click-through
-                    handled = true;
-                    return new IntPtr(HTTRANSPARENT);
+                    // Unknown hit (e.g. custom control or DPI edge case): let WPF handle the click
+                    // so the app stays clickable instead of incorrectly passing through
+                    handled = false;
+                    return IntPtr.Zero;
                 }
                 catch (Exception ex)
                 {
-                    // On error, log and default to allowing click-through for safety
-                    System.Diagnostics.Debug.WriteLine($"Error in WndProc hit testing: {ex.Message}");
-                    handled = true;
-                    return new IntPtr(HTTRANSPARENT);
+                    // On error, log and let WPF handle normally (safer than forcing click-through)
+                    System.Diagnostics.Debug.WriteLine($"Error in WndProc hit testing: {ex.Message}\n{ex.StackTrace}");
+                    handled = false;
+                    return IntPtr.Zero;
                 }
             }
 

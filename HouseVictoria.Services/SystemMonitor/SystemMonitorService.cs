@@ -209,11 +209,6 @@ namespace HouseVictoria.Services.SystemMonitor
                     tasks.Add(CheckUnrealEngineServerAsync(ueStatus));
                 }
 
-                if (_serverStatuses.TryGetValue("ComfyUI", out var comfyUIStatus))
-                {
-                    tasks.Add(CheckComfyUIServerAsync(comfyUIStatus));
-                }
-
                 try
                 {
                     // Wait for all tasks but don't let exceptions propagate
@@ -294,18 +289,6 @@ namespace HouseVictoria.Services.SystemMonitor
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Auto-start TTS failed: {ex.Message}");
-            }
-
-            try
-            {
-                if (_serverStatuses.TryGetValue("ComfyUI", out var comfyStatus))
-                {
-                    await StartComfyUiIfNeededAsync(comfyStatus).ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Auto-start ComfyUI failed: {ex.Message}");
             }
 
             try
@@ -402,10 +385,6 @@ namespace HouseVictoria.Services.SystemMonitor
                 ttsStatus.Endpoint = _appConfig.TTSEndpoint;
             }
 
-            if (_serverStatuses.TryGetValue("ComfyUI", out var comfyStatus))
-            {
-                comfyStatus.Endpoint = _appConfig.StableDiffusionEndpoint;
-            }
         }
 
         private void InitializePerformanceCounters()
@@ -557,14 +536,6 @@ namespace HouseVictoria.Services.SystemMonitor
                 Name = "Data Bank",
                 IsRunning = true,
                 Type = ServerType.DataBank
-            };
-
-            _serverStatuses["ComfyUI"] = new ServerStatus
-            {
-                Name = "ComfyUI",
-                IsRunning = false,
-                Endpoint = "http://localhost:8188",
-                Type = ServerType.Other
             };
         }
 
@@ -770,6 +741,18 @@ namespace HouseVictoria.Services.SystemMonitor
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Error stopping embedded TTS host: {ex.Message}");
+                }
+            }
+
+            if (_covasBridge != null)
+            {
+                try
+                {
+                    await _covasBridge.StopAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error stopping COVAS bridge: {ex.Message}");
                 }
             }
         }
@@ -1201,74 +1184,6 @@ namespace HouseVictoria.Services.SystemMonitor
             }
         }
 
-        private async Task StartComfyUiIfNeededAsync(ServerStatus status)
-        {
-            var endpoint = _appConfig?.StableDiffusionEndpoint ?? status.Endpoint ?? "http://localhost:8188";
-            status.Endpoint = endpoint;
-
-            if (await IsComfyUiHealthyAsync(endpoint).ConfigureAwait(false))
-            {
-                UpdateServerStatus(status, true, "ComfyUI");
-                return;
-            }
-
-            var candidates = new List<string>
-            {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "ComfyUI", "ComfyUI.exe"),
-                @"C:\StabilityMatrix\Data\Packages\ComfyUI\main.py",
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "ComfyUI", "main.py"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ComfyUI", "main.py")
-            };
-
-            foreach (var candidate in candidates)
-            {
-                try
-                {
-                    if (!File.Exists(candidate))
-                        continue;
-
-                    Process? process = null;
-                    if (candidate.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                    {
-                        process = Process.Start(new ProcessStartInfo
-                        {
-                            FileName = candidate,
-                            WorkingDirectory = Path.GetDirectoryName(candidate) ?? _rootDirectory,
-                            UseShellExecute = true
-                        });
-                    }
-                    else
-                    {
-                        var workingDir = Path.GetDirectoryName(candidate) ?? _rootDirectory;
-                        process = Process.Start(new ProcessStartInfo
-                        {
-                            FileName = "python",
-                            Arguments = $"\"{candidate}\" --port 8188",
-                            WorkingDirectory = workingDir,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        });
-                    }
-
-                    if (process != null)
-                    {
-                        await Task.Delay(3000).ConfigureAwait(false);
-                        if (await IsComfyUiHealthyAsync(endpoint).ConfigureAwait(false))
-                        {
-                            UpdateServerStatus(status, true, "ComfyUI");
-                            return;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Failed to start ComfyUI from {candidate}: {ex.Message}");
-                }
-            }
-
-            UpdateServerStatus(status, false, "ComfyUI");
-        }
-
         private async Task<bool> IsTtsHealthyAsync(string endpoint)
         {
             if (string.IsNullOrWhiteSpace(endpoint))
@@ -1284,24 +1199,6 @@ namespace HouseVictoria.Services.SystemMonitor
                     return true;
 
                 response = await _httpClient.GetAsync($"{baseUrl}/", linked.Token).ConfigureAwait(false);
-                return response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private async Task<bool> IsComfyUiHealthyAsync(string endpoint)
-        {
-            if (string.IsNullOrWhiteSpace(endpoint))
-                return false;
-
-            try
-            {
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
-                var response = await _httpClient.GetAsync($"{endpoint.TrimEnd('/')}/system_stats", linked.Token).ConfigureAwait(false);
                 return response.IsSuccessStatusCode;
             }
             catch
@@ -1534,75 +1431,6 @@ namespace HouseVictoria.Services.SystemMonitor
             }
         }
 
-        private async Task CheckComfyUIServerAsync(ServerStatus status)
-        {
-            // Circuit breaker: Skip check if server has failed recently
-            if (ShouldSkipCheck("ComfyUI", status.Endpoint))
-            {
-                UpdateServerStatus(status, false, "ComfyUI");
-                return;
-            }
-
-            try
-            {
-                if (string.IsNullOrWhiteSpace(status.Endpoint))
-                    return;
-
-                // ComfyUI uses /system_stats endpoint for health checks
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
-                
-                try
-                {
-                    // Use Task.Run to ensure exception is observed even if it happens in background
-                    var response = await Task.Run(async () => 
-                        await _httpClient.GetAsync($"{status.Endpoint}/system_stats", linked.Token).ConfigureAwait(false),
-                        linked.Token).ConfigureAwait(false);
-                    
-                    var isRunning = response.IsSuccessStatusCode;
-                    UpdateServerStatus(status, isRunning, "ComfyUI");
-                    
-                    // Reset failure count on success
-                    if (isRunning)
-                    {
-                        _consecutiveFailures["ComfyUI"] = 0;
-                    }
-                }
-                catch (TaskCanceledException) when (timeoutCts.Token.IsCancellationRequested || _cts.Token.IsCancellationRequested)
-                {
-                    // Expected timeout or cancellation
-                    RecordFailure("ComfyUI");
-                    UpdateServerStatus(status, false, "ComfyUI");
-                }
-                catch (System.Net.Http.HttpRequestException)
-                {
-                    // Connection failed
-                    RecordFailure("ComfyUI");
-                    UpdateServerStatus(status, false, "ComfyUI");
-                }
-                catch (System.Net.Sockets.SocketException)
-                {
-                    // Socket error
-                    RecordFailure("ComfyUI");
-                    UpdateServerStatus(status, false, "ComfyUI");
-                }
-                catch (Exception ex)
-                {
-                    // Log and mark as offline
-                    RecordFailure("ComfyUI");
-                    System.Diagnostics.Debug.WriteLine($"ComfyUI check error: {ex.GetType().Name} - {ex.Message}");
-                    UpdateServerStatus(status, false, "ComfyUI");
-                }
-            }
-            catch (Exception ex)
-            {
-                // Outer catch for any unexpected errors
-                RecordFailure("ComfyUI");
-                System.Diagnostics.Debug.WriteLine($"ComfyUI health check outer error: {ex.GetType().Name} - {ex.Message}");
-                UpdateServerStatus(status, false, "ComfyUI");
-            }
-        }
-
         private void UpdateServerStatus(ServerStatus status, bool isRunning, string serverName)
         {
             if (status.IsRunning == isRunning)
@@ -1684,15 +1512,32 @@ namespace HouseVictoria.Services.SystemMonitor
             }
             catch { }
 
+            // Stop async services before disposing
             try
             {
-                _localTtsHost?.Dispose();
+                if (_localTtsHost != null)
+                {
+                    try
+                    {
+                        _localTtsHost.StopAsync().GetAwaiter().GetResult();
+                    }
+                    catch { }
+                    _localTtsHost.Dispose();
+                }
             }
             catch { }
 
             try
             {
-                _covasBridge?.Dispose();
+                if (_covasBridge != null)
+                {
+                    try
+                    {
+                        _covasBridge.StopAsync().GetAwaiter().GetResult();
+                    }
+                    catch { }
+                    _covasBridge.Dispose();
+                }
             }
             catch { }
             

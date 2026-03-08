@@ -1,17 +1,20 @@
 @echo off
-REM Start House Victoria services (Ollama, MCP Server, ComfyUI, App)
-REM Run install.bat first if you haven't set up the project yet.
-
 setlocal enabledelayedexpansion
+REM House Victoria - start all services and the app. Run install.bat first if not done.
+
 set "SCRIPT_DIR=%~dp0"
-set "MCP_PATH=%SCRIPT_DIR%MCPServer"
+set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+set "MCP_PATH=%SCRIPT_DIR%\MCPServer"
+set "PIPER_DATA=%SCRIPT_DIR%\Media\PiperVoices"
+set "PIPER_MODEL=en_US-amy-medium"
+set "STT_PORT=8000"
 cd /d "%SCRIPT_DIR%"
 
 echo.
-echo === Starting House Victoria Services ===
+echo === House Victoria - Start ===
 echo.
 
-REM Start Ollama
+REM --- Ollama ---
 echo Starting Ollama...
 where ollama >nul 2>&1
 if not errorlevel 1 (
@@ -23,84 +26,148 @@ if not errorlevel 1 (
 )
 echo.
 
-REM Start MCP Server
+REM --- MCP Server (port 8080) ---
 echo Starting MCP Server...
-if exist "%MCP_PATH%\.venv\Scripts\python.exe" (
-    if not exist "%MCP_PATH%\logs" mkdir "%MCP_PATH%\logs"
-    start "MCP Server" /B cmd /c "cd /d "%MCP_PATH%" && .venv\Scripts\python.exe http_server.py >> logs\http_server.log 2>&1"
-    timeout /t 3 /nobreak >nul
-    echo [OK] MCP Server - http://localhost:8080
-    echo      Logs: MCPServer\logs\http_server.log
+if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
+    echo [WARN] MCP venv missing. Run install.bat first.
 ) else (
-    echo [WARN] MCP Server venv not found. Run install.bat first, or: cd MCPServer ^&^& .venv\Scripts\python.exe http_server.py
-)
-echo.
-
-REM Start Piper TTS (voice synthesis for AI contacts during calls)
-set "PIPER_DATA=%SCRIPT_DIR%Media\PiperVoices"
-set "PIPER_MODEL=en_US-amy-medium"
-if not exist "%SCRIPT_DIR%Media" mkdir "%SCRIPT_DIR%Media"
-if not exist "%PIPER_DATA%" mkdir "%PIPER_DATA%"
-if exist "%SCRIPT_DIR%.venv\Scripts\python.exe" (
-    start "Piper TTS" /B cmd /c "cd /d "%SCRIPT_DIR%" && .venv\Scripts\python.exe -m piper --model %PIPER_MODEL% --port 5000 --data-dir "%PIPER_DATA%" >> Media\piper.log 2>&1"
-    timeout /t 2 /nobreak >nul
-    echo [OK] Piper TTS - http://localhost:5000 (voice: %PIPER_MODEL%)
-) else if exist "%MCP_PATH%\.venv\Scripts\python.exe" (
-    start "Piper TTS" /B cmd /c "cd /d "%SCRIPT_DIR%" && "%MCP_PATH%\.venv\Scripts\python.exe" -m piper --model %PIPER_MODEL% --port 5000 --data-dir "%PIPER_DATA%" >> Media\piper.log 2>&1"
-    timeout /t 2 /nobreak >nul
-    echo [OK] Piper TTS - http://localhost:5000 (voice: %PIPER_MODEL%)
-) else (
-    echo [INFO] Piper TTS: No Python venv found. Run install.bat or: python -m piper --model %PIPER_MODEL% --port 5000 --data-dir "%PIPER_DATA%"
-)
-echo.
-
-REM Start ComfyUI if available (exe or directory with main.py)
-set "COMFYUI_FOUND=0"
-set "COMFYUI_PATH="
-set "COMFYUI_IS_EXE=0"
-if exist "C:\Users\kurtw\AppData\Local\Programs\ComfyUI\ComfyUI.exe" (
-    set "COMFYUI_PATH=C:\Users\kurtw\AppData\Local\Programs\ComfyUI\ComfyUI.exe"
-    set "COMFYUI_FOUND=1"
-    set "COMFYUI_IS_EXE=1"
-) else if exist "C:\StabilityMatrix\Data\Packages\ComfyUI\main.py" (
-    set "COMFYUI_PATH=C:\StabilityMatrix\Data\Packages\ComfyUI"
-    set "COMFYUI_FOUND=1"
-) else if exist "%USERPROFILE%\ComfyUI\main.py" (
-    set "COMFYUI_PATH=%USERPROFILE%\ComfyUI"
-    set "COMFYUI_FOUND=1"
-) else if exist "%LOCALAPPDATA%\ComfyUI\main.py" (
-    set "COMFYUI_PATH=%LOCALAPPDATA%\ComfyUI"
-    set "COMFYUI_FOUND=1"
-)
-if !COMFYUI_FOUND! == 1 (
-    if !COMFYUI_IS_EXE! == 1 (
-        start "" "!COMFYUI_PATH!"
+    netstat -an | findstr /C:":8080" | findstr /C:"LISTENING" >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] MCP Server already on port 8080. Skipping.
     ) else (
-        pushd "!COMFYUI_PATH!"
-        start "" python main.py --port 8188
-        popd
+        if not exist "%MCP_PATH%\logs" mkdir "%MCP_PATH%\logs"
+        start "MCP Server" /B cmd /c "cd /d \"%MCP_PATH%\" && .venv\Scripts\python.exe http_server.py >> logs\http_server.log 2>&1"
+        timeout /t 2 /nobreak >nul
+        echo [OK] MCP Server - http://localhost:8080
     )
-    timeout /t 2 /nobreak >nul
-    echo [OK] ComfyUI - http://localhost:8188
-) else (
-    echo [INFO] ComfyUI not found. Skipping.
 )
 echo.
 
-REM Start WPF Application
-echo Starting House Victoria Application...
-set "APP_PATH=%SCRIPT_DIR%HouseVictoria.App\bin\Release\net8.0-windows\HouseVictoria.App.exe"
-if not exist "%APP_PATH%" set "APP_PATH=%SCRIPT_DIR%HouseVictoria.App\bin\Debug\net8.0-windows\HouseVictoria.App.exe"
-if exist "%APP_PATH%" (
-    start "" "%APP_PATH%"
-    echo [OK] House Victoria Application started.
+REM --- Piper TTS (port 5000) ---
+echo Starting Piper TTS...
+if not exist "%SCRIPT_DIR%\PiperServer\piper_server.py" (
+    echo [INFO] PiperServer\piper_server.py not found. Skipping.
+) else if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
+    echo [INFO] MCP venv missing. Run install.bat. Skipping Piper.
 ) else (
-    echo [WARN] App executable not found. Build the solution first (install.bat or dotnet build).
+    netstat -an | findstr /C:":5000" | findstr /C:"LISTENING" >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] Piper TTS already on port 5000. Skipping.
+    ) else (
+        if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+        start "Piper TTS" /B cmd /c "cd /d \"%SCRIPT_DIR%\" && \"%MCP_PATH%\.venv\Scripts\python.exe\" PiperServer\piper_server.py --model %PIPER_MODEL% --port 5000 --data-dir \"%PIPER_DATA%\" >> Media\piper.log 2>&1"
+        timeout /t 2 /nobreak >nul
+        echo [OK] Piper TTS - http://localhost:5000
+    )
 )
 echo.
-echo === House Victoria Services ===
-echo   Ollama: http://localhost:11434  ^| MCP Server: http://localhost:8080
-echo   Piper TTS: http://localhost:5000  ^| ComfyUI: http://localhost:8188 (if found)
-echo   App: House Victoria (WPF). MCP must be running for the app to connect.
+
+REM --- STT (port 8000) ---
+echo Starting STT Server...
+if not exist "%SCRIPT_DIR%\STTServer\app.py" (
+    echo [INFO] STTServer\app.py not found. Skipping.
+) else if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
+    echo [INFO] MCP venv missing. Run install.bat. Skipping STT.
+) else (
+    netstat -an | findstr /C:":%STT_PORT%" | findstr /C:"LISTENING" >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] STT already on port %STT_PORT%. Skipping.
+    ) else (
+        if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+        start "STT Server" /B cmd /c "cd /d \"%SCRIPT_DIR%\" && \"%MCP_PATH%\.venv\Scripts\python.exe\" -m uvicorn STTServer.app:app --host 127.0.0.1 --port %STT_PORT% >> Media\stt.log 2>&1"
+        timeout /t 2 /nobreak >nul
+        echo [OK] STT - http://localhost:%STT_PORT%/transcribe
+    )
+)
 echo.
-pause
+
+REM --- Stability Matrix (optional: set STABILITY_MATRIX_PATH to exe path) ---
+if defined STABILITY_MATRIX_PATH (
+    echo Starting Stability Matrix...
+    if exist "%STABILITY_MATRIX_PATH%" (
+        start "Stability Matrix" "" "%STABILITY_MATRIX_PATH%"
+        timeout /t 2 /nobreak >nul
+        echo [OK] Stability Matrix started.
+    ) else (
+        echo [WARN] STABILITY_MATRIX_PATH not found: %STABILITY_MATRIX_PATH%
+    )
+) else (
+    echo [INFO] STABILITY_MATRIX_PATH not set. Start from Settings if needed.
+)
+echo.
+
+REM --- ComfyUI (portable path from Settings, or auto-discover exe/main.py) ---
+set "COMFYUI_STARTED=0"
+if defined COMFYUI_PORTABLE_PATH (
+    echo Starting ComfyUI...
+    if exist "%COMFYUI_PORTABLE_PATH%\run_nvidia_gpu.bat" (
+        start "ComfyUI" /B cmd /c "cd /d \"%COMFYUI_PORTABLE_PATH%\" && run_nvidia_gpu.bat"
+        timeout /t 2 /nobreak >nul
+        echo [OK] ComfyUI starting - http://127.0.0.1:8188
+        set "COMFYUI_STARTED=1"
+    ) else if exist "%COMFYUI_PORTABLE_PATH%\run_cpu.bat" (
+        start "ComfyUI" /B cmd /c "cd /d \"%COMFYUI_PORTABLE_PATH%\" && run_cpu.bat"
+        timeout /t 2 /nobreak >nul
+        echo [OK] ComfyUI ^(CPU^) starting - http://127.0.0.1:8188
+        set "COMFYUI_STARTED=1"
+    ) else (
+        echo [WARN] run_nvidia_gpu.bat / run_cpu.bat not found in %COMFYUI_PORTABLE_PATH%
+    )
+)
+if "!COMFYUI_STARTED!" == "0" (
+    set "COMFYUI_FOUND=0"
+    set "COMFYUI_PATH="
+    set "COMFYUI_IS_EXE=0"
+    if exist "C:\Users\kurtw\AppData\Local\Programs\ComfyUI\ComfyUI.exe" (
+        set "COMFYUI_PATH=C:\Users\kurtw\AppData\Local\Programs\ComfyUI\ComfyUI.exe"
+        set "COMFYUI_FOUND=1"
+        set "COMFYUI_IS_EXE=1"
+    ) else if exist "C:\StabilityMatrix\Data\Packages\ComfyUI\main.py" (
+        set "COMFYUI_PATH=C:\StabilityMatrix\Data\Packages\ComfyUI"
+        set "COMFYUI_FOUND=1"
+    ) else if exist "%USERPROFILE%\ComfyUI\main.py" (
+        set "COMFYUI_PATH=%USERPROFILE%\ComfyUI"
+        set "COMFYUI_FOUND=1"
+    ) else if exist "%LOCALAPPDATA%\ComfyUI\main.py" (
+        set "COMFYUI_PATH=%LOCALAPPDATA%\ComfyUI"
+        set "COMFYUI_FOUND=1"
+    )
+    if !COMFYUI_FOUND! == 1 (
+        echo Starting ComfyUI...
+        if !COMFYUI_IS_EXE! == 1 (
+            start "" "!COMFYUI_PATH!"
+        ) else (
+            pushd "!COMFYUI_PATH!"
+            start "ComfyUI" /B cmd /c "python main.py --port 8188"
+            popd
+        )
+        timeout /t 2 /nobreak >nul
+        echo [OK] ComfyUI - http://localhost:8188
+        set "COMFYUI_STARTED=1"
+    ) else (
+        echo [INFO] ComfyUI not found. Set COMFYUI_PORTABLE_PATH in Settings or install to default locations.
+    )
+)
+echo.
+
+REM --- House Victoria App ---
+echo Starting House Victoria App...
+set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Release\net8.0-windows\HouseVictoria.App.exe"
+if not exist "%APP_EXE%" set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Debug\net8.0-windows\HouseVictoria.App.exe"
+if exist "%APP_EXE%" (
+    start "" "%APP_EXE%"
+    echo [OK] House Victoria started.
+) else (
+    echo [INFO] No built exe. Starting with dotnet run...
+    start "House Victoria" cmd /k "cd /d \"%SCRIPT_DIR%\" && dotnet run --project HouseVictoria.App\HouseVictoria.App.csproj"
+    timeout /t 3 /nobreak >nul
+    echo [OK] House Victoria ^(dotnet run^) started.
+)
+echo.
+
+echo === Services ===
+echo   Ollama: http://localhost:11434  ^| MCP: http://localhost:8080
+echo   Piper TTS: http://localhost:5000  ^| STT: http://localhost:%STT_PORT%/transcribe
+echo   ComfyUI: http://localhost:8188 (if started)
+echo   App: House Victoria
+echo.

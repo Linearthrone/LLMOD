@@ -26,7 +26,7 @@ I've successfully integrated MetaTrader 4 with House Victoria, enabling the AI t
    - Full implementation of ITradingService
    - File-based communication with MT4
    - Historical data reading (.hst and CSV formats)
-   - Backtest engine with moving average crossover example
+   - Backtest engine with a **placeholder** strategy (simple moving average crossover in C# for demo). **Real strategy logic should live in the EA** (e.g. `HouseVictoriaBridge.mq4`); the C# backtest is for testing the pipeline only.
    - Strategy generation (creates MQL4 EA files)
 
 ### MT4 Bridge

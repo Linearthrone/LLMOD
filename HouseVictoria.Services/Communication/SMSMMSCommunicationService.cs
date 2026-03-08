@@ -477,7 +477,7 @@ namespace HouseVictoria.Services.Communication
                             Timestamp = message.Timestamp
                         });
                         
-                        // If user asked for image generation (ComfyUI/Stable Diffusion), generate and save to File Retrieval (no link)
+                        // If user asked for image generation, generate and save to File Retrieval (no link) via ComfyUI/image server
                         if (IsImageGenerationRequest(message.Content) && _fileGenerationService != null)
                         {
                             var (imageSuccess, imageResponseMessage) = await ProcessImageGenerationRequestAsync(aiContact, message.Content, message.ConversationId);
@@ -766,7 +766,7 @@ namespace HouseVictoria.Services.Communication
         }
 
         /// <summary>
-        /// Detects if the user is asking for image generation (ComfyUI/Stable Diffusion).
+        /// Detects if the user is asking for image generation.
         /// </summary>
         private static bool IsImageGenerationRequest(string message)
         {
@@ -781,7 +781,6 @@ namespace HouseVictoria.Services.Communication
                    m.Contains("make a picture", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("picture of", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("image of", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("comfyui", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("stable diffusion", StringComparison.OrdinalIgnoreCase) ||
                    System.Text.RegularExpressions.Regex.IsMatch(m, @"(generate|create|make)\s+(?:an?\s+)?(image|picture|photo)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
@@ -812,7 +811,7 @@ namespace HouseVictoria.Services.Communication
         }
 
         /// <summary>
-        /// Runs ComfyUI/Stable Diffusion image generation and saves the image to File Retrieval (no link).
+        /// Runs ComfyUI (or compatible image server) image generation and saves the image to File Retrieval (no link).
         /// Uses the AI to turn the user's short request into a detailed, high-quality prompt first.
         /// Returns (true, successMessage) or (false, errorMessage).
         /// </summary>
@@ -831,7 +830,7 @@ namespace HouseVictoria.Services.Communication
                 using var ms = new MemoryStream();
                 await imageStream.CopyToAsync(ms);
                 var imageBytes = ms.ToArray();
-                var fileName = $"comfyui_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                var fileName = $"img_{DateTime.Now:yyyyMMdd_HHmmss}.png";
                 var filePath = await _fileGenerationService.CreateFileAsync(fileName, imageBytes, null);
                 var responseMessage = $"✅ Image saved to File Retrieval.\n\n📄 Filename: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval\n\nOpen the File Retrieval button (📥) in the top tray to view it.";
                 System.Diagnostics.Debug.WriteLine($"ComfyUI image saved to File Retrieval: {filePath}");
@@ -841,11 +840,10 @@ namespace HouseVictoria.Services.Communication
             {
                 System.Diagnostics.Debug.WriteLine($"ComfyUI image generation failed: {ex.Message}\n{ex.StackTrace}");
                 var msg = ex.Message;
-                var hint = "Start ComfyUI (e.g. http://localhost:8188) or check Settings → Stable Diffusion / ComfyUI.";
-                var isComfyRelated = msg.Contains("ComfyUI", StringComparison.OrdinalIgnoreCase) || msg.Contains("8188", StringComparison.OrdinalIgnoreCase)
-                    || ex is System.Net.Http.HttpRequestException
+                var hint = "Start ComfyUI (e.g. http://localhost:8188) or check Settings → Image Endpoint.";
+                var isConnectionRelated = ex is System.Net.Http.HttpRequestException
                     || msg.Contains("connection", StringComparison.OrdinalIgnoreCase) || msg.Contains("refused", StringComparison.OrdinalIgnoreCase) || msg.Contains("timed out", StringComparison.OrdinalIgnoreCase);
-                if (isComfyRelated)
+                if (isConnectionRelated)
                     return (false, $"❌ Image generation failed: {msg}\n\n{hint}");
                 return (false, $"❌ Image generation failed: {msg}");
             }
@@ -960,10 +958,55 @@ namespace HouseVictoria.Services.Communication
                 });
 
                 System.Diagnostics.Debug.WriteLine($"Call started for conversation {conversation.Id}");
+
+                // Trigger AI voice greeting when call connects (fire-and-forget)
+                _ = TriggerCallGreetingAsync(conversation.Id, contactId);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error starting call: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Sends a one-off prompt to the AI to greet the user when the call connects, then raises MessageReceived so TTS speaks it.
+        /// </summary>
+        private async Task TriggerCallGreetingAsync(string conversationId, string contactId)
+        {
+            if (_aiService == null) return;
+            var contact = _contacts.FirstOrDefault(c => c.Id == contactId);
+            if (contact == null || contact.Type != ContactType.AI) return;
+            if (!_aiContacts.TryGetValue(contactId, out var aiContact)) return;
+
+            try
+            {
+                var greetingPrompt = "The user has just joined the call. Greet them in one short, natural sentence.";
+                var greetingContext = new List<ChatMessage>(); // Do not use main chat context so greeting is one-off
+                var response = await _aiService.SendMessageAsync(aiContact, greetingPrompt, greetingContext);
+                if (string.IsNullOrWhiteSpace(response)) return;
+
+                var greetingMsg = new ConversationMessage
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ConversationId = conversationId,
+                    Content = response,
+                    Direction = MessageDirection.Incoming,
+                    Type = MessageType.Text,
+                    Timestamp = DateTime.Now
+                };
+                if (!_messages.ContainsKey(conversationId))
+                    _messages[conversationId] = new List<ConversationMessage>();
+                if (!_messages[conversationId].Any(m => m.Id == greetingMsg.Id))
+                    _messages[conversationId].Add(greetingMsg);
+                var conv = _conversations.FirstOrDefault(c => c.Id == conversationId);
+                if (conv != null)
+                    conv.LastMessageAt = greetingMsg.Timestamp;
+                MessageReceived?.Invoke(this, new MessageReceivedEventArgs { Message = greetingMsg, ConversationId = conversationId });
+                System.Diagnostics.Debug.WriteLine($"Call greeting sent for conversation {conversationId}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error triggering call greeting: {ex.Message}");
             }
         }
 

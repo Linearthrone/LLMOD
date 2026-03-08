@@ -10,6 +10,7 @@ using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Utils;
 using HouseVictoria.Core.Models;
 using System.Windows;
+using NAudio.Wave;
 
 namespace HouseVictoria.App.Screens.Windows
 {
@@ -27,6 +28,7 @@ namespace HouseVictoria.App.Screens.Windows
         private Contact? _selectedDialerContact = null;
         private CallState _currentCallState = CallState.None;
         private string? _loadingConversationId = null; // Track which conversation is currently loading to prevent concurrent loads
+        private string? _activeCallConversationId = null; // Conversation id for the active call (dialer or conversation) for TTS
 
         public ObservableCollection<ConversationViewModel> Conversations { get; }
         public ObservableCollection<ConversationMessage> Messages { get; }
@@ -143,9 +145,11 @@ namespace HouseVictoria.App.Screens.Windows
 
         // Audio recording state
         private bool _isRecordingAudio = false;
-        private string? _recordedAudioPath;
         private System.Threading.Timer? _recordingTimer;
         private TimeSpan _recordingDuration = TimeSpan.Zero;
+        private WaveInEvent? _waveIn;
+        private MemoryStream? _recordStream;
+        private WaveFileWriter? _waveWriter;
 
         public bool IsRecordingAudio
         {
@@ -160,6 +164,10 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
         public string AudioRecordingTooltip => _isRecordingAudio ? "Stop recording" : "Start voice recording";
+
+        public string RecordingDurationText => _recordingDuration.TotalMinutes >= 1
+            ? $"{(int)_recordingDuration.TotalMinutes}:{_recordingDuration.Seconds:D2}"
+            : _recordingDuration.Seconds.ToString();
 
         public Conversation? SelectedConversation
         {
@@ -967,7 +975,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 await _communicationService.StartVideoCallAsync(_selectedDialerContact.Id);
-                OpenVideoCallWindow(_selectedDialerContact, null);
+                OpenVideoCallWindow(_selectedDialerContact, null, isVoiceCall: true);
                 
                 // Update call state
                 OnPropertyChanged(nameof(IsCallActive));
@@ -1016,7 +1024,7 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
-        private void OpenVideoCallWindow(Contact contact, string? conversationId)
+        private void OpenVideoCallWindow(Contact contact, string? conversationId, bool isVoiceCall = false)
         {
             try
             {
@@ -1027,7 +1035,8 @@ namespace HouseVictoria.App.Screens.Windows
                     {
                         ContactId = contact.Id,
                         ContactName = contact.Name,
-                        ConversationId = conversationId
+                        ConversationId = conversationId,
+                        IsVoiceCall = isVoiceCall
                     }
                 });
             }
@@ -1067,15 +1076,15 @@ namespace HouseVictoria.App.Screens.Windows
                     OnPropertyChanged(nameof(CanEndDialerCall));
                     System.Windows.Input.CommandManager.InvalidateRequerySuggested();
 
-                    // If call is connected, convert new incoming messages to speech
-                    if (e.State == CallState.Connected && _selectedConversation != null)
+                    // If call is connected, subscribe to messages for TTS (works for both conversation and dialer calls)
+                    if (e.State == CallState.Connected)
                     {
-                        // Subscribe to messages during call for TTS
+                        _activeCallConversationId = e.ConversationId;
                         _communicationService.MessageReceived += HandleMessageDuringCall;
                     }
                     else if (e.State == CallState.Ended)
                     {
-                        // Unsubscribe when call ends
+                        _activeCallConversationId = null;
                         _communicationService.MessageReceived -= HandleMessageDuringCall;
                     }
                 }
@@ -1086,7 +1095,7 @@ namespace HouseVictoria.App.Screens.Windows
         {
             try
             {
-                if (_selectedConversation == null || e.ConversationId != _selectedConversation.Id)
+                if (_activeCallConversationId == null || e.ConversationId != _activeCallConversationId)
                     return;
 
                 // Only speak incoming messages during active call
@@ -1134,105 +1143,56 @@ namespace HouseVictoria.App.Screens.Windows
         {
             try
             {
-                // Check if we have a selected conversation
+                // Require a selected conversation so we know where to send the transcription
                 if (_selectedConversation == null)
                 {
                     MessageBox.Show("Please select a conversation first.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
-                // For now, show a file picker to select an audio file
-                // In a full implementation, this would use NAudio or similar to record from microphone
-                var dialog = new Microsoft.Win32.OpenFileDialog
+                // Record from default microphone using NAudio
+                try
                 {
-                    Title = "Select Audio File to Transcribe",
-                    Filter = "Audio Files|*.wav;*.mp3;*.m4a;*.ogg;*.flac|All Files|*.*"
-                };
-
-                if (dialog.ShowDialog() == true && File.Exists(dialog.FileName))
-                {
+                    _recordStream = new MemoryStream();
+                    var waveFormat = new WaveFormat(16000, 16, 1); // 16 kHz mono 16-bit for speech
+                    _waveWriter = new WaveFileWriter(_recordStream, waveFormat);
+                    _waveIn = new WaveInEvent
+                    {
+                        WaveFormat = waveFormat,
+                        BufferMilliseconds = 100
+                    };
+                    _waveIn.DataAvailable += (s, e) =>
+                    {
+                        _waveWriter?.Write(e.Buffer, 0, e.BytesRecorded);
+                    };
+                    _waveIn.StartRecording();
                     IsRecordingAudio = true;
-                    _recordedAudioPath = dialog.FileName;
                     _recordingDuration = TimeSpan.Zero;
-
-                    // Transcribe the audio file
-                    try
+                    _recordingTimer = new System.Threading.Timer(_ =>
                     {
-                        var audioData = await File.ReadAllBytesAsync(_recordedAudioPath);
-                        
-                        // Get AI service for transcription
-                        var aiService = App.GetService<IAIService>();
-                        if (aiService != null)
+                        Application.Current?.Dispatcher.Invoke(() =>
                         {
-                            // Get the contact for this conversation
-                            var contact = Contacts.FirstOrDefault(c => c.Id == _selectedConversation.ContactId);
-                            if (contact != null && contact.Type == ContactType.AI)
-                            {
-                                // Use a temporary AI contact for transcription
-                                var tempContact = new AIContact
-                                {
-                                    Id = contact.Id,
-                                    Name = contact.Name,
-                                    ServerEndpoint = contact.Type == ContactType.AI ? contact.AvatarUrl ?? "http://localhost:11434" : "http://localhost:11434"
-                                };
-
-                                var transcription = await aiService.ProcessAudioAsync(tempContact, audioData);
-                                
-                                // Set the transcribed text as the message
-                                MessageText = transcription;
-                                
-                                MessageBox.Show($"Audio transcribed successfully!\n\nTranscription:\n{transcription}", 
-                                    "Transcription Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                            }
-                            else
-                            {
-                                // For non-AI contacts, still try to transcribe (might use a default AI)
-                                var defaultContact = new AIContact
-                                {
-                                    Id = "default",
-                                    Name = "Default",
-                                    ServerEndpoint = "http://localhost:11434"
-                                };
-                                
-                                var transcription = await aiService.ProcessAudioAsync(defaultContact, audioData);
-                                MessageText = transcription;
-                                
-                                MessageBox.Show($"Audio transcribed successfully!\n\nTranscription:\n{transcription}", 
-                                    "Transcription Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                            }
-                        }
-                        else
-                        {
-                            MessageBox.Show("AI service is not available for transcription.", "Service Unavailable", 
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error transcribing audio: {ex.Message}", "Transcription Error", 
-                            MessageBoxButton.OK, MessageBoxImage.Error);
-                        System.Diagnostics.Debug.WriteLine($"Error transcribing audio: {ex.Message}\n{ex.StackTrace}");
-                    }
-                    finally
-                    {
-                        IsRecordingAudio = false;
-                        _recordedAudioPath = null;
-                        _recordingDuration = TimeSpan.Zero;
-                    }
+                            _recordingDuration = _recordingDuration.Add(TimeSpan.FromSeconds(1));
+                            OnPropertyChanged(nameof(RecordingDurationText));
+                        });
+                    }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
                 }
-                else
+                catch (Exception ex)
                 {
-                    // User cancelled - don't start recording
+                    MessageBox.Show($"Could not start microphone: {ex.Message}. Ensure a microphone is connected and not in use.", "Recording Error",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    System.Diagnostics.Debug.WriteLine($"WaveIn start failed: {ex.Message}");
                     IsRecordingAudio = false;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error starting audio recording: {ex.Message}", "Error", 
+                MessageBox.Show($"Error starting audio recording: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Error starting audio recording: {ex.Message}\n{ex.StackTrace}");
                 IsRecordingAudio = false;
             }
+            await Task.CompletedTask;
         }
 
         private async Task StopAudioRecordingAsync()
@@ -1243,17 +1203,98 @@ namespace HouseVictoria.App.Screens.Windows
                 _recordingTimer?.Dispose();
                 _recordingTimer = null;
                 _recordingDuration = TimeSpan.Zero;
-                
-                // If we have a recorded file, transcribe it
-                if (!string.IsNullOrWhiteSpace(_recordedAudioPath) && File.Exists(_recordedAudioPath))
+                OnPropertyChanged(nameof(RecordingDurationText));
+
+                if (_waveIn != null)
                 {
-                    // Transcription is handled in StartAudioRecordingAsync after file selection
-                    // This method is called when stopping, but the actual work is done in Start
+                    _waveIn.StopRecording();
+                    _waveIn.Dispose();
+                    _waveIn = null;
+                }
+
+                byte[]? audioData = null;
+                if (_waveWriter != null && _recordStream != null)
+                {
+                    try
+                    {
+                        _waveWriter.Flush();
+                        _waveWriter.Dispose();
+                        _waveWriter = null;
+                        audioData = _recordStream.ToArray();
+                    }
+                    finally
+                    {
+                        _recordStream?.Dispose();
+                        _recordStream = null;
+                    }
+                }
+
+                if (audioData == null || audioData.Length == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("StopAudioRecording: no audio data captured");
+                    return;
+                }
+
+                var aiService = App.GetService<IAIService>();
+                if (aiService == null)
+                {
+                    MessageBox.Show("AI service is not available for transcription.", "Service Unavailable",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var contact = Contacts.FirstOrDefault(c => c.Id == _selectedConversation!.ContactId);
+                var tempContact = contact != null && contact.Type == ContactType.AI
+                    ? new AIContact
+                    {
+                        Id = contact.Id,
+                        Name = contact.Name,
+                        ServerEndpoint = contact.Type == ContactType.AI ? contact.AvatarUrl ?? "http://localhost:11434" : "http://localhost:11434"
+                    }
+                    : new AIContact { Id = "default", Name = "Default", ServerEndpoint = "http://localhost:11434" };
+
+                string transcription;
+                try
+                {
+                    transcription = await aiService.ProcessAudioAsync(tempContact, audioData);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Transcription failed: {ex.Message}\n\nEnsure the STT server is running (e.g. run start.bat) or set STT endpoint in Settings.",
+                        "Transcription Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Diagnostics.Debug.WriteLine($"ProcessAudioAsync failed: {ex.Message}\n{ex.StackTrace}");
+                    return;
+                }
+
+                var inCall = CurrentCallState == CallState.Connected && !string.IsNullOrWhiteSpace(_activeCallConversationId);
+                if (inCall && !string.IsNullOrWhiteSpace(transcription))
+                {
+                    var conversationId = _activeCallConversationId!;
+                    var message = new ConversationMessage
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ConversationId = conversationId,
+                        Content = transcription,
+                        Direction = MessageDirection.Outgoing,
+                        Type = MessageType.Text,
+                        Timestamp = DateTime.Now
+                    };
+                    if (_selectedConversation?.Id == conversationId && !Messages.Any(m => m.Id == message.Id))
+                        Messages.Add(message);
+                    MessageText = string.Empty;
+                    await _communicationService.SendMessageAsync(message);
+                }
+                else
+                {
+                    MessageText = transcription;
+                    if (!string.IsNullOrWhiteSpace(transcription))
+                        MessageBox.Show($"Transcription:\n\n{transcription}", "Transcription Complete", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error stopping audio recording: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error stopping audio recording: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"Error processing recording: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

@@ -12,9 +12,18 @@ namespace HouseVictoria.App.Screens.Windows
     {
         private string _systemPrompt = string.Empty;
         private string _piperVoiceId = string.Empty;
+        private string _contactName = "Unknown";
 
         public AIContact Contact { get; set; }
-        public string ContactName => Contact?.Name ?? "Unknown";
+        public string ContactName 
+        { 
+            get => _contactName;
+            private set
+            {
+                _contactName = value;
+                OnPropertyChanged();
+            }
+        }
         public ObservableCollection<string> AvailablePiperVoices { get; } = new();
         
         public string SystemPrompt
@@ -41,12 +50,25 @@ namespace HouseVictoria.App.Screens.Windows
 
         public EditSystemPromptDialog(AIContact contact)
         {
-            InitializeComponent();
-            Contact = contact ?? throw new ArgumentNullException(nameof(contact));
+            if (contact == null)
+                throw new ArgumentNullException(nameof(contact));
+            
+            Contact = contact;
+            ContactName = contact.Name ?? "Unknown";
             SystemPrompt = contact.SystemPrompt ?? string.Empty;
             PiperVoiceId = contact.PiperVoiceId ?? string.Empty;
+            
+            try
+            {
+                InitializeComponent();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error initializing EditSystemPromptDialog XAML: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
+            
             DataContext = this;
-            OnPropertyChanged(nameof(ContactName));
             Loaded += OnLoaded;
         }
 

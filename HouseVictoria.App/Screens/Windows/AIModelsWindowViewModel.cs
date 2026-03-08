@@ -686,17 +686,28 @@ namespace HouseVictoria.App.Screens.Windows
                 };
 
                 // Open edit dialog
-                var dialog = new EditSystemPromptDialog(contactCopy);
+                EditSystemPromptDialog? dialog = null;
                 try
                 {
+                    dialog = new EditSystemPromptDialog(contactCopy);
                     var app = System.Windows.Application.Current;
                     if (app != null)
                         dialog.Owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
                 }
-                catch
+                catch (Exception dialogEx)
                 {
-                    // Owner is optional; dialog can still show without it
+                    System.Diagnostics.Debug.WriteLine($"Error creating EditSystemPromptDialog: {dialogEx.Message}\n{dialogEx.StackTrace}");
+                    System.Windows.MessageBox.Show($"Error opening edit dialog: {dialogEx.Message}", "Error", 
+                        System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    return;
                 }
+                
+                if (dialog == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("EditSystemPromptDialog is null after creation");
+                    return;
+                }
+                
                 var result = dialog.ShowDialog();
 
                 // If user clicked Save, update the contact
@@ -1021,8 +1032,8 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 resultStatus = $"✗ Image generation is not available: {ex.Message}\n\n" +
                     "To enable image generation:\n" +
-                    "1. Install Stable Diffusion (Automatic1111 webui) at http://localhost:7860, OR\n" +
-                    "2. Set STABLE_DIFFUSION_ENDPOINT environment variable to your Stable Diffusion API endpoint";
+                    "1. Install and run ComfyUI (or another Automatic1111-compatible image server) at http://localhost:8188, OR\n" +
+                    "2. Set the image generation endpoint in Settings to your ComfyUI server URL.";
             }
             catch (Exception ex)
             {

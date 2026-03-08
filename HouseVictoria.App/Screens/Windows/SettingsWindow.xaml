@@ -145,10 +145,10 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- TTS Settings -->
+                    <!-- TTS / STT Settings -->
                     <Border Style="{StaticResource Card}" Margin="0,5">
                         <StackPanel>
-                            <TextBlock Text="🔊 Text-to-Speech" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🔊 Text-to-Speech &amp; Speech-to-Text" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -157,7 +157,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="TTS Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding TTSEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
                                         Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
@@ -183,15 +183,48 @@
                                        Command="{Binding TestTTSConnectionCommand}" 
                                        Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                             </Grid>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="STT Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding STTEndpoint, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding STTConnectionStatus}" 
+                                          Foreground="#00FF88" 
+                                          VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
+                                          Visibility="{Binding STTConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding STTConnectionStatus}" Value="✗ Failed">
+                                                    <Setter Property="Foreground" Value="#FF3366"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding STTConnectionStatus}" Value="Testing...">
+                                                    <Setter Property="Foreground" Value="#FFAA00"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Button Grid.Column="3" Content="Test" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding TestSTTConnectionCommand}" 
+                                       Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- Stable Diffusion / ComfyUI Settings -->
+                    <!-- Image Generation Endpoint (ComfyUI) -->
                     <Border Style="{StaticResource Card}" Margin="0,5">
                         <StackPanel>
-                            <TextBlock Text="🎨 Stable Diffusion / ComfyUI" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🎨 Image Generation (ComfyUI)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Configure Stable Diffusion or ComfyUI endpoint for image generation" FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
+                            <TextBlock Text="Configure the image generation endpoint (typically a local ComfyUI server)." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -224,8 +257,46 @@
                                        Command="{Binding TestStableDiffusionConnectionCommand}" 
                                        Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                             </Grid>
-                            <TextBlock Text="Default: http://localhost:8188 (ComfyUI) or http://localhost:7860 (Automatic1111)" 
+                            <TextBlock Text="Default: http://localhost:8188 (ComfyUI)" 
                                       FontSize="11" Foreground="#5A6A7A" Margin="0,5,0,0" FontStyle="Italic"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Stability Matrix & ComfyUI (image/video generation) -->
+                    <Border Style="{StaticResource Card}" Margin="0,5">
+                        <StackPanel>
+                            <TextBlock Text="🖼️ Stability Matrix &amp; ComfyUI" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <Separator Margin="0,5" Background="#1A2332"/>
+                            <TextBlock Text="Start Stability Matrix and ComfyUI portable for image and video generation. Set the endpoint above to http://localhost:8188 when using ComfyUI." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <Grid Margin="0,5">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Stability Matrix:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding StabilityMatrixPath, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <Button Grid.Row="0" Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding BrowseStabilityMatrixPathCommand}" Width="70" Margin="5,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="ComfyUI folder:" Foreground="#E0F7FF" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ComfyUIPortablePath, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,8,5,0"/>
+                                <Button Grid.Row="1" Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding BrowseComfyUIPortablePathCommand}" Width="70" Margin="5,8,5,0"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Start Stability Matrix" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding StartStabilityMatrixCommand}" Margin="0,0,10,0"/>
+                                <Button Content="Start ComfyUI" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding StartComfyUICommand}"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -36,6 +36,7 @@ namespace HouseVictoria.App.Screens.Trays
             };
             _updateTimer.Tick += UpdateTimer_Tick;
             _updateTimer.Start();
+
         }
 
         private void UpdateTimer_Tick(object? sender, EventArgs e)

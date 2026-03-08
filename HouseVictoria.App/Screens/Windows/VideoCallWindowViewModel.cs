@@ -17,13 +17,16 @@ namespace HouseVictoria.App.Screens.Windows
         private string _contactId = string.Empty;
         private string _contactName = "Unknown";
         private string? _conversationId;
+        private bool _isVoiceCall;
         private CallState _callState = CallState.None;
         private TimeSpan _callDuration = TimeSpan.Zero;
         private bool _isMuted;
         private bool _isVideoEnabled = true;
         private bool _isSpeakerEnabled = true;
 
-        public string TitleText => string.IsNullOrWhiteSpace(_contactName) ? "Video Call" : $"Video Call - {_contactName}";
+        public string TitleText => string.IsNullOrWhiteSpace(_contactName)
+            ? (_isVoiceCall ? "Voice Call" : "Video Call")
+            : (_isVoiceCall ? $"Voice Call - {_contactName}" : $"Video Call - {_contactName}");
         public string ContactName => _contactName;
 
         public string CallStatusText => _callState switch
@@ -50,7 +53,7 @@ namespace HouseVictoria.App.Screens.Windows
         };
 
         public string LocalPreviewStatusText => _isVideoEnabled
-            ? "Local preview (placeholder)"
+            ? "No video stream (camera not connected)"
             : "Camera off";
 
         public bool IsMuted
@@ -133,6 +136,7 @@ namespace HouseVictoria.App.Screens.Windows
             _contactId = context.ContactId ?? string.Empty;
             _contactName = context.ContactName ?? "Unknown";
             _conversationId = context.ConversationId;
+            _isVoiceCall = context.IsVoiceCall;
 
             OnPropertyChanged(nameof(TitleText));
             OnPropertyChanged(nameof(ContactName));

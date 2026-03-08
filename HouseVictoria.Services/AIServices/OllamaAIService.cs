@@ -155,7 +155,7 @@ namespace HouseVictoria.Services.AIServices
             }
         }
 
-        private const string EnhanceImagePromptSystemPrompt = "You are an expert at writing detailed, effective image generation prompts for ComfyUI and Stable Diffusion. " +
+        private const string EnhanceImagePromptSystemPrompt = "You are an expert at writing detailed, effective image generation prompts for ComfyUI and other diffusion-based image generators. " +
             "Given a short user request, reply with ONLY one detailed prompt—no explanations, no quotes, no preamble. " +
             "The prompt should: describe the subject clearly; add quality terms (e.g. highly detailed, sharp focus, professional); include style, lighting, and composition where helpful; " +
             "use comma-separated keywords typical of good diffusion prompts. Keep it one paragraph, under 300 words. Output nothing but the prompt.";
@@ -203,36 +203,15 @@ namespace HouseVictoria.Services.AIServices
         {
             try
             {
-                // Get image generation endpoint from AppConfig (preferred) or environment variable
+                // Get image generation endpoint from AppConfig (preferred) or environment variable.
+                // This is typically a local ComfyUI instance (e.g. http://localhost:8188) and may still
+                // reuse the legacy "StableDiffusionEndpoint" setting name for compatibility.
                 var imageEndpoint = _appConfig?.StableDiffusionEndpoint
                     ?? Environment.GetEnvironmentVariable("STABLE_DIFFUSION_ENDPOINT")
-                    ?? "http://localhost:8188"; // Default to ComfyUI port
+                    ?? "http://localhost:8188"; // Default to ComfyUI
 
-                // If endpoint is clearly ComfyUI (port 8188 or "comfyui" in URL), use only ComfyUI (no fallback to A1111)
-                var isComfyUIEndpoint = imageEndpoint.Contains("8188", StringComparison.OrdinalIgnoreCase)
-                    || imageEndpoint.Contains("comfyui", StringComparison.OrdinalIgnoreCase);
-
-                if (isComfyUIEndpoint)
-                {
-                    return await GenerateImageWithComfyUIAsync(imageEndpoint, prompt);
-                }
-
-                // Otherwise try ComfyUI first, then Automatic1111, then Ollama
-                try
-                {
-                    return await GenerateImageWithComfyUIAsync(imageEndpoint, prompt);
-                }
-                catch (HttpRequestException)
-                {
-                    try
-                    {
-                        return await GenerateImageWithStableDiffusionAsync(imageEndpoint, prompt);
-                    }
-                    catch (HttpRequestException)
-                    {
-                        return await GenerateImageWithOllamaAsync(contact, prompt);
-                    }
-                }
+                // Use the local image generation endpoint (ComfyUI / A1111-compatible) only.
+                return await GenerateImageWithComfyUIAsync(imageEndpoint, prompt);
             }
             catch (Exception ex)
             {
@@ -247,247 +226,7 @@ namespace HouseVictoria.Services.AIServices
 
         private async Task<Stream> GenerateImageWithComfyUIAsync(string endpoint, string prompt)
         {
-            // ComfyUI uses workflow-based API with routes: /system_stats, /object_info, /prompt, /history, /view
-            // (Standard ComfyUI does NOT use /api/v1/ prefix.)
-            try
-            {
-                var baseUrl = endpoint.TrimEnd('/');
-
-                // Check if ComfyUI is available via system_stats endpoint
-                var statsResponse = await _httpClient.GetAsync($"{baseUrl}/system_stats");
-                if (!statsResponse.IsSuccessStatusCode)
-                {
-                    throw new HttpRequestException($"ComfyUI API not available at {baseUrl}");
-                }
-
-                // Get checkpoint name from object_info (CheckpointLoaderSimple.input.required.ckpt_name)
-                string? modelName = await GetComfyUICheckpointFromObjectInfoAsync(baseUrl);
-                if (string.IsNullOrEmpty(modelName))
-                {
-                    // Fallback: try GET /models and /models/checkpoints (some ComfyUI versions)
-                    modelName = await GetComfyUICheckpointFromModelsEndpointAsync(baseUrl);
-                }
-                if (string.IsNullOrEmpty(modelName))
-                {
-                    throw new Exception("No checkpoint models found in ComfyUI. Add a .safetensors model to ComfyUI/models/checkpoints/.");
-                }
-
-                // Create a basic ComfyUI workflow
-                // This workflow structure connects nodes properly for text-to-image generation
-                var seed = new Random().Next(0, int.MaxValue);
-                var workflow = new Dictionary<string, object>
-                {
-                    ["1"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["ckpt_name"] = modelName
-                        },
-                        ["class_type"] = "CheckpointLoaderSimple"
-                    },
-                    ["2"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["text"] = prompt,
-                            ["clip"] = new object[] { "1", 1 }
-                        },
-                        ["class_type"] = "CLIPTextEncode"
-                    },
-                    ["3"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["text"] = "",
-                            ["clip"] = new object[] { "1", 1 }
-                        },
-                        ["class_type"] = "CLIPTextEncode"
-                    },
-                    ["4"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["width"] = 512,
-                            ["height"] = 512,
-                            ["batch_size"] = 1
-                        },
-                        ["class_type"] = "EmptyLatentImage"
-                    },
-                    ["5"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["seed"] = seed,
-                            ["steps"] = 20,
-                            ["cfg"] = 7.0,
-                            ["sampler_name"] = "euler",
-                            ["scheduler"] = "normal",
-                            ["denoise"] = 1.0,
-                            ["model"] = new object[] { "1", 0 },
-                            ["positive"] = new object[] { "2", 0 },
-                            ["negative"] = new object[] { "3", 0 },
-                            ["latent_image"] = new object[] { "4", 0 }
-                        },
-                        ["class_type"] = "KSampler"
-                    },
-                    ["6"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["samples"] = new object[] { "5", 0 },
-                            ["vae"] = new object[] { "1", 2 }
-                        },
-                        ["class_type"] = "VAEDecode"
-                    },
-                    ["7"] = new Dictionary<string, object>
-                    {
-                        ["inputs"] = new Dictionary<string, object>
-                        {
-                            ["filename_prefix"] = "ComfyUI",
-                            ["images"] = new object[] { "6", 0 }
-                        },
-                        ["class_type"] = "SaveImage"
-                    }
-                };
-
-                // Queue the prompt (ComfyUI uses POST /prompt, not /api/v1/prompt)
-                var promptRequest = new { prompt = workflow, client_id = Guid.NewGuid().ToString("N") };
-                var promptResponse = await _httpClient.PostAsJsonAsync($"{baseUrl}/prompt", promptRequest);
-                if (!promptResponse.IsSuccessStatusCode)
-                {
-                    var errorContent = await promptResponse.Content.ReadAsStringAsync();
-                    throw new HttpRequestException($"Failed to queue ComfyUI prompt: {promptResponse.StatusCode} - {errorContent}");
-                }
-
-                var promptResult = await promptResponse.Content.ReadFromJsonAsync<JsonElement>();
-                if (!promptResult.TryGetProperty("prompt_id", out var promptIdElement))
-                {
-                    if (promptResult.TryGetProperty("error", out var errEl))
-                        throw new Exception($"ComfyUI workflow error: {errEl.GetString() ?? "Unknown"}");
-                    throw new Exception("ComfyUI did not return a prompt ID");
-                }
-
-                var promptId = promptIdElement.GetString();
-                if (string.IsNullOrEmpty(promptId))
-                {
-                    throw new Exception("ComfyUI returned an empty prompt ID");
-                }
-
-                // Poll for completion (check history endpoint)
-                var maxAttempts = 120; // 2 minutes timeout for image generation
-                var attempt = 0;
-                while (attempt < maxAttempts)
-                {
-                    await Task.Delay(2000); // Wait 2 seconds between checks
-
-                    var historyResponse = await _httpClient.GetAsync($"{baseUrl}/history/{promptId}");
-                    if (historyResponse.IsSuccessStatusCode)
-                    {
-                        var history = await historyResponse.Content.ReadFromJsonAsync<JsonElement>();
-                        if (history.TryGetProperty(promptId, out var promptHistory))
-                        {
-                            // Check if output exists
-                            if (promptHistory.TryGetProperty("outputs", out var outputs))
-                            {
-                                // Get the image from outputs (usually node "7" for SaveImage)
-                                if (outputs.TryGetProperty("7", out var saveNode))
-                                {
-                                    if (saveNode.TryGetProperty("images", out var images))
-                                    {
-                                        foreach (var image in images.EnumerateArray())
-                                        {
-                                            var filename = image.GetProperty("filename").GetString();
-                                            var subfolder = image.GetProperty("subfolder").GetString() ?? "";
-                                            var imageType = image.GetProperty("type").GetString() ?? "output";
-
-                                            // Download the image
-                                            var imageUrl = $"{baseUrl}/view?filename={Uri.EscapeDataString(filename ?? "")}&subfolder={Uri.EscapeDataString(subfolder ?? "")}&type={Uri.EscapeDataString(imageType ?? "output")}";
-                                            var imageResponse = await _httpClient.GetAsync(imageUrl);
-                                            if (imageResponse.IsSuccessStatusCode)
-                                            {
-                                                var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
-                                                return new MemoryStream(imageBytes);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    attempt++;
-                }
-
-                throw new TimeoutException("ComfyUI image generation timed out after 2 minutes");
-            }
-            catch (HttpRequestException)
-            {
-                throw; // Re-throw to allow fallback to Automatic1111
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"ComfyUI image generation failed: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>Get first checkpoint name from ComfyUI object_info (CheckpointLoaderSimple.input.required.ckpt_name).</summary>
-        private static async Task<string?> GetComfyUICheckpointFromObjectInfoAsync(string baseUrl, HttpClient httpClient)
-        {
-            var response = await httpClient.GetAsync($"{baseUrl}/object_info");
-            if (!response.IsSuccessStatusCode) return null;
-            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-            if (!json.TryGetProperty("CheckpointLoaderSimple", out var node)) return null;
-            if (!node.TryGetProperty("input", out var input)) return null;
-            if (!input.TryGetProperty("required", out var required)) return null;
-            if (!required.TryGetProperty("ckpt_name", out var ckptNameEl)) return null;
-            // Format is [ ["model1.safetensors", "model2.safetensors"], "COMBO" ]
-            if (ckptNameEl.ValueKind != JsonValueKind.Array || ckptNameEl.GetArrayLength() == 0) return null;
-            var first = ckptNameEl.EnumerateArray().FirstOrDefault();
-            if (first.ValueKind == JsonValueKind.Array)
-            {
-                var names = first.EnumerateArray().FirstOrDefault();
-                return names.ValueKind == JsonValueKind.String ? names.GetString() : null;
-            }
-            if (first.ValueKind == JsonValueKind.String)
-                return first.GetString();
-            return null;
-        }
-
-        /// <summary>Get first checkpoint from GET /models then GET /models/checkpoints (ComfyUI standard routes).</summary>
-        private static async Task<string?> GetComfyUICheckpointFromModelsEndpointAsync(string baseUrl, HttpClient httpClient)
-        {
-            var modelsResponse = await httpClient.GetAsync($"{baseUrl}/models");
-            if (!modelsResponse.IsSuccessStatusCode) return null;
-            var modelsJson = await modelsResponse.Content.ReadFromJsonAsync<JsonElement>();
-            // Response can be { "checkpoints": [...], ... } or list of folder names
-            if (modelsJson.TryGetProperty("checkpoints", out var list) && list.ValueKind == JsonValueKind.Array && list.GetArrayLength() > 0)
-                return list.EnumerateArray().First().GetString();
-            // Try GET /models/checkpoints
-            var cpResponse = await httpClient.GetAsync($"{baseUrl}/models/checkpoints");
-            if (!cpResponse.IsSuccessStatusCode) return null;
-            var cpJson = await cpResponse.Content.ReadFromJsonAsync<JsonElement>();
-            if (cpJson.ValueKind == JsonValueKind.Array && cpJson.GetArrayLength() > 0)
-                return cpJson.EnumerateArray().First().GetString();
-            if (cpJson.TryGetProperty("models", out var arr) && arr.ValueKind == JsonValueKind.Array && arr.GetArrayLength() > 0)
-                return arr.EnumerateArray().First().GetString();
-            return null;
-        }
-
-        private async Task<string?> GetComfyUICheckpointFromObjectInfoAsync(string baseUrl)
-        {
-            try { return await GetComfyUICheckpointFromObjectInfoAsync(baseUrl, _httpClient); }
-            catch { return null; }
-        }
-
-        private async Task<string?> GetComfyUICheckpointFromModelsEndpointAsync(string baseUrl)
-        {
-            try { return await GetComfyUICheckpointFromModelsEndpointAsync(baseUrl, _httpClient); }
-            catch { return null; }
-        }
-
-        private async Task<Stream> GenerateImageWithStableDiffusionAsync(string endpoint, string prompt)
-        {
-            // Try local Stable Diffusion (Automatic1111 webui) first: /sdapi/v1/txt2img
+            // Try local ComfyUI (or Automatic1111-compatible) first: /sdapi/v1/txt2img
             try
             {
                 var requestBody = new
@@ -517,44 +256,10 @@ namespace HouseVictoria.Services.AIServices
             }
             catch
             {
-                // If local endpoint fails, try cloud API format
+                // If local endpoint fails, fall back to generic error handling below.
             }
 
-            // Try cloud Stable Diffusion API: /api/v3/text2img
-            var apiKey = Environment.GetEnvironmentVariable("STABLE_DIFFUSION_API_KEY") ?? "";
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                throw new Exception(
-                    "Stable Diffusion API key not found. " +
-                    "Set STABLE_DIFFUSION_API_KEY environment variable, or use local Stable Diffusion with endpoint: http://localhost:7860");
-            }
-
-            var cloudRequestBody = new
-            {
-                key = apiKey,
-                prompt = prompt,
-                negative_prompt = "",
-                width = 512,
-                height = 512,
-                samples = 1,
-                num_inference_steps = 20
-            };
-
-            var cloudResponse = await _httpClient.PostAsJsonAsync($"{endpoint}/api/v3/text2img", cloudRequestBody);
-            cloudResponse.EnsureSuccessStatusCode();
-
-            var cloudResult = await cloudResponse.Content.ReadFromJsonAsync<StableDiffusionCloudResponse>();
-            if (cloudResult?.Output != null && cloudResult.Output.Count > 0)
-            {
-                // Cloud API returns URLs, download the image
-                var imageUrl = cloudResult.Output[0];
-                var imageResponse = await _httpClient.GetAsync(imageUrl);
-                imageResponse.EnsureSuccessStatusCode();
-                var imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
-                return new MemoryStream(imageBytes);
-            }
-
-            throw new Exception("Stable Diffusion API returned no images");
+            throw new Exception("Image generation endpoint did not return any images. Verify that ComfyUI (or an Automatic1111-compatible server) is running and reachable.");
         }
 
         private async Task<Stream> GenerateImageWithOllamaAsync(AIContact contact, string prompt)
@@ -564,8 +269,8 @@ namespace HouseVictoria.Services.AIServices
             // For now, throw a helpful exception
             throw new NotImplementedException(
                 "Ollama doesn't support image generation directly. " +
-                "Please install and configure Stable Diffusion API, or use a dedicated image generation service. " +
-                "Set STABLE_DIFFUSION_ENDPOINT environment variable to point to your Stable Diffusion API server.");
+                "Please install and configure a local ComfyUI (or other Automatic1111-compatible) image generation server, " +
+                "and set the image endpoint accordingly in Settings.");
         }
 
         private class StableDiffusionResponse
@@ -658,10 +363,11 @@ namespace HouseVictoria.Services.AIServices
             try
             {
                 // Get Whisper/STT endpoint from AppConfig (preferred) or environment variable
-                var sttEndpoint = _appConfig?.TTSEndpoint?.Replace("/tts", "/stt").Replace("/speak", "/transcribe")
+                var sttEndpoint = (!string.IsNullOrEmpty(_appConfig?.STTEndpoint) ? _appConfig.STTEndpoint : null)
+                    ?? _appConfig?.TTSEndpoint?.Replace("/tts", "/stt").Replace("/speak", "/transcribe")
                     ?? Environment.GetEnvironmentVariable("WHISPER_ENDPOINT")
                     ?? Environment.GetEnvironmentVariable("STT_ENDPOINT")
-                    ?? "http://localhost:5000/transcribe"; // Default to TTS endpoint with /transcribe path
+                    ?? "http://localhost:8000/transcribe"; // Default: local faster-whisper STT server
                 
                 // Try local Whisper API first, then cloud services
                 try
@@ -715,24 +421,26 @@ namespace HouseVictoria.Services.AIServices
                 throw new HttpRequestException($"Whisper API returned {response.StatusCode}");
             }
 
-            var result = await response.Content.ReadFromJsonAsync<JsonElement>();
-            if (result.TryGetProperty("text", out var textElement))
-            {
-                return textElement.GetString() ?? string.Empty;
-            }
-            if (result.TryGetProperty("transcription", out var transcriptionElement))
-            {
-                return transcriptionElement.GetString() ?? string.Empty;
-            }
-
-            // If response is plain text, return it directly
+            // Read once so we can handle both JSON and plain-text responses
             var textResponse = await response.Content.ReadAsStringAsync();
-            if (!string.IsNullOrWhiteSpace(textResponse))
+            if (string.IsNullOrWhiteSpace(textResponse))
+                throw new Exception("Whisper API returned no transcription");
+
+            textResponse = textResponse.Trim();
+            try
             {
-                return textResponse.Trim();
+                var result = JsonDocument.Parse(textResponse).RootElement;
+                if (result.TryGetProperty("text", out var textElement))
+                    return textElement.GetString() ?? string.Empty;
+                if (result.TryGetProperty("transcription", out var transcriptionElement))
+                    return transcriptionElement.GetString() ?? string.Empty;
+            }
+            catch (JsonException)
+            {
+                // Not JSON; treat as plain text transcription
             }
 
-            throw new Exception("Whisper API returned no transcription");
+            return textResponse;
         }
 
         private async Task<string> ProcessAudioWithOpenAIAsync(string apiKey, byte[] audioData)

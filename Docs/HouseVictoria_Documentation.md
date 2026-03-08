@@ -32,23 +32,25 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 - AI Models & Personas window with persona creation, LLM parameter configuration, and model management
 - Settings window with configuration persistence
 - Global Log Directory window
-- Top Tray with drag-and-drop file processing
+- Top Tray with drag-and-drop file processing and Data Bank Management window
+- Data Bank Management window (CRUD for data banks and entries; opened from Top Tray)
+- Speech-to-text (audio processing) via `ProcessAudioAsync` (local STT endpoint and optional OpenAI Whisper)
 - System Monitor with real-time CPU/RAM metrics and WMI-based CPU temperature monitoring
 - Dark theme UI with proper selection background colors for all input controls
 - Projects Window with complete UI implementation (project list, filtering, sorting, CRUD operations, detail dialogs, roadblocks, artifacts, AI collaboration logs)
 
 **🚧 Partially Implemented:**
 
-- System Monitor (CPU temperature via WMI working; GPU metrics and fan speeds limited by WMI constraints)
+- System Monitor (CPU temperature via WMI working; GPU metrics and fan speeds limited by WMI constraints; NVIDIA NVML used when available)
 - Virtual Environment Service (scaffold exists, not connected)
+- Video call (UI and call state only; no WebRTC/media streams)
+- Image generation (Stable Diffusion endpoint supported; Ollama path throws – see Settings for STABLE_DIFFUSION_ENDPOINT)
 
 **❌ Not Implemented:**
 
-- Video call interface
-- Hardware monitoring library integration (GPU metrics via vendor SDKs)
-- Image generation service
-- Audio processing service
-- Unreal Engine WebSocket connection
+- Video call media (WebRTC or equivalent for real audio/video streams)
+- Hardware monitoring library integration for non-NVIDIA GPUs (AMD ADL SDK, etc.)
+- Unreal Engine WebSocket connection (service code exists, not validated with Unreal)
 
 ---
 
@@ -170,9 +172,9 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 
 - CPU Temperature: ✅ Implemented via WMI (MSAcpi_ThermalZoneTemperature)
 - CPU Fan Speed: ⚠️ Limited (WMI constraints, returns 0.0)
-- GPU Usage: ⚠️ Limited (WMI constraints, returns 0.0)
-- GPU Temperature: ⚠️ Limited (WMI constraints, returns 0.0)
-- GPU Fan Speed: ⚠️ Limited (WMI constraints, returns 0.0)
+- GPU Usage: ✅ When NVIDIA drivers present, read via NVML (`NvmlWrapper`); otherwise WMI fallback returns 0.0
+- GPU Temperature: ✅ When NVIDIA drivers present, read via NVML; otherwise 0.0
+- GPU Fan Speed: ✅ When NVIDIA drivers present, read via NVML (RPM or %); otherwise 0.0
 
 **Implementation Details:**
 
@@ -180,9 +182,8 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 - Updates every 500ms
 - Uses PerformanceCounter for CPU/RAM usage
 - Uses WMI (Windows Management Instrumentation) for CPU temperature via `System.Management` NuGet package
-- Note: Switched from OpenHardwareMonitorLib to WMI to avoid Windows Defender WinRing0 driver warnings
-- WMI provides limited sensor data but is more secure and doesn't require kernel drivers
-- For full GPU metrics, would need vendor-specific libraries (NVIDIA NVML, AMD ADL SDK) in future
+- **GPU:** `NvmlWrapper` (P/Invoke to `nvml.dll`) is used when NVIDIA drivers are installed; then GPU usage, temperature, and fan speed are reported. If NVML is not available (no NVIDIA GPU or drivers), values fall back to 0.0. No AMD/Intel GPU-specific SDK is integrated; for those, metrics remain 0.0.
+- Note: Switched from OpenHardwareMonitorLib to WMI to avoid Windows Defender WinRing0 driver warnings for CPU; WMI provides limited sensor data but is more secure.
 
 ---
 
@@ -719,32 +720,23 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 #### 4. Virtual Environment Integration
 
 **Module:** Virtual Environment  
-**Files:** `UnrealEnvironmentService.cs`  
-**Status:** Scaffold exists, WebSocket connection not tested
+**Files:** `UnrealEnvironmentService.cs`, `VirtualEnvironmentControlsWindow.xaml`  
+**Status:** Service implemented; not validated with Unreal Engine
 
-**Required:**
+**Implemented:**
 
-- WebSocket connection testing
-- Connection state management UI
-- Message protocol implementation
-- Error handling and reconnection logic
-- Scene information display
-- Avatar spawning controls
-- Pose/movement controls UI
+- WebSocket client to Unreal Engine endpoint (e.g. `ws://localhost:8888`)
+- Connection state management, reconnect with exponential backoff
+- Message send/receive (JSON), status events
+- Virtual Environment Controls window (opened from System Monitor Drawer)
+- Settings: Unreal Engine endpoint configuration, connection testing
 
-**Effort:** 3-5 days  
-**Dependencies:** Unreal Engine with WebSocket plugin
+**Not validated:**
 
-**Tasks:**
+- End-to-end test with a real Unreal Engine build (service code exists; protocol/endpoint may need to match Unreal WebSocket plugin)
+- Avatar spawning, pose/movement, scene info depend on Unreal-side implementation
 
-- Test WebSocket connection to Unreal Engine
-- Implement connection state management
-- Create connection UI in System Monitor
-- Implement message protocol
-- Add error handling and auto-reconnect
-- Create scene information display
-- Add avatar spawning UI
-- Create pose/movement control panel
+**To complete:** Run Unreal with a compatible WebSocket server; verify message format and endpoint; document “Tested with Unreal build X” or requirements.
 
 ---
 
@@ -761,28 +753,23 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 #### 6. Video Call Interface
 
 **Module:** SMS/MMS Window  
-**Files:** New window/dialog needed  
-**Status:** Not implemented
+**Files:** `VideoCallWindow.xaml`, `VideoCallWindowViewModel.cs`, `SMSMMSCommunicationService.cs`  
+**Status:** UI and call state only; real audio/video not implemented
 
-**Required:**
+**Implemented:**
 
-- Video call window
-- WebRTC or similar integration
-- Call controls (mute, video on/off, hang up)
-- Call state management
-- Integration with CommunicationService
+- Video call window with call controls (mute, video toggle, hang up)
+- Call state management (Outgoing → Connected → Ended) via `StartVideoCallAsync` / `EndVideoCallAsync`
+- Integration with CommunicationService and SMS/MMS window (call button)
+- AI voice greeting when call connects (TTS)
 
-**Effort:** 5-7 days  
-**Dependencies:** WebRTC library or video calling service
+**Not implemented:**
 
-**Tasks:**
+- WebRTC or equivalent for real audio/video streams
+- Local camera preview or remote video display
+- Actual media pipeline (camera, microphone, network)
 
-- Research and select video calling solution
-- Create video call window
-- Implement WebRTC or service integration
-- Add call controls UI
-- Integrate with CommunicationService
-- Test call functionality
+To add real A/V: integrate a WebRTC library or video calling service (e.g. WebRTC.NET, Twilio, Agora). Effort estimate: 5-7 days.
 
 ---
 
@@ -792,79 +779,47 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 
 **Module:** AI Services  
 **Files:** `OllamaAIService.cs`  
-**Status:** Throws NotImplementedException
+**Status:** Partial – Stable Diffusion supported; Ollama path not implemented
 
-**Required:**
+**Implemented:**
 
-- Image generation API integration
-- Options: Stable Diffusion API, Ollama vision models, or separate service
-- Image generation UI in AI Models window
-- Generated image storage
+- Image generation via Stable Diffusion API when `STABLE_DIFFUSION_ENDPOINT` is set (e.g. Automatic1111 at `http://localhost:7860`)
+- UI in AI Models window (Image Generation tab): prompt, generate button, preview, save
 
-**Effort:** 2-3 days  
-**Dependencies:** Image generation API or service
+**Not implemented:**
 
-**Tasks:**
+- Native Ollama image generation (Ollama does not provide a standard image API; `GenerateImageWithOllamaAsync` throws with instructions to use Stable Diffusion or set `STABLE_DIFFUSION_ENDPOINT`)
 
-- Select image generation solution
-- Implement image generation service
-- Add UI for image generation
-- Integrate with file generation service
-- Test image generation
+**Note:** To use image generation, configure a Stable Diffusion API endpoint (e.g. Automatic1111 at `http://localhost:7860`) or set the `STABLE_DIFFUSION_ENDPOINT` environment variable.
 
 ---
 
-#### 8. Audio Processing Service
+#### 8. Audio Processing Service ✅ COMPLETE
 
 **Module:** AI Services  
-**Files:** `OllamaAIService.cs`  
-**Status:** Throws NotImplementedException
+**Files:** `OllamaAIService.cs`, SMS/MMS window (microphone, transcription)  
+**Status:** Implemented
 
-**Required:**
+**Implemented:**
 
-- Speech-to-text integration
-- Options: Whisper API, local Whisper, Azure Speech, Google Speech
-- Audio input UI
-- Audio file processing
-
-**Effort:** 2-3 days  
-**Dependencies:** Speech-to-text service or library
-
-**Tasks:**
-
-- Select speech-to-text solution
-- Implement audio processing service
-- Add audio input UI
-- Integrate with AI service
-- Test audio processing
+- Speech-to-text via `ProcessAudioAsync`: local STT endpoint (default `http://localhost:8000/transcribe`), optional OpenAI Whisper when `OPENAI_API_KEY` is set
+- Audio recording and transcription UI in SMS/MMS window
+- Transcribed text can be sent as a message
 
 ---
 
-#### 9. Data Bank Management UI
+#### 9. Data Bank Management UI ✅ COMPLETE
 
 **Module:** Top Tray / New Window  
-**Files:** New window needed  
-**Status:** Backend exists, no UI
+**Files:** `DataBankManagementWindow.xaml`, `DataBankManagementWindowViewModel.cs`, `CreateDataBankDialog.xaml`, `AddDataEntryDialog.xaml`  
+**Status:** Implemented – opened from Top Tray “Data Bank Management” button
 
-**Required:**
+**Implemented:**
 
-- Data bank list view
-- Data bank creation/editing
-- Data entry management
-- Search and filtering
-- Data bank deletion
-
-**Effort:** 3-4 days  
-**Dependencies:** None (MemoryService ready)
-
-**Tasks:**
-
-- Create data bank management window
-- Implement data bank list
-- Add create/edit dialogs
-- Add data entry viewer/editor
-- Implement search and filtering
-- Add delete functionality
+- Data bank list view with search/filter
+- Data bank creation/editing/deletion (CreateDataBankDialog, confirmation)
+- Data entry management (add, edit, remove entries)
+- Integration with IMemoryService
 
 ---
 
@@ -880,6 +835,8 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 | **SettingsWindow** | `Screens/Windows/SettingsWindow.xaml` | ✅ Complete | All settings sections, validation, connection testing, import/export, reset to defaults |
 | **ProjectsWindow** | `Screens/Windows/ProjectsWindow.xaml` | ✅ Complete | Project list, filtering, sorting, CRUD, detail dialogs |
 | **GlobalLogDirectoryWindow** | `Screens/Windows/GlobalLogDirectoryWindow.xaml` | ✅ Complete | Log viewing, export, categorization |
+| **DataBankManagementWindow** | `Screens/Windows/DataBankManagementWindow.xaml` | ✅ Complete | Data bank CRUD, entry management, search/filter (opened from Top Tray) |
+| **VideoCallWindow** | `Screens/Windows/VideoCallWindow.xaml` | 🚧 Partial | Call state UI and controls; no real A/V streams (WebRTC not integrated) |
 
 ### Dialogs
 
@@ -899,9 +856,7 @@ House Victoria is a modular overlay desktop application inspired by Xbox Game Ba
 
 ### Test/Debug Windows
 
-| Window | File Location | Status | Purpose |
-| -------- | -------------- | -------- | --------- |
-| **TestWindow** | `Screens/Windows/TestWindow.xaml` | ❓ Unknown | Testing/debugging (not in main flow) |
+No dedicated TestWindow exists in the codebase. Testing and debugging use the main application windows.
 
 ---
 
@@ -1114,6 +1069,20 @@ Phase 5: Polish and Optimization 📋 PENDING
     └─> Testing and Bug Fixes
             └─> [Depends on all previous phases]
 ```
+
+---
+
+## Memory and vector search – implementation status
+
+The following components are **stubs or placeholders**. Enabling them does not provide real semantic/vector behavior until proper backends are implemented.
+
+| Component | Location | Current behavior | To get real behavior |
+|-----------|----------|------------------|------------------------|
+| **PgVectorClient** | `HouseVictoria.Services/Memory/PgVectorClient.cs` | No-op: `InitializeAsync`, `UpsertAsync`, `DeleteAsync` do nothing; `SearchAsync` returns empty. Used when `EnablePgVector` is true and a connection string is set. | Implement a real Postgres + pgvector client: create extension/table, upsert vectors, run similarity search. |
+| **EmbeddingHelper** | `HouseVictoria.Services/Memory/EmbeddingHelper.cs` | Hash-based pseudo-embeddings (SHA256-derived), not semantic. Used by `DatabasePersistenceService` for “hybrid” search when PgVector is enabled. | Replace with a real embedding model (e.g. Ollama embedding endpoint or a small local model) for actual semantic search. |
+| **MCP vector_search** | `MCPServer/house_victoria_mcp/memory/vector_search.py` | Stub: `index()` and `search()` are no-ops; `search()` always returns `[]`. | Implement with a real vector store (e.g. Postgres/pgvector or a local index) and real embeddings. |
+
+**Summary:** Persistent memory and hybrid search currently use SQLite and lexical (FTS) only. When PgVector is enabled, vector operations are stubbed and embeddings are hash-based, so “hybrid” search effectively falls back to lexical behavior. See [HouseVictoria_MemoryDesign.md](HouseVictoria_MemoryDesign.md) for the target architecture.
 
 ---
 

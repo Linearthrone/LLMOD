@@ -312,7 +312,7 @@ namespace HouseVictoria.Services.TTS
         }
 
         /// <summary>
-        /// Gets only Piper TTS voices (from server or local data dir). Does not include Windows TTS.
+        /// Gets only Piper TTS voices (from local data dir first, then server). Does not include Windows TTS.
         /// </summary>
         private async Task<List<string>> GetPiperVoicesOnlyAsync()
         {
@@ -320,7 +320,38 @@ namespace HouseVictoria.Services.TTS
 
             try
             {
-                // Try to get voices from external TTS service (Piper)
+                // Prefer local Piper data directory so we show actual Piper models, not Windows TTS from a fallback server
+                if (!string.IsNullOrEmpty(_piperDataDir) && Directory.Exists(_piperDataDir))
+                {
+                    try
+                    {
+                        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var path in Directory.EnumerateFiles(_piperDataDir, "*.onnx", SearchOption.AllDirectories))
+                        {
+                            var name = Path.GetFileNameWithoutExtension(path);
+                            if (!string.IsNullOrWhiteSpace(name) && seen.Add(name))
+                                voices.Add(name);
+                        }
+                        foreach (var path in Directory.EnumerateFiles(_piperDataDir, "*.onnx.json", SearchOption.AllDirectories))
+                        {
+                            var fileName = Path.GetFileNameWithoutExtension(path);
+                            var name = fileName.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase) ? fileName[..^5] : fileName;
+                            if (!string.IsNullOrWhiteSpace(name) && seen.Add(name))
+                                voices.Add(name);
+                        }
+                        if (voices.Count > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"TTS: Found {voices.Count} Piper voice(s) from data dir: {_piperDataDir}");
+                            return voices;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"TTS: Failed to discover Piper voices from {_piperDataDir}: {ex.Message}");
+                    }
+                }
+
+                // Fall back to external TTS service (Piper server) only if no local voices found
                 var voiceEndpoints = new[]
                 {
                     $"{_endpoint}/api/voices",
@@ -400,34 +431,6 @@ namespace HouseVictoria.Services.TTS
                         }
                     }
                     catch { continue; }
-                }
-
-                // Discover Piper models from local data directory
-                if (voices.Count == 0 && !string.IsNullOrEmpty(_piperDataDir) && Directory.Exists(_piperDataDir))
-                {
-                    try
-                    {
-                        var seen = new HashSet<string>(voices, StringComparer.OrdinalIgnoreCase);
-                        foreach (var path in Directory.EnumerateFiles(_piperDataDir, "*.onnx", SearchOption.AllDirectories))
-                        {
-                            var name = Path.GetFileNameWithoutExtension(path);
-                            if (!string.IsNullOrWhiteSpace(name) && seen.Add(name))
-                                voices.Add(name);
-                        }
-                        foreach (var path in Directory.EnumerateFiles(_piperDataDir, "*.onnx.json", SearchOption.AllDirectories))
-                        {
-                            var fileName = Path.GetFileNameWithoutExtension(path);
-                            var name = fileName.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase) ? fileName[..^5] : fileName;
-                            if (!string.IsNullOrWhiteSpace(name) && seen.Add(name))
-                                voices.Add(name);
-                        }
-                        if (voices.Count > 0)
-                            System.Diagnostics.Debug.WriteLine($"TTS: Found {voices.Count} Piper voice(s) from data dir: {_piperDataDir}");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"TTS: Failed to discover Piper voices from {_piperDataDir}: {ex.Message}");
-                    }
                 }
             }
             catch (Exception ex)

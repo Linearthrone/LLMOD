@@ -79,9 +79,33 @@ namespace HouseVictoria.Services.TTS
                 if (string.IsNullOrEmpty(path))
                     path = "/";
 
-                if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) || path.Equals("/", StringComparison.OrdinalIgnoreCase))
+                if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
+                    (path.Equals("/", StringComparison.OrdinalIgnoreCase) && context.Request.HttpMethod.Equals("GET", StringComparison.OrdinalIgnoreCase)))
                 {
                     await RespondAsync(context, "ok", "text/plain", token).ConfigureAwait(false);
+                    return;
+                }
+
+                // Piper-style: POST / with JSON { text, voice?, speed? } -> audio/wav
+                if (path.Equals("/", StringComparison.OrdinalIgnoreCase) && context.Request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase) && context.Request.HasEntityBody)
+                {
+                    var request = await ParseTtsRequestAsync(context.Request, token).ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(request.Text))
+                    {
+                        context.Response.StatusCode = 400;
+                        await RespondAsync(context, "Missing text", "text/plain", token).ConfigureAwait(false);
+                        return;
+                    }
+                    var audio = await SynthesizeAsync(request.Text, request.Voice, request.Speed, token).ConfigureAwait(false);
+                    if (audio == null)
+                    {
+                        context.Response.StatusCode = 500;
+                        await RespondAsync(context, "TTS failed", "text/plain", token).ConfigureAwait(false);
+                        return;
+                    }
+                    context.Response.ContentType = "audio/wav";
+                    context.Response.ContentLength64 = audio.Length;
+                    await context.Response.OutputStream.WriteAsync(audio, 0, audio.Length, token).ConfigureAwait(false);
                     return;
                 }
 

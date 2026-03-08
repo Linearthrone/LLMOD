@@ -10,7 +10,13 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize">
     <Window.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/HouseVictoria.App;component/Styles/GlassEffect.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/HouseVictoria.App;component/Styles/OverlayStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
@@ -254,8 +260,8 @@
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                             <Setter Property="Text" Value="{Binding UnreadCount, StringFormat=' ({0} unread)'}"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding UnreadCount, Converter={StaticResource BoolToVisibilityConverter}}" Value="Visible">
-                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                <DataTrigger Binding="{Binding UnreadCount, Converter={StaticResource BoolToVisibilityConverter}}" Value="{x:Static Visibility.Visible}">
+                                                    <Setter Property="Visibility" Value="{x:Static Visibility.Visible}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

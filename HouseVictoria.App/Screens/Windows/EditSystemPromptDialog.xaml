@@ -19,9 +19,11 @@
             <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
                 <Grid>
                     <TextBlock Text="✏️ Edit System Prompt" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="{Binding ContactName, StringFormat='Editing: {0}'}" 
-                              FontSize="14" Foreground="White" 
-                              VerticalAlignment="Center" Margin="200,0,0,0"/>
+                    <TextBlock FontSize="14" Foreground="White" 
+                              VerticalAlignment="Center" Margin="200,0,0,0">
+                        <Run Text="Editing: "/>
+                        <Run Text="{Binding ContactName, FallbackValue='Unknown'}"/>
+                    </TextBlock>
                 </Grid>
             </Border>
 

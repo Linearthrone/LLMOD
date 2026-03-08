@@ -86,9 +86,14 @@ namespace HouseVictoria.Core.Models
         public string MCPServerEndpoint { get; set; } = "http://localhost:8080";
         public string UnrealEngineEndpoint { get; set; } = "ws://localhost:8888";
         public string TTSEndpoint { get; set; } = "http://localhost:5000";
+        public string? STTEndpoint { get; set; }
         public string PiperDataDir { get; set; } = "Media/PiperVoices";
         public string PiperDefaultModel { get; set; } = "en_US-amy-medium";
-        public string StableDiffusionEndpoint { get; set; } = "http://localhost:8188"; // Default to ComfyUI port
+        public string StableDiffusionEndpoint { get; set; } = "http://localhost:8188"; // Legacy name: image endpoint (ComfyUI default)
+        /// <summary>Full path to Stability Matrix executable (e.g. C:\...\Stability Matrix.exe). Used to launch the manager and ComfyUI.</summary>
+        public string StabilityMatrixPath { get; set; } = string.Empty;
+        /// <summary>Full path to ComfyUI portable folder (contains run_nvidia_gpu.bat). Can be the ComfyUI install managed by Stability Matrix.</summary>
+        public string ComfyUIPortablePath { get; set; } = string.Empty;
         public string MT4DataPath { get; set; } = "C:\\Program Files\\MetaTrader 4";
         public string DataBankPath { get; set; } = "Data/Databanks";
         public string LogsPath { get; set; } = "Logs";

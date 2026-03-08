@@ -8,7 +8,7 @@ namespace HouseVictoria.Core.Interfaces
     public interface IAIService
     {
         Task<string> SendMessageAsync(AIContact contact, string message, List<ChatMessage>? context = null);
-        /// <summary>Converts a short user image request into a detailed, high-quality prompt for ComfyUI/Stable Diffusion.</summary>
+        /// <summary>Converts a short user image request into a detailed, high-quality prompt for ComfyUI-based image generation.</summary>
         Task<string> EnhanceImagePromptAsync(AIContact contact, string userImageRequest);
         Task<Stream> GenerateImageAsync(AIContact contact, string prompt);
         Task<string> ProcessImageAsync(AIContact contact, byte[] imageData, string? prompt = null);

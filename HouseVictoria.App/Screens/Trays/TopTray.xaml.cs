@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using HouseVictoria.App.Screens.Windows;
@@ -232,10 +233,30 @@ namespace HouseVictoria.App.Screens.Trays
 
         private void GLDButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            // Open Global Log Directory window
-            var gldWindow = new GlobalLogDirectoryWindow();
-            gldWindow.Owner = System.Windows.Window.GetWindow(this);
-            gldWindow.Show();
+            try
+            {
+                var gldWindow = new GlobalLogDirectoryWindow();
+                var owner = System.Windows.Window.GetWindow(this);
+                if (owner != null)
+                {
+                    gldWindow.Owner = owner;
+                    gldWindow.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
+                }
+                else
+                {
+                    gldWindow.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
+                }
+                gldWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GLD open error: {ex.Message}\n{ex.StackTrace}");
+                System.Windows.MessageBox.Show(
+                    $"Could not open Global Log Directory: {ex.Message}",
+                    "Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
         }
     }
 }

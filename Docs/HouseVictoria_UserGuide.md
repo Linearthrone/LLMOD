@@ -100,9 +100,10 @@ Before using House Victoria, ensure you have:
 
 ### Installation Steps
 
-1. Run the `install.bat` script to set up the application
-2. The application will be installed and configured automatically
-3. Ensure Ollama is running before launching House Victoria
+1. Run the `install.bat` script to set up the application (creates MCP venv, installs STT and Piper TTS dependencies).
+2. The application will be installed and configured automatically.
+3. Ensure Ollama is running before launching House Victoria.
+4. For **voice calls (TTS/STT)**: Run `start.bat` to start Piper TTS (port 5000), STT server (port 8000), and the app. Place Piper voice `.onnx` files (e.g. from [Piper voice samples](https://github.com/rhasspy/piper/releases)) in `Media\PiperVoices`; the default model is `en_US-amy-medium`.
 
 ### First-Time Configuration
 
@@ -348,6 +349,24 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 - **Restore**: Restore from system tray icon
 - **Resizable**: Drag edges to resize (maintains phone-like aspect ratio)
 - **Positioned**: Automatically positioned to avoid Main Tray
+
+### Voice calls (speech-to-text and text-to-speech)
+
+You can talk during a call: your speech is transcribed and sent as a message, and the AI’s reply is spoken aloud.
+
+**Prerequisites:**
+- Run `start.bat` so the STT server (port 8000) and TTS server (port 5000, or Windows TTS fallback) are started.
+- In **Settings**, ensure **STT Endpoint** is `http://localhost:8000/transcribe` (or your STT URL) and **TTS Endpoint** is `http://localhost:5000`. Use **Test** next to each to confirm they are reachable.
+- Optional: add Piper voice `.onnx` files to `Media\PiperVoices` for better TTS; otherwise the app uses Windows TTS.
+
+**During a call:**
+1. Start a call with an AI contact (green phone button).
+2. When connected, use the **microphone / record** button to start recording from your default microphone.
+3. Speak, then press the button again to stop recording.
+4. Your speech is sent to the STT server, the result is sent as your message, and the AI reply is generated and played via TTS.
+5. You can repeat record → stop to keep the conversation going by voice.
+
+**If transcription fails:** Check that the STT server is running (e.g. run `start.bat`), or set **STT Endpoint** in Settings. If you set the `OPENAI_API_KEY` environment variable, the app can use OpenAI Whisper when the local STT server is unavailable.
 
 ### AI Response Handling
 
@@ -670,7 +689,15 @@ Settings are organized into collapsible sections:
 - **Test Connection**: Button to test TTS service
 - **Status Indicator**: Connection status
 
-**Note**: TTS is optional. Configure only if you have a TTS service running.
+**Note**: TTS is used for voice calls so the AI can speak replies. If no external TTS (e.g. Piper) is running, the app can auto-start a Windows TTS fallback on the same port.
+
+### STT Settings (Speech-to-Text)
+
+**Speech-to-Text Configuration:**
+- **STT Endpoint**: URL for transcription (default: `http://localhost:8000/transcribe`)
+- **Test STT**: Button to verify the STT server is reachable (see Settings UI)
+
+**Note**: For voice calls with microphone input, run `start.bat` so the STT server (faster-whisper) starts on port 8000, or set this to another Whisper-compatible endpoint. Optional: set `OPENAI_API_KEY` for cloud fallback when local STT is unavailable.
 
 ### Virtual Environment Settings
 

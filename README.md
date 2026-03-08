@@ -135,7 +135,7 @@ dotnet run --project HouseVictoria.App\HouseVictoria.App.csproj
 
 ## Configuration
 
-Edit `HouseVictoria.App\App.config` to configure endpoints and settings. For **Elite Dangerous** users: you can use an AI contact as your ship computer via **COVAS: Next**; see [COVAS_ELITE_DANGEROUS_SETUP.md](COVAS_ELITE_DANGEROUS_SETUP.md).
+Edit `HouseVictoria.App\App.config` to configure endpoints and settings. For **Elite Dangerous** users: you can use an AI contact as your ship computer via **COVAS: Next**; see [COVAS_ELITE_DANGEROUS_SETUP.md](Docs/COVAS_ELITE_DANGEROUS_SETUP.md).
 
 ```xml
 <appSettings>
@@ -183,11 +183,11 @@ The project is designed to be developed module-by-module with testing at each st
 - [x] Create AI persona forms
 - [x] LLM parameter configuration
 
-### Phase 6: SMS/MMS Communication 🚧
+### Phase 6: SMS/MMS Communication ✅
 - [x] Complete SMS/MMS window
 - [x] Implement contact management
 - [x] Add message send/receive (text messages)
-- [ ] Test media sharing (image/video/document attachments - pending)
+- [x] Media sharing (image/video/document attachments, file picker, preview in bubbles)
 
 ### Phase 7: Project Management ✅
 - [x] Complete Projects board UI
@@ -198,8 +198,9 @@ The project is designed to be developed module-by-module with testing at each st
 - [x] Roadblocks and artifact management
 - [x] AI collaboration logs
 
-### Phase 8: Virtual Environment
-- [ ] Complete Unreal Engine service
+### Phase 8: Virtual Environment 🚧
+- [x] Unreal Engine WebSocket service (UnrealEnvironmentService.cs – connect, send/receive, reconnect)
+- [ ] Validate with Unreal Engine build (service code exists; test with real Unreal instance)
 - [ ] Implement avatar spawning
 - [ ] Add pose/movement controls
 - [ ] Test scene management
@@ -219,6 +220,14 @@ This is a modular project designed for incremental development. Each module shou
 2. Tested thoroughly
 3. Integrated with the existing system
 4. Documented with inline comments
+
+## MetaTrader 4 Integration
+
+House Victoria includes an optional MetaTrader 4 bridge for AI-assisted trading workflows. To configure and use it:
+
+- Configure `MT4DataPath` in `HouseVictoria.App\App.config` as described in the MT4 integration guide.
+- Follow the setup and usage instructions in `MT4Bridge/README.md`.
+- Example usage code is provided in `MT4Bridge/UsageExample.cs`, which assumes the main application has been built so that `App.ServiceProvider` and `ITradingService` are available.
 
 ## License
 

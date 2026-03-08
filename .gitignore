@@ -353,6 +353,10 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 
+# House Victoria app data (SQLite DB and memory – do not commit user data)
+Data/Memory/
+**/HouseVictoria.db
+
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
 

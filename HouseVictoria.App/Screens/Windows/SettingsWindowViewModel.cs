@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Linq;
@@ -72,6 +73,14 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        // STT (Speech-to-Text) Settings
+        private string _sttEndpoint = string.Empty;
+        public string STTEndpoint
+        {
+            get => _sttEndpoint;
+            set { if (SetProperty(ref _sttEndpoint, value ?? string.Empty)) ValidateSettings(); }
+        }
+
         // Virtual Environment Settings
         private string _unrealEngineEndpoint = string.Empty;
         public string UnrealEngineEndpoint
@@ -86,7 +95,7 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
-        // Stable Diffusion / ComfyUI Settings
+        // Image Generation Endpoint (ComfyUI - legacy StableDiffusionEndpoint setting name)
         private string _stableDiffusionEndpoint = string.Empty;
         public string StableDiffusionEndpoint
         {
@@ -98,6 +107,21 @@ namespace HouseVictoria.App.Screens.Windows
                     ValidateSettings();
                 }
             }
+        }
+
+        // Stability Matrix & ComfyUI (image/video generation)
+        private string _stabilityMatrixPath = string.Empty;
+        public string StabilityMatrixPath
+        {
+            get => _stabilityMatrixPath;
+            set => SetProperty(ref _stabilityMatrixPath, value ?? string.Empty);
+        }
+
+        private string _comfyUIPortablePath = string.Empty;
+        public string ComfyUIPortablePath
+        {
+            get => _comfyUIPortablePath;
+            set => SetProperty(ref _comfyUIPortablePath, value ?? string.Empty);
         }
 
         // Overlay Settings
@@ -360,6 +384,13 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _ttsConnectionStatus, value);
         }
 
+        private string? _sttConnectionStatus;
+        public string? STTConnectionStatus
+        {
+            get => _sttConnectionStatus;
+            set => SetProperty(ref _sttConnectionStatus, value);
+        }
+
         private string? _unrealConnectionStatus;
         public string? UnrealConnectionStatus
         {
@@ -380,8 +411,13 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand TestOllamaConnectionCommand { get; }
         public ICommand TestMCPConnectionCommand { get; }
         public ICommand TestTTSConnectionCommand { get; }
+        public ICommand TestSTTConnectionCommand { get; }
         public ICommand TestUnrealConnectionCommand { get; }
         public ICommand TestStableDiffusionConnectionCommand { get; }
+        public ICommand StartStabilityMatrixCommand { get; }
+        public ICommand StartComfyUICommand { get; }
+        public ICommand BrowseStabilityMatrixPathCommand { get; }
+        public ICommand BrowseComfyUIPortablePathCommand { get; }
         public ICommand ImportSettingsCommand { get; }
         public ICommand ExportSettingsCommand { get; }
         public ICommand ResetToDefaultsCommand { get; }
@@ -405,8 +441,11 @@ namespace HouseVictoria.App.Screens.Windows
             OllamaEndpoint = appConfig.OllamaEndpoint;
             MCPServerEndpoint = appConfig.MCPServerEndpoint;
             TTSEndpoint = appConfig.TTSEndpoint;
+            STTEndpoint = appConfig.STTEndpoint ?? string.Empty;
             UnrealEngineEndpoint = appConfig.UnrealEngineEndpoint;
             StableDiffusionEndpoint = appConfig.StableDiffusionEndpoint;
+            StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
+            ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
             EnableOverlay = appConfig.EnableOverlay;
             OverlayOpacity = appConfig.OverlayOpacity;
             AutoHideTrays = appConfig.AutoHideTrays;
@@ -434,8 +473,13 @@ namespace HouseVictoria.App.Screens.Windows
             TestOllamaConnectionCommand = new RelayCommand(async () => await TestOllamaConnectionAsync());
             TestMCPConnectionCommand = new RelayCommand(async () => await TestMCPConnectionAsync());
             TestTTSConnectionCommand = new RelayCommand(async () => await TestTTSConnectionAsync());
+            TestSTTConnectionCommand = new RelayCommand(async () => await TestSTTConnectionAsync());
             TestUnrealConnectionCommand = new RelayCommand(async () => await TestUnrealConnectionAsync());
             TestStableDiffusionConnectionCommand = new RelayCommand(async () => await TestStableDiffusionConnectionAsync());
+            StartStabilityMatrixCommand = new RelayCommand(() => StartStabilityMatrix());
+            StartComfyUICommand = new RelayCommand(() => StartComfyUI());
+            BrowseStabilityMatrixPathCommand = new RelayCommand(() => BrowseStabilityMatrixPath());
+            BrowseComfyUIPortablePathCommand = new RelayCommand(() => BrowseComfyUIPortablePath());
             ImportSettingsCommand = new RelayCommand(() => ImportSettings());
             ExportSettingsCommand = new RelayCommand(() => ExportSettings());
             ResetToDefaultsCommand = new RelayCommand(() => ResetToDefaults());
@@ -477,6 +521,14 @@ namespace HouseVictoria.App.Screens.Windows
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(STTEndpoint) && !Regex.IsMatch(STTEndpoint, urlPattern))
+            {
+                _validationError = "STT endpoint must be a valid URL (http://, https://)";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
             if (!string.IsNullOrWhiteSpace(UnrealEngineEndpoint) && !Regex.IsMatch(UnrealEngineEndpoint, @"^ws://.+|^wss://.+"))
             {
                 _validationError = "Unreal Engine endpoint must be a valid WebSocket URL (ws://, wss://)";
@@ -487,7 +539,7 @@ namespace HouseVictoria.App.Screens.Windows
 
             if (!string.IsNullOrWhiteSpace(StableDiffusionEndpoint) && !Regex.IsMatch(StableDiffusionEndpoint, urlPattern))
             {
-                _validationError = "Stable Diffusion endpoint must be a valid URL (http://, https://)";
+                _validationError = "Image generation endpoint must be a valid URL (http://, https://)";
                 OnPropertyChanged(nameof(ValidationError));
                 OnPropertyChanged(nameof(IsValid));
                 return;
@@ -712,6 +764,49 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private async Task TestSTTConnectionAsync()
+        {
+            if (string.IsNullOrWhiteSpace(STTEndpoint))
+            {
+                STTConnectionStatus = "Error: Endpoint is empty";
+                ConnectionTestResult = "STT: Error - Endpoint is empty. Use e.g. http://localhost:8000/transcribe";
+                return;
+            }
+
+            IsTestingConnection = true;
+            STTConnectionStatus = "Testing...";
+            ConnectionTestResult = "STT: Testing connection...";
+
+            try
+            {
+                var baseUrl = STTEndpoint.TrimEnd('/');
+                if (baseUrl.EndsWith("/transcribe", StringComparison.OrdinalIgnoreCase))
+                    baseUrl = baseUrl[..baseUrl.LastIndexOf("/transcribe", StringComparison.OrdinalIgnoreCase)].TrimEnd('/');
+                var healthUrl = $"{baseUrl}/health";
+
+                var response = await _httpClient.GetAsync(healthUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    STTConnectionStatus = "✓ Connected";
+                    ConnectionTestResult = "STT: ✓ Connection successful! Speech-to-text is available.";
+                }
+                else
+                {
+                    STTConnectionStatus = "✗ Failed";
+                    ConnectionTestResult = $"STT: ✗ Server returned {response.StatusCode}. Run start.bat to start the STT server, or set STT endpoint in Settings.";
+                }
+            }
+            catch (Exception ex)
+            {
+                STTConnectionStatus = "✗ Failed";
+                ConnectionTestResult = $"STT: ✗ Connection failed: {ex.Message}. Ensure the STT server is running (e.g. run start.bat) or configure STT endpoint.";
+            }
+            finally
+            {
+                IsTestingConnection = false;
+            }
+        }
+
         private async Task LoadAvailableVoicesAsync()
         {
             IsLoadingVoices = true;
@@ -841,19 +936,18 @@ namespace HouseVictoria.App.Screens.Windows
             if (string.IsNullOrWhiteSpace(StableDiffusionEndpoint))
             {
                 StableDiffusionConnectionStatus = "Error: Endpoint is empty";
-                ConnectionTestResult = "Stable Diffusion: Error - Endpoint is empty";
+                ConnectionTestResult = "Image endpoint: Error - Endpoint is empty";
                 return;
             }
 
             IsTestingConnection = true;
             StableDiffusionConnectionStatus = "Testing...";
-            ConnectionTestResult = "Stable Diffusion: Testing connection...";
+            ConnectionTestResult = "Image endpoint: Testing connection...";
 
             try
             {
-                // Try ComfyUI API first (port 8188), then Automatic1111 (port 7860)
-                // ComfyUI uses /system_stats endpoint
-                var endpoints = new[] { "/system_stats", "/sdapi/v1/options", "/" };
+                // Image server (ComfyUI / Automatic1111-compatible) uses /sdapi/v1/options
+                var endpoints = new[] { "/sdapi/v1/options", "/" };
                 bool isConnected = false;
 
                 foreach (var endpoint in endpoints)
@@ -874,17 +968,122 @@ namespace HouseVictoria.App.Screens.Windows
                 }
 
                 StableDiffusionConnectionStatus = isConnected ? "✓ Connected" : "✗ Failed";
-                ConnectionTestResult = isConnected ? "Stable Diffusion: ✓ Connection successful!" : "Stable Diffusion: ✗ Connection failed";
+                ConnectionTestResult = isConnected ? "Image endpoint: ✓ Connection successful!" : "Image endpoint: ✗ Connection failed";
             }
             catch (Exception ex)
             {
                 StableDiffusionConnectionStatus = "✗ Failed";
-                ConnectionTestResult = $"Stable Diffusion: ✗ Connection failed: {ex.Message}";
+                ConnectionTestResult = $"Image endpoint: ✗ Connection failed: {ex.Message}";
             }
             finally
             {
                 IsTestingConnection = false;
             }
+        }
+
+        private void StartStabilityMatrix()
+        {
+            var path = (StabilityMatrixPath ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(path))
+            {
+                MessageBox.Show("Set the Stability Matrix path in the field below (e.g. path to Stability Matrix.exe).", "Stability Matrix", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var exePath = path;
+            if (Directory.Exists(path))
+            {
+                var candidates = new[] { "Stability Matrix.exe", "StabilityMatrix.exe" };
+                foreach (var name in candidates)
+                {
+                    var combined = Path.Combine(path, name);
+                    if (File.Exists(combined)) { exePath = combined; break; }
+                }
+            }
+            if (!File.Exists(exePath))
+            {
+                MessageBox.Show($"Stability Matrix not found at:\n{path}", "Stability Matrix", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(exePath) ?? path
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not start Stability Matrix: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void StartComfyUI()
+        {
+            var path = (ComfyUIPortablePath ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(path))
+            {
+                MessageBox.Show("Set the ComfyUI portable folder path below (folder containing run_nvidia_gpu.bat). You can use the ComfyUI install managed by Stability Matrix.", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (!Directory.Exists(path))
+            {
+                MessageBox.Show($"ComfyUI folder not found:\n{path}", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var batPath = Path.Combine(path, "run_nvidia_gpu.bat");
+            if (!File.Exists(batPath))
+                batPath = Path.Combine(path, "run_cpu.bat");
+            if (!File.Exists(batPath))
+            {
+                MessageBox.Show($"No run_nvidia_gpu.bat or run_cpu.bat found in:\n{path}", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = batPath,
+                    UseShellExecute = true,
+                    WorkingDirectory = path
+                });
+                MessageBox.Show("ComfyUI is starting. It usually runs at http://127.0.0.1:8188. Set the image endpoint above to http://localhost:8188 when using ComfyUI.", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not start ComfyUI: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BrowseStabilityMatrixPath()
+        {
+            var path = (StabilityMatrixPath ?? string.Empty).Trim();
+            var initialDir = !string.IsNullOrEmpty(path) && Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+            var dialog = new OpenFileDialog
+            {
+                Title = "Select Stability Matrix executable",
+                Filter = "Executable (*.exe)|*.exe|All Files (*.*)|*.*",
+                FileName = "Stability Matrix.exe",
+                InitialDirectory = initialDir
+            };
+            if (dialog.ShowDialog() == true)
+                StabilityMatrixPath = dialog.FileName;
+        }
+
+        private void BrowseComfyUIPortablePath()
+        {
+            var path = (ComfyUIPortablePath ?? string.Empty).Trim();
+            var initialDir = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+            var dialog = new OpenFileDialog
+            {
+                Title = "Select run_nvidia_gpu.bat or run_cpu.bat in the ComfyUI portable folder",
+                Filter = "Batch files (*.bat)|*.bat|All Files (*.*)|*.*",
+                FileName = "run_nvidia_gpu.bat",
+                InitialDirectory = initialDir
+            };
+            if (dialog.ShowDialog() == true && !string.IsNullOrEmpty(dialog.FileName))
+                ComfyUIPortablePath = Path.GetDirectoryName(dialog.FileName) ?? path;
         }
 
         private void ImportSettings()
@@ -909,8 +1108,11 @@ namespace HouseVictoria.App.Screens.Windows
                         OllamaEndpoint = importedConfig.OllamaEndpoint;
                         MCPServerEndpoint = importedConfig.MCPServerEndpoint;
                         TTSEndpoint = importedConfig.TTSEndpoint;
+                        STTEndpoint = importedConfig.STTEndpoint ?? string.Empty;
                         UnrealEngineEndpoint = importedConfig.UnrealEngineEndpoint;
                         StableDiffusionEndpoint = importedConfig.StableDiffusionEndpoint;
+                        StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
+                        ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
                         EnableOverlay = importedConfig.EnableOverlay;
                         OverlayOpacity = importedConfig.OverlayOpacity;
                         AutoHideTrays = importedConfig.AutoHideTrays;
@@ -962,8 +1164,11 @@ namespace HouseVictoria.App.Screens.Windows
                         OllamaEndpoint = OllamaEndpoint,
                         MCPServerEndpoint = MCPServerEndpoint,
                         TTSEndpoint = TTSEndpoint,
+                        STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint,
                         UnrealEngineEndpoint = UnrealEngineEndpoint,
                         StableDiffusionEndpoint = StableDiffusionEndpoint,
+                        StabilityMatrixPath = StabilityMatrixPath,
+                        ComfyUIPortablePath = ComfyUIPortablePath,
                         EnableOverlay = EnableOverlay,
                         OverlayOpacity = OverlayOpacity,
                         AutoHideTrays = AutoHideTrays,
@@ -1012,8 +1217,11 @@ namespace HouseVictoria.App.Screens.Windows
                 _appConfig.OllamaEndpoint = OllamaEndpoint;
                 _appConfig.MCPServerEndpoint = MCPServerEndpoint;
                 _appConfig.TTSEndpoint = TTSEndpoint;
+                _appConfig.STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint;
                 _appConfig.UnrealEngineEndpoint = UnrealEngineEndpoint;
                 _appConfig.StableDiffusionEndpoint = StableDiffusionEndpoint;
+                _appConfig.StabilityMatrixPath = StabilityMatrixPath;
+                _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
                 _appConfig.EnableOverlay = EnableOverlay;
                 _appConfig.OverlayOpacity = OverlayOpacity;
                 _appConfig.AutoHideTrays = AutoHideTrays;
@@ -1041,8 +1249,11 @@ namespace HouseVictoria.App.Screens.Windows
                 UpdateOrAddSetting(config, "OllamaEndpoint", OllamaEndpoint);
                 UpdateOrAddSetting(config, "MCPServerEndpoint", MCPServerEndpoint);
                 UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
+                UpdateOrAddSetting(config, "STTEndpoint", STTEndpoint ?? string.Empty);
                 UpdateOrAddSetting(config, "UnrealEngineEndpoint", UnrealEngineEndpoint);
                 UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
+                UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
+                UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
                 UpdateOrAddSetting(config, "EnableOverlay", EnableOverlay.ToString());
                 UpdateOrAddSetting(config, "OverlayOpacity", OverlayOpacity.ToString());
                 UpdateOrAddSetting(config, "AutoHideTrays", AutoHideTrays.ToString());
@@ -1087,8 +1298,11 @@ namespace HouseVictoria.App.Screens.Windows
                 OllamaEndpoint = defaults.OllamaEndpoint;
                 MCPServerEndpoint = defaults.MCPServerEndpoint;
                 TTSEndpoint = defaults.TTSEndpoint;
+                STTEndpoint = defaults.STTEndpoint ?? string.Empty;
                 UnrealEngineEndpoint = defaults.UnrealEngineEndpoint;
                 StableDiffusionEndpoint = defaults.StableDiffusionEndpoint;
+                StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
+                ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;
                 EnableOverlay = defaults.EnableOverlay;
                 OverlayOpacity = defaults.OverlayOpacity;
                 AutoHideTrays = defaults.AutoHideTrays;
@@ -1114,6 +1328,7 @@ namespace HouseVictoria.App.Screens.Windows
                 OllamaConnectionStatus = null;
                 MCPServerConnectionStatus = null;
                 TTSConnectionStatus = null;
+                STTConnectionStatus = null;
                 UnrealConnectionStatus = null;
                 StableDiffusionConnectionStatus = null;
                 ConnectionTestResult = null;

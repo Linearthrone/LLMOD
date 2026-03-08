@@ -29,11 +29,9 @@
         <Border x:Name="DrawerPanel"
                 Background="#CC0A0E27"
                 Width="330"
-                Height="800"
-                MaxHeight="900"
                 HorizontalAlignment="Left"
-                VerticalAlignment="Top"
-                Margin="95,100,0,0"
+                VerticalAlignment="Stretch"
+                Margin="95,100,0,100"
                 CornerRadius="6"
                 Padding="10"
                 Visibility="Collapsed"
@@ -54,7 +52,9 @@
 
                 <!-- Tabs: System Health | Components -->
                 <TabControl Grid.Row="1" Padding="0" Margin="0,0,0,0"
-                            Background="Transparent" BorderThickness="0">
+                            Background="Transparent" BorderThickness="0"
+                            VerticalAlignment="Stretch"
+                            VerticalContentAlignment="Stretch">
                     <TabControl.Resources>
                         <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
                             <Setter Property="Template">
@@ -81,7 +81,8 @@
 
                     <!-- Tab 1: System Health (gauges) -->
                     <TabItem Header="System Health">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5"
+                                      VerticalAlignment="Stretch">
                             <StackPanel>
                                 <!-- System Uptime -->
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,5">
@@ -159,7 +160,10 @@
 
                     <!-- Tab 2: Components (status indicators) -->
                     <TabItem Header="Components">
-                        <StackPanel Margin="0,5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5"
+                                      VerticalAlignment="Stretch"
+                                      VerticalContentAlignment="Stretch">
+                            <StackPanel Margin="0,5">
                                 <!-- Primary AI Status -->
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="#4CAF50">
                                     <StackPanel>
@@ -172,22 +176,6 @@
                                             <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
                                                      Fill="{Binding PrimaryAIStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
                                             <TextBlock Grid.Column="1" Text="{Binding PrimaryAIStatusText}" FontSize="12" Foreground="#E0F7FF"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Current AI Contact Status -->
-                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
-                                    <StackPanel>
-                                        <TextBlock Text="Current AI Contact" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
-                                        <Grid Margin="0,5">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
-                                                     Fill="{Binding CurrentAIStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding CurrentAIStatusText}" FontSize="12" Foreground="#E0F7FF"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -271,6 +259,7 @@
                                     </Button.Background>
                                     </Button>
                             </StackPanel>
+                        </ScrollViewer>
                     </TabItem>
                 </TabControl>
             </Grid>

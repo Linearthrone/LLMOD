@@ -58,6 +58,7 @@ House Victoria is a modular desktop overlay application inspired by Xbox Game Ba
 | **Settings Window** | `App/Screens/Windows/SettingsWindow.xaml` | ✅ Complete | All config sections, validation, connection testing, import/export |
 | **Projects Window** | `App/Screens/Windows/ProjectsWindow.xaml` | ✅ Complete | Full CRUD, filtering, sorting, detail dialogs, roadblocks, artifacts |
 | **Global Log Directory** | `App/Screens/Windows/GlobalLogDirectoryWindow.xaml` | ✅ Complete | Categorized log viewing, export (TXT/JSON/CSV) |
+| **Data Bank Management** | `App/Screens/Windows/DataBankManagementWindow.xaml` | ✅ Complete | Data bank CRUD, entry viewer/editor, search/filter (Top Tray button) |
 
 ---
 
@@ -150,50 +151,11 @@ House Victoria is a modular desktop overlay application inspired by Xbox Game Ba
 
 ### Priority 1: Critical Missing Features (Foundation First)
 
-#### 1. Data Bank Management UI
+#### 1. Data Bank Management UI ✅ COMPLETE
 **Priority:** HIGH  
-**Estimated Effort:** 3-4 days  
-**Status:** Backend exists (`IMemoryService`), UI missing  
-**Dependencies:** None
+**Status:** ✅ Complete – UI implemented and wired (Top Tray button, `DataBankManagementWindow`, `CreateDataBankDialog`, `AddDataEntryDialog`).
 
-**Why First:**
-- Memory service backend is complete and functional
-- Users need UI to manage their data banks
-- Required for full utilization of memory system
-- No external dependencies (can start immediately)
-
-**Implementation Tasks:**
-1. Create `DataBankManagementWindow.xaml` and ViewModel
-2. Implement data bank list view with:
-   - Display all data banks
-   - Show entry counts per bank
-   - Search/filter banks by name
-3. Add data bank CRUD operations:
-   - Create new data bank
-   - Edit data bank name/description
-   - Delete data bank (with confirmation)
-4. Implement data entry viewer/editor:
-   - List entries in selected bank
-   - View entry details (key, value, category, importance, tags)
-   - Add new entries
-   - Edit existing entries
-   - Delete entries
-5. Add search and filtering:
-   - Search entries by text
-   - Filter by category
-   - Filter by importance threshold
-6. Integrate with existing `IMemoryService` (via `IPersistenceService`)
-
-**Files to Create:**
-- `HouseVictoria.App/Screens/Windows/DataBankManagementWindow.xaml`
-- `HouseVictoria.App/Screens/Windows/DataBankManagementWindow.xaml.cs`
-- `HouseVictoria.App/Screens/Windows/DataBankManagementWindowViewModel.cs`
-
-**Testing:**
-- Test data bank creation and deletion
-- Test data entry CRUD operations
-- Test search and filtering
-- Verify integration with MemoryService
+The Data Bank Management window is fully implemented: users can create, view, edit, and delete data banks and manage entries. Opened via the Data Bank Management button on the Top Tray.
 
 ---
 
@@ -395,61 +357,9 @@ House Victoria is a modular desktop overlay application inspired by Xbox Game Ba
 
 ---
 
-#### 5. Audio Processing Service (Speech-to-Text)
-**Priority:** MEDIUM (Optional)  
-**Estimated Effort:** 2-3 days  
-**Status:** Throws `NotImplementedException` in `OllamaAIService.ProcessAudioAsync()`  
-**Dependencies:** Speech-to-text service or library
-
-**Why Fifth:**
-- Enhances multimodal capabilities
-- Complements text communication
-- Can be implemented independently
-- Useful for voice queries to AI
-
-**Implementation Options:**
-1. **Whisper API:** OpenAI Whisper API (requires API key)
-2. **Local Whisper:** Run Whisper locally via Python service
-3. **Azure Speech Services:** Microsoft Azure Speech-to-Text
-4. **Google Speech API:** Google Cloud Speech-to-Text
-
-**Implementation Tasks:**
-1. **Select Solution:**
-   - Evaluate options (cost, accuracy, latency, privacy)
-   - Choose implementation approach
-   - Set up service endpoint/API key
-
-2. **Implement Audio Processing:**
-   - Implement `ProcessAudioAsync()` in `OllamaAIService`
-   - Handle audio file upload/streaming
-   - Handle transcription result processing
-   - Handle error cases (unsupported format, connection failures)
-
-3. **Add UI:**
-   - Add microphone button in SMS/MMS window
-   - Recording controls (start, stop, cancel)
-   - Recording indicator (waveform animation)
-   - Display transcribed text
-   - Option to send transcribed text as message
-
-4. **Integration:**
-   - Integrate with SMS/MMS window for voice messages
-   - Support audio file upload for transcription
-   - Option to use transcription in AI queries
-
-**Files to Modify:**
-- `HouseVictoria.Services/AIServices/OllamaAIService.cs`
-- `HouseVictoria.App/Screens/Windows/SMSMMSWindow.xaml` (add microphone button)
-
-**NuGet Packages Needed:**
-- Depends on selected solution (may need HTTP client or audio processing library)
-
-**Testing:**
-- Test audio recording
-- Test transcription accuracy
-- Test with various audio formats
-- Test integration with SMS/MMS window
-- Test error handling
+#### 5. Audio Processing Service (Speech-to-Text) ✅ COMPLETE
+**Priority:** MEDIUM (Optional)
+**Status:** ✅ Complete – `ProcessAudioAsync()` in `OllamaAIService` is implemented with local Whisper/STT endpoint (default `http://localhost:8000/transcribe`) and optional OpenAI Whisper API fallback when `OPENAI_API_KEY` is set. Microphone recording and transcription UI are integrated in the SMS/MMS window.
 
 ---
 

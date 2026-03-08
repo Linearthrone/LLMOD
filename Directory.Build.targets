@@ -1,0 +1,37 @@
+<Project>
+  <!-- 
+    Custom MSBuild targets to handle file locking issues during build.
+    This addresses MSB3026 errors when DLLs are locked by running processes.
+  -->
+  
+  <!-- Increase retry attempts for file copy operations -->
+  <PropertyGroup>
+    <CopyRetryCount>10</CopyRetryCount>
+    <CopyRetryDelayMilliseconds>1000</CopyRetryDelayMilliseconds>
+  </PropertyGroup>
+
+  <!-- 
+    Optional: Kill processes that might lock build output files.
+    Set KillLockingProcessesOnBuild=true in your project file to enable.
+    This is disabled by default to avoid killing processes unexpectedly.
+  -->
+  <PropertyGroup>
+    <KillLockingProcessesOnBuild Condition="'$(KillLockingProcessesOnBuild)' == ''">false</KillLockingProcessesOnBuild>
+  </PropertyGroup>
+
+  <Target Name="KillLockingProcesses" 
+          BeforeTargets="BeforeBuild" 
+          Condition="'$(KillLockingProcessesOnBuild)' == 'true'">
+    <Message Text="Checking for processes that might lock build output files..." Importance="normal" />
+    
+    <!-- Kill HouseVictoria.App.exe if running -->
+    <Exec Command="taskkill /F /IM HouseVictoria.App.exe /T 2&gt;nul || exit 0" 
+          IgnoreExitCode="true" 
+          ContinueOnError="true" />
+    
+    <!-- Wait a moment for processes to release file locks -->
+    <Exec Command="timeout /t 1 /nobreak &gt;nul 2&gt;&amp;1 || ping 127.0.0.1 -n 2 &gt;nul" 
+          IgnoreExitCode="true" 
+          ContinueOnError="true" />
+  </Target>
+</Project>

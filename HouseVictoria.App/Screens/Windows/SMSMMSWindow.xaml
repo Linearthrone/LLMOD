@@ -956,14 +956,14 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         
-                        <!-- Call Buttons Container (only visible in message view) -->
+                        <!-- TTS/STT Call buttons (visible in message/chat view only) -->
                         <Grid Grid.Column="1" Visibility="{Binding ShowMessageView, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <!-- Start Call Button -->
+                            <!-- Start voice call (TTS/STT) -->
                             <Button Width="50" Height="50"
                                    Background="Transparent" 
                                    BorderThickness="0"
                                    Command="{Binding StartCallCommand}"
-                                   ToolTip="Start Call"
+                                   ToolTip="Start voice call (TTS/STT)"
                                    Visibility="{Binding CanStartCall, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <TextBlock Text="📞" 
                                           FontSize="24" 
@@ -972,12 +972,12 @@
                                           VerticalAlignment="Center"/>
                             </Button>
                             
-                            <!-- End Call Button -->
+                            <!-- End voice call -->
                             <Button Width="50" Height="50"
                                    Background="Transparent" 
                                    BorderThickness="0"
                                    Command="{Binding EndCallCommand}"
-                                   ToolTip="End Call"
+                                   ToolTip="End voice call"
                                    Visibility="{Binding CanEndCall, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <TextBlock Text="📵" 
                                           FontSize="24" 
