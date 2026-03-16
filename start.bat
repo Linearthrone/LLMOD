@@ -7,6 +7,7 @@ set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 set "MCP_PATH=%SCRIPT_DIR%\MCPServer"
 set "PIPER_DATA=%SCRIPT_DIR%\Media\PiperVoices"
 set "PIPER_MODEL=en_US-amy-medium"
+set "KOKORO_PORT=8880"
 set "STT_PORT=8000"
 cd /d "%SCRIPT_DIR%"
 
@@ -26,6 +27,24 @@ if not errorlevel 1 (
 )
 echo.
 
+REM --- LM Studio Server (default port 1234) ---
+echo Starting LM Studio server...
+where lms >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] LM Studio CLI ^(lms^) not found. Ensure LM Studio is installed and the CLI is on PATH.
+) else (
+    netstat -an | findstr /C:":1234" | findstr /C:"LISTENING" >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] LM Studio server already listening on port 1234. Skipping.
+    ) else (
+        if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+        start "LM Studio Server" /B /D "%SCRIPT_DIR%" cmd /c "lms server start --port 1234 >> Media\lmstudio-server.log 2>&1"
+        timeout /t 2 /nobreak >nul
+        echo [OK] LM Studio server starting on http://localhost:1234
+    )
+)
+echo.
+
 REM --- MCP Server (port 8080) ---
 echo Starting MCP Server...
 if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
@@ -36,9 +55,41 @@ if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
         echo [INFO] MCP Server already on port 8080. Skipping.
     ) else (
         if not exist "%MCP_PATH%\logs" mkdir "%MCP_PATH%\logs"
-        start "MCP Server" /B cmd /c "cd /d \"%MCP_PATH%\" && .venv\Scripts\python.exe http_server.py >> logs\http_server.log 2>&1"
+        start "MCP Server" /B /D "%MCP_PATH%" cmd /c ".venv\Scripts\python.exe http_server.py >> logs\http_server.log 2>&1"
         timeout /t 2 /nobreak >nul
         echo [OK] MCP Server - http://localhost:8080
+    )
+)
+echo.
+
+REM --- Kokoro TTS (port 8880) ---
+REM kokoro-fastapi is NOT on PyPI; use Docker or a local clone (see https://github.com/remsky/Kokoro-FastAPI).
+echo Starting Kokoro TTS...
+netstat -an | findstr /C:":%KOKORO_PORT%" | findstr /C:"LISTENING" >nul 2>&1
+if not errorlevel 1 (
+    echo [INFO] Kokoro TTS already on port %KOKORO_PORT%. Skipping.
+) else (
+    set "KOKORO_STARTED=0"
+    where docker >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] Starting Kokoro TTS via Docker...
+        start "Kokoro TTS" /B /D "%SCRIPT_DIR%" cmd /c "docker run --rm -p %KOKORO_PORT%:%KOKORO_PORT% ghcr.io/remsky/kokoro-fastapi-cpu:latest >> Media\kokoro.log 2>&1"
+        set "KOKORO_STARTED=1"
+    )
+    if "!KOKORO_STARTED!"=="0" (
+        set "KOKORO_CLONE=%SCRIPT_DIR%\Kokoro-FastAPI"
+        if exist "!KOKORO_CLONE!\start-cpu.ps1" (
+            echo [INFO] Starting Kokoro TTS from clone...
+            set "KOKORO_PS1=%SCRIPT_DIR%\.ps1 scripts\start-kokoro.ps1"
+            start "Kokoro TTS" /B /D "%SCRIPT_DIR%" powershell -NoProfile -ExecutionPolicy Bypass -File "!KOKORO_PS1!" -ScriptDir "%SCRIPT_DIR%" -KokoroCloneDir "!KOKORO_CLONE!" -Port %KOKORO_PORT%
+            set "KOKORO_STARTED=1"
+        )
+    )
+    if "!KOKORO_STARTED!"=="1" (
+        timeout /t 2 /nobreak >nul
+        echo [OK] Kokoro TTS - http://localhost:%KOKORO_PORT%
+    ) else (
+        echo [INFO] Kokoro TTS skipped. kokoro-fastapi is not on PyPI. Use: Docker ^(docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest^) or clone https://github.com/remsky/Kokoro-FastAPI and run start-cpu.ps1 from the clone.
     )
 )
 echo.
@@ -55,7 +106,7 @@ if not exist "%SCRIPT_DIR%\PiperServer\piper_server.py" (
         echo [INFO] Piper TTS already on port 5000. Skipping.
     ) else (
         if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
-        start "Piper TTS" /B cmd /c "cd /d \"%SCRIPT_DIR%\" && \"%MCP_PATH%\.venv\Scripts\python.exe\" PiperServer\piper_server.py --model %PIPER_MODEL% --port 5000 --data-dir \"%PIPER_DATA%\" >> Media\piper.log 2>&1"
+        start "Piper TTS" /B /D "%SCRIPT_DIR%" cmd /c "%MCP_PATH%\.venv\Scripts\python.exe PiperServer\piper_server.py --model %PIPER_MODEL% --port 5000 --data-dir "%PIPER_DATA%" --debug >> Media\piper.log 2>&1"
         timeout /t 2 /nobreak >nul
         echo [OK] Piper TTS - http://localhost:5000
     )
@@ -74,7 +125,7 @@ if not exist "%SCRIPT_DIR%\STTServer\app.py" (
         echo [INFO] STT already on port %STT_PORT%. Skipping.
     ) else (
         if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
-        start "STT Server" /B cmd /c "cd /d \"%SCRIPT_DIR%\" && \"%MCP_PATH%\.venv\Scripts\python.exe\" -m uvicorn STTServer.app:app --host 127.0.0.1 --port %STT_PORT% >> Media\stt.log 2>&1"
+        start "STT Server" /B /D "%SCRIPT_DIR%" cmd /c "%MCP_PATH%\.venv\Scripts\python.exe -m uvicorn STTServer.app:app --host 127.0.0.1 --port %STT_PORT% >> Media\stt.log 2>&1"
         timeout /t 2 /nobreak >nul
         echo [OK] STT - http://localhost:%STT_PORT%/transcribe
     )
@@ -101,12 +152,12 @@ set "COMFYUI_STARTED=0"
 if defined COMFYUI_PORTABLE_PATH (
     echo Starting ComfyUI...
     if exist "%COMFYUI_PORTABLE_PATH%\run_nvidia_gpu.bat" (
-        start "ComfyUI" /B cmd /c "cd /d \"%COMFYUI_PORTABLE_PATH%\" && run_nvidia_gpu.bat"
+        start "ComfyUI" /B /D "%COMFYUI_PORTABLE_PATH%" cmd /c "run_nvidia_gpu.bat"
         timeout /t 2 /nobreak >nul
         echo [OK] ComfyUI starting - http://127.0.0.1:8188
         set "COMFYUI_STARTED=1"
     ) else if exist "%COMFYUI_PORTABLE_PATH%\run_cpu.bat" (
-        start "ComfyUI" /B cmd /c "cd /d \"%COMFYUI_PORTABLE_PATH%\" && run_cpu.bat"
+        start "ComfyUI" /B /D "%COMFYUI_PORTABLE_PATH%" cmd /c "run_cpu.bat"
         timeout /t 2 /nobreak >nul
         echo [OK] ComfyUI ^(CPU^) starting - http://127.0.0.1:8188
         set "COMFYUI_STARTED=1"
@@ -159,7 +210,7 @@ if exist "%APP_EXE%" (
     echo [OK] House Victoria started.
 ) else (
     echo [INFO] No built exe. Starting with dotnet run...
-    start "House Victoria" cmd /k "cd /d \"%SCRIPT_DIR%\" && dotnet run --project HouseVictoria.App\HouseVictoria.App.csproj"
+    start "House Victoria" /D "%SCRIPT_DIR%" cmd /k "dotnet run --project HouseVictoria.App\HouseVictoria.App.csproj"
     timeout /t 3 /nobreak >nul
     echo [OK] House Victoria ^(dotnet run^) started.
 )
@@ -167,7 +218,7 @@ echo.
 
 echo === Services ===
 echo   Ollama: http://localhost:11434  ^| MCP: http://localhost:8080
-echo   Piper TTS: http://localhost:5000  ^| STT: http://localhost:%STT_PORT%/transcribe
+echo   Kokoro TTS: http://localhost:%KOKORO_PORT%  ^| Piper TTS: http://localhost:5000  ^| STT: http://localhost:%STT_PORT%/transcribe
 echo   ComfyUI: http://localhost:8188 (if started)
 echo   App: House Victoria
 echo.

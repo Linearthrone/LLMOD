@@ -32,7 +32,7 @@ except ImportError:
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ async def synthesize(request: TtsRequest):
             if sample_rate is None:
                 sample_rate = audio_chunk.sample_rate
                 sample_width = audio_chunk.sample_width
-                sample_channels = audio_chunk.num_channels
+                sample_channels = audio_chunk.sample_channels
         
         if not audio_chunks:
             raise HTTPException(status_code=500, detail="No audio generated")

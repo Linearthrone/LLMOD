@@ -4,7 +4,7 @@ import asyncio
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Dict
 
 from mcp.server.fastmcp import FastMCP
 
@@ -12,6 +12,7 @@ from .config import get_config
 from .logger import get_logger
 from .memory import MemoryStorage, MemoryManager
 from .tt import TaskManager, WorkflowEngine, ProgressTracker
+from .agent import CognitiveAgent
 
 logger = get_logger("main")
 
@@ -70,11 +71,25 @@ async def create_server():
     workflow_engine = WorkflowEngine(task_manager)
     progress_tracker = ProgressTracker()
 
+    # Initialize cognitive agent (Python-side reference implementation)
+    logger.info("Initializing cognitive agent...")
+
+    async def _tool_executor(tool_name: str, **kwargs: Any) -> Any:
+        """Adapter that lets the agent call other MCP tools by name."""
+        return await call_tool_by_name(tool_name, **kwargs)
+
+    agent = CognitiveAgent(
+        memory_manager=memory_manager,
+        workflow_engine=workflow_engine,
+        tool_executor=_tool_executor,
+    )
+
     # Register tool categories
     await register_memory_tools(mcp, memory_manager)
     await register_data_bank_tools(mcp, storage)
     await register_system_tools(mcp)
     await register_tt_tools(mcp, task_manager, workflow_engine, progress_tracker)
+    await register_agent_tools(mcp, agent)
     
     logger.info("Server creation complete")
     return mcp
@@ -545,6 +560,46 @@ async def register_system_tools(mcp_server: FastMCP):
             List of category names
         """
         return ["project", "knowledge", "resource", "config", "conversation"]
+
+
+async def register_agent_tools(mcp_server: FastMCP, agent: CognitiveAgent):
+    """Register cognitive agent tools."""
+
+    @mcp_server.tool()
+    async def agent_step(external_input: Optional[Dict[str, Any]] = None) -> dict:
+        """Run a single cognitive agent step.
+
+        Args:
+            external_input: Optional structured perception input
+                (e.g., Unreal state, sensors, speech transcript).
+
+        Returns:
+            Structured result with goal, plan, result, drives, world_state, reflection.
+        """
+        result = await agent.step(external_input)
+        return {
+            "success": True,
+            "agent": result,
+        }
+
+    @mcp_server.tool()
+    async def agent_state() -> dict:
+        """Get a lightweight snapshot of the agent's current state.
+
+        Returns:
+            Dictionary with basic state information.
+        """
+        # The current CognitiveAgent does not expose a dedicated state object,
+        # but we can provide a minimal snapshot by running a no-op step in future.
+        # For now, this returns a simple static description.
+        return {
+            "success": True,
+            "name": agent.name,
+            "personality": agent.personality,
+        }
+
+    # Expose agent_step via HTTP wrapper tool registry
+    _tool_functions["agent_step"] = agent_step
 
 
 async def register_tt_tools(

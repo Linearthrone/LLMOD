@@ -30,6 +30,31 @@ namespace HouseVictoria.App.Screens.Windows
         private string? _connectionTestResult;
         
         // LLM Server Settings
+        private string _lmStudioEndpoint = string.Empty;
+        public string LmStudioEndpoint
+        {
+            get => _lmStudioEndpoint;
+            set
+            {
+                if (SetProperty(ref _lmStudioEndpoint, value))
+                    ValidateSettings();
+            }
+        }
+
+        private bool _useLmStudioAsPrimary = true;
+        public bool UseLmStudioAsPrimary
+        {
+            get => _useLmStudioAsPrimary;
+            set => SetProperty(ref _useLmStudioAsPrimary, value);
+        }
+
+        private string? _lmStudioConnectionStatus;
+        public string? LmStudioConnectionStatus
+        {
+            get => _lmStudioConnectionStatus;
+            set => SetProperty(ref _lmStudioConnectionStatus, value);
+        }
+
         private string _ollamaEndpoint = string.Empty;
         public string OllamaEndpoint
         {
@@ -391,6 +416,13 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _sttConnectionStatus, value);
         }
 
+        private string _kokoroTTSStatus = "—";
+        public string KokoroTTSStatus
+        {
+            get => _kokoroTTSStatus;
+            set => SetProperty(ref _kokoroTTSStatus, value);
+        }
+
         private string? _unrealConnectionStatus;
         public string? UnrealConnectionStatus
         {
@@ -409,6 +441,7 @@ namespace HouseVictoria.App.Screens.Windows
 
         // Commands
         public ICommand TestOllamaConnectionCommand { get; }
+        public ICommand TestLmStudioConnectionCommand { get; }
         public ICommand TestMCPConnectionCommand { get; }
         public ICommand TestTTSConnectionCommand { get; }
         public ICommand TestSTTConnectionCommand { get; }
@@ -422,6 +455,8 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand ExportSettingsCommand { get; }
         public ICommand ResetToDefaultsCommand { get; }
         public ICommand LoadVoicesCommand { get; }
+        public ICommand StartKokoroCommand { get; }
+        public ICommand StopKokoroCommand { get; }
 
         public SettingsWindowViewModel(AppConfig appConfig)
         {
@@ -438,6 +473,8 @@ namespace HouseVictoria.App.Screens.Windows
             }
             
             // Load settings from AppConfig
+            LmStudioEndpoint = appConfig.LmStudioEndpoint;
+            UseLmStudioAsPrimary = appConfig.UseLmStudioAsPrimary;
             OllamaEndpoint = appConfig.OllamaEndpoint;
             MCPServerEndpoint = appConfig.MCPServerEndpoint;
             TTSEndpoint = appConfig.TTSEndpoint;
@@ -471,6 +508,7 @@ namespace HouseVictoria.App.Screens.Windows
 
             // Initialize commands
             TestOllamaConnectionCommand = new RelayCommand(async () => await TestOllamaConnectionAsync());
+            TestLmStudioConnectionCommand = new RelayCommand(async () => await TestLmStudioConnectionAsync());
             TestMCPConnectionCommand = new RelayCommand(async () => await TestMCPConnectionAsync());
             TestTTSConnectionCommand = new RelayCommand(async () => await TestTTSConnectionAsync());
             TestSTTConnectionCommand = new RelayCommand(async () => await TestSTTConnectionAsync());
@@ -484,11 +522,14 @@ namespace HouseVictoria.App.Screens.Windows
             ExportSettingsCommand = new RelayCommand(() => ExportSettings());
             ResetToDefaultsCommand = new RelayCommand(() => ResetToDefaults());
             LoadVoicesCommand = new RelayCommand(async () => await LoadAvailableVoicesAsync());
+            StartKokoroCommand = new RelayCommand(async () => await StartKokoroAsync());
+            StopKokoroCommand = new RelayCommand(async () => await StopKokoroAsync());
 
             ValidateSettings();
             
             // Load available voices on initialization
             _ = LoadAvailableVoicesAsync();
+            _ = RefreshKokoroStatusAsync();
         }
 
         private void ValidateSettings()
@@ -497,6 +538,14 @@ namespace HouseVictoria.App.Screens.Windows
 
             // Validate URL format
             var urlPattern = @"^https?://.+|^ws://.+|^wss://.+";
+            if (!string.IsNullOrWhiteSpace(LmStudioEndpoint) && !Regex.IsMatch(LmStudioEndpoint, urlPattern))
+            {
+                _validationError = "LM Studio endpoint must be a valid URL (http://, https://)";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
             if (!string.IsNullOrWhiteSpace(OllamaEndpoint) && !Regex.IsMatch(OllamaEndpoint, urlPattern))
             {
                 _validationError = "Ollama endpoint must be a valid URL (http://, https://)";
@@ -646,15 +695,14 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 var aiService = App.GetService<IAIService>();
-                if (aiService != null && aiService is OllamaAIService ollamaService)
+                if (aiService != null)
                 {
-                    var result = await ollamaService.TestConnectionAsync(OllamaEndpoint);
+                    var result = await aiService.TestConnectionAsync(OllamaEndpoint);
                     OllamaConnectionStatus = result ? "✓ Connected" : "✗ Failed";
                     ConnectionTestResult = result ? "Ollama: ✓ Connection successful!" : "Ollama: ✗ Connection failed";
                 }
                 else
                 {
-                    // Fallback: direct HTTP test
                     var response = await _httpClient.GetAsync($"{OllamaEndpoint}/api/tags");
                     var success = response.IsSuccessStatusCode;
                     OllamaConnectionStatus = success ? "✓ Connected" : "✗ Failed";
@@ -665,6 +713,47 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 OllamaConnectionStatus = "✗ Failed";
                 ConnectionTestResult = $"Ollama: ✗ Connection failed: {ex.Message}";
+            }
+            finally
+            {
+                IsTestingConnection = false;
+            }
+        }
+
+        private async Task TestLmStudioConnectionAsync()
+        {
+            if (string.IsNullOrWhiteSpace(LmStudioEndpoint))
+            {
+                LmStudioConnectionStatus = "Error: Endpoint is empty";
+                ConnectionTestResult = "LM Studio: Error - Endpoint is empty";
+                return;
+            }
+
+            IsTestingConnection = true;
+            LmStudioConnectionStatus = "Testing...";
+            ConnectionTestResult = "LM Studio: Testing connection...";
+
+            try
+            {
+                var aiService = App.GetService<IAIService>();
+                if (aiService != null)
+                {
+                    var result = await aiService.TestConnectionAsync(LmStudioEndpoint);
+                    LmStudioConnectionStatus = result ? "✓ Connected" : "✗ Failed";
+                    ConnectionTestResult = result ? "LM Studio: ✓ Connection successful!" : "LM Studio: ✗ Connection failed";
+                }
+                else
+                {
+                    var response = await _httpClient.GetAsync($"{LmStudioEndpoint.TrimEnd('/')}/models");
+                    var success = response.IsSuccessStatusCode;
+                    LmStudioConnectionStatus = success ? "✓ Connected" : "✗ Failed";
+                    ConnectionTestResult = success ? "LM Studio: ✓ Connection successful!" : "LM Studio: ✗ Connection failed";
+                }
+            }
+            catch (Exception ex)
+            {
+                LmStudioConnectionStatus = "✗ Failed";
+                ConnectionTestResult = $"LM Studio: ✗ Connection failed: {ex.Message}";
             }
             finally
             {
@@ -876,6 +965,65 @@ namespace HouseVictoria.App.Screens.Windows
             catch
             {
                 return new List<string>();
+            }
+        }
+
+        private async Task RefreshKokoroStatusAsync()
+        {
+            try
+            {
+                var monitor = App.ServiceProvider?.GetService<ISystemMonitorService>();
+                if (monitor == null)
+                {
+                    KokoroTTSStatus = "—";
+                    return;
+                }
+                var status = await monitor.GetServerStatusAsync("Kokoro TTS");
+                KokoroTTSStatus = status.IsRunning ? "● Running (port 8880)" : "○ Stopped";
+            }
+            catch
+            {
+                KokoroTTSStatus = "—";
+            }
+        }
+
+        private async Task StartKokoroAsync()
+        {
+            try
+            {
+                var monitor = App.ServiceProvider?.GetService<ISystemMonitorService>();
+                if (monitor != null)
+                {
+                    await monitor.StartServerAsync("Kokoro TTS");
+                    await Task.Delay(800);
+                    await RefreshKokoroStatusAsync();
+                    if (TTSEndpoint?.Contains("8880") == true)
+                        _ = TestTTSConnectionAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                KokoroTTSStatus = "Error: " + ex.Message;
+            }
+        }
+
+        private async Task StopKokoroAsync()
+        {
+            try
+            {
+                var monitor = App.ServiceProvider?.GetService<ISystemMonitorService>();
+                if (monitor != null)
+                {
+                    await monitor.StopServerAsync("Kokoro TTS");
+                    await Task.Delay(500);
+                    await RefreshKokoroStatusAsync();
+                    if (TTSEndpoint?.Contains("8880") == true)
+                        TTSConnectionStatus = "✗ Failed";
+                }
+            }
+            catch (Exception ex)
+            {
+                KokoroTTSStatus = "Error: " + ex.Message;
             }
         }
 
@@ -1105,6 +1253,8 @@ namespace HouseVictoria.App.Screens.Windows
                     if (importedConfig != null)
                     {
                         // Load imported settings
+                        LmStudioEndpoint = importedConfig.LmStudioEndpoint;
+                        UseLmStudioAsPrimary = importedConfig.UseLmStudioAsPrimary;
                         OllamaEndpoint = importedConfig.OllamaEndpoint;
                         MCPServerEndpoint = importedConfig.MCPServerEndpoint;
                         TTSEndpoint = importedConfig.TTSEndpoint;
@@ -1161,6 +1311,8 @@ namespace HouseVictoria.App.Screens.Windows
                     // Create export config with current settings
                     var exportConfig = new AppConfig
                     {
+                        LmStudioEndpoint = LmStudioEndpoint,
+                        UseLmStudioAsPrimary = UseLmStudioAsPrimary,
                         OllamaEndpoint = OllamaEndpoint,
                         MCPServerEndpoint = MCPServerEndpoint,
                         TTSEndpoint = TTSEndpoint,
@@ -1214,6 +1366,8 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 // Update AppConfig
+                _appConfig.LmStudioEndpoint = LmStudioEndpoint;
+                _appConfig.UseLmStudioAsPrimary = UseLmStudioAsPrimary;
                 _appConfig.OllamaEndpoint = OllamaEndpoint;
                 _appConfig.MCPServerEndpoint = MCPServerEndpoint;
                 _appConfig.TTSEndpoint = TTSEndpoint;
@@ -1246,6 +1400,8 @@ namespace HouseVictoria.App.Screens.Windows
                 // Save to App.config file (basic settings only)
                 var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 
+                UpdateOrAddSetting(config, "LmStudioEndpoint", LmStudioEndpoint);
+                UpdateOrAddSetting(config, "UseLmStudioAsPrimary", UseLmStudioAsPrimary.ToString());
                 UpdateOrAddSetting(config, "OllamaEndpoint", OllamaEndpoint);
                 UpdateOrAddSetting(config, "MCPServerEndpoint", MCPServerEndpoint);
                 UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
@@ -1295,6 +1451,8 @@ namespace HouseVictoria.App.Screens.Windows
                 // Reset to default values
                 var defaults = new AppConfig();
 
+                LmStudioEndpoint = defaults.LmStudioEndpoint;
+                UseLmStudioAsPrimary = defaults.UseLmStudioAsPrimary;
                 OllamaEndpoint = defaults.OllamaEndpoint;
                 MCPServerEndpoint = defaults.MCPServerEndpoint;
                 TTSEndpoint = defaults.TTSEndpoint;
@@ -1325,6 +1483,7 @@ namespace HouseVictoria.App.Screens.Windows
                 MemoryRetentionDays = defaults.MemoryRetentionDays;
 
                 // Clear connection statuses
+                LmStudioConnectionStatus = null;
                 OllamaConnectionStatus = null;
                 MCPServerConnectionStatus = null;
                 TTSConnectionStatus = null;

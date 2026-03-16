@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using HouseVictoria.Core.Interfaces;
+using HouseVictoria.Core.Utils;
 using System.Speech.Synthesis;
 
 namespace HouseVictoria.Services.TTS
@@ -28,7 +29,8 @@ namespace HouseVictoria.Services.TTS
             _piperDefaultVoice = string.IsNullOrWhiteSpace(piperDefaultVoice) ? null : piperDefaultVoice.Trim();
             _httpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(30)
+                // Long text can take 60–90s to synthesize (Kokoro chunks and processes); avoid cutting off mid-speech
+                Timeout = TimeSpan.FromSeconds(120)
             };
 
             // Initialize Windows TTS synthesizer if fallback is enabled
@@ -82,6 +84,38 @@ namespace HouseVictoria.Services.TTS
                 {
                     System.Diagnostics.Debug.WriteLine($"TTS: Piper format attempt failed: {piperEx.Message}");
                     // Continue to try other formats
+                }
+
+                // Kokoro / OpenAI-compatible TTS (e.g. kokoro-fastapi on port 8880).
+                // Server chunks by punctuation; very long unpunctuated text can yield partial audio (stops at last punctuation).
+                try
+                {
+                    var baseUrl = _endpoint.TrimEnd('/');
+                    var kokoroUrl = baseUrl.Contains("/v1") ? $"{baseUrl}/audio/speech" : $"{baseUrl}/v1/audio/speech";
+                    var kokoroBody = new Dictionary<string, object?>
+                    {
+                        ["model"] = "kokoro",
+                        ["input"] = text,
+                        ["voice"] = !string.IsNullOrWhiteSpace(voice) ? voice : "af_bella",
+                        ["response_format"] = "wav"
+                    };
+                    var kokoroJson = JsonSerializer.Serialize(kokoroBody);
+                    var kokoroContent = new StringContent(kokoroJson, Encoding.UTF8, "application/json");
+                    var kokoroResponse = await _httpClient.PostAsync(kokoroUrl, kokoroContent);
+                    if (kokoroResponse.IsSuccessStatusCode)
+                    {
+                        var audioData = await kokoroResponse.Content.ReadAsByteArrayAsync();
+                        if (audioData.Length > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("TTS: Successfully synthesized using Kokoro/OpenAI format");
+                            return audioData;
+                        }
+                    }
+                }
+                catch (Exception kokoroEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"TTS: Kokoro format attempt failed: {kokoroEx.Message}");
+                    LoggingHelper.WriteToStartupLog($"TTS: Kokoro/OpenAI attempt failed for {_endpoint}: {kokoroEx.Message}");
                 }
 
                 // Try common TTS API endpoints
@@ -164,6 +198,7 @@ namespace HouseVictoria.Services.TTS
                     try
                     {
                         System.Diagnostics.Debug.WriteLine($"TTS: External service unavailable, using Windows TTS fallback");
+                        LoggingHelper.WriteToStartupLog($"TTS: External service at {_endpoint} unavailable; using Windows TTS fallback.");
                         return await SynthesizeWithWindowsTTSAsync(text, voice, speed);
                     }
                     catch (Exception winTtsEx)
@@ -186,6 +221,7 @@ namespace HouseVictoria.Services.TTS
                     try
                     {
                         System.Diagnostics.Debug.WriteLine($"TTS: Exception occurred, trying Windows TTS fallback");
+                        LoggingHelper.WriteToStartupLog($"TTS: Exception ({ex.Message}); using Windows TTS fallback.");
                         return await SynthesizeWithWindowsTTSAsync(text, voice, speed);
                     }
                     catch (Exception winTtsEx)
@@ -314,12 +350,53 @@ namespace HouseVictoria.Services.TTS
         /// <summary>
         /// Gets only Piper TTS voices (from local data dir first, then server). Does not include Windows TTS.
         /// </summary>
+        /// <summary>Known Kokoro (kokoro-fastapi) voice IDs.</summary>
+        private static readonly string[] KokoroVoiceIds = new[]
+        {
+            "af_bella", "af_sarah", "af_nicole", "af_sky", "af_irulan",
+            "am_adam", "am_michael", "am_gurney", "bf_emma", "bf_isabella",
+            "bm_george", "bm_lewis"
+        };
+
         private async Task<List<string>> GetPiperVoicesOnlyAsync()
         {
             var voices = new List<string>();
 
             try
             {
+                // Kokoro TTS (e.g. port 8880): try /v1/voices then use known list
+                if (_endpoint.Contains("8880", StringComparison.OrdinalIgnoreCase) || _endpoint.Contains("/v1", StringComparison.OrdinalIgnoreCase))
+                {
+                    var baseUrl = _endpoint.TrimEnd('/');
+                    if (!baseUrl.Contains("/v1")) baseUrl = $"{baseUrl}/v1";
+                    try
+                    {
+                        var response = await _httpClient.GetAsync($"{baseUrl}/voices");
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var content = await response.Content.ReadAsStringAsync();
+                            using var doc = JsonDocument.Parse(content);
+                            if (doc.RootElement.TryGetProperty("voices", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                                foreach (var el in arr.EnumerateArray())
+                                {
+                                    var name = el.GetString();
+                                    if (!string.IsNullOrWhiteSpace(name) && !voices.Contains(name)) voices.Add(name);
+                                }
+                            else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                                foreach (var el in doc.RootElement.EnumerateArray())
+                                {
+                                    var name = el.GetString();
+                                    if (!string.IsNullOrWhiteSpace(name) && !voices.Contains(name)) voices.Add(name);
+                                }
+                        }
+                    }
+                    catch { /* ignore */ }
+                    if (voices.Count == 0)
+                        voices.AddRange(KokoroVoiceIds);
+                    if (voices.Count > 0)
+                        return voices;
+                }
+
                 // Prefer local Piper data directory so we show actual Piper models, not Windows TTS from a fallback server
                 if (!string.IsNullOrEmpty(_piperDataDir) && Directory.Exists(_piperDataDir))
                 {

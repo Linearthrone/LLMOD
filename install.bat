@@ -39,6 +39,28 @@ if errorlevel 1 (
 echo [OK] pip found
 echo.
 
+REM --- LM Studio (for local LLM server) ---
+echo Checking LM Studio CLI ^(lms^)...
+where lms >nul 2>&1
+if errorlevel 1 (
+    echo [INFO] LM Studio not found on PATH.
+    where winget >nul 2>&1
+    if errorlevel 1 (
+        echo [WARN] winget not available. Please install LM Studio manually from https://lmstudio.ai/download and ensure the ^"lms^" CLI is on PATH.
+    ) else (
+        echo Attempting to install LM Studio via winget...
+        winget install -e --id ElementLabs.LMStudio --accept-source-agreements --accept-package-agreements
+        if errorlevel 1 (
+            echo [WARN] winget install for LM Studio failed. Install manually from https://lmstudio.ai/download and ensure the ^"lms^" CLI is on PATH.
+        ) else (
+            echo [OK] LM Studio installed via winget.
+        )
+    )
+) else (
+    echo [OK] LM Studio CLI found.
+)
+echo.
+
 REM --- .NET build ---
 echo Restoring and building solution...
 dotnet restore HouseVictoria.sln
@@ -70,6 +92,9 @@ python -m pip install --upgrade pip -q
 echo Installing MCP and dependencies...
 pip install -e . -q
 if errorlevel 1 ( echo [ERROR] pip install -e . failed. & exit /b 1 )
+REM Ensure piper CLI dependency is available to avoid runtime errors
+pip install pathvalidate -q
+if errorlevel 1 ( echo [WARN] Failed to install pathvalidate. Piper CLI may not work correctly. )
 echo [OK] MCP Server dependencies installed.
 
 REM Optional: STT server (faster-whisper) in same venv
@@ -83,6 +108,8 @@ REM Optional: Piper server uses same venv (piper-tts already in MCP deps)
 if exist "%SCRIPT_DIR%\PiperServer\requirements.txt" (
     pip install -r "%SCRIPT_DIR%\PiperServer\requirements.txt" -q 2>nul
 )
+
+REM Kokoro TTS: not on PyPI. Use Docker (docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu) or clone https://github.com/remsky/Kokoro-FastAPI into Kokoro-FastAPI and run start-cpu.ps1.
 
 if not exist "data" mkdir data
 if not exist "data\banks" mkdir data\banks
@@ -108,8 +135,11 @@ cd /d "%SCRIPT_DIR%"
 if not exist "Media" mkdir Media
 if not exist "Media\PiperVoices" mkdir Media\PiperVoices
 echo [OK] Media\PiperVoices ready. Add Piper .onnx voice files here if needed.
+
+if not exist "Media\Kokoro" mkdir Media\Kokoro
+echo [OK] Media\Kokoro ready (optional; Kokoro-FastAPI clone uses its own model path).
 echo.
 
 echo === Install complete ===
-echo Run start.bat to start Ollama, MCP Server, Piper TTS, STT, and the app.
+echo Run start.bat to start Ollama, MCP Server, Kokoro TTS, Piper TTS, STT, and the app.
 echo.

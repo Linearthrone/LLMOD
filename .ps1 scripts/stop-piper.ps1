@@ -7,12 +7,12 @@ $found = $false
 try {
     $conn = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
     if ($conn) {
-        $pids = $conn.OwningProcess | Sort-Object -Unique
-        foreach ($pid in $pids) {
-            $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        $piperPids = $conn.OwningProcess | Sort-Object -Unique
+        foreach ($piperPid in $piperPids) {
+            $proc = Get-Process -Id $piperPid -ErrorAction SilentlyContinue
             if ($proc) {
-                Write-Host "Stopping Piper TTS (PID $pid - $($proc.ProcessName))..."
-                Stop-Process -Id $pid -Force
+                Write-Host "Stopping Piper TTS (PID $piperPid - $($proc.ProcessName))..."
+                Stop-Process -Id $piperPid -Force
                 $found = $true
             }
         }
@@ -27,14 +27,14 @@ if (-not $found) {
     $line = $netstat | Select-String ":$port\s"
     if ($line) {
         $parts = ($line -replace '\s+', ' ').ToString().Trim().Split(' ')
-        $pid = $parts[-1]
-        if ($pid -match '^\d+$') {
-            Write-Host "Stopping process PID $pid..."
+        $piperPid = $parts[-1]
+        if ($piperPid -match '^\d+$') {
+            Write-Host "Stopping process PID $piperPid..."
             try {
-                Stop-Process -Id $pid -Force -ErrorAction Stop
+                Stop-Process -Id $piperPid -Force -ErrorAction Stop
                 $found = $true
             } catch {
-                Write-Host "Could not stop PID $pid. Try: Right-click PowerShell -> Run as Administrator, then run this script again."
+                Write-Host "Could not stop PID $piperPid. Try: Right-click PowerShell -> Run as Administrator, then run this script again."
             }
         }
     }

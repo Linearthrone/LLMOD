@@ -1,6 +1,7 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.AIServices;
+using HouseVictoria.Services.Agent;
 using HouseVictoria.Services.Communication;
 using HouseVictoria.Services.Persistence;
 using HouseVictoria.Services.ProjectManagement;
@@ -213,21 +214,31 @@ namespace HouseVictoria.App
                 var mediaPath = appConfig?.MediaPath ?? "Media";
                 return new HouseVictoria.Services.FileGeneration.FileGenerationService(mediaPath);
             });
-            services.AddSingleton<IAIService>(sp => 
+            services.AddSingleton<OllamaAIService>(sp =>
             {
                 var appConfig = sp.GetService<AppConfig>();
                 return new OllamaAIService(appConfig?.OllamaEndpoint ?? "http://localhost:11434", appConfig);
             });
+            services.AddSingleton<LmStudioAIService>(sp =>
+            {
+                var appConfig = sp.GetService<AppConfig>();
+                return new LmStudioAIService(appConfig?.LmStudioEndpoint ?? "http://localhost:1234/v1");
+            });
+            services.AddSingleton<IAIService>(sp =>
+                new FallbackAIService(
+                    sp.GetRequiredService<LmStudioAIService>(),
+                    sp.GetRequiredService<OllamaAIService>(),
+                    sp.GetRequiredService<AppConfig>()));
             // Register TTS Service
             services.AddSingleton<HouseVictoria.Core.Interfaces.ITTSService>(sp =>
             {
                 try
                 {
                     var appConfig = sp.GetService<AppConfig>();
-                    var endpoint = appConfig?.TTSEndpoint ?? "http://localhost:5000";
+                    var endpoint = appConfig?.TTSEndpoint ?? "http://localhost:8880";
                     if (string.IsNullOrWhiteSpace(endpoint))
                     {
-                        endpoint = "http://localhost:5000";
+                        endpoint = "http://localhost:8880";
                     }
                     var piperDataDir = appConfig?.PiperDataDir;
                     var piperDefaultVoice = appConfig?.PiperDefaultModel;
@@ -238,7 +249,7 @@ catch (Exception ex)
                         System.Diagnostics.Debug.WriteLine($"Error creating TTS service: {ex.Message}");
                         // Return a service that will fail gracefully
                         var appConfig = sp.GetService<AppConfig>();
-                        return new HouseVictoria.Services.TTS.TTSService("http://localhost:5000", true, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
+                        return new HouseVictoria.Services.TTS.TTSService("http://localhost:8880", true, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
                     }
             });
             // Register CommunicationService with AI service dependency
@@ -287,6 +298,9 @@ catch (Exception ex)
                 return service;
             });
 
+            // High-level cognitive agent service (composes AI + virtual environment)
+            services.AddSingleton<IAgentService, AgentService>();
+
             ServiceProvider = services.BuildServiceProvider();
         }
 
@@ -296,9 +310,11 @@ catch (Exception ex)
             var appConfig = new AppConfig
             {
                 OllamaEndpoint = config["OllamaEndpoint"] ?? "http://localhost:11434",
+                LmStudioEndpoint = config["LmStudioEndpoint"] ?? "http://localhost:1234/v1",
+                UseLmStudioAsPrimary = bool.TryParse(config["UseLmStudioAsPrimary"], out var useLmStudio) ? useLmStudio : true,
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
-                TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:5000",
+                TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8880",
                 STTEndpoint = config["STTEndpoint"],
                 PiperDataDir = config["PiperDataDir"] ?? "Media/PiperVoices",
                 PiperDefaultModel = config["PiperDefaultModel"] ?? "en_US-amy-medium",

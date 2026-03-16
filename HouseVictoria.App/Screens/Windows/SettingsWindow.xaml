@@ -216,6 +216,23 @@
                                        Command="{Binding TestSTTConnectionCommand}" 
                                        Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                             </Grid>
+                            <!-- Kokoro TTS Server (port 8880): start/stop -->
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Kokoro TTS Server:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding KokoroTTSStatus}" Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                <Button Grid.Column="2" Content="Start Kokoro" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding StartKokoroCommand}" Width="110" Margin="5,0"/>
+                                <Button Grid.Column="3" Content="Stop Kokoro" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding StopKokoroCommand}" Width="110" Margin="5,0"/>
+                            </Grid>
+                            <TextBlock Text="Kokoro TTS runs on http://localhost:8880. Set TTS Endpoint above to this URL to use Kokoro. Start/stop also available in System Monitor tray." 
+                                      FontSize="11" Foreground="#5A6A7A" Margin="0,2,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
 
@@ -352,10 +369,60 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- LLM Server Settings -->
+                    <!-- LLM Server: LM Studio (primary) -->
                     <Border Style="{StaticResource Card}" Margin="0,5">
                         <StackPanel>
-                            <TextBlock Text="🧠 LLM Server (Ollama)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🧠 LLM Server – LM Studio (primary)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <Separator Margin="0,5" Background="#1A2332"/>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding LmStudioEndpoint, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding LmStudioConnectionStatus}" 
+                                          Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
+                                          Visibility="{Binding LmStudioConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LmStudioConnectionStatus}" Value="✗ Failed">
+                                                    <Setter Property="Foreground" Value="#FF3366"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding LmStudioConnectionStatus}" Value="Testing...">
+                                                    <Setter Property="Foreground" Value="#FFAA00"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Button Grid.Column="3" Content="Test" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding TestLmStudioConnectionCommand}" 
+                                       Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                            </Grid>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Use as primary:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding UseLmStudioAsPrimary}" 
+                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                         ToolTip="When enabled, chat uses LM Studio first and falls back to Ollama if LM Studio is unavailable."/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- LLM Server: Ollama (backup) -->
+                    <Border Style="{StaticResource Card}" Margin="0,5">
+                        <StackPanel>
+                            <TextBlock Text="🦙 LLM Server – Ollama (backup)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>

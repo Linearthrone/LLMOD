@@ -1168,8 +1168,9 @@ namespace HouseVictoria.Services.Communication
 
                         System.Diagnostics.Debug.WriteLine($"Playing audio file: {filePath}");
 
-                        // Wait for playback to complete with timeout (max 30 seconds)
-                        var timeout = DateTime.Now.AddSeconds(30);
+                        // Wait for playback to complete with timeout (max 5 minutes so long messages finish)
+                        const int playbackTimeoutSeconds = 300;
+                        var timeout = DateTime.Now.AddSeconds(playbackTimeoutSeconds);
                         while (outputDevice.PlaybackState == PlaybackState.Playing && DateTime.Now < timeout)
                         {
                             await Task.Delay(100);
@@ -1179,7 +1180,7 @@ namespace HouseVictoria.Services.Communication
                         if (outputDevice.PlaybackState == PlaybackState.Playing)
                         {
                             outputDevice.Stop();
-                            System.Diagnostics.Debug.WriteLine("Audio playback timed out and was stopped");
+                            System.Diagnostics.Debug.WriteLine($"Audio playback timed out after {playbackTimeoutSeconds}s and was stopped");
                         }
                         else
                         {

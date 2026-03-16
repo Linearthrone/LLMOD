@@ -83,9 +83,13 @@ namespace HouseVictoria.Core.Models
     public class AppConfig
     {
         public string OllamaEndpoint { get; set; } = "http://localhost:11434";
+        /// <summary>LM Studio OpenAI-compatible API base URL (e.g. http://localhost:1234/v1). Used as primary LLM when UseLmStudioAsPrimary is true.</summary>
+        public string LmStudioEndpoint { get; set; } = "http://localhost:1234/v1";
+        /// <summary>When true, use LM Studio first for chat and fall back to Ollama on failure.</summary>
+        public bool UseLmStudioAsPrimary { get; set; } = true;
         public string MCPServerEndpoint { get; set; } = "http://localhost:8080";
         public string UnrealEngineEndpoint { get; set; } = "ws://localhost:8888";
-        public string TTSEndpoint { get; set; } = "http://localhost:5000";
+        public string TTSEndpoint { get; set; } = "http://localhost:8880";
         public string? STTEndpoint { get; set; }
         public string PiperDataDir { get; set; } = "Media/PiperVoices";
         public string PiperDefaultModel { get; set; } = "en_US-amy-medium";

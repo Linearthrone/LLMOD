@@ -296,8 +296,8 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Piper Voice (TTS):" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePiperVoices}" 
+<TextBlock Grid.Column="0" Text="TTS Voice:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePiperVoices}"
                                             Text="{Binding NewPersonaPiperVoice, UpdateSourceTrigger=PropertyChanged}"
                                             IsEditable="True"
                                             Background="#252F3F" BorderBrush="#4000D4FF" 
@@ -314,7 +314,7 @@
                                             </Style>
                                         </ComboBox.ItemContainerStyle>
                                         <ComboBox.ToolTip>
-                                            <TextBlock>Voice used when this AI speaks during calls. Requires Piper TTS running.</TextBlock>
+                                            <TextBlock>Voice used when this AI speaks during calls. Uses Kokoro or Piper TTS per Settings endpoint.</TextBlock>
                                         </ComboBox.ToolTip>
                                     </ComboBox>
                                 </Grid>

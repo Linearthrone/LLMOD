@@ -194,6 +194,11 @@ namespace HouseVictoria.Services.SystemMonitor
                     tasks.Add(CheckOllamaServerAsync(ollamaStatus));
                 }
 
+                if (_serverStatuses.TryGetValue("LmStudio", out var lmStatus))
+                {
+                    tasks.Add(CheckLmStudioServerAsync(lmStatus));
+                }
+
                 if (_serverStatuses.TryGetValue("MCP", out var mcpStatus) && _mcpService != null)
                 {
                     tasks.Add(CheckMCPServerAsync(mcpStatus));
@@ -202,6 +207,16 @@ namespace HouseVictoria.Services.SystemMonitor
                 if (_serverStatuses.TryGetValue("TTS", out var ttsStatus))
                 {
                     tasks.Add(CheckTTSServerAsync(ttsStatus));
+                }
+
+                if (_serverStatuses.TryGetValue("Kokoro TTS", out var kokoroTtsStatus))
+                {
+                    tasks.Add(CheckKokoroServerAsync(kokoroTtsStatus));
+                }
+
+                if (_serverStatuses.TryGetValue("STT", out var sttStatus))
+                {
+                    tasks.Add(CheckSTTServerAsync(sttStatus));
                 }
 
                 if (_serverStatuses.TryGetValue("UnrealEngine", out var ueStatus))
@@ -375,6 +390,11 @@ namespace HouseVictoria.Services.SystemMonitor
                 ollamaStatus.Endpoint = _appConfig.OllamaEndpoint;
             }
 
+            if (_serverStatuses.TryGetValue("LmStudio", out var lmStudioStatus))
+            {
+                lmStudioStatus.Endpoint = _appConfig.LmStudioEndpoint;
+            }
+
             if (_serverStatuses.TryGetValue("MCP", out var mcpStatus))
             {
                 mcpStatus.Endpoint = _appConfig.MCPServerEndpoint;
@@ -383,6 +403,11 @@ namespace HouseVictoria.Services.SystemMonitor
             if (_serverStatuses.TryGetValue("TTS", out var ttsStatus))
             {
                 ttsStatus.Endpoint = _appConfig.TTSEndpoint;
+            }
+
+            if (_serverStatuses.TryGetValue("STT", out var sttStatus))
+            {
+                sttStatus.Endpoint = _appConfig.STTEndpoint ?? sttStatus.Endpoint;
             }
 
         }
@@ -507,6 +532,24 @@ namespace HouseVictoria.Services.SystemMonitor
                 Type = ServerType.LLM
             };
 
+            // LM Studio HTTP server (v1-compatible API, default port 1234)
+            _serverStatuses["LmStudio"] = new ServerStatus
+            {
+                Name = "LM Studio",
+                IsRunning = false,
+                Endpoint = "http://localhost:1234/v1",
+                Type = ServerType.LLM
+            };
+
+            // STT server (FastAPI/uvicorn, default port 8000, /transcribe endpoint)
+            _serverStatuses["STT"] = new ServerStatus
+            {
+                Name = "STT Service",
+                IsRunning = false,
+                Endpoint = "http://localhost:8000/transcribe",
+                Type = ServerType.STT
+            };
+
             _serverStatuses["MCP"] = new ServerStatus
             {
                 Name = "MCP Server",
@@ -528,6 +571,14 @@ namespace HouseVictoria.Services.SystemMonitor
                 Name = "TTS Service",
                 IsRunning = false,
                 Endpoint = "http://localhost:5000",
+                Type = ServerType.TTS
+            };
+
+            _serverStatuses["Kokoro TTS"] = new ServerStatus
+            {
+                Name = "Kokoro TTS",
+                IsRunning = false,
+                Endpoint = "http://localhost:8880",
                 Type = ServerType.TTS
             };
 
@@ -673,6 +724,36 @@ namespace HouseVictoria.Services.SystemMonitor
         {
             if (_serverStatuses.TryGetValue(serverName, out var status))
             {
+                if (serverName == "Kokoro TTS")
+                {
+                    try
+                    {
+                        var scriptDir = Path.Combine(_rootDirectory, ".ps1 scripts");
+                        var scriptPath = Path.Combine(scriptDir, "stop-kokoro.ps1");
+                        if (File.Exists(scriptPath))
+                        {
+                            var psi = new ProcessStartInfo
+                            {
+                                FileName = "powershell",
+                                ArgumentList = { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath },
+                                WorkingDirectory = _rootDirectory,
+                                UseShellExecute = false,
+                                CreateNoWindow = true
+                            };
+                            using var p = Process.Start(psi);
+                            p?.WaitForExit(5000);
+                        }
+                        else
+                        {
+                            KillProcessOnPort(8880);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Stop Kokoro TTS: {ex.Message}");
+                    }
+                }
+
                 var previousStatus = new ServerStatus
                 {
                     Name = status.Name,
@@ -701,6 +782,57 @@ namespace HouseVictoria.Services.SystemMonitor
         {
             if (_serverStatuses.TryGetValue(serverName, out var status))
             {
+                if (serverName == "Kokoro TTS")
+                {
+                    try
+                    {
+                        // kokoro-fastapi is not on PyPI; use Docker or run from clone (see start.bat / start-kokoro.ps1).
+                        var kokoroClone = Path.Combine(_rootDirectory, "Kokoro-FastAPI");
+                        var startKokoroPs1 = Path.Combine(_rootDirectory, ".ps1 scripts", "start-kokoro.ps1");
+                        var started = false;
+
+                        // Try Docker first
+                        try
+                        {
+                            var psi = new ProcessStartInfo
+                            {
+                                FileName = "docker",
+                                Arguments = "run --rm -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest",
+                                WorkingDirectory = _rootDirectory,
+                                UseShellExecute = true,
+                                CreateNoWindow = false
+                            };
+                            Process.Start(psi);
+                            started = true;
+                        }
+                        catch
+                        {
+                            // Docker not available or failed
+                        }
+
+                        if (!started && File.Exists(Path.Combine(kokoroClone, "start-cpu.ps1")) && File.Exists(startKokoroPs1))
+                        {
+                            var psi = new ProcessStartInfo
+                            {
+                                FileName = "powershell",
+                                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{startKokoroPs1}\" -ScriptDir \"{_rootDirectory}\" -KokoroCloneDir \"{kokoroClone}\" -Port 8880",
+                                WorkingDirectory = _rootDirectory,
+                                UseShellExecute = true,
+                                CreateNoWindow = false
+                            };
+                            Process.Start(psi);
+                            started = true;
+                        }
+
+                        if (started)
+                            await Task.Delay(500).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Start Kokoro TTS: {ex.Message}");
+                    }
+                }
+
                 var previousStatus = new ServerStatus
                 {
                     Name = status.Name,
@@ -723,6 +855,29 @@ namespace HouseVictoria.Services.SystemMonitor
                 });
             }
             await Task.CompletedTask;
+        }
+
+        private static void KillProcessOnPort(int port)
+        {
+            try
+            {
+                using var proc = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell",
+                        ArgumentList = { "-NoProfile", "-Command", $"Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}" },
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                proc.Start();
+                proc.WaitForExit(5000);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"KillProcessOnPort({port}): {ex.Message}");
+            }
         }
 
         public async Task ShutdownAllServersAsync()
@@ -1275,6 +1430,41 @@ namespace HouseVictoria.Services.SystemMonitor
             }
         }
 
+        private async Task CheckLmStudioServerAsync(ServerStatus status)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(status.Endpoint))
+                    return;
+
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+
+                var baseUrl = status.Endpoint.TrimEnd('/');
+                // LM Studio exposes OpenAI-compatible /models endpoint
+                var response = await _httpClient.GetAsync($"{baseUrl}/models", linked.Token).ConfigureAwait(false);
+                var isRunning = response.IsSuccessStatusCode;
+                UpdateServerStatus(status, isRunning, "LmStudio");
+            }
+            catch (TaskCanceledException)
+            {
+                UpdateServerStatus(status, false, "LmStudio");
+            }
+            catch (HttpRequestException)
+            {
+                UpdateServerStatus(status, false, "LmStudio");
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                UpdateServerStatus(status, false, "LmStudio");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LM Studio health check error: {ex.Message}");
+                UpdateServerStatus(status, false, "LmStudio");
+            }
+        }
+
         private bool ShouldSkipCheck(string serverName, string? endpoint)
         {
             if (string.IsNullOrWhiteSpace(endpoint))
@@ -1411,6 +1601,106 @@ namespace HouseVictoria.Services.SystemMonitor
                 // Only log unexpected exceptions
                 System.Diagnostics.Debug.WriteLine($"TTS health check error: {ex.Message}");
                 UpdateServerStatus(status, false, "TTS");
+            }
+        }
+
+        private async Task CheckKokoroServerAsync(ServerStatus status)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(status.Endpoint))
+                    return;
+
+                var baseUrl = status.Endpoint.TrimEnd('/');
+                var endpoints = new[] { "/v1", "/health", "/" };
+                bool isRunning = false;
+
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+                foreach (var path in endpoints)
+                {
+                    try
+                    {
+                        var response = await _httpClient.GetAsync($"{baseUrl}{path}", linked.Token).ConfigureAwait(false);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            isRunning = true;
+                            break;
+                        }
+                    }
+                    catch (TaskCanceledException) when (timeoutCts.Token.IsCancellationRequested || _cts.Token.IsCancellationRequested)
+                    { continue; }
+                    catch (HttpRequestException) { continue; }
+                    catch (System.Net.Sockets.SocketException) { continue; }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Kokoro TTS check on {path}: {ex.Message}");
+                        continue;
+                    }
+                }
+
+                UpdateServerStatus(status, isRunning, "Kokoro TTS");
+            }
+            catch (TaskCanceledException)
+            {
+                UpdateServerStatus(status, false, "Kokoro TTS");
+            }
+            catch (HttpRequestException)
+            {
+                UpdateServerStatus(status, false, "Kokoro TTS");
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                UpdateServerStatus(status, false, "Kokoro TTS");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Kokoro TTS health check error: {ex.Message}");
+                UpdateServerStatus(status, false, "Kokoro TTS");
+            }
+        }
+
+        private async Task CheckSTTServerAsync(ServerStatus status)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(status.Endpoint))
+                    return;
+
+                // STT server uses /health; endpoint may already include /transcribe
+                var baseUrl = status.Endpoint.TrimEnd('/');
+                if (baseUrl.EndsWith("/transcribe", StringComparison.OrdinalIgnoreCase))
+                {
+                    var idx = baseUrl.LastIndexOf("/transcribe", StringComparison.OrdinalIgnoreCase);
+                    if (idx > 0)
+                    {
+                        baseUrl = baseUrl[..idx].TrimEnd('/');
+                    }
+                }
+
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+
+                var response = await _httpClient.GetAsync($"{baseUrl}/health", linked.Token).ConfigureAwait(false);
+                var isRunning = response.IsSuccessStatusCode;
+                UpdateServerStatus(status, isRunning, "STT");
+            }
+            catch (TaskCanceledException)
+            {
+                UpdateServerStatus(status, false, "STT");
+            }
+            catch (HttpRequestException)
+            {
+                UpdateServerStatus(status, false, "STT");
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                UpdateServerStatus(status, false, "STT");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"STT health check error: {ex.Message}");
+                UpdateServerStatus(status, false, "STT");
             }
         }
 

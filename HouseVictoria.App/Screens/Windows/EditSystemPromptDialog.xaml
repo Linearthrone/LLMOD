@@ -30,7 +30,7 @@
             <!-- Content Area -->
             <ScrollViewer Grid.Row="1" Padding="20" Style="{StaticResource ModernScrollViewer}">
                 <StackPanel>
-                    <TextBlock Text="Piper Voice (TTS):" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                    <TextBlock Text="TTS Voice:" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
                     <ComboBox ItemsSource="{Binding AvailablePiperVoices}" 
                               Text="{Binding PiperVoiceId, UpdateSourceTrigger=PropertyChanged}"
                               IsEditable="True"

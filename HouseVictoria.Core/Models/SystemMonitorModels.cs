@@ -65,6 +65,7 @@ namespace HouseVictoria.Core.Models
         LLM,
         MCP,
         TTS,
+        STT,
         UnrealEngine,
         DataBank,
         Other

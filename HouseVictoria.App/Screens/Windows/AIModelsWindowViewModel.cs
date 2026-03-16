@@ -349,7 +349,7 @@ namespace HouseVictoria.App.Screens.Windows
             RunOllamaCommand = new RelayCommand(async () => await RunOllamaCommandAsync(), () => !string.IsNullOrWhiteSpace(OllamaRunCommand) && !IsPullingModel && !IsRunningOllamaCommand);
             CancelOllamaCommand = new RelayCommand(() => CancelOllamaPull(), () => IsRunningOllamaCommand);
 
-            AvailableModelsEndpoint = _appConfig.OllamaEndpoint;
+            AvailableModelsEndpoint = _appConfig.UseLmStudioAsPrimary ? _appConfig.LmStudioEndpoint : _appConfig.OllamaEndpoint;
             PullModelEndpoint = _appConfig.OllamaEndpoint;
             NewPersonaMCPServer = _appConfig.MCPServerEndpoint;
 
