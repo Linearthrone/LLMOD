@@ -97,13 +97,14 @@ namespace HouseVictoria.App.Screens.Windows
             var screenHeight = SystemParameters.PrimaryScreenHeight;
             
             // Galaxy S23 actual dimensions: 146.3mm x 70.9mm = 2.064:1 aspect ratio
-            // For a reasonable on-screen size, scale to about 400-450px width
-            // This gives us a phone-like window that's usable
-            const double sizeScaleFactor = 2.25; // Factor to increase initial window size
-            var baseWidth = 420.0 * sizeScaleFactor; // Base width in pixels
-            var aspectRatio = 146.3 / 70.9; // Actual S23 aspect ratio
-            var windowWidth = baseWidth;
-            var windowHeight = windowWidth / aspectRatio; // Maintain S23 proportions
+            // Base size then scaled: 0.66x width, 2.25x height of original proportions
+            const double sizeScaleFactor = 2.25;
+            var baseWidth = 420.0 * sizeScaleFactor;
+            var aspectRatio = 146.3 / 70.9;
+            var originalWidth = baseWidth;
+            var originalHeight = baseWidth / aspectRatio;
+            var windowWidth = originalWidth * 0.66;
+            var windowHeight = originalHeight * 2.25;
             
             // MainTray is 90px wide + 20px margin = 110px from right edge
             var trayWidth = 110;

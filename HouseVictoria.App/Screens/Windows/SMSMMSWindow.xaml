@@ -656,8 +656,7 @@
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Command="{Binding StartPhoneCallCommand}"
-                                    ToolTip="Start voice call"
-                                    Visibility="{Binding CanStartCall, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    ToolTip="Start voice call">
                                 <TextBlock Text="📞" FontSize="20" Foreground="{StaticResource SuccessBrush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
@@ -668,8 +667,7 @@
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Command="{Binding StartCallCommand}"
-                                    ToolTip="Start video call"
-                                    Visibility="{Binding CanStartCall, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    ToolTip="Start video call">
                                 <TextBlock Text="🎥" FontSize="18" Foreground="{StaticResource PrimaryBrush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
