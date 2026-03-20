@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Controls;
 using HouseVictoria.App.HelperClasses;
+using HouseVictoria.App.Services;
 using HouseVictoria.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -78,6 +80,8 @@ namespace HouseVictoria.App.Screens.Windows
             _savedLeft = Left;
             _savedTop = Top;
 
+            UpdateThemePreview();
+
             // Ensure window fits on screen (preserves XAML sizes, adjusts if off-screen or too large)
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
             {
@@ -90,6 +94,24 @@ namespace HouseVictoria.App.Screens.Windows
                     System.Diagnostics.Debug.WriteLine($"Error fitting SettingsWindow on screen: {ex.Message}");
                 }
             }));
+        }
+
+        private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateThemePreview();
+        }
+
+        private void UpdateThemePreview()
+        {
+            if (ThemePreviewBorder == null || _viewModel == null)
+                return;
+            var themeId = ThemeManager.GetThemeIdByIndex(_viewModel.SelectedThemeIndex);
+            var themeDict = ThemeManager.LoadThemeForPreview(themeId);
+            if (themeDict != null)
+            {
+                ThemePreviewBorder.Resources.MergedDictionaries.Clear();
+                ThemePreviewBorder.Resources.MergedDictionaries.Add(themeDict);
+            }
         }
     }
 }

@@ -199,6 +199,11 @@ namespace HouseVictoria.Services.SystemMonitor
                     tasks.Add(CheckLmStudioServerAsync(lmStatus));
                 }
 
+                if (_serverStatuses.TryGetValue("AnythingLLM", out var anythingLlmStatus))
+                {
+                    tasks.Add(CheckAnythingLLMServerAsync(anythingLlmStatus));
+                }
+
                 if (_serverStatuses.TryGetValue("MCP", out var mcpStatus) && _mcpService != null)
                 {
                     tasks.Add(CheckMCPServerAsync(mcpStatus));
@@ -395,6 +400,11 @@ namespace HouseVictoria.Services.SystemMonitor
                 lmStudioStatus.Endpoint = _appConfig.LmStudioEndpoint;
             }
 
+            if (_serverStatuses.TryGetValue("AnythingLLM", out var anythingLlmStatus))
+            {
+                anythingLlmStatus.Endpoint = _appConfig.AnythingLLMEndpoint;
+            }
+
             if (_serverStatuses.TryGetValue("MCP", out var mcpStatus))
             {
                 mcpStatus.Endpoint = _appConfig.MCPServerEndpoint;
@@ -538,6 +548,15 @@ namespace HouseVictoria.Services.SystemMonitor
                 Name = "LM Studio",
                 IsRunning = false,
                 Endpoint = "http://localhost:1234/v1",
+                Type = ServerType.LLM
+            };
+
+            // Anything LLM (OpenAI-compatible, default port 3001)
+            _serverStatuses["AnythingLLM"] = new ServerStatus
+            {
+                Name = "Anything LLM",
+                IsRunning = false,
+                Endpoint = "http://localhost:3001",
                 Type = ServerType.LLM
             };
 
@@ -782,7 +801,72 @@ namespace HouseVictoria.Services.SystemMonitor
         {
             if (_serverStatuses.TryGetValue(serverName, out var status))
             {
-                if (serverName == "Kokoro TTS")
+                if (serverName == "Ollama")
+                {
+                    try
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = "ollama",
+                            Arguments = "serve",
+                            WorkingDirectory = _rootDirectory,
+                            UseShellExecute = true,
+                            CreateNoWindow = false
+                        };
+                        Process.Start(psi);
+                        await Task.Delay(2000).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Start Ollama: {ex.Message}");
+                    }
+                }
+                else if (serverName == "LmStudio")
+                {
+                    try
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = "lms",
+                            Arguments = "server start --port 1234",
+                            WorkingDirectory = _rootDirectory,
+                            UseShellExecute = true,
+                            CreateNoWindow = false
+                        };
+                        Process.Start(psi);
+                        await Task.Delay(2000).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Start LM Studio: {ex.Message}");
+                    }
+                }
+                else if (serverName == "AnythingLLM")
+                {
+                    try
+                    {
+                        var paths = new[]
+                        {
+                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "AnythingLLM", "AnythingLLM.exe"),
+                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "AnythingLLM", "AnythingLLM.exe"),
+                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "AnythingLLM", "AnythingLLM.exe")
+                        };
+                        foreach (var p in paths)
+                        {
+                            if (File.Exists(p))
+                            {
+                                Process.Start(new ProcessStartInfo { FileName = p, UseShellExecute = true });
+                                await Task.Delay(3000).ConfigureAwait(false);
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Start Anything LLM: {ex.Message}");
+                    }
+                }
+                else if (serverName == "Kokoro TTS")
                 {
                     try
                     {
@@ -1462,6 +1546,40 @@ namespace HouseVictoria.Services.SystemMonitor
             {
                 System.Diagnostics.Debug.WriteLine($"LM Studio health check error: {ex.Message}");
                 UpdateServerStatus(status, false, "LmStudio");
+            }
+        }
+
+        private async Task CheckAnythingLLMServerAsync(ServerStatus status)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(status.Endpoint))
+                    return;
+
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+
+                var baseUrl = status.Endpoint.TrimEnd('/');
+                var response = await _httpClient.GetAsync($"{baseUrl}/models", linked.Token).ConfigureAwait(false);
+                var isRunning = response.IsSuccessStatusCode;
+                UpdateServerStatus(status, isRunning, "AnythingLLM");
+            }
+            catch (TaskCanceledException)
+            {
+                UpdateServerStatus(status, false, "AnythingLLM");
+            }
+            catch (HttpRequestException)
+            {
+                UpdateServerStatus(status, false, "AnythingLLM");
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                UpdateServerStatus(status, false, "AnythingLLM");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Anything LLM health check error: {ex.Message}");
+                UpdateServerStatus(status, false, "AnythingLLM");
             }
         }
 

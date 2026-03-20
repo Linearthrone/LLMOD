@@ -56,14 +56,14 @@
                     BorderThickness="1"
                     CornerRadius="8,0,0,8"
                     Width="18"
-                    Height="70"
+                    Height="210"
                     VerticalAlignment="Center"
                     Margin="0">
                 <!-- No Command: ToggleButton + TwoWay IsChecked already toggles IsExpanded.
                      Adding Command would run IsExpanded = !IsExpanded after the binding
                      updated it — net effect stays collapsed. -->
                 <ToggleButton Width="18"
-                              Height="70"
+                              Height="210"
                               Padding="0"
                               BorderThickness="0"
                               IsChecked="{Binding IsExpanded, Mode=TwoWay}">

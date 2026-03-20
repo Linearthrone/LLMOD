@@ -83,10 +83,12 @@ namespace HouseVictoria.Core.Models
     public class AppConfig
     {
         public string OllamaEndpoint { get; set; } = "http://localhost:11434";
-        /// <summary>LM Studio OpenAI-compatible API base URL (e.g. http://localhost:1234/v1). Used as primary LLM when UseLmStudioAsPrimary is true.</summary>
+        /// <summary>LM Studio OpenAI-compatible API base URL (e.g. http://localhost:1234/v1).</summary>
         public string LmStudioEndpoint { get; set; } = "http://localhost:1234/v1";
-        /// <summary>When true, use LM Studio first for chat and fall back to Ollama on failure.</summary>
-        public bool UseLmStudioAsPrimary { get; set; } = true;
+        /// <summary>Anything LLM OpenAI-compatible API base URL (e.g. http://localhost:3001).</summary>
+        public string AnythingLLMEndpoint { get; set; } = "http://localhost:3001";
+        /// <summary>Primary LLM server: "ollama", "lmstudio", or "anythingllm". Only one can be primary. Non-primary servers can be started manually from System Monitor.</summary>
+        public string PrimaryLLM { get; set; } = "ollama";
         public string MCPServerEndpoint { get; set; } = "http://localhost:8080";
         public string UnrealEngineEndpoint { get; set; } = "ws://localhost:8888";
         public string TTSEndpoint { get; set; } = "http://localhost:8880";
@@ -98,6 +100,8 @@ namespace HouseVictoria.Core.Models
         public string StabilityMatrixPath { get; set; } = string.Empty;
         /// <summary>Full path to ComfyUI portable folder (contains run_nvidia_gpu.bat). Can be the ComfyUI install managed by Stability Matrix.</summary>
         public string ComfyUIPortablePath { get; set; } = string.Empty;
+        /// <summary>Color scheme/theme ID (e.g. CyanBlueDark, EmeraldLight). See ThemeManager.Themes for available values.</summary>
+        public string ColorScheme { get; set; } = "CyanBlueDark";
         public string MT4DataPath { get; set; } = "C:\\Program Files\\MetaTrader 4";
         public string DataBankPath { get; set; } = "Data/Databanks";
         public string LogsPath { get; set; } = "Logs";
@@ -107,12 +111,6 @@ namespace HouseVictoria.Core.Models
         public double OverlayOpacity { get; set; } = 0.85;
         public bool AutoHideTrays { get; set; } = true;
         public int AutoHideDelayMs { get; set; } = 3000;
-
-        // Avatar Settings
-        public string AvatarModelPath { get; set; } = string.Empty;
-        public string AvatarVoiceModel { get; set; } = string.Empty;
-        public double AvatarVoiceSpeed { get; set; } = 1.0;
-        public double AvatarVoicePitch { get; set; } = 1.0;
 
         // Locomotion Settings
         public double WalkSpeed { get; set; } = 1.0;

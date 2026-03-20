@@ -14,6 +14,9 @@ namespace HouseVictoria.App.Screens.Windows
         private string _systemPrompt = string.Empty;
         private string _piperVoiceId = string.Empty;
         private string _contactName = "Unknown";
+        private string _avatarModelPath = string.Empty;
+        private double _avatarVoiceSpeed = 1.0;
+        private double _avatarVoicePitch = 1.0;
 
         public AIContact Contact { get; set; }
         public string ContactName 
@@ -47,6 +50,24 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        public string AvatarModelPath
+        {
+            get => _avatarModelPath;
+            set { _avatarModelPath = value ?? string.Empty; OnPropertyChanged(); }
+        }
+
+        public double AvatarVoiceSpeed
+        {
+            get => _avatarVoiceSpeed;
+            set { _avatarVoiceSpeed = value; OnPropertyChanged(); }
+        }
+
+        public double AvatarVoicePitch
+        {
+            get => _avatarVoicePitch;
+            set { _avatarVoicePitch = value; OnPropertyChanged(); }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public EditSystemPromptDialog(AIContact contact)
@@ -58,6 +79,9 @@ namespace HouseVictoria.App.Screens.Windows
             ContactName = contact.Name ?? "Unknown";
             SystemPrompt = contact.SystemPrompt ?? string.Empty;
             PiperVoiceId = contact.PiperVoiceId ?? string.Empty;
+            AvatarModelPath = contact.AvatarModelPath ?? string.Empty;
+            AvatarVoiceSpeed = contact.AvatarVoiceSpeed;
+            AvatarVoicePitch = contact.AvatarVoicePitch;
             
             try
             {

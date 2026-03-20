@@ -25,6 +25,14 @@ namespace HouseVictoria.Core.Models
         /// Piper TTS voice/model ID (e.g., en_US-lessac-medium). Used when this AI contact speaks during calls.
         /// </summary>
         public string? PiperVoiceId { get; set; }
+
+        // Avatar settings (for virtual environment / embodied AI)
+        /// <summary>Path to 3D avatar model file (e.g., .fbx, .glb) for the virtual environment.</summary>
+        public string? AvatarModelPath { get; set; }
+        /// <summary>Voice speed (0.1–3.0) when this persona speaks as an avatar. Default: 1.0.</summary>
+        public double AvatarVoiceSpeed { get; set; } = 1.0;
+        /// <summary>Voice pitch (0.1–3.0) when this persona speaks as an avatar. Default: 1.0.</summary>
+        public double AvatarVoicePitch { get; set; } = 1.0;
         
         // LLM Parameters
         /// <summary>

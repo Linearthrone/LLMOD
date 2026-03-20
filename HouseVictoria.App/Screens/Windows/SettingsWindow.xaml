@@ -369,12 +369,16 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- LLM Server: LM Studio (primary) -->
+                    <!-- LLM Servers: LM Studio, Ollama, Anything LLM (single block, one primary) -->
                     <Border Style="{StaticResource Card}" Margin="0,5">
                         <StackPanel>
-                            <TextBlock Text="🧠 LLM Server – LM Studio (primary)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🧠 LLM Servers" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <Grid Margin="0,5">
+                            <TextBlock Text="Configure LM Studio, Ollama, and Anything LLM. Only one can be primary. Non-primary servers are not auto-started with the app; start them manually from the System Monitor drawer." 
+                                      FontSize="11" Foreground="#80C4D4" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <!-- LM Studio -->
+                            <TextBlock Text="LM Studio" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                            <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
@@ -402,29 +406,18 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <Button Grid.Column="3" Content="Test" Style="{StaticResource GlassButton}" 
-                                       Command="{Binding TestLmStudioConnectionCommand}" 
-                                       Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding UseLmStudioAsPrimary}" 
+                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             ToolTip="Use as primary LLM. Uncheck current primary before selecting another."/>
+                                    <Button Content="Test" Style="{StaticResource GlassButton}" 
+                                           Command="{Binding TestLmStudioConnectionCommand}" 
+                                           Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                                </StackPanel>
                             </Grid>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Use as primary:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <CheckBox Grid.Column="1" IsChecked="{Binding UseLmStudioAsPrimary}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
-                                         ToolTip="When enabled, chat uses LM Studio first and falls back to Ollama if LM Studio is unavailable."/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- LLM Server: Ollama (backup) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
-                        <StackPanel>
-                            <TextBlock Text="🦙 LLM Server – Ollama (backup)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
-                            <Separator Margin="0,5" Background="#1A2332"/>
-                            <Grid Margin="0,5">
+                            <!-- Ollama -->
+                            <TextBlock Text="Ollama" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
@@ -436,8 +429,7 @@
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
                                         Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding OllamaConnectionStatus}" 
-                                          Foreground="#00FF88" 
-                                          VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
+                                          Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding OllamaConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -453,10 +445,114 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <Button Grid.Column="3" Content="Test" Style="{StaticResource GlassButton}" 
-                                       Command="{Binding TestOllamaConnectionCommand}" 
-                                       Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding UseOllamaAsPrimary}" 
+                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             ToolTip="Use as primary LLM. Uncheck current primary before selecting another."/>
+                                    <Button Content="Test" Style="{StaticResource GlassButton}" 
+                                           Command="{Binding TestOllamaConnectionCommand}" 
+                                           Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                                </StackPanel>
                             </Grid>
+                            <!-- Anything LLM -->
+                            <TextBlock Text="Anything LLM" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding AnythingLLMEndpoint, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding AnythingLLMConnectionStatus}" 
+                                          Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
+                                          Visibility="{Binding AnythingLLMConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AnythingLLMConnectionStatus}" Value="✗ Failed">
+                                                    <Setter Property="Foreground" Value="#FF3366"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding AnythingLLMConnectionStatus}" Value="Testing...">
+                                                    <Setter Property="Foreground" Value="#FFAA00"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding UseAnythingLLMAsPrimary}" 
+                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             ToolTip="Use as primary LLM. Uncheck current primary before selecting another."/>
+                                    <Button Content="Test" Style="{StaticResource GlassButton}" 
+                                           Command="{Binding TestAnythingLLMConnectionCommand}" 
+                                           Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Color Scheme -->
+                    <Border Style="{StaticResource Card}" Margin="0,5">
+                        <StackPanel>
+                            <TextBlock Text="🎨 Color Scheme" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <Separator Margin="0,5" Background="#1A2332"/>
+                            <TextBlock Text="Choose a color theme for the app. The preview shows how the selected theme will look." FontSize="12" Foreground="#80C4D4" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Theme:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" 
+                                          ItemsSource="{Binding AvailableThemes}"
+                                          SelectedIndex="{Binding SelectedThemeIndex, Mode=TwoWay}"
+                                          DisplayMemberPath="DisplayName"
+                                          Background="#252F3F" Foreground="#E0F7FF"
+                                          Padding="8" Margin="5,0"
+                                          SelectionChanged="ThemeComboBox_SelectionChanged"/>
+                            </Grid>
+                            <TextBlock Text="Preview" FontSize="12" Foreground="#80C4D4" Margin="0,10,0,5"/>
+                            <Border x:Name="ThemePreviewBorder" 
+                                    MinHeight="140" CornerRadius="6" Padding="12"
+                                    BorderThickness="1" Margin="0,0,0,5"
+                                    Background="{DynamicResource DarkSurfaceBrush}"
+                                    BorderBrush="{DynamicResource PrimaryBrush}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Sample Title" FontSize="14" FontWeight="Bold" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6"/>
+                                    <TextBlock Grid.Row="1" Text="Sample body text and secondary content" FontSize="11" 
+                                               Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                        <Border Background="{DynamicResource PrimaryBrush}" 
+                                                CornerRadius="4" Padding="10,6" Margin="0,0,8,0"
+                                                Opacity="0.8">
+                                            <TextBlock Text="Button" FontSize="11" 
+                                                       Foreground="{DynamicResource SelectionTextBrush}"/>
+                                        </Border>
+                                        <Border Background="{DynamicResource SuccessBrush}" 
+                                                CornerRadius="4" Padding="8,4" Margin="0,0,8,0"
+                                                Opacity="0.9">
+                                            <TextBlock Text="✓ Success" FontSize="10" 
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        </Border>
+                                        <Border Background="{DynamicResource DarkInputBrush}" 
+                                                CornerRadius="4" Padding="8,4">
+                                            <TextBlock Text="Input" FontSize="10" 
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -501,75 +597,6 @@
                                 <TextBox Grid.Column="1" Text="{Binding AutoHideDelayMs, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
                                         Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Avatar Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
-                        <StackPanel>
-                            <TextBlock Text="👤 Avatar Settings" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
-                            <Separator Margin="0,5" Background="#1A2332"/>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Model Path:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Text="{Binding AvatarModelPath, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
-                            </Grid>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Voice Model:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <ComboBox Grid.Column="1" 
-                                         ItemsSource="{Binding AvailableVoices}"
-                                         SelectedItem="{Binding AvatarVoiceModel, UpdateSourceTrigger=PropertyChanged}"
-                                         IsEditable="True"
-                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                         Foreground="#E0F7FF" Padding="8" Margin="5,0,5,0"
-                                         IsEnabled="{Binding IsLoadingVoices, Converter={StaticResource InverseBoolConverter}}"/>
-                                <Button Grid.Column="2" 
-                                       Content="🔄" 
-                                       ToolTip="Refresh voice list"
-                                       Command="{Binding LoadVoicesCommand}"
-                                       Background="#252F3F" BorderBrush="#4000D4FF"
-                                       Foreground="#E0F7FF" Padding="8,4" Margin="5,0"
-                                       Width="35"
-                                       IsEnabled="{Binding IsLoadingVoices, Converter={StaticResource InverseBoolConverter}}"/>
-                            </Grid>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Voice Speed:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Margin="5,0">
-                                    <Slider Minimum="0.1" Maximum="3.0" Value="{Binding AvatarVoiceSpeed}" 
-                                           TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
-                                    <TextBlock Text="{Binding AvatarVoiceSpeed, StringFormat='Speed: {0:F1}'}" 
-                                             Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Voice Pitch:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Margin="5,0">
-                                    <Slider Minimum="0.1" Maximum="3.0" Value="{Binding AvatarVoicePitch}" 
-                                           TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
-                                    <TextBlock Text="{Binding AvatarVoicePitch, StringFormat='Pitch: {0:F1}'}" 
-                                             Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
-                                </StackPanel>
                             </Grid>
                         </StackPanel>
                     </Border>

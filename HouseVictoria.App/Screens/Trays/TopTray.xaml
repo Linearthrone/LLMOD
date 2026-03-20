@@ -22,7 +22,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Drag and Drop Box - Centered -->
+                <!-- Drag and Drop Box - Centered (matches app holographic theme) -->
                 <Border Grid.Column="1"
                         Width="300"
                         Height="80"
@@ -31,20 +31,56 @@
                         DragEnter="DataBankBox_DragEnter"
                         DragLeave="DataBankBox_DragLeave"
                         HorizontalAlignment="Center"
-                        Background="#404040"
-                        BorderThickness="1"
-                        BorderBrush="#505050"
                         CornerRadius="8"
                         Padding="15"
                         Cursor="Hand">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="Background" Value="#404040"/>
-                            <Setter Property="BorderBrush" Value="#505050"/>
+                            <Setter Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#300A0E27" Offset="0"/>
+                                        <GradientStop Color="#30141B2E" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="BorderBrush">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#6000D4FF" Offset="0"/>
+                                        <GradientStop Color="#4000D4FF" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect Color="#00D4FF" BlurRadius="8" ShadowDepth="0" Opacity="0.3"/>
+                                </Setter.Value>
+                            </Setter>
                             <Style.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#606060"/>
-                                    <Setter Property="BorderBrush" Value="#707070"/>
+                                    <Setter Property="Background">
+                                        <Setter.Value>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#400A0E27" Offset="0"/>
+                                                <GradientStop Color="#40141B2E" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="BorderBrush">
+                                        <Setter.Value>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#8000D4FF" Offset="0"/>
+                                                <GradientStop Color="#6000D4FF" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#00D4FF" BlurRadius="12" ShadowDepth="0" Opacity="0.5"/>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -53,7 +89,7 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                FontSize="14"
-                               Foreground="#B0B0B0"
+                               Foreground="#E0F7FF"
                                FontStyle="Italic"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap"/>

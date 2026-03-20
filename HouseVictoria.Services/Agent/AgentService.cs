@@ -16,6 +16,7 @@ namespace HouseVictoria.Services.Agent
     {
         private readonly IAIService _aiService;
         private readonly IVirtualEnvironmentService _virtualEnvironmentService;
+        private readonly IPersistenceService? _persistenceService;
 
         private readonly AgentState _state = new();
         private readonly Dictionary<string, double> _drives = new()
@@ -27,10 +28,11 @@ namespace HouseVictoria.Services.Agent
 
         public string Name => _state.Name;
 
-        public AgentService(IAIService aiService, IVirtualEnvironmentService virtualEnvironmentService)
+        public AgentService(IAIService aiService, IVirtualEnvironmentService virtualEnvironmentService, IPersistenceService? persistenceService = null)
         {
             _aiService = aiService;
             _virtualEnvironmentService = virtualEnvironmentService;
+            _persistenceService = persistenceService;
         }
 
         public async Task InitializeAsync(string? virtualEnvironmentEndpoint = null, CancellationToken cancellationToken = default)
@@ -94,16 +96,36 @@ namespace HouseVictoria.Services.Agent
 
             if (goal == "spawn_avatar")
             {
+                var modelPath = "DefaultAvatar";
+                var avatarName = "Ava";
+                var aiContactId = (string?)null;
+                if (_persistenceService != null)
+                {
+                    try
+                    {
+                        var contacts = await _persistenceService.GetAllAsync<AIContact>();
+                        var primary = contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
+                        if (primary != null)
+                        {
+                            if (!string.IsNullOrWhiteSpace(primary.AvatarModelPath))
+                                modelPath = primary.AvatarModelPath;
+                            avatarName = primary.Name;
+                            aiContactId = primary.Id;
+                        }
+                    }
+                    catch { /* fallback to defaults */ }
+                }
                 var avatar = new AvatarDefinition
                 {
-                    Name = "Ava",
-                    ModelPath = "DefaultAvatar",
-                    Position = new Vector3(0, 0, 0)
+                    Name = avatarName,
+                    ModelPath = modelPath,
+                    Position = new Vector3(0, 0, 0),
+                    AIContactId = aiContactId
                 };
 
                 await _virtualEnvironmentService.SpawnAvatarAsync(avatar);
                 planDescription = "Spawn a default avatar in the current scene.";
-                actionDescription = "Spawned avatar 'Ava'.";
+                actionDescription = $"Spawned avatar '{avatarName}'.";
             }
             else if (goal == "inspect_scene")
             {

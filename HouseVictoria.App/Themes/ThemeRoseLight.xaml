@@ -1,0 +1,24 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Rose/Pink - Light -->
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#EC407A"/>
+    <SolidColorBrush x:Key="PrimaryLightBrush" Color="#F48FB1"/>
+    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#D81B60"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#F50057"/>
+    <SolidColorBrush x:Key="AccentLightBrush" Color="#F8BBD9"/>
+    <SolidColorBrush x:Key="AccentDarkBrush" Color="#C51162"/>
+    <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#FCE4EC"/>
+    <SolidColorBrush x:Key="DarkSurfaceBrush" Color="#F8BBD9"/>
+    <SolidColorBrush x:Key="DarkCardBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="DarkInputBrush" Color="#F3E5F5"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#880E4F"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#AD1457"/>
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#F48FB1"/>
+    <SolidColorBrush x:Key="TextHintBrush" Color="#EC407A"/>
+    <SolidColorBrush x:Key="SelectionBrush" Color="#EC407A"/>
+    <SolidColorBrush x:Key="SelectionTextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ErrorBrush" Color="#D32F2F"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#F9A825"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#388E3C"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#EC407A"/>
+</ResourceDictionary>

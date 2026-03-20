@@ -50,6 +50,11 @@ namespace HouseVictoria.App.Screens.Windows
         private double _newPersonaRepeatPenalty = 1.1;
         private int _newPersonaMaxTokens = -1;
         private int _newPersonaContextLength = 4096;
+
+        // Avatar settings (for virtual environment)
+        private string _newPersonaAvatarModelPath = string.Empty;
+        private double _newPersonaAvatarVoiceSpeed = 1.0;
+        private double _newPersonaAvatarVoicePitch = 1.0;
         
         // Pull Model fields
         private string _pullModelName = string.Empty;
@@ -207,6 +212,24 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _newPersonaContextLength;
             set => SetProperty(ref _newPersonaContextLength, value);
+        }
+
+        public string NewPersonaAvatarModelPath
+        {
+            get => _newPersonaAvatarModelPath;
+            set => SetProperty(ref _newPersonaAvatarModelPath, value ?? string.Empty);
+        }
+
+        public double NewPersonaAvatarVoiceSpeed
+        {
+            get => _newPersonaAvatarVoiceSpeed;
+            set => SetProperty(ref _newPersonaAvatarVoiceSpeed, value);
+        }
+
+        public double NewPersonaAvatarVoicePitch
+        {
+            get => _newPersonaAvatarVoicePitch;
+            set => SetProperty(ref _newPersonaAvatarVoicePitch, value);
         }
 
         public string NewPersonaPiperVoice
@@ -679,7 +702,10 @@ namespace HouseVictoria.App.Screens.Windows
                     TopK = NewPersonaTopK,
                     RepeatPenalty = NewPersonaRepeatPenalty,
                     MaxTokens = NewPersonaMaxTokens,
-                    ContextLength = NewPersonaContextLength
+                    ContextLength = NewPersonaContextLength,
+                    AvatarModelPath = string.IsNullOrWhiteSpace(NewPersonaAvatarModelPath) ? null : NewPersonaAvatarModelPath.Trim(),
+                    AvatarVoiceSpeed = NewPersonaAvatarVoiceSpeed,
+                    AvatarVoicePitch = NewPersonaAvatarVoicePitch
                 };
 
                 System.Diagnostics.Debug.WriteLine($"Saving persona to persistence: {newContact.Id}");
@@ -711,6 +737,9 @@ namespace HouseVictoria.App.Screens.Windows
                 NewPersonaMaxTokens = -1;
                 NewPersonaContextLength = 4096;
                 NewPersonaPiperVoice = string.Empty;
+                NewPersonaAvatarModelPath = string.Empty;
+                NewPersonaAvatarVoiceSpeed = 1.0;
+                NewPersonaAvatarVoicePitch = 1.0;
 
                 // Switch to contact book
                 CurrentView = "ContactBook";
@@ -859,6 +888,9 @@ namespace HouseVictoria.App.Screens.Windows
                     SystemPrompt = contact.SystemPrompt,
                     Description = contact.Description,
                     AvatarUrl = contact.AvatarUrl,
+                    AvatarModelPath = contact.AvatarModelPath,
+                    AvatarVoiceSpeed = contact.AvatarVoiceSpeed,
+                    AvatarVoicePitch = contact.AvatarVoicePitch,
                     PersonalityTraits = contact.PersonalityTraits != null ? new Dictionary<string, string>(contact.PersonalityTraits) : new Dictionary<string, string>(),
                     ServerEndpoint = contact.ServerEndpoint,
                     MCPServerEndpoint = contact.MCPServerEndpoint,
@@ -907,6 +939,9 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     contact.SystemPrompt = dialog.SystemPrompt?.Trim();
                     contact.PiperVoiceId = string.IsNullOrWhiteSpace(dialog.PiperVoiceId) ? null : dialog.PiperVoiceId.Trim();
+                    contact.AvatarModelPath = string.IsNullOrWhiteSpace(dialog.AvatarModelPath) ? null : dialog.AvatarModelPath.Trim();
+                    contact.AvatarVoiceSpeed = dialog.AvatarVoiceSpeed;
+                    contact.AvatarVoicePitch = dialog.AvatarVoicePitch;
                     
                     // Save updated contact to persistence
                     await _persistenceService.SetAsync($"AIContact_{contact.Id}", contact);
@@ -1226,11 +1261,13 @@ namespace HouseVictoria.App.Screens.Windows
                     "To enable image generation:\n" +
                     "1. Install and run ComfyUI (or another Automatic1111-compatible image server) at http://localhost:8188, OR\n" +
                     "2. Set the image generation endpoint in Settings to your ComfyUI server URL.";
+                ShowImageGenErrorDialog("Image generation unavailable", ex);
             }
             catch (Exception ex)
             {
                 resultStatus = $"✗ Error generating image: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"Error generating image: {ex.Message}\n{ex.StackTrace}");
+                ShowImageGenErrorDialog("Image generation failed", ex);
             }
             finally
             {
@@ -1296,6 +1333,45 @@ namespace HouseVictoria.App.Screens.Windows
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Error saving generated image: {ex.Message}\n{ex.StackTrace}");
             }
+        }
+
+        private static void ShowImageGenErrorDialog(string title, Exception ex)
+        {
+            var detail = FormatExceptionChainForUser(ex, maxLength: 4000);
+            try
+            {
+                if (Application.Current?.Dispatcher != null)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(detail, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                    });
+                }
+                else
+                {
+                    MessageBox.Show(detail, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch
+            {
+                // Dialog is best-effort; status line still shows the error.
+            }
+        }
+
+        private static string FormatExceptionChainForUser(Exception ex, int maxLength)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (sb.Length > 0)
+                    sb.AppendLine().AppendLine("---").AppendLine();
+                sb.Append(e.Message);
+            }
+
+            var s = sb.ToString().Trim();
+            if (s.Length <= maxLength)
+                return s;
+            return s.Substring(0, maxLength) + $"{Environment.NewLine}{Environment.NewLine}… (truncated)";
         }
     }
 }

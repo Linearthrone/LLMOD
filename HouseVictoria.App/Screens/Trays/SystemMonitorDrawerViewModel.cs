@@ -529,12 +529,13 @@ namespace HouseVictoria.App.Screens.Trays
 
     public class ServerStatusViewModel : ObservableObject
     {
-        private readonly ServerStatus _status;
+        private ServerStatus _status;
         private readonly ISystemMonitorService _systemMonitorService;
 
         public string Name => _status.Name;
         public bool IsRunning => _status.IsRunning;
         public Brush StatusColor => IsRunning ? Brushes.Green : Brushes.Red;
+        public ICommand StartCommand { get; }
         public ICommand RestartCommand { get; }
         public ICommand StopCommand { get; }
 
@@ -542,8 +543,21 @@ namespace HouseVictoria.App.Screens.Trays
         {
             _status = status;
             _systemMonitorService = systemMonitorService;
-            RestartCommand = new RelayCommand(async () => await RestartServerAsync());
-            StopCommand = new RelayCommand(async () => await StopServerAsync());
+            StartCommand = new RelayCommand(async () => await StartServerAsync(), () => !IsRunning);
+            RestartCommand = new RelayCommand(async () => await RestartServerAsync(), () => IsRunning);
+            StopCommand = new RelayCommand(async () => await StopServerAsync(), () => IsRunning);
+        }
+
+        private async Task StartServerAsync()
+        {
+            try
+            {
+                await _systemMonitorService.StartServerAsync(_status.Name);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error starting server {_status.Name}: {ex.Message}");
+            }
         }
 
         private async Task RestartServerAsync()

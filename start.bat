@@ -15,32 +15,49 @@ echo.
 echo === House Victoria - Start ===
 echo.
 
-REM --- Ollama ---
-echo Starting Ollama...
-where ollama >nul 2>&1
-if not errorlevel 1 (
-    start "" /B ollama serve >nul 2>&1
-    timeout /t 2 /nobreak >nul
-    echo [OK] Ollama - http://localhost:11434
-) else (
-    echo [INFO] Ollama not in PATH. Start manually if needed.
+REM --- Primary LLM Server only (Ollama, LM Studio, or Anything LLM) ---
+set "PRIMARY_LLM=ollama"
+if exist "%SCRIPT_DIR%\primary-llm.txt" (
+    set /p PRIMARY_LLM=<"%SCRIPT_DIR%\primary-llm.txt"
+    set "PRIMARY_LLM=%PRIMARY_LLM: =%"
 )
-echo.
+if /i "%PRIMARY_LLM%"=="" set "PRIMARY_LLM=ollama"
 
-REM --- LM Studio Server (default port 1234) ---
-echo Starting LM Studio server...
-where lms >nul 2>&1
-if errorlevel 1 (
-    echo [INFO] LM Studio CLI ^(lms^) not found. Ensure LM Studio is installed and the CLI is on PATH.
-) else (
-    netstat -an | findstr /C:":1234" | findstr /C:"LISTENING" >nul 2>&1
+if /i "%PRIMARY_LLM%"=="ollama" (
+    echo Starting primary LLM: Ollama...
+    where ollama >nul 2>&1
     if not errorlevel 1 (
-        echo [INFO] LM Studio server already listening on port 1234. Skipping.
-    ) else (
-        if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
-        start "LM Studio Server" /B /D "%SCRIPT_DIR%" cmd /c "lms server start --port 1234 >> Media\lmstudio-server.log 2>&1"
+        start "" /B ollama serve >nul 2>&1
         timeout /t 2 /nobreak >nul
-        echo [OK] LM Studio server starting on http://localhost:1234
+        echo [OK] Ollama - http://localhost:11434
+    ) else (
+        echo [INFO] Ollama not in PATH. Start manually from System Monitor if needed.
+    )
+) else if /i "%PRIMARY_LLM%"=="lmstudio" (
+    echo Starting primary LLM: LM Studio server...
+    where lms >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] LM Studio CLI ^(lms^) not found. Start manually from System Monitor if needed.
+    ) else (
+        netstat -an | findstr /C:":1234" | findstr /C:"LISTENING" >nul 2>&1
+        if not errorlevel 1 (
+            echo [INFO] LM Studio server already on port 1234. Skipping.
+        ) else (
+            if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+            start "LM Studio Server" /B /D "%SCRIPT_DIR%" cmd /c "lms server start --port 1234 >> Media\lmstudio-server.log 2>&1"
+            timeout /t 2 /nobreak >nul
+            echo [OK] LM Studio - http://localhost:1234
+        )
+    )
+) else if /i "%PRIMARY_LLM%"=="anythingllm" (
+    echo [INFO] Anything LLM: Start manually from System Monitor or launch AnythingLLM desktop app.
+) else (
+    echo [INFO] Unknown primary LLM '%PRIMARY_LLM%'. Defaulting to Ollama.
+    where ollama >nul 2>&1
+    if not errorlevel 1 (
+        start "" /B ollama serve >nul 2>&1
+        timeout /t 2 /nobreak >nul
+        echo [OK] Ollama - http://localhost:11434
     )
 )
 echo.

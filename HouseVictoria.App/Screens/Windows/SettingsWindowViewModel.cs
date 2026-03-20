@@ -14,6 +14,7 @@ using System.IO;
 using System.Text.Json;
 using System.Linq;
 using Microsoft.Win32;
+using HouseVictoria.App.Services;
 using HouseVictoria.Services.AIServices;
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,11 +42,52 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
-        private bool _useLmStudioAsPrimary = true;
+        private string _primaryLLM = "ollama";
+        /// <summary>Primary LLM: "ollama", "lmstudio", or "anythingllm". Only one can be primary.</summary>
+        public string PrimaryLLM
+        {
+            get => _primaryLLM;
+            set
+            {
+                var normalized = (value ?? "ollama").ToLowerInvariant();
+                if (normalized != "ollama" && normalized != "lmstudio" && normalized != "anythingllm")
+                    normalized = "ollama";
+                if (SetProperty(ref _primaryLLM, normalized))
+                {
+                    OnPropertyChanged(nameof(UseLmStudioAsPrimary));
+                    OnPropertyChanged(nameof(UseOllamaAsPrimary));
+                    OnPropertyChanged(nameof(UseAnythingLLMAsPrimary));
+                }
+            }
+        }
+
         public bool UseLmStudioAsPrimary
         {
-            get => _useLmStudioAsPrimary;
-            set => SetProperty(ref _useLmStudioAsPrimary, value);
+            get => string.Equals(_primaryLLM, "lmstudio", StringComparison.OrdinalIgnoreCase);
+            set { if (value) SetPrimaryLLM("lmstudio"); else if (UseLmStudioAsPrimary) SetPrimaryLLM("ollama"); }
+        }
+
+        public bool UseOllamaAsPrimary
+        {
+            get => string.Equals(_primaryLLM, "ollama", StringComparison.OrdinalIgnoreCase);
+            set { if (value) SetPrimaryLLM("ollama"); else if (UseOllamaAsPrimary) SetPrimaryLLM("lmstudio"); }
+        }
+
+        public bool UseAnythingLLMAsPrimary
+        {
+            get => string.Equals(_primaryLLM, "anythingllm", StringComparison.OrdinalIgnoreCase);
+            set { if (value) SetPrimaryLLM("anythingllm"); else if (UseAnythingLLMAsPrimary) SetPrimaryLLM("ollama"); }
+        }
+
+        private void SetPrimaryLLM(string value)
+        {
+            var normalized = value.ToLowerInvariant();
+            if (_primaryLLM == normalized) return;
+            _primaryLLM = normalized;
+            OnPropertyChanged(nameof(PrimaryLLM));
+            OnPropertyChanged(nameof(UseLmStudioAsPrimary));
+            OnPropertyChanged(nameof(UseOllamaAsPrimary));
+            OnPropertyChanged(nameof(UseAnythingLLMAsPrimary));
         }
 
         private string? _lmStudioConnectionStatus;
@@ -66,6 +108,24 @@ namespace HouseVictoria.App.Screens.Windows
                     ValidateSettings();
                 }
             }
+        }
+
+        private string _anythingLLMEndpoint = string.Empty;
+        public string AnythingLLMEndpoint
+        {
+            get => _anythingLLMEndpoint;
+            set
+            {
+                if (SetProperty(ref _anythingLLMEndpoint, value))
+                    ValidateSettings();
+            }
+        }
+
+        private string? _anythingLLMConnectionStatus;
+        public string? AnythingLLMConnectionStatus
+        {
+            get => _anythingLLMConnectionStatus;
+            set => SetProperty(ref _anythingLLMConnectionStatus, value);
         }
 
         // MCP Server Settings
@@ -92,8 +152,6 @@ namespace HouseVictoria.App.Screens.Windows
                 if (SetProperty(ref _ttsEndpoint, value))
                 {
                     ValidateSettings();
-                    // Reload voices when TTS endpoint changes
-                    _ = LoadAvailableVoicesAsync();
                 }
             }
         }
@@ -149,6 +207,18 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _comfyUIPortablePath, value ?? string.Empty);
         }
 
+        // Color Scheme
+        private int _selectedThemeIndex;
+        public int SelectedThemeIndex
+        {
+            get => _selectedThemeIndex;
+            set => SetProperty(ref _selectedThemeIndex, value);
+        }
+
+        public string SelectedThemeId => ThemeManager.GetThemeIdByIndex(SelectedThemeIndex);
+
+        public ObservableCollection<ThemeInfo> AvailableThemes { get; } = new();
+
         // Overlay Settings
         private bool _enableOverlay;
         public bool EnableOverlay
@@ -184,61 +254,6 @@ namespace HouseVictoria.App.Screens.Windows
             set 
             { 
                 if (SetProperty(ref _autoHideDelayMs, value))
-                {
-                    ValidateSettings();
-                }
-            }
-        }
-
-        // Avatar Settings
-        private string _avatarModelPath = string.Empty;
-        public string AvatarModelPath
-        {
-            get => _avatarModelPath;
-            set => SetProperty(ref _avatarModelPath, value);
-        }
-
-        private string _avatarVoiceModel = string.Empty;
-        public string AvatarVoiceModel
-        {
-            get => _avatarVoiceModel;
-            set => SetProperty(ref _avatarVoiceModel, value);
-        }
-
-        private ObservableCollection<string> _availableVoices = new();
-        public ObservableCollection<string> AvailableVoices
-        {
-            get => _availableVoices;
-            set => SetProperty(ref _availableVoices, value);
-        }
-
-        private bool _isLoadingVoices;
-        public bool IsLoadingVoices
-        {
-            get => _isLoadingVoices;
-            set => SetProperty(ref _isLoadingVoices, value);
-        }
-
-        private double _avatarVoiceSpeed = 1.0;
-        public double AvatarVoiceSpeed
-        {
-            get => _avatarVoiceSpeed;
-            set 
-            { 
-                if (SetProperty(ref _avatarVoiceSpeed, value))
-                {
-                    ValidateSettings();
-                }
-            }
-        }
-
-        private double _avatarVoicePitch = 1.0;
-        public double AvatarVoicePitch
-        {
-            get => _avatarVoicePitch;
-            set 
-            { 
-                if (SetProperty(ref _avatarVoicePitch, value))
                 {
                     ValidateSettings();
                 }
@@ -442,6 +457,7 @@ namespace HouseVictoria.App.Screens.Windows
         // Commands
         public ICommand TestOllamaConnectionCommand { get; }
         public ICommand TestLmStudioConnectionCommand { get; }
+        public ICommand TestAnythingLLMConnectionCommand { get; }
         public ICommand TestMCPConnectionCommand { get; }
         public ICommand TestTTSConnectionCommand { get; }
         public ICommand TestSTTConnectionCommand { get; }
@@ -454,7 +470,6 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand ImportSettingsCommand { get; }
         public ICommand ExportSettingsCommand { get; }
         public ICommand ResetToDefaultsCommand { get; }
-        public ICommand LoadVoicesCommand { get; }
         public ICommand StartKokoroCommand { get; }
         public ICommand StopKokoroCommand { get; }
 
@@ -474,8 +489,9 @@ namespace HouseVictoria.App.Screens.Windows
             
             // Load settings from AppConfig
             LmStudioEndpoint = appConfig.LmStudioEndpoint;
-            UseLmStudioAsPrimary = appConfig.UseLmStudioAsPrimary;
+            PrimaryLLM = appConfig.PrimaryLLM;
             OllamaEndpoint = appConfig.OllamaEndpoint;
+            AnythingLLMEndpoint = appConfig.AnythingLLMEndpoint;
             MCPServerEndpoint = appConfig.MCPServerEndpoint;
             TTSEndpoint = appConfig.TTSEndpoint;
             STTEndpoint = appConfig.STTEndpoint ?? string.Empty;
@@ -483,16 +499,15 @@ namespace HouseVictoria.App.Screens.Windows
             StableDiffusionEndpoint = appConfig.StableDiffusionEndpoint;
             StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
             ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
+            SelectedThemeIndex = ThemeManager.GetThemeIndexById(appConfig.ColorScheme ?? "CyanBlueDark");
+            foreach (var t in ThemeManager.Themes)
+                AvailableThemes.Add(t);
             EnableOverlay = appConfig.EnableOverlay;
             OverlayOpacity = appConfig.OverlayOpacity;
             AutoHideTrays = appConfig.AutoHideTrays;
             AutoHideDelayMs = appConfig.AutoHideDelayMs;
 
             // Load advanced settings
-            AvatarModelPath = appConfig.AvatarModelPath;
-            AvatarVoiceModel = appConfig.AvatarVoiceModel;
-            AvatarVoiceSpeed = appConfig.AvatarVoiceSpeed;
-            AvatarVoicePitch = appConfig.AvatarVoicePitch;
             WalkSpeed = appConfig.WalkSpeed;
             RunSpeed = appConfig.RunSpeed;
             JumpHeight = appConfig.JumpHeight;
@@ -509,6 +524,7 @@ namespace HouseVictoria.App.Screens.Windows
             // Initialize commands
             TestOllamaConnectionCommand = new RelayCommand(async () => await TestOllamaConnectionAsync());
             TestLmStudioConnectionCommand = new RelayCommand(async () => await TestLmStudioConnectionAsync());
+            TestAnythingLLMConnectionCommand = new RelayCommand(async () => await TestAnythingLLMConnectionAsync());
             TestMCPConnectionCommand = new RelayCommand(async () => await TestMCPConnectionAsync());
             TestTTSConnectionCommand = new RelayCommand(async () => await TestTTSConnectionAsync());
             TestSTTConnectionCommand = new RelayCommand(async () => await TestSTTConnectionAsync());
@@ -521,14 +537,11 @@ namespace HouseVictoria.App.Screens.Windows
             ImportSettingsCommand = new RelayCommand(() => ImportSettings());
             ExportSettingsCommand = new RelayCommand(() => ExportSettings());
             ResetToDefaultsCommand = new RelayCommand(() => ResetToDefaults());
-            LoadVoicesCommand = new RelayCommand(async () => await LoadAvailableVoicesAsync());
             StartKokoroCommand = new RelayCommand(async () => await StartKokoroAsync());
             StopKokoroCommand = new RelayCommand(async () => await StopKokoroAsync());
 
             ValidateSettings();
             
-            // Load available voices on initialization
-            _ = LoadAvailableVoicesAsync();
             _ = RefreshKokoroStatusAsync();
         }
 
@@ -549,6 +562,14 @@ namespace HouseVictoria.App.Screens.Windows
             if (!string.IsNullOrWhiteSpace(OllamaEndpoint) && !Regex.IsMatch(OllamaEndpoint, urlPattern))
             {
                 _validationError = "Ollama endpoint must be a valid URL (http://, https://)";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(AnythingLLMEndpoint) && !Regex.IsMatch(AnythingLLMEndpoint, urlPattern))
+            {
+                _validationError = "Anything LLM endpoint must be a valid URL (http://, https://)";
                 OnPropertyChanged(nameof(ValidationError));
                 OnPropertyChanged(nameof(IsValid));
                 return;
@@ -606,22 +627,6 @@ namespace HouseVictoria.App.Screens.Windows
             if (AutoHideDelayMs < 0 || AutoHideDelayMs > 60000)
             {
                 _validationError = "Auto-hide delay must be between 0 and 60000 milliseconds";
-                OnPropertyChanged(nameof(ValidationError));
-                OnPropertyChanged(nameof(IsValid));
-                return;
-            }
-
-            if (AvatarVoiceSpeed < 0.1 || AvatarVoiceSpeed > 3.0)
-            {
-                _validationError = "Avatar voice speed must be between 0.1 and 3.0";
-                OnPropertyChanged(nameof(ValidationError));
-                OnPropertyChanged(nameof(IsValid));
-                return;
-            }
-
-            if (AvatarVoicePitch < 0.1 || AvatarVoicePitch > 3.0)
-            {
-                _validationError = "Avatar voice pitch must be between 0.1 and 3.0";
                 OnPropertyChanged(nameof(ValidationError));
                 OnPropertyChanged(nameof(IsValid));
                 return;
@@ -761,6 +766,38 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private async Task TestAnythingLLMConnectionAsync()
+        {
+            if (string.IsNullOrWhiteSpace(AnythingLLMEndpoint))
+            {
+                AnythingLLMConnectionStatus = "Error: Endpoint is empty";
+                ConnectionTestResult = "Anything LLM: Error - Endpoint is empty";
+                return;
+            }
+
+            IsTestingConnection = true;
+            AnythingLLMConnectionStatus = "Testing...";
+            ConnectionTestResult = "Anything LLM: Testing connection...";
+
+            try
+            {
+                var baseUrl = AnythingLLMEndpoint.TrimEnd('/');
+                var response = await _httpClient.GetAsync($"{baseUrl}/models");
+                var success = response.IsSuccessStatusCode;
+                AnythingLLMConnectionStatus = success ? "✓ Connected" : "✗ Failed";
+                ConnectionTestResult = success ? "Anything LLM: ✓ Connection successful!" : "Anything LLM: ✗ Connection failed";
+            }
+            catch (Exception ex)
+            {
+                AnythingLLMConnectionStatus = "✗ Failed";
+                ConnectionTestResult = $"Anything LLM: ✗ Connection failed: {ex.Message}";
+            }
+            finally
+            {
+                IsTestingConnection = false;
+            }
+        }
+
         private async Task TestMCPConnectionAsync()
         {
             if (string.IsNullOrWhiteSpace(MCPServerEndpoint))
@@ -893,78 +930,6 @@ namespace HouseVictoria.App.Screens.Windows
             finally
             {
                 IsTestingConnection = false;
-            }
-        }
-
-        private async Task LoadAvailableVoicesAsync()
-        {
-            IsLoadingVoices = true;
-            
-            try
-            {
-                List<string> voices = new();
-                
-                // Try to get voices from TTS service
-                if (_ttsService != null)
-                {
-                    // Use the registered TTS service if available
-                    voices = await _ttsService.GetAvailableVoicesAsync();
-                }
-                else if (!string.IsNullOrWhiteSpace(TTSEndpoint))
-                {
-                    // Create a temporary TTS service with current endpoint to get voices
-                    try
-                    {
-                        var tempTtsService = new HouseVictoria.Services.TTS.TTSService(TTSEndpoint);
-                        voices = await tempTtsService.GetAvailableVoicesAsync();
-                    }
-                    catch
-                    {
-                        // If endpoint fails, try Windows TTS fallback
-                        voices = await GetWindowsTTSVoicesAsync();
-                    }
-                }
-                else
-                {
-                    // Try Windows TTS directly
-                    voices = await GetWindowsTTSVoicesAsync();
-                }
-                
-                // Update UI on dispatcher thread
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    AvailableVoices.Clear();
-                    foreach (var voice in voices)
-                    {
-                        AvailableVoices.Add(voice);
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to load available voices: {ex.Message}");
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    AvailableVoices.Clear();
-                });
-            }
-            finally
-            {
-                IsLoadingVoices = false;
-            }
-        }
-
-        private async Task<List<string>> GetWindowsTTSVoicesAsync()
-        {
-            try
-            {
-                // Create a TTS service with a dummy endpoint to access Windows TTS fallback
-                var windowsTtsService = new HouseVictoria.Services.TTS.TTSService("http://localhost:5000");
-                return await windowsTtsService.GetAvailableVoicesAsync();
-            }
-            catch
-            {
-                return new List<string>();
             }
         }
 
@@ -1266,8 +1231,9 @@ namespace HouseVictoria.App.Screens.Windows
                     {
                         // Load imported settings
                         LmStudioEndpoint = importedConfig.LmStudioEndpoint;
-                        UseLmStudioAsPrimary = importedConfig.UseLmStudioAsPrimary;
+                        PrimaryLLM = importedConfig.PrimaryLLM;
                         OllamaEndpoint = importedConfig.OllamaEndpoint;
+                        AnythingLLMEndpoint = importedConfig.AnythingLLMEndpoint;
                         MCPServerEndpoint = importedConfig.MCPServerEndpoint;
                         TTSEndpoint = importedConfig.TTSEndpoint;
                         STTEndpoint = importedConfig.STTEndpoint ?? string.Empty;
@@ -1275,14 +1241,11 @@ namespace HouseVictoria.App.Screens.Windows
                         StableDiffusionEndpoint = importedConfig.StableDiffusionEndpoint;
                         StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
                         ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
+                        SelectedThemeIndex = ThemeManager.GetThemeIndexById(importedConfig.ColorScheme ?? "CyanBlueDark");
                         EnableOverlay = importedConfig.EnableOverlay;
                         OverlayOpacity = importedConfig.OverlayOpacity;
                         AutoHideTrays = importedConfig.AutoHideTrays;
                         AutoHideDelayMs = importedConfig.AutoHideDelayMs;
-                        AvatarModelPath = importedConfig.AvatarModelPath;
-                        AvatarVoiceModel = importedConfig.AvatarVoiceModel;
-                        AvatarVoiceSpeed = importedConfig.AvatarVoiceSpeed;
-                        AvatarVoicePitch = importedConfig.AvatarVoicePitch;
                         WalkSpeed = importedConfig.WalkSpeed;
                         RunSpeed = importedConfig.RunSpeed;
                         JumpHeight = importedConfig.JumpHeight;
@@ -1324,8 +1287,9 @@ namespace HouseVictoria.App.Screens.Windows
                     var exportConfig = new AppConfig
                     {
                         LmStudioEndpoint = LmStudioEndpoint,
-                        UseLmStudioAsPrimary = UseLmStudioAsPrimary,
+                        PrimaryLLM = PrimaryLLM,
                         OllamaEndpoint = OllamaEndpoint,
+                        AnythingLLMEndpoint = AnythingLLMEndpoint,
                         MCPServerEndpoint = MCPServerEndpoint,
                         TTSEndpoint = TTSEndpoint,
                         STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint,
@@ -1333,14 +1297,11 @@ namespace HouseVictoria.App.Screens.Windows
                         StableDiffusionEndpoint = StableDiffusionEndpoint,
                         StabilityMatrixPath = StabilityMatrixPath,
                         ComfyUIPortablePath = ComfyUIPortablePath,
+                        ColorScheme = ThemeManager.GetThemeIdByIndex(SelectedThemeIndex),
                         EnableOverlay = EnableOverlay,
                         OverlayOpacity = OverlayOpacity,
                         AutoHideTrays = AutoHideTrays,
                         AutoHideDelayMs = AutoHideDelayMs,
-                        AvatarModelPath = AvatarModelPath,
-                        AvatarVoiceModel = AvatarVoiceModel,
-                        AvatarVoiceSpeed = AvatarVoiceSpeed,
-                        AvatarVoicePitch = AvatarVoicePitch,
                         WalkSpeed = WalkSpeed,
                         RunSpeed = RunSpeed,
                         JumpHeight = JumpHeight,
@@ -1379,8 +1340,9 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 // Update AppConfig
                 _appConfig.LmStudioEndpoint = LmStudioEndpoint;
-                _appConfig.UseLmStudioAsPrimary = UseLmStudioAsPrimary;
+                _appConfig.PrimaryLLM = PrimaryLLM;
                 _appConfig.OllamaEndpoint = OllamaEndpoint;
+                _appConfig.AnythingLLMEndpoint = AnythingLLMEndpoint;
                 _appConfig.MCPServerEndpoint = MCPServerEndpoint;
                 _appConfig.TTSEndpoint = TTSEndpoint;
                 _appConfig.STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint;
@@ -1388,14 +1350,11 @@ namespace HouseVictoria.App.Screens.Windows
                 _appConfig.StableDiffusionEndpoint = StableDiffusionEndpoint;
                 _appConfig.StabilityMatrixPath = StabilityMatrixPath;
                 _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
+                _appConfig.ColorScheme = ThemeManager.GetThemeIdByIndex(SelectedThemeIndex);
                 _appConfig.EnableOverlay = EnableOverlay;
                 _appConfig.OverlayOpacity = OverlayOpacity;
                 _appConfig.AutoHideTrays = AutoHideTrays;
                 _appConfig.AutoHideDelayMs = AutoHideDelayMs;
-                _appConfig.AvatarModelPath = AvatarModelPath;
-                _appConfig.AvatarVoiceModel = AvatarVoiceModel;
-                _appConfig.AvatarVoiceSpeed = AvatarVoiceSpeed;
-                _appConfig.AvatarVoicePitch = AvatarVoicePitch;
                 _appConfig.WalkSpeed = WalkSpeed;
                 _appConfig.RunSpeed = RunSpeed;
                 _appConfig.JumpHeight = JumpHeight;
@@ -1413,8 +1372,9 @@ namespace HouseVictoria.App.Screens.Windows
                 var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
                 
                 UpdateOrAddSetting(config, "LmStudioEndpoint", LmStudioEndpoint);
-                UpdateOrAddSetting(config, "UseLmStudioAsPrimary", UseLmStudioAsPrimary.ToString());
+                UpdateOrAddSetting(config, "PrimaryLLM", PrimaryLLM);
                 UpdateOrAddSetting(config, "OllamaEndpoint", OllamaEndpoint);
+                UpdateOrAddSetting(config, "AnythingLLMEndpoint", AnythingLLMEndpoint);
                 UpdateOrAddSetting(config, "MCPServerEndpoint", MCPServerEndpoint);
                 UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
                 UpdateOrAddSetting(config, "STTEndpoint", STTEndpoint ?? string.Empty);
@@ -1422,6 +1382,7 @@ namespace HouseVictoria.App.Screens.Windows
                 UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
                 UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
+                UpdateOrAddSetting(config, "ColorScheme", ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
                 UpdateOrAddSetting(config, "EnableOverlay", EnableOverlay.ToString());
                 UpdateOrAddSetting(config, "OverlayOpacity", OverlayOpacity.ToString());
                 UpdateOrAddSetting(config, "AutoHideTrays", AutoHideTrays.ToString());
@@ -1429,6 +1390,29 @@ namespace HouseVictoria.App.Screens.Windows
 
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
+
+                // Apply theme immediately
+                ThemeManager.ApplyTheme(ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
+
+                // Write primary-llm.txt for start.bat to read (only starts primary LLM server)
+                try
+                {
+                    var appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
+                    var dir = new DirectoryInfo(appDir);
+                    for (int i = 0; i < 6 && dir != null; i++)
+                    {
+                        if (File.Exists(Path.Combine(dir.FullName, "HouseVictoria.sln")))
+                        {
+                            File.WriteAllText(Path.Combine(dir.FullName, "primary-llm.txt"), PrimaryLLM);
+                            break;
+                        }
+                        dir = dir.Parent;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Could not write primary-llm.txt: {ex.Message}");
+                }
 
                 MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -1464,8 +1448,9 @@ namespace HouseVictoria.App.Screens.Windows
                 var defaults = new AppConfig();
 
                 LmStudioEndpoint = defaults.LmStudioEndpoint;
-                UseLmStudioAsPrimary = defaults.UseLmStudioAsPrimary;
+                PrimaryLLM = defaults.PrimaryLLM;
                 OllamaEndpoint = defaults.OllamaEndpoint;
+                AnythingLLMEndpoint = defaults.AnythingLLMEndpoint;
                 MCPServerEndpoint = defaults.MCPServerEndpoint;
                 TTSEndpoint = defaults.TTSEndpoint;
                 STTEndpoint = defaults.STTEndpoint ?? string.Empty;
@@ -1473,14 +1458,11 @@ namespace HouseVictoria.App.Screens.Windows
                 StableDiffusionEndpoint = defaults.StableDiffusionEndpoint;
                 StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
                 ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;
+                SelectedThemeIndex = ThemeManager.GetThemeIndexById(defaults.ColorScheme ?? "CyanBlueDark");
                 EnableOverlay = defaults.EnableOverlay;
                 OverlayOpacity = defaults.OverlayOpacity;
                 AutoHideTrays = defaults.AutoHideTrays;
                 AutoHideDelayMs = defaults.AutoHideDelayMs;
-                AvatarModelPath = defaults.AvatarModelPath;
-                AvatarVoiceModel = defaults.AvatarVoiceModel;
-                AvatarVoiceSpeed = defaults.AvatarVoiceSpeed;
-                AvatarVoicePitch = defaults.AvatarVoicePitch;
                 WalkSpeed = defaults.WalkSpeed;
                 RunSpeed = defaults.RunSpeed;
                 JumpHeight = defaults.JumpHeight;
@@ -1497,6 +1479,7 @@ namespace HouseVictoria.App.Screens.Windows
                 // Clear connection statuses
                 LmStudioConnectionStatus = null;
                 OllamaConnectionStatus = null;
+                AnythingLLMConnectionStatus = null;
                 MCPServerConnectionStatus = null;
                 TTSConnectionStatus = null;
                 STTConnectionStatus = null;

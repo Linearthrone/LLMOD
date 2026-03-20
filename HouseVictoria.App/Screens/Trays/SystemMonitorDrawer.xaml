@@ -309,10 +309,15 @@
                                                              Fill="{Binding StatusColor}" Width="24" Height="24" Margin="0,4,8,0"/>
                                                     <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" Foreground="#E0F7FF" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,5,0">
+                                                        <Button Command="{Binding StartCommand}" Style="{StaticResource GlassButton}"
+                                                                Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Start"
+                                                                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">▶️</Button>
                                                         <Button Command="{Binding RestartCommand}" Style="{StaticResource GlassButton}"
-                                                                Width="24" Height="24" Padding="0" Margin="2,0">🔄</Button>
+                                                                Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Restart"
+                                                                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">🔄</Button>
                                                         <Button Command="{Binding StopCommand}" Style="{StaticResource GlassButton}"
-                                                                Width="24" Height="24" Padding="0" Margin="2,0">⏸️</Button>
+                                                                Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Stop"
+                                                                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">⏸️</Button>
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>

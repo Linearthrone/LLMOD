@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="C:\Users\kurtw\HouseVictoria\LLMOD\MCPServer\.venv"
+VIRTUAL_ENV="C:\Users\kurtw\LLMOD\LLMOD-max-master\MCPServer\.venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

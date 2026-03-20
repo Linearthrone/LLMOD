@@ -12,7 +12,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
 
-    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+    <Border Style="{StaticResource GlassPanel}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -23,119 +23,44 @@
         <Border Grid.Row="0"
                 Background="#3000D4FF"
                 Padding="15,10"
+                CornerRadius="6,6,0,0"
                 MouseLeftButtonDown="Header_MouseLeftButtonDown">
+            <Border.Effect>
+                <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+            </Border.Effect>
             <Grid>
                 <TextBlock Text="📋 Global Log Directory (GLD)"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Center"
                            FontSize="20"
                            FontWeight="Bold"
-                           Foreground="White"/>
+                           Foreground="#E0F7FF"/>
 
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                     <Button Content="Refresh"
+                            Style="{StaticResource GlassButton}"
                             MinWidth="70" Height="28"
-                            Background="#4000D4FF"
-                            BorderThickness="0"
-                            Foreground="#E0F7FF"
                             Margin="0,0,5,0"
-                            Click="RefreshButton_Click"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                   BorderBrush="{TemplateBinding BorderBrush}"
-                                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                                   CornerRadius="3">
-                                                <ContentPresenter HorizontalAlignment="Center" 
-                                                                 VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#CC666666"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    
+                            Click="RefreshButton_Click"/>
+
                     <Button Content="Mark Read"
+                            Style="{StaticResource GlassButton}"
                             MinWidth="80" Height="28"
-                            Background="#4000D4FF"
-                            BorderThickness="0"
-                            Foreground="#E0F7FF"
                             Margin="5,0,5,0"
-                            Click="MarkAllReadButton_Click"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                   BorderBrush="{TemplateBinding BorderBrush}"
-                                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                                   CornerRadius="3">
-                                                <ContentPresenter HorizontalAlignment="Center" 
-                                                                 VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#CC666666"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                            Click="MarkAllReadButton_Click"/>
 
                     <Button Content="Export"
+                            Style="{StaticResource GlassButton}"
                             MinWidth="60" Height="28"
-                            Background="#4000D4FF"
-                            BorderThickness="0"
-                            Foreground="#E0F7FF"
                             Margin="5,0,5,0"
-                            Click="ExportButton_Click"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                   BorderBrush="{TemplateBinding BorderBrush}"
-                                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                                   CornerRadius="3">
-                                                <ContentPresenter HorizontalAlignment="Center" 
-                                                                 VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#CC666666"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                            Click="ExportButton_Click"/>
 
                     <Button Content="−" 
                            Width="30" Height="30" 
-                           Background="#CC444444" 
-                           BorderBrush="#CC666666" 
-                           BorderThickness="1"
+                           Background="#4000D4FF" 
+                           BorderThickness="0"
                            FontSize="18" FontWeight="Bold"
-                           Foreground="White"
+                           Foreground="#E0F7FF"
                            Cursor="Hand"
                            Margin="5,0,5,0"
                            Click="MinimizeButton_Click"
@@ -146,9 +71,7 @@
                                     <Setter.Value>
                                         <ControlTemplate TargetType="Button">
                                             <Border Background="{TemplateBinding Background}" 
-                                                   BorderBrush="{TemplateBinding BorderBrush}"
-                                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                                   CornerRadius="3">
+                                                   CornerRadius="6">
                                                 <ContentPresenter HorizontalAlignment="Center" 
                                                                  VerticalAlignment="Center"/>
                                             </Border>
@@ -157,7 +80,7 @@
                                 </Setter>
                                 <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#CC666666"/>
+                                        <Setter Property="Background" Value="#6000D4FF"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -165,12 +88,11 @@
                     </Button>
                     <Button Content="✕" 
                            Width="30" Height="30" 
-                           Background="#CCCC0000" 
-                           BorderBrush="#CCFF0000" 
-                           BorderThickness="1"
+                           Background="#40FF3366" 
+                           BorderThickness="0"
                            FontSize="16" FontWeight="Bold"
-                           Foreground="White"
-                            Cursor="Hand"
+                           Foreground="#E0F7FF"
+                           Cursor="Hand"
                            Margin="0,0,0,0"
                            Click="CloseButton_Click"
                            ToolTip="Close">
@@ -180,9 +102,7 @@
                                     <Setter.Value>
                                         <ControlTemplate TargetType="Button">
                                             <Border Background="{TemplateBinding Background}" 
-                                                   BorderBrush="{TemplateBinding BorderBrush}"
-                                                   BorderThickness="{TemplateBinding BorderThickness}"
-                                                   CornerRadius="3">
+                                                   CornerRadius="6">
                                                 <ContentPresenter HorizontalAlignment="Center" 
                                                                  VerticalAlignment="Center"/>
                                             </Border>
@@ -191,7 +111,7 @@
                                 </Setter>
                                 <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#FFFF0000"/>
+                                        <Setter Property="Background" Value="#60FF3366"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -211,10 +131,7 @@
 
             <!-- TreeView - Left Panel -->
             <Border Grid.Column="0" 
-                    Background="#CC16213e" 
-                    BorderBrush="#CCe94560" 
-                    BorderThickness="1" 
-                    CornerRadius="5"
+                    Style="{StaticResource Card}"
                     Margin="5">
                 <Grid>
                     <!-- Loading Indicator -->
@@ -234,9 +151,9 @@
                     
                     <!-- TreeView -->
                     <TreeView x:Name="LogTreeView"
-                              Background="#CC16213e"
+                              Background="Transparent"
                               BorderThickness="0"
-                              Foreground="White"
+                              Foreground="#E0F7FF"
                               FontSize="13"
                               ItemsSource="{Binding Categories}"
                               SelectedItemChanged="LogTreeView_SelectedItemChanged"
@@ -245,7 +162,7 @@
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                <TextBlock Foreground="Red" 
+                                <TextBlock Foreground="#00D4FF" 
                                           VerticalAlignment="Center"
                                           Margin="5,0,0,0">
                                     <TextBlock.Style>
@@ -275,11 +192,11 @@
                             <Setter Property="Foreground" Value="White"/>
                             <Style.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#CCe94560"/>
+                                    <Setter Property="Background" Value="#4000D4FF"/>
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background" Value="#CCe94560"/>
-                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Background" Value="#4000D4FF"/>
+                                    <Setter Property="Foreground" Value="#E0F7FF"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -293,15 +210,12 @@
                          Width="5" 
                          HorizontalAlignment="Center" 
                          VerticalAlignment="Stretch" 
-                         Background="#CCe94560"
+                         Background="#4000D4FF"
                          ShowsPreview="True"/>
 
             <!-- Log Details - Right Panel -->
             <Border Grid.Column="2" 
-                    Background="#CC16213e" 
-                    BorderBrush="#CCe94560" 
-                    BorderThickness="1" 
-                    CornerRadius="5"
+                    Style="{StaticResource Card}"
                     Margin="5">
                 <ScrollViewer VerticalScrollBarVisibility="Hidden" Style="{StaticResource ModernScrollViewer}">
                     <Grid>
@@ -311,7 +225,7 @@
                                    VerticalAlignment="Center"
                                    FontSize="16"
                                    FontStyle="Italic"
-                                   Foreground="#CCB0BEC5"/>
+                                   Foreground="#80C4D4"/>
 
                         <Grid x:Name="LogDetailsPanel" Visibility="Collapsed" Margin="10">
                             <Grid.RowDefinitions>
@@ -325,15 +239,17 @@
 
                             <!-- Log Title -->
                             <Border Grid.Row="0" 
-                                    Background="#CCe94560" 
+                                    Background="#4000D4FF" 
                                     Padding="10" 
                                     CornerRadius="5" 
-                                    Margin="0,0,0,10">
+                                    Margin="0,0,0,10"
+                                    BorderBrush="#6000D4FF"
+                                    BorderThickness="1">
                                 <TextBlock x:Name="LogTitle"
                                            Text="Log Title"
                                            FontSize="18"
                                            FontWeight="Bold"
-                                           Foreground="White"/>
+                                           Foreground="#E0F7FF"/>
                             </Border>
 
                             <!-- Log Metadata -->
@@ -345,55 +261,43 @@
                                 </Grid.ColumnDefinitions>
 
                                 <Border Grid.Column="0" 
-                                        Background="#CC2D2D2D" 
+                                        Style="{StaticResource Card}"
                                         Padding="10" 
-                                        Margin="0,0,2,0" 
-                                        BorderBrush="#CCe94560" 
-                                        BorderThickness="1"
-                                        CornerRadius="3">
+                                        Margin="0,0,2,0">
                                     <StackPanel>
-                                        <TextBlock Text="Date/Time" FontWeight="Bold" FontSize="11" Foreground="White"/>
-                                        <TextBlock x:Name="LogDateTime" Text="2026-01-04 14:32:15" FontSize="12" Foreground="#CCB0BEC5"/>
+                                        <TextBlock Text="Date/Time" FontWeight="Bold" FontSize="11" Foreground="#E0F7FF"/>
+                                        <TextBlock x:Name="LogDateTime" Text="2026-01-04 14:32:15" FontSize="12" Foreground="#80C4D4"/>
                                     </StackPanel>
                                 </Border>
 
                                 <Border Grid.Column="1" 
-                                        Background="#CC2D2D2D" 
+                                        Style="{StaticResource Card}"
                                         Padding="10" 
-                                        Margin="2,0,2,0" 
-                                        BorderBrush="#CCe94560" 
-                                        BorderThickness="1"
-                                        CornerRadius="3">
+                                        Margin="2,0,2,0">
                                     <StackPanel>
-                                        <TextBlock Text="Severity" FontWeight="Bold" FontSize="11" Foreground="White"/>
-                                        <TextBlock x:Name="LogSeverity" Text="Info" FontSize="12" Foreground="#CCB0BEC5"/>
+                                        <TextBlock Text="Severity" FontWeight="Bold" FontSize="11" Foreground="#E0F7FF"/>
+                                        <TextBlock x:Name="LogSeverity" Text="Info" FontSize="12" Foreground="#80C4D4"/>
                                     </StackPanel>
                                 </Border>
 
                                 <Border Grid.Column="2" 
-                                        Background="#CC2D2D2D" 
+                                        Style="{StaticResource Card}"
                                         Padding="10" 
-                                        Margin="2,0,0,0" 
-                                        BorderBrush="#CCe94560" 
-                                        BorderThickness="1"
-                                        CornerRadius="3">
+                                        Margin="2,0,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="Source" FontWeight="Bold" FontSize="11" Foreground="White"/>
-                                        <TextBlock x:Name="LogSource" Text="AI Service" FontSize="12" Foreground="#CCB0BEC5"/>
+                                        <TextBlock Text="Source" FontWeight="Bold" FontSize="11" Foreground="#E0F7FF"/>
+                                        <TextBlock x:Name="LogSource" Text="AI Service" FontSize="12" Foreground="#80C4D4"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
 
                             <!-- Log Tags -->
                             <Border Grid.Row="2" 
-                                    Background="#CC2D2D2D" 
+                                    Style="{StaticResource Card}"
                                     Padding="10" 
-                                    Margin="0,0,0,10" 
-                                    BorderBrush="#CCe94560" 
-                                    BorderThickness="1"
-                                    CornerRadius="3">
+                                    Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Tags" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="White"/>
+                                    <TextBlock Text="Tags" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#E0F7FF"/>
                                     <ItemsControl x:Name="LogTags">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -402,12 +306,14 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="#CCe94560" 
+                                                <Border Background="#4000D4FF" 
                                                         Padding="8,4" 
                                                         Margin="0,0,5,5" 
-                                                        CornerRadius="3">
+                                                        CornerRadius="3"
+                                                        BorderBrush="#6000D4FF"
+                                                        BorderThickness="1">
                                                     <TextBlock Text="{Binding}" 
-                                                               Foreground="White" 
+                                                               Foreground="#E0F7FF" 
                                                                FontSize="11"/>
                                                 </Border>
                                             </DataTemplate>
@@ -418,30 +324,24 @@
 
                             <!-- Log Summary -->
                             <Border Grid.Row="3" 
-                                    Background="#CC673AB7" 
+                                    Style="{StaticResource Card}"
                                     Padding="10" 
-                                    Margin="0,0,0,10" 
-                                    BorderBrush="#CC9575CD" 
-                                    BorderThickness="1"
-                                    CornerRadius="3">
+                                    Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Summary" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="White"/>
+                                    <TextBlock Text="Summary" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#00D4FF"/>
                                     <TextBlock x:Name="LogSummary" 
                                                Text="This is a summary of the log entry that provides a quick overview of what happened..."
                                                TextWrapping="Wrap"
                                                FontSize="12"
-                                               Foreground="#CCEDE7F6"/>
+                                               Foreground="#E0F7FF"/>
                                 </StackPanel>
                             </Border>
 
                             <!-- Log Content -->
                             <Border Grid.Row="4" 
-                                    Background="#CC16213e" 
+                                    Style="{StaticResource Card}"
                                     Padding="10" 
-                                    Margin="0,0,0,0" 
-                                    BorderBrush="#CCe94560" 
-                                    BorderThickness="1"
-                                    CornerRadius="3">
+                                    Margin="0,0,0,0">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
@@ -453,7 +353,7 @@
                                                FontWeight="Bold" 
                                                FontSize="11" 
                                                Margin="0,0,0,5"
-                                               Foreground="White"/>
+                                               Foreground="#E0F7FF"/>
                                     
                                     <ScrollViewer Grid.Row="1" 
                                                 VerticalScrollBarVisibility="Hidden" 
@@ -464,7 +364,7 @@
                                                    TextWrapping="Wrap"
                                                    FontFamily="Consolas"
                                                    FontSize="11"
-                                                   Foreground="#CCB0BEC5"/>
+                                                   Foreground="#80C4D4"/>
                                     </ScrollViewer>
                                 </Grid>
                             </Border>

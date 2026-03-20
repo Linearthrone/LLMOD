@@ -301,6 +301,16 @@ namespace HouseVictoria.Services.AIServices
 
             using var promptDoc = JsonDocument.Parse(string.IsNullOrWhiteSpace(promptJson) ? "{}" : promptJson);
             var root = promptDoc.RootElement;
+
+            // Some ComfyUI versions return a top-level error string/object on validation failure.
+            if (root.TryGetProperty("error", out var topErr))
+            {
+                var errText = topErr.ValueKind == JsonValueKind.String
+                    ? topErr.GetString()
+                    : topErr.GetRawText();
+                throw new Exception($"ComfyUI /prompt error: {TruncateForLog(errText, 4000)}");
+            }
+
             if (root.TryGetProperty("node_errors", out var nodeErrors) &&
                 nodeErrors.ValueKind == JsonValueKind.Object &&
                 nodeErrors.EnumerateObject().Any())
@@ -313,6 +323,8 @@ namespace HouseVictoria.Services.AIServices
             var promptId = root.TryGetProperty("prompt_id", out var pid) ? pid.GetString() : null;
             if (string.IsNullOrWhiteSpace(promptId))
                 throw new Exception($"ComfyUI /prompt did not return prompt_id. Response: {TruncateForLog(promptJson)}");
+
+            System.Diagnostics.Debug.WriteLine($"[ComfyUI] Queued image gen prompt_id={promptId}, checkpoint={ckpt}, prefix={prefix}");
 
             var (filename, subfolder, type) = await PollComfyUiForOutputImageAsync(baseUrl, promptId);
             var viewUrl =
@@ -377,7 +389,8 @@ namespace HouseVictoria.Services.AIServices
                         ["steps"] = 20,
                         ["cfg"] = 7,
                         ["sampler_name"] = "euler",
-                        ["scheduler"] = "normal",
+                        // "normal" was removed in newer ComfyUI builds; "simple" is widely supported.
+                        ["scheduler"] = "simple",
                         ["denoise"] = 1.0,
                         ["model"] = Link("4", 0),
                         ["positive"] = Link("6", 0),
@@ -474,30 +487,116 @@ namespace HouseVictoria.Services.AIServices
                 using var doc = JsonDocument.Parse(json);
                 foreach (var entry in doc.RootElement.EnumerateObject())
                 {
-                    if (!entry.Value.TryGetProperty("outputs", out var outputs) || outputs.ValueKind != JsonValueKind.Object)
-                        continue;
+                    var value = entry.Value;
 
-                    foreach (var outNode in outputs.EnumerateObject())
+                    // Failed runs usually have execution_error in status.messages but no (or empty) outputs — don't spin until timeout.
+                    var failureDetail = TryExtractComfyUiExecutionFailure(value);
+                    if (failureDetail != null)
+                        throw new Exception(failureDetail);
+
+                    if (TryExtractFirstComfyUiOutputImage(value, out var imageRef))
+                        return imageRef;
+
+                    // Finished successfully but nothing to download (misconfigured graph, preview-only, etc.)
+                    if (TryGetComfyUiRunCompleted(value, out var completed) && completed)
                     {
-                        if (!outNode.Value.TryGetProperty("images", out var images) || images.ValueKind != JsonValueKind.Array)
-                            continue;
-
-                        foreach (var img in images.EnumerateArray())
-                        {
-                            var fn = img.TryGetProperty("filename", out var f) ? f.GetString() : null;
-                            if (string.IsNullOrWhiteSpace(fn))
-                                continue;
-                            var sf = img.TryGetProperty("subfolder", out var s) ? (s.GetString() ?? "") : "";
-                            var ty = img.TryGetProperty("type", out var t) ? (t.GetString() ?? "output") : "output";
-                            return (fn, sf, ty);
-                        }
+                        throw new Exception(
+                            "ComfyUI reported the workflow as completed but no image file was returned in history. " +
+                            "Ensure the graph includes SaveImage and the checkpoint matches SD 1.5/SDXL (not Flux-only). " +
+                            $"History: {TruncateForLog(value.GetRawText(), 2500)}");
                     }
                 }
             }
 
             throw new Exception(
                 $"ComfyUI image generation timed out waiting for outputs (prompt_id={promptId}). " +
-                "Check the ComfyUI console for errors or queue backlog.");
+                "If the queue is long, wait and retry; otherwise check the ComfyUI terminal for GPU/OOM errors.");
+        }
+
+        /// <summary>Parses ComfyUI /history entry: status.messages execution_error / execution_interrupted.</summary>
+        private static string? TryExtractComfyUiExecutionFailure(JsonElement historyEntry)
+        {
+            if (!historyEntry.TryGetProperty("status", out var status))
+                return null;
+
+            if (status.TryGetProperty("messages", out var messages) && messages.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var msg in messages.EnumerateArray())
+                {
+                    if (msg.ValueKind != JsonValueKind.Array || msg.GetArrayLength() < 2)
+                        continue;
+                    var msgType = msg[0].GetString();
+                    var data = msg[1];
+
+                    if (string.Equals(msgType, "execution_error", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var exMsg = data.TryGetProperty("exception_message", out var em) ? em.GetString() : null;
+                        var exType = data.TryGetProperty("exception_type", out var et) ? et.GetString() : null;
+                        var nodeId = data.TryGetProperty("node_id", out var nid) ? nid.GetRawText() : "?";
+                        var nodeType = data.TryGetProperty("node_type", out var nty) ? nty.GetString() : "?";
+                        var parts = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(exType))
+                            parts.Add(exType);
+                        if (!string.IsNullOrWhiteSpace(exMsg))
+                            parts.Add(exMsg);
+                        parts.Add($"node {nodeType} (id {nodeId})");
+                        return "ComfyUI execution failed: " + string.Join(" — ", parts);
+                    }
+
+                    if (string.Equals(msgType, "execution_interrupted", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "ComfyUI execution was interrupted: " + TruncateForLog(data.GetRawText(), 1500);
+                    }
+                }
+            }
+
+            if (status.TryGetProperty("status_str", out var sstr))
+            {
+                var s = sstr.GetString();
+                if (string.Equals(s, "error", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "ComfyUI reported status_str=error. " + TruncateForLog(status.GetRawText(), 2000);
+                }
+            }
+
+            return null;
+        }
+
+        private static bool TryGetComfyUiRunCompleted(JsonElement historyEntry, out bool completed)
+        {
+            completed = false;
+            if (!historyEntry.TryGetProperty("status", out var status))
+                return false;
+            if (!status.TryGetProperty("completed", out var c))
+                return false;
+            completed = c.ValueKind == JsonValueKind.True;
+            return true;
+        }
+
+        private static bool TryExtractFirstComfyUiOutputImage(JsonElement historyEntry, out (string filename, string subfolder, string type) imageRef)
+        {
+            imageRef = default;
+            if (!historyEntry.TryGetProperty("outputs", out var outputs) || outputs.ValueKind != JsonValueKind.Object)
+                return false;
+
+            foreach (var outNode in outputs.EnumerateObject())
+            {
+                if (!outNode.Value.TryGetProperty("images", out var images) || images.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var img in images.EnumerateArray())
+                {
+                    var fn = img.TryGetProperty("filename", out var f) ? f.GetString() : null;
+                    if (string.IsNullOrWhiteSpace(fn))
+                        continue;
+                    var sf = img.TryGetProperty("subfolder", out var s) ? (s.GetString() ?? "") : "";
+                    var ty = img.TryGetProperty("type", out var t) ? (t.GetString() ?? "output") : "output";
+                    imageRef = (fn, sf, ty);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string TruncateForLog(string? text, int maxChars = 1200)

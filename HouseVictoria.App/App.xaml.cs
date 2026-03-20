@@ -11,6 +11,7 @@ using HouseVictoria.Services.FileGeneration;
 using HouseVictoria.Services.Logging;
 using HouseVictoria.Services.MCP;
 using HouseVictoria.Services.Trading;
+using HouseVictoria.App.Services;
 using HouseVictoria.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -58,6 +59,13 @@ namespace HouseVictoria.App
                     InitializeServices();
                     System.Diagnostics.Debug.WriteLine("Services initialized successfully");
                     LoggingHelper.WriteToStartupLog("Services initialized successfully");
+
+                    // Apply color scheme from config
+                    var appConfig = ServiceProvider?.GetService<AppConfig>();
+                    if (appConfig != null && !string.IsNullOrWhiteSpace(appConfig.ColorScheme))
+                    {
+                        ThemeManager.ApplyTheme(appConfig.ColorScheme);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -311,7 +319,8 @@ catch (Exception ex)
             {
                 OllamaEndpoint = config["OllamaEndpoint"] ?? "http://localhost:11434",
                 LmStudioEndpoint = config["LmStudioEndpoint"] ?? "http://localhost:1234/v1",
-                UseLmStudioAsPrimary = bool.TryParse(config["UseLmStudioAsPrimary"], out var useLmStudio) ? useLmStudio : true,
+                AnythingLLMEndpoint = config["AnythingLLMEndpoint"] ?? "http://localhost:3001",
+                PrimaryLLM = config["PrimaryLLM"] ?? (bool.TryParse(config["UseLmStudioAsPrimary"], out var useLm) && useLm ? "lmstudio" : "ollama"),
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
                 TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8880",
@@ -319,6 +328,7 @@ catch (Exception ex)
                 PiperDataDir = config["PiperDataDir"] ?? "Media/PiperVoices",
                 PiperDefaultModel = config["PiperDefaultModel"] ?? "en_US-amy-medium",
                 StableDiffusionEndpoint = config["StableDiffusionEndpoint"] ?? "http://localhost:7860",
+                ColorScheme = config["ColorScheme"] ?? "CyanBlueDark",
                 StabilityMatrixPath = config["StabilityMatrixPath"] ?? string.Empty,
                 ComfyUIPortablePath = config["ComfyUIPortablePath"] ?? string.Empty,
                 MT4DataPath = config["MT4DataPath"] ?? "C:\\Program Files\\MetaTrader 4",
