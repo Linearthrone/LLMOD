@@ -9,7 +9,7 @@
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+         <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
     </Window.Resources>
 
     <Border Background="Transparent">
@@ -139,7 +139,11 @@
                         <TextBlock Grid.Row="0" Text="Data Banks" FontSize="16" FontWeight="Bold" 
                                   Foreground="#E0F7FF" Margin="0,0,0,10"/>
                         
-                        <ScrollViewer Grid.Row="1" Style="{StaticResource ModernScrollViewer}">
+                        <ScrollViewer Grid.Row="1"
+                                      Style="{StaticResource ModernScrollViewer}"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      PanningMode="None">
                             <ItemsControl ItemsSource="{Binding FilteredDataBanks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -251,7 +255,11 @@
                                    IsEnabled="{Binding HasSelectedDataBank}"/>
                         </StackPanel>
                         
-                        <ScrollViewer Grid.Row="3" Style="{StaticResource ModernScrollViewer}">
+                        <ScrollViewer Grid.Row="3"
+                                      Style="{StaticResource ModernScrollViewer}"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      PanningMode="None">
                             <ItemsControl ItemsSource="{Binding SelectedDataBankEntries}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>

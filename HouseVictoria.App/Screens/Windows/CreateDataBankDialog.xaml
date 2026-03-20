@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
         mc:Ignorable="d"
-        Title="Create Data Bank" Height="400" Width="600"
+        Title="Create Data Bank" Height="360" Width="700" MinHeight="360" MinWidth="700"
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -20,13 +20,12 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+            <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Opacity="0.85" Padding="15,10">
                 <TextBlock Text="🗄️ Create Data Bank" FontSize="18" FontWeight="Bold" Foreground="White"/>
             </Border>
 
             <!-- Content Area -->
-            <ScrollViewer Grid.Row="1" Padding="20" Style="{StaticResource ModernScrollViewer}">
-                <StackPanel>
+            <StackPanel Grid.Row="1" Margin="20">
                     <!-- Name -->
                     <Grid Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
@@ -49,7 +48,8 @@
                         <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
                                 Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
                                 Foreground="White" Padding="8" Margin="10,0,0,0"
-                                TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Hidden"
+                                TextWrapping="Wrap" AcceptsReturn="True"
+                                VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                 Height="120"/>
                     </Grid>
 
@@ -59,8 +59,7 @@
                              Margin="0,10,0,0"
                              TextWrapping="Wrap"
                              Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-            </ScrollViewer>
+            </StackPanel>
 
             <!-- Footer Buttons -->
             <Border Grid.Row="2" Background="#CC222222" Padding="15,10">

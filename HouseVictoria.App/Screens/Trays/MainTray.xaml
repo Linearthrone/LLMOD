@@ -6,39 +6,97 @@
              mc:Ignorable="d"
              d:DesignHeight="500" d:DesignWidth="80">
 
-    <Border Style="{StaticResource GlassTrayContainer}" Width="90">
-        <Grid>
-            <!-- Subtle light refraction glow -->
-            <Border Style="{StaticResource RefractionGlow}"/>
-            <!-- Content -->
-            <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                <!-- SMS/MMS Button -->
-                <Button Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Open SMS/MMS Chat"
-                        Command="{Binding OpenSMSCommand}"
-                        Margin="0,0,0,20">
-                    <TextBlock Text="💬" FontSize="28"/>
-                </Button>
+    <Grid x:Name="RootGrid" Background="Transparent" MouseLeave="RootGrid_MouseLeave">
+        <Grid HorizontalAlignment="Right" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-                <!-- AI Models Button -->
-                <Button Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Manage AI Models &amp; Personas"
-                        Command="{Binding OpenAIModelsCommand}"
-                        Margin="0,0,0,20">
-                    <TextBlock Text="🤖" FontSize="28"/>
-                </Button>
+            <!-- Expanded tray (icons) -->
+            <Border Grid.Column="0"
+                    Style="{StaticResource GlassTrayContainer}"
+                    Width="90"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Border Style="{StaticResource RefractionGlow}"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                            <Button Style="{StaticResource FrostedGlassButton}"
+                                    ToolTip="SMS / MMS"
+                                    Command="{Binding OpenSMSCommand}"
+                                    Margin="0,0,0,20">
+                                <TextBlock Text="💬" FontSize="28"/>
+                            </Button>
 
-                <!-- Settings Button -->
-                <Button Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Configuration Settings"
-                        Command="{Binding OpenSettingsCommand}"
-                        Margin="0,0,0,20">
-                    <TextBlock Text="⚙️" FontSize="28"/>
-                </Button>
-            </StackPanel>
-            </ScrollViewer>
+                            <Button Style="{StaticResource FrostedGlassButton}"
+                                    ToolTip="AI Models &amp; Personas"
+                                    Command="{Binding OpenAIModelsCommand}"
+                                    Margin="0,0,0,20">
+                                <TextBlock Text="🤖" FontSize="28"/>
+                            </Button>
+
+                            <Button Style="{StaticResource FrostedGlassButton}"
+                                    ToolTip="Settings"
+                                    Command="{Binding OpenSettingsCommand}"
+                                    Margin="0,0,0,20">
+                                <TextBlock Text="⚙️" FontSize="28"/>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- Pull-tab (always visible) -->
+            <Border Grid.Column="1"
+                    Background="#1200D4FF"
+                    BorderBrush="#3000D4FF"
+                    BorderThickness="1"
+                    CornerRadius="8,0,0,8"
+                    Width="18"
+                    Height="70"
+                    VerticalAlignment="Center"
+                    Margin="0">
+                <!-- No Command: ToggleButton + TwoWay IsChecked already toggles IsExpanded.
+                     Adding Command would run IsExpanded = !IsExpanded after the binding
+                     updated it — net effect stays collapsed. -->
+                <ToggleButton Width="18"
+                              Height="70"
+                              Padding="0"
+                              BorderThickness="0"
+                              IsChecked="{Binding IsExpanded, Mode=TwoWay}">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton" BasedOn="{StaticResource TrayToggleButton}">
+                            <Setter Property="ToolTip" Value="Expand tray"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                    <Setter Property="ToolTip" Value="Collapse tray"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                    <TextBlock FontSize="14"
+                               Foreground="#A0E0F7FF"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="◀"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                        <Setter Property="Text" Value="▶"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </ToggleButton>
+            </Border>
         </Grid>
-    </Border>
+    </Grid>
 
 </UserControl>

@@ -18,6 +18,20 @@ namespace HouseVictoria.App.Converters
                 }
                 return boolValue ? Visibility.Visible : Visibility.Collapsed;
             }
+
+            // Handle common numeric types (e.g., counts) by treating > 0 as true
+            if (value is sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal)
+            {
+                var numeric = System.Convert.ToDecimal(value);
+                var isNonZero = numeric > 0;
+
+                if (parameter is string numParam && numParam == "Inverse")
+                {
+                    return isNonZero ? Visibility.Collapsed : Visibility.Visible;
+                }
+
+                return isNonZero ? Visibility.Visible : Visibility.Collapsed;
+            }
             
             // Handle string values (for PullModelStatus visibility)
             if (value is string strValue)

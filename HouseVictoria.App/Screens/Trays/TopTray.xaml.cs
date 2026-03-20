@@ -250,9 +250,9 @@ namespace HouseVictoria.App.Screens.Trays
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"GLD open error: {ex.Message}\n{ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"GLD open error: {ex}");
                 System.Windows.MessageBox.Show(
-                    $"Could not open Global Log Directory: {ex.Message}",
+                    $"Could not open Global Log Directory:\n\n{ex}",
                     "Error",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);

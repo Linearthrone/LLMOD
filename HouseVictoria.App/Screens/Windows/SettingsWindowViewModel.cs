@@ -1094,29 +1094,41 @@ namespace HouseVictoria.App.Screens.Windows
 
             try
             {
-                // Image server (ComfyUI / Automatic1111-compatible) uses /sdapi/v1/options
-                var endpoints = new[] { "/sdapi/v1/options", "/" };
-                bool isConnected = false;
+                // For generation we call the Automatic1111-compatible API:
+                // POST /sdapi/v1/txt2img and expect JSON with "images": ["<base64>", ...]
+                // So the connection test should validate that the server actually exposes the sdapi surface.
+                var optionsUrl = $"{StableDiffusionEndpoint}/sdapi/v1/options";
+                using var response = await _httpClient.GetAsync(optionsUrl);
 
-                foreach (var endpoint in endpoints)
+                if (response.IsSuccessStatusCode)
                 {
+                    StableDiffusionConnectionStatus = "✓ Connected";
+                    ConnectionTestResult = "Image endpoint: ✓ Connection successful (Automatic1111 API detected).";
+                }
+                else
+                {
+                    // ComfyUI (typical :8188) does not implement /sdapi — it uses /prompt; treat ComfyUI as connected if checkpoints are listable.
                     try
                     {
-                        var response = await _httpClient.GetAsync($"{StableDiffusionEndpoint}{endpoint}");
-                        if (response.IsSuccessStatusCode)
+                        var comfyBase = StableDiffusionEndpoint.TrimEnd('/');
+                        using var ck = await _httpClient.GetAsync($"{comfyBase}/object_info/CheckpointLoaderSimple");
+                        if (ck.IsSuccessStatusCode)
                         {
-                            isConnected = true;
-                            break;
+                            StableDiffusionConnectionStatus = "✓ Connected";
+                            ConnectionTestResult = "Image endpoint: ✓ ComfyUI detected (generation uses native /prompt API).";
+                            return;
                         }
                     }
                     catch
                     {
-                        continue;
+                        // fall through
                     }
-                }
 
-                StableDiffusionConnectionStatus = isConnected ? "✓ Connected" : "✗ Failed";
-                ConnectionTestResult = isConnected ? "Image endpoint: ✓ Connection successful!" : "Image endpoint: ✗ Connection failed";
+                    StableDiffusionConnectionStatus = "✗ Failed";
+                    ConnectionTestResult =
+                        $"Image endpoint: ✗ Not Automatic1111 (GET /sdapi/v1/options → {(int)response.StatusCode}) and not ComfyUI (GET /object_info/CheckpointLoaderSimple failed). " +
+                        "Use A1111 WebUI (e.g. port 7860) or a running ComfyUI on this URL.";
+                }
             }
             catch (Exception ex)
             {

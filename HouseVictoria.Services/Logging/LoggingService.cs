@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HouseVictoria.Core.Interfaces;
@@ -171,6 +173,10 @@ namespace HouseVictoria.Services.Logging
                 // Load project logs
                 await LoadProjectLogsAsync().ConfigureAwait(false);
                 System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadProjectLogsAsync - {_allEntries.Count} total entries");
+
+                // Load server-side / sidecar logs (MCP, LM Studio, TTS, STT, etc.)
+                await LoadSidecarLogsAsync().ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadSidecarLogsAsync - {_allEntries.Count} total entries");
 
                 // Apply read status
                 foreach (var entry in _allEntries.Values)
@@ -534,8 +540,210 @@ namespace HouseVictoria.Services.Logging
                 "System" => "System Logs",
                 "AI" => "AI Logs",
                 "Project" => "Project Logs",
+                "Sidecar" => "Sidecar Logs",
                 _ => category
             };
+        }
+
+        private async Task LoadSidecarLogsAsync()
+        {
+            try
+            {
+                // MCP server logs (repo/dev layout): <repoRoot>/MCPServer/logs/*.log
+                // Media sidecar logs: AppConfig.MediaPath/*.log
+                // Both are "best effort": absent directories are normal in some deployments.
+
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+                // 1) MCPServer/logs
+                var mcpServerDir = FindDirectoryUpwards(baseDir, "MCPServer")
+                                   ?? FindDirectoryUpwards(Environment.CurrentDirectory, "MCPServer");
+
+                if (mcpServerDir != null)
+                {
+                    var mcpLogsDir = Path.Combine(mcpServerDir, "logs");
+                    await LoadDirectoryAsLogEntriesAsync(
+                        logsDir: mcpLogsDir,
+                        category: "Sidecar",
+                        subCategory: "MCP Server",
+                        filePattern: "*.log"
+                    ).ConfigureAwait(false);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("LoggingService: MCPServer directory not found; skipping MCP server-side logs");
+                }
+
+                // 2) Media/*.log
+                var mediaDir = _appConfig.MediaPath;
+                if (!string.IsNullOrWhiteSpace(mediaDir))
+                {
+                    await LoadDirectoryAsLogEntriesAsync(
+                        logsDir: mediaDir,
+                        category: "Sidecar",
+                        subCategory: "Media Sidecars",
+                        filePattern: "*.log"
+                    ).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error in LoadSidecarLogsAsync: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        private async Task LoadDirectoryAsLogEntriesAsync(string logsDir, string category, string subCategory, string filePattern)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(logsDir) || !Directory.Exists(logsDir))
+                {
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: Sidecar logs directory not found: {logsDir}");
+                    return;
+                }
+
+                var files = Directory.GetFiles(logsDir, filePattern, SearchOption.TopDirectoryOnly)
+                    .OrderByDescending(f =>
+                    {
+                        try { return File.GetLastWriteTime(f); } catch { return DateTime.MinValue; }
+                    })
+                    .ToArray();
+
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Found {files.Length} sidecar log files in {logsDir}");
+
+                foreach (var filePath in files)
+                {
+                    try
+                    {
+                        var lastWrite = File.GetLastWriteTime(filePath);
+                        var fileName = Path.GetFileName(filePath);
+
+                        // Avoid ballooning GLD: treat each file as a single entry with a tail window.
+                        var tail = await ReadFileTailAsync(filePath, maxBytes: 200_000, maxLines: 400).ConfigureAwait(false);
+                        if (string.IsNullOrWhiteSpace(tail))
+                            continue;
+
+                        var severity = InferSeverityFromText(tail);
+                        var entry = new LogEntry
+                        {
+                            Id = StableIdFromString($"{category}|{subCategory}|{filePath}"),
+                            Category = category,
+                            SubCategory = subCategory,
+                            Title = fileName,
+                            Content = tail,
+                            Summary = TruncateTitle(tail.Replace("\r", "").Replace("\n", " "), 200),
+                            Timestamp = lastWrite == DateTime.MinValue ? DateTime.Now : lastWrite,
+                            Severity = severity,
+                            Source = $"{subCategory} Log",
+                            FilePath = filePath,
+                            Tags = new List<string> { "Sidecar", subCategory }
+                        };
+
+                        AddLogEntry(entry);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading sidecar log file {filePath}: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error enumerating sidecar logs in {logsDir}: {ex.Message}");
+            }
+        }
+
+        private static string? FindDirectoryUpwards(string startPath, string directoryName, int maxDepth = 8)
+        {
+            try
+            {
+                var current = new DirectoryInfo(startPath);
+                if (current.Exists && (current.Attributes & FileAttributes.Directory) == 0)
+                {
+                    current = current.Parent ?? current;
+                }
+
+                for (int i = 0; i < maxDepth && current != null; i++)
+                {
+                    var candidate = Path.Combine(current.FullName, directoryName);
+                    if (Directory.Exists(candidate))
+                        return candidate;
+
+                    current = current.Parent;
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        private static async Task<string> ReadFileTailAsync(string filePath, int maxBytes, int maxLines)
+        {
+            try
+            {
+                var fileInfo = new FileInfo(filePath);
+                if (!fileInfo.Exists || fileInfo.Length == 0)
+                    return string.Empty;
+
+                // Read at most the last maxBytes bytes to avoid huge reads.
+                long start = Math.Max(0, fileInfo.Length - maxBytes);
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                fs.Seek(start, SeekOrigin.Begin);
+
+                using var reader = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                var text = await reader.ReadToEndAsync().ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(text))
+                    return string.Empty;
+
+                // If we started mid-file, drop first partial line for cleaner output.
+                if (start > 0)
+                {
+                    var idx = text.IndexOf('\n');
+                    if (idx >= 0 && idx + 1 < text.Length)
+                        text = text[(idx + 1)..];
+                }
+
+                var lines = text.Replace("\r\n", "\n").Split('\n');
+                var slice = lines.Length <= maxLines
+                    ? lines
+                    : lines.Skip(lines.Length - maxLines).ToArray();
+
+                return string.Join(Environment.NewLine, slice).Trim();
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static LogSeverity InferSeverityFromText(string text)
+        {
+            if (text.Contains("FATAL", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("CRITICAL", StringComparison.OrdinalIgnoreCase))
+                return LogSeverity.Critical;
+
+            if (text.Contains("ERROR", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("EXCEPTION", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("Traceback", StringComparison.OrdinalIgnoreCase))
+                return LogSeverity.Error;
+
+            if (text.Contains("WARN", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("WARNING", StringComparison.OrdinalIgnoreCase))
+                return LogSeverity.Warning;
+
+            if (text.Contains("DEBUG", StringComparison.OrdinalIgnoreCase))
+                return LogSeverity.Debug;
+
+            return LogSeverity.Info;
+        }
+
+        private static string StableIdFromString(string input)
+        {
+            // Short deterministic ID for de-duping entries per file path.
+            using var sha = SHA256.Create();
+            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes.AsSpan(0, 16)); // 32 hex chars
         }
 
         private void UpdateCategoryCounts()

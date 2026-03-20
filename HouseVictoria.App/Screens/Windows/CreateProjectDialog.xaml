@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
         mc:Ignorable="d"
-        Title="Create New Project/Goal" Height="700" Width="800"
+        Title="Create New Project/Goal" Height="820" Width="900" MinHeight="820" MinWidth="900"
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -71,13 +71,12 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+            <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Opacity="0.85" Padding="15,10">
                 <TextBlock Text="📋 Create New Project/Goal" FontSize="18" FontWeight="Bold" Foreground="White"/>
             </Border>
 
             <!-- Content Area -->
-            <ScrollViewer Grid.Row="1" Padding="20" Style="{StaticResource ModernScrollViewer}">
-                <StackPanel>
+            <StackPanel Grid.Row="1" Margin="20">
                     <!-- Name -->
                     <Grid Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
@@ -112,7 +111,8 @@
                         <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
                                 Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
                                 Foreground="White" Padding="8" Margin="10,0,0,0"
-                                TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Hidden"
+                                TextWrapping="Wrap" AcceptsReturn="True"
+                                VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                 Height="80"/>
                     </Grid>
 
@@ -254,7 +254,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding}" Foreground="White" Margin="5"/>
+                                            <TextBlock Grid.Column="0" Text="{Binding}" Foreground="White" Margin="5" TextWrapping="Wrap"/>
                                             <Button Grid.Column="1" Content="Remove" Style="{StaticResource GlassButton}" 
                                                    Command="{Binding DataContext.RemoveRoadblockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                    CommandParameter="{Binding}" Width="70" Height="25" Margin="5"/>
@@ -271,8 +271,7 @@
                              Margin="0,10,0,0"
                              TextWrapping="Wrap"
                              Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-            </ScrollViewer>
+            </StackPanel>
 
             <!-- Footer Buttons -->
             <Border Grid.Row="2" Background="#CC222222" Padding="15,10">

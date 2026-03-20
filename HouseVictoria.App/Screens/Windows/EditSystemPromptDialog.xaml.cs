@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Input;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -99,6 +100,18 @@ namespace HouseVictoria.App.Screens.Windows
                 }
             }
             catch { }
+        }
+
+        private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                DragMove();
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = false;
+            Close();
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)

@@ -10,6 +10,14 @@ namespace HouseVictoria.App.Screens.Trays
     {
         private readonly IEventAggregator _eventAggregator;
 
+        private bool _isExpanded;
+
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set => SetProperty(ref _isExpanded, value);
+        }
+
         public ICommand OpenSMSCommand { get; }
         public ICommand OpenAIModelsCommand { get; }
         public ICommand OpenSettingsCommand { get; }
@@ -18,10 +26,25 @@ namespace HouseVictoria.App.Screens.Trays
         public MainTrayViewModel(IEventAggregator eventAggregator)
         {
             _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
-            OpenSMSCommand = new RelayCommand(() => ShowWindow("SMS/MMS"));
-            OpenAIModelsCommand = new RelayCommand(() => ShowWindow("AIModels"));
-            OpenSettingsCommand = new RelayCommand(() => ShowWindow("Settings"));
+            OpenSMSCommand = new RelayCommand(() =>
+            {
+                ShowWindow("SMS/MMS");
+                IsExpanded = false;
+            });
+            OpenAIModelsCommand = new RelayCommand(() =>
+            {
+                ShowWindow("AIModels");
+                IsExpanded = false;
+            });
+            OpenSettingsCommand = new RelayCommand(() =>
+            {
+                ShowWindow("Settings");
+                IsExpanded = false;
+            });
             CloseTrayCommand = new RelayCommand(() => ToggleTray());
+
+            // Start expanded; user can collapse to a slim pull-tab.
+            IsExpanded = true;
         }
 
         private void ToggleTray()

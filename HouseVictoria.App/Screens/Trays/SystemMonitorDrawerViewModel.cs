@@ -36,6 +36,13 @@ namespace HouseVictoria.App.Screens.Trays
             }
         }
 
+        private int _selectedTabIndex;
+        public int SelectedTabIndex
+        {
+            get => _selectedTabIndex;
+            set => SetProperty(ref _selectedTabIndex, value);
+        }
+
         // System Metrics
         private string _systemUptime = "00:00:00";
         public string SystemUptime
@@ -212,6 +219,8 @@ namespace HouseVictoria.App.Screens.Trays
 
         // Commands
         public ICommand ToggleDrawerCommand { get; }
+        public ICommand OpenSystemHealthCommand { get; }
+        public ICommand OpenComponentsCommand { get; }
         public ICommand ShutdownAllCommand { get; }
         public ICommand VirtualEnvironmentConnectCommand { get; }
         public ICommand VirtualEnvironmentDisconnectCommand { get; }
@@ -240,6 +249,28 @@ namespace HouseVictoria.App.Screens.Trays
             }
             
             ToggleDrawerCommand = new RelayCommand(() => IsDrawerOpen = !IsDrawerOpen);
+            OpenSystemHealthCommand = new RelayCommand(() =>
+            {
+                if (IsDrawerOpen && SelectedTabIndex == 0)
+                {
+                    IsDrawerOpen = false;
+                    return;
+                }
+
+                SelectedTabIndex = 0;
+                IsDrawerOpen = true;
+            });
+            OpenComponentsCommand = new RelayCommand(() =>
+            {
+                if (IsDrawerOpen && SelectedTabIndex == 1)
+                {
+                    IsDrawerOpen = false;
+                    return;
+                }
+
+                SelectedTabIndex = 1;
+                IsDrawerOpen = true;
+            });
             ShutdownAllCommand = new RelayCommand(async () => await ShutdownAllServersAsync());
             VirtualEnvironmentConnectCommand = new RelayCommand(async () => await ConnectVirtualEnvironmentAsync());
             VirtualEnvironmentDisconnectCommand = new RelayCommand(async () => await DisconnectVirtualEnvironmentAsync());
@@ -247,6 +278,7 @@ namespace HouseVictoria.App.Screens.Trays
 
             // Initialize drawer as closed
             _drawerPanel.Visibility = Visibility.Collapsed;
+            SelectedTabIndex = 0;
 
             // Load initial server statuses
             _ = LoadServerStatusesAsync();

@@ -3,9 +3,11 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Input;
 using System.Windows.Threading;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
+using System.Windows.Media.Media3D;
 
 namespace HouseVictoria.App.Screens.Trays
 {
@@ -48,6 +50,44 @@ namespace HouseVictoria.App.Screens.Trays
         {
             _updateTimer.Stop();
             _viewModel?.Dispose();
+        }
+
+        private void RootGrid_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                // If the click is inside the pull tab or inside the drawer itself, do nothing
+                var source = e.OriginalSource as DependencyObject;
+                if (source != null && (IsDescendantOf(source, CollapsedPullHandle) || IsDescendantOf(source, PullTabHost) || IsDescendantOf(source, DrawerPanel)))
+                    return;
+
+                // Clicked outside the drawer area – collapse it
+                _viewModel.IsDrawerOpen = false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error handling RootGrid_MouseDown: {ex.Message}");
+            }
+        }
+
+        private static bool IsDescendantOf(DependencyObject child, DependencyObject ancestor)
+        {
+            if (ancestor == null) return false;
+
+            DependencyObject current = child;
+            while (current != null)
+            {
+                if (ReferenceEquals(current, ancestor))
+                    return true;
+
+                // Handle both Visual and Visual3D trees (WPF can mix them)
+                if (current is Visual || current is Visual3D)
+                    current = VisualTreeHelper.GetParent(current);
+                else
+                    current = LogicalTreeHelper.GetParent(current);
+            }
+
+            return false;
         }
     }
 }

@@ -10,6 +10,48 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
+        <!-- Row text #E0F7FF: hover/selection backgrounds must be darker for contrast -->
+        <Style x:Key="OllamaModelsListViewItem" TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="#E0F7FF"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="4,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="RowBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <GridViewRowPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background" Value="#1E4A63"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background" Value="#0D3D5C"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="RowBorder" Property="Background" Value="#0A3552"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="Selector.IsSelectionActive" Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="RowBorder" Property="Background" Value="#0F3A52"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border Background="Transparent">
@@ -107,17 +149,17 @@
 
             <!-- Content Area -->
             <Border Grid.Row="2" Padding="10">
-                <StackPanel>
+                <Grid>
                     <!-- Load Model View -->
                     <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=LoadModel}">
                         <Border Style="{StaticResource Card}" Margin="0,5">
                             <StackPanel>
-                                <TextBlock Text="📥 Load Model from Server" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
+                                <TextBlock Text="📥 Ollama model control and availability" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
                                 
                                 <!-- Ollama Run Section -->
                                 <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,15">
                                     <StackPanel>
-                                        <TextBlock Text="🚀 Download New Model (Ollama Run)" FontSize="14" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,8"/>
+                                        <TextBlock Text="🚀 Download New Model" FontSize="14" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,8"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="150"/>
@@ -125,15 +167,15 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Ollama Run:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="0" Text="Model Name:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
                                             <TextBox Grid.Column="1" Text="{Binding OllamaRunCommand, UpdateSourceTrigger=PropertyChanged}" 
                                                     Background="#252F3F" BorderBrush="#4000D4FF" 
                                                     Foreground="#E0F7FF" Padding="8" Margin="5,0"
                                                     IsEnabled="{Binding IsPullingModel, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                 <TextBox.ToolTip>
                                                     <TextBlock>
-                                                        Enter model name or ollama run command<LineBreak/>
-                                                        Examples: "llama2", "ollama run llama2", "mistral:latest"
+                                                        Enter the model name to download from Ollama<LineBreak/>
+                                                        Examples: "llama3.1", "mistral:latest"
                                                     </TextBlock>
                                                 </TextBox.ToolTip>
                                             </TextBox>
@@ -194,17 +236,43 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Server Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Column="1" Text="{Binding AvailableModelsEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                            Background="#252F3F" BorderBrush="#4000D4FF" 
-                                            Foreground="White" Padding="8" Margin="5,0"/>
-                                    <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="🔍 Load Models" 
+                                    <TextBlock Grid.Column="0" Text="Ollama Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1" Background="#1A2332" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="4" Margin="5,0" Padding="8">
+                                        <TextBlock Text="{Binding OllamaEndpoint}" Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                    </Border>
+                                    <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="🔍 Show Available Models" 
                                            Margin="5,0,0,0" Command="{Binding LoadAvailableModelsCommand}"/>
                                 </Grid>
                                 <TextBlock Text="Available Models:" FontSize="14" FontWeight="Bold" Foreground="#E0F7FF" Margin="0,15,0,5"/>
-                                <ListBox ItemsSource="{Binding AvailableModels}" SelectedItem="{Binding SelectedModel}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Height="200" Margin="0,5"/>
+                                <ListView ItemsSource="{Binding AvailableOllamaModels}"
+                                          SelectedItem="{Binding SelectedOllamaModel}"
+                                          ItemContainerStyle="{StaticResource OllamaModelsListViewItem}"
+                                          Background="#252F3F" BorderBrush="#4000D4FF" 
+                                          Foreground="#E0F7FF" Height="200" Margin="0,5">
+                                    <ListView.Resources>
+                                        <Style TargetType="GridViewColumnHeader">
+                                            <Setter Property="Background" Value="#1A3045"/>
+                                            <Setter Property="Foreground" Value="#B8E8F5"/>
+                                            <Setter Property="Padding" Value="8,6"/>
+                                            <Setter Property="BorderBrush" Value="#4000D4FF"/>
+                                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#153850"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ListView.Resources>
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Model" Width="280" DisplayMemberBinding="{Binding Name}"/>
+                                            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding SizeDisplay}"/>
+                                            <GridViewColumn Header="Downloaded" Width="140" DisplayMemberBinding="{Binding DownloadedAtDisplay}"/>
+                                            <GridViewColumn Header="Last used" Width="140" DisplayMemberBinding="{Binding LastUsedAtDisplay}"/>
+                                            <GridViewColumn Header="Personas" Width="80" DisplayMemberBinding="{Binding PersonasUsingCount}"/>
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
                                 <TextBlock Text="{Binding SelectedModel, StringFormat='Selected: {0}'}" 
                                           Foreground="#80C4D4" FontSize="12" Margin="0,5,0,0"/>
                             </StackPanel>
@@ -231,7 +299,6 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Model:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" 
@@ -256,15 +323,11 @@
                                         </ComboBox.ItemContainerStyle>
                                         <ComboBox.ToolTip>
                                             <TextBlock>
-                                                Select a model from the dropdown or type a model name to pull<LineBreak/>
-                                                If the model isn't listed, type its name and click Pull
+                                                Select a model from the dropdown or type a model name.<LineBreak/>
+                                                Models can be downloaded from the "Load Model" tab.
                                             </TextBlock>
                                         </ComboBox.ToolTip>
                                     </ComboBox>
-                                    <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="⬇️ Pull" 
-                                           Margin="5,0,0,0" Command="{Binding PullModelForPersonaCommand}"
-                                           ToolTip="Pull the selected model from Ollama server"
-                                           IsEnabled="{Binding IsPullingModel, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
                                 </Grid>
                                 <TextBlock Text="{Binding PullModelStatus}" 
                                           Foreground="#CCCCCC" FontSize="12" Margin="0,5,0,0"
@@ -627,7 +690,7 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
     </Border>

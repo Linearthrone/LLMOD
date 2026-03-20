@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using HouseVictoria.App.HelperClasses;
@@ -29,6 +30,8 @@ namespace HouseVictoria.App.Screens.Windows
         private CallState _currentCallState = CallState.None;
         private string? _loadingConversationId = null; // Track which conversation is currently loading to prevent concurrent loads
         private string? _activeCallConversationId = null; // Conversation id for the active call (dialer or conversation) for TTS
+        private bool _showContactProfile = false;
+        private string _contactProfileBody = string.Empty;
 
         public ObservableCollection<ConversationViewModel> Conversations { get; }
         public ObservableCollection<ConversationMessage> Messages { get; }
@@ -43,6 +46,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand ClearMediaCommand { get; }
         public ICommand ToggleAudioRecordingCommand { get; }
         public ICommand StartCallCommand { get; }
+        public ICommand StartPhoneCallCommand { get; }
         public ICommand EndCallCommand { get; }
         public ICommand ToggleAppsViewCommand { get; }
         public ICommand OpenMessagesAppCommand { get; }
@@ -51,6 +55,8 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand StartDialerCallCommand { get; }
         public ICommand EndDialerCallCommand { get; }
         public ICommand BackFromDialerCommand { get; }
+        public ICommand OpenContactProfileCommand { get; }
+        public ICommand CloseContactProfileCommand { get; }
 
         // Media attachment state
         private string? _pendingMediaPath;
@@ -174,16 +180,25 @@ namespace HouseVictoria.App.Screens.Windows
             get => _selectedConversation;
             set
             {
-                if (SetProperty(ref _selectedConversation, value) && value != null)
+                if (SetProperty(ref _selectedConversation, value))
                 {
-                    LoadMessages(value.Id);
-                    _showConversationList = false;
-                    _showAppsView = false;
-                    _showDialerView = false;
+                    // Close any in-place overlays when switching conversation.
+                    ShowContactProfile = false;
+                    ContactProfileBody = string.Empty;
+
+                    if (value != null)
+                    {
+                        LoadMessages(value.Id);
+                        _showConversationList = false;
+                        _showAppsView = false;
+                        _showDialerView = false;
+                    }
                     OnPropertyChanged(nameof(ShowConversationList));
                     OnPropertyChanged(nameof(ShowMessageView));
                     OnPropertyChanged(nameof(ShowAppsView));
                     OnPropertyChanged(nameof(ShowDialerView));
+                    OnPropertyChanged(nameof(SelectedConversationContact));
+                    OnPropertyChanged(nameof(SelectedConversationContactName));
                 }
             }
         }
@@ -192,6 +207,33 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _selectedContact;
             set => SetProperty(ref _selectedContact, value);
+        }
+
+        public Contact? SelectedConversationContact
+        {
+            get
+            {
+                if (_selectedConversation == null)
+                    return null;
+                return Contacts.FirstOrDefault(c => c.Id == _selectedConversation.ContactId);
+            }
+        }
+
+        public string SelectedConversationContactName =>
+            SelectedConversationContact?.Name
+            ?? _selectedConversation?.ContactId
+            ?? "Unknown";
+
+        public bool ShowContactProfile
+        {
+            get => _showContactProfile;
+            set => SetProperty(ref _showContactProfile, value);
+        }
+
+        public string ContactProfileBody
+        {
+            get => _contactProfileBody;
+            set => SetProperty(ref _contactProfileBody, value);
         }
 
         public string MessageText
@@ -301,6 +343,13 @@ namespace HouseVictoria.App.Screens.Windows
             Conversations = new ObservableCollection<ConversationViewModel>();
             Messages = new ObservableCollection<ConversationMessage>();
             Contacts = new ObservableCollection<Contact>();
+            Contacts.CollectionChanged += (_, _) =>
+            {
+                // If contacts arrive asynchronously after a conversation is selected,
+                // refresh computed contact name binding in the header.
+                OnPropertyChanged(nameof(SelectedConversationContact));
+                OnPropertyChanged(nameof(SelectedConversationContactName));
+            };
 
             SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), () => 
                 (!string.IsNullOrWhiteSpace(MessageText) || HasPendingMedia) && _selectedConversation != null);
@@ -318,6 +367,8 @@ namespace HouseVictoria.App.Screens.Windows
                 ShowAppsView = false;
                 ShowDialerView = false;
                 SelectedConversation = null;
+                ShowContactProfile = false;
+                ContactProfileBody = string.Empty;
             });
             StartNewConversationCommand = new RelayCommand(() => 
             {
@@ -325,6 +376,8 @@ namespace HouseVictoria.App.Screens.Windows
                 ShowConversationList = false;
                 ShowAppsView = false;
                 ShowDialerView = false;
+                ShowContactProfile = false;
+                ContactProfileBody = string.Empty;
             });
             SelectContactCommand = new RelayCommand(async (parameter) => 
             {
@@ -336,8 +389,15 @@ namespace HouseVictoria.App.Screens.Windows
             AttachMediaCommand = new RelayCommand(() => AttachMedia());
             ClearMediaCommand = new RelayCommand(() => ClearPendingMedia(), () => HasPendingMedia);
             ToggleAudioRecordingCommand = new RelayCommand(async () => await ToggleAudioRecordingAsync());
-            StartCallCommand = new RelayCommand(async () => await StartCallAsync(), () => CanStartCall);
+            StartCallCommand = new RelayCommand(async () => await StartCallAsync(isVoiceCall: false), () => CanStartCall);
+            StartPhoneCallCommand = new RelayCommand(async () => await StartCallAsync(isVoiceCall: true), () => CanStartCall);
             EndCallCommand = new RelayCommand(async () => await EndCallAsync(), () => CanEndCall);
+            OpenContactProfileCommand = new RelayCommand(async () => await OpenContactProfileAsync(), () => SelectedConversation != null);
+            CloseContactProfileCommand = new RelayCommand(() =>
+            {
+                ShowContactProfile = false;
+                ContactProfileBody = string.Empty;
+            });
             ToggleAppsViewCommand = new RelayCommand(() => 
             {
                 ShowAppsView = !ShowAppsView;
@@ -917,7 +977,7 @@ namespace HouseVictoria.App.Screens.Windows
             });
         }
 
-        private async Task StartCallAsync()
+        private async Task StartCallAsync(bool isVoiceCall = false)
         {
             if (_selectedConversation == null)
                 return;
@@ -925,10 +985,10 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 await _communicationService.StartVideoCallAsync(_selectedConversation.ContactId);
-                var contact = _selectedContact ?? Contacts.FirstOrDefault(c => c.Id == _selectedConversation.ContactId);
+                var contact = Contacts.FirstOrDefault(c => c.Id == _selectedConversation.ContactId);
                 if (contact != null)
                 {
-                    OpenVideoCallWindow(contact, _selectedConversation.Id);
+                    OpenVideoCallWindow(contact, _selectedConversation.Id, isVoiceCall: isVoiceCall);
                 }
                 
                 // Update call state
@@ -964,6 +1024,75 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 MessageBox.Show($"Error ending call: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Error ending call: {ex.Message}");
+            }
+        }
+
+        private async Task OpenContactProfileAsync()
+        {
+            var contact = SelectedConversationContact;
+            if (contact == null)
+                return;
+
+            ShowContactProfile = true;
+            ContactProfileBody = "Loading profile...";
+
+            try
+            {
+                if (contact.Type == ContactType.AI)
+                {
+                    var persistenceService = App.GetService<IPersistenceService>();
+                    var aiContact = persistenceService != null
+                        ? await persistenceService.GetAsync<AIContact>($"AIContact_{contact.Id}")
+                        : null;
+
+                    if (aiContact == null)
+                    {
+                        ContactProfileBody = "Persona details are not available for this contact.";
+                        return;
+                    }
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Name: {aiContact.Name}");
+                    sb.AppendLine("Type: AI Persona");
+                    sb.AppendLine($"Model: {aiContact.ModelName}");
+
+                    if (!string.IsNullOrWhiteSpace(aiContact.Description))
+                        sb.AppendLine($"Description: {aiContact.Description}");
+
+                    if (!string.IsNullOrWhiteSpace(aiContact.SystemPrompt))
+                    {
+                        sb.AppendLine();
+                        sb.AppendLine("System Prompt:");
+                        sb.AppendLine(aiContact.SystemPrompt);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(aiContact.AvatarUrl))
+                    {
+                        sb.AppendLine();
+                        sb.AppendLine($"Avatar: {aiContact.AvatarUrl}");
+                    }
+
+                    ContactProfileBody = sb.ToString().TrimEnd();
+                }
+                else
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Name: {contact.Name}");
+                    sb.AppendLine("Type: Human");
+
+                    if (!string.IsNullOrWhiteSpace(contact.PhoneNumber))
+                        sb.AppendLine($"Phone: {contact.PhoneNumber}");
+
+                    if (!string.IsNullOrWhiteSpace(contact.Email))
+                        sb.AppendLine($"Email: {contact.Email}");
+
+                    ContactProfileBody = sb.ToString().TrimEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                ContactProfileBody = $"Error loading contact profile: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"OpenContactProfileAsync error: {ex.Message}");
             }
         }
 

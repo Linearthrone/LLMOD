@@ -254,12 +254,12 @@
                         <ScrollBar Name="PART_VerticalScrollBar" 
                                    HorizontalAlignment="Right" 
                                    Width="10"
-                                   Visibility="Auto"/>
+                                   Visibility="Visible"/>
                         <ScrollBar Name="PART_HorizontalScrollBar" 
                                    VerticalAlignment="Bottom" 
                                    Height="10" 
                                    Orientation="Horizontal"
-                                   Visibility="Auto"/>
+                                   Visibility="Visible"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>

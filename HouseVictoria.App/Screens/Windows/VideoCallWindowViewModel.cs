@@ -138,6 +138,9 @@ namespace HouseVictoria.App.Screens.Windows
             _conversationId = context.ConversationId;
             _isVoiceCall = context.IsVoiceCall;
 
+            // Phone calls should not start with an enabled camera.
+            IsVideoEnabled = !_isVoiceCall;
+
             OnPropertyChanged(nameof(TitleText));
             OnPropertyChanged(nameof(ContactName));
 

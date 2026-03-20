@@ -7,12 +7,14 @@ using System.Windows.Input;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Windows;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Generic;
 
 namespace HouseVictoria.App.Screens.Windows
 {
@@ -28,6 +30,8 @@ namespace HouseVictoria.App.Screens.Windows
         private string _selectedModel = string.Empty;
         private string _availableModelsEndpoint = "http://localhost:11434";
         private ObservableCollection<string> _availableModels = new();
+        private ObservableCollection<OllamaModelListItem> _availableOllamaModels = new();
+        private OllamaModelListItem? _selectedOllamaModel;
         private ObservableCollection<AIContact> _aiContacts = new();
 
         // Create Persona fields
@@ -68,7 +72,10 @@ namespace HouseVictoria.App.Screens.Windows
         private string? _generatedImagePath;
 
         public ObservableCollection<string> AvailableModels => _availableModels;
+        public ObservableCollection<OllamaModelListItem> AvailableOllamaModels => _availableOllamaModels;
         public ObservableCollection<AIContact> AIContacts => _aiContacts;
+
+        public string OllamaEndpoint => string.IsNullOrWhiteSpace(_appConfig.OllamaEndpoint) ? "http://localhost:11434" : _appConfig.OllamaEndpoint;
 
         public ICommand LoadModelCommand { get; }
         public ICommand CreatePersonaCommand { get; }
@@ -102,6 +109,18 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _selectedModel;
             set => SetProperty(ref _selectedModel, value);
+        }
+
+        public OllamaModelListItem? SelectedOllamaModel
+        {
+            get => _selectedOllamaModel;
+            set
+            {
+                if (SetProperty(ref _selectedOllamaModel, value))
+                {
+                    SelectedModel = value?.Name ?? string.Empty;
+                }
+            }
         }
 
         public string AvailableModelsEndpoint
@@ -349,8 +368,9 @@ namespace HouseVictoria.App.Screens.Windows
             RunOllamaCommand = new RelayCommand(async () => await RunOllamaCommandAsync(), () => !string.IsNullOrWhiteSpace(OllamaRunCommand) && !IsPullingModel && !IsRunningOllamaCommand);
             CancelOllamaCommand = new RelayCommand(() => CancelOllamaPull(), () => IsRunningOllamaCommand);
 
-            AvailableModelsEndpoint = _appConfig.UseLmStudioAsPrimary ? _appConfig.LmStudioEndpoint : _appConfig.OllamaEndpoint;
-            PullModelEndpoint = _appConfig.OllamaEndpoint;
+            // Load Model tab is Ollama-only: endpoint is shown (read-only) from settings.
+            AvailableModelsEndpoint = OllamaEndpoint;
+            PullModelEndpoint = OllamaEndpoint;
             NewPersonaMCPServer = _appConfig.MCPServerEndpoint;
 
             _ = LoadAIContactsAsync();
@@ -366,6 +386,9 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     _aiContacts.Add(contact);
                 }
+
+                // Refresh persona usage counts for any already-loaded model list.
+                UpdateModelUsageMetadata();
             }
             catch (Exception ex)
             {
@@ -377,14 +400,183 @@ namespace HouseVictoria.App.Screens.Windows
         {
             try
             {
-                var models = await _aiService.GetAvailableModelsAsync(AvailableModelsEndpoint);
+                // Only show models available from Ollama.
+                var endpoint = OllamaEndpoint;
+                var models = await _aiService.GetAvailableModelsAsync(endpoint);
                 _availableModels.Clear();
                 foreach (var model in models)
                     _availableModels.Add(model);
+
+                // Load richer model metadata from Ollama tags endpoint.
+                var tagModels = await GetOllamaTagModelsAsync(endpoint);
+                _availableOllamaModels.Clear();
+                foreach (var m in tagModels.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    _availableOllamaModels.Add(new OllamaModelListItem
+                    {
+                        Name = m.Name,
+                        SizeBytes = m.Size,
+                        DownloadedAt = m.ModifiedAt
+                    });
+                }
+
+                UpdateModelUsageMetadata();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading available models: {ex.Message}");
+            }
+        }
+
+        private void UpdateModelUsageMetadata()
+        {
+            if (_availableOllamaModels.Count == 0)
+                return;
+
+            // Count personas using each model and last used date from persisted contacts.
+            var contacts = _aiContacts.ToList();
+            foreach (var model in _availableOllamaModels)
+            {
+                var matching = contacts
+                    .Where(c => !string.IsNullOrWhiteSpace(c.ModelName) &&
+                                c.ModelName.Equals(model.Name, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                model.PersonasUsingCount = matching.Count;
+                model.LastUsedAt = matching.Count == 0 ? null : matching.Max(c => c.LastUsedAt);
+            }
+
+            // If selection exists, keep SelectedModel in sync (in case case/format changes).
+            if (_selectedOllamaModel != null)
+            {
+                SelectedModel = _selectedOllamaModel.Name;
+            }
+        }
+
+        private async Task<List<OllamaTagModel>> GetOllamaTagModelsAsync(string endpoint)
+        {
+            try
+            {
+                using var client = new HttpClient
+                {
+                    Timeout = TimeSpan.FromSeconds(10)
+                };
+
+                var response = await client.GetAsync($"{endpoint}/api/tags");
+                if (!response.IsSuccessStatusCode)
+                    return new List<OllamaTagModel>();
+
+                var result = await response.Content.ReadFromJsonAsync<OllamaTagsResponse>();
+                return result?.Models?
+                    .Where(m => !string.IsNullOrWhiteSpace(m.Name))
+                    .Select(m => new OllamaTagModel
+                    {
+                        Name = m.Name ?? string.Empty,
+                        Size = m.Size,
+                        ModifiedAt = m.ModifiedAt
+                    })
+                    .ToList() ?? new List<OllamaTagModel>();
+            }
+            catch
+            {
+                return new List<OllamaTagModel>();
+            }
+        }
+
+        private sealed class OllamaTagsResponse
+        {
+            [JsonPropertyName("models")]
+            public List<OllamaTagModelDto>? Models { get; set; }
+        }
+
+        private sealed class OllamaTagModelDto
+        {
+            [JsonPropertyName("name")]
+            public string? Name { get; set; }
+
+            // Ollama returns bytes here (long). If missing, will remain 0.
+            [JsonPropertyName("size")]
+            public long Size { get; set; }
+
+            // "modified_at" appears on recent Ollama versions.
+            [JsonPropertyName("modified_at")]
+            public DateTime? ModifiedAt { get; set; }
+        }
+
+        private sealed class OllamaTagModel
+        {
+            public string Name { get; set; } = string.Empty;
+            public long Size { get; set; }
+            public DateTime? ModifiedAt { get; set; }
+        }
+
+        public sealed class OllamaModelListItem : ObservableObject
+        {
+            private string _name = string.Empty;
+            private long _sizeBytes;
+            private DateTime? _downloadedAt;
+            private DateTime? _lastUsedAt;
+            private int _personasUsingCount;
+
+            public string Name
+            {
+                get => _name;
+                set => SetProperty(ref _name, value);
+            }
+
+            public long SizeBytes
+            {
+                get => _sizeBytes;
+                set
+                {
+                    if (SetProperty(ref _sizeBytes, value))
+                        OnPropertyChanged(nameof(SizeDisplay));
+                }
+            }
+
+            public DateTime? DownloadedAt
+            {
+                get => _downloadedAt;
+                set
+                {
+                    if (SetProperty(ref _downloadedAt, value))
+                        OnPropertyChanged(nameof(DownloadedAtDisplay));
+                }
+            }
+
+            public DateTime? LastUsedAt
+            {
+                get => _lastUsedAt;
+                set
+                {
+                    if (SetProperty(ref _lastUsedAt, value))
+                        OnPropertyChanged(nameof(LastUsedAtDisplay));
+                }
+            }
+
+            public int PersonasUsingCount
+            {
+                get => _personasUsingCount;
+                set => SetProperty(ref _personasUsingCount, value);
+            }
+
+            public string SizeDisplay => FormatBytes(SizeBytes);
+            public string DownloadedAtDisplay => DownloadedAt.HasValue ? DownloadedAt.Value.ToString("yyyy-MM-dd HH:mm") : "";
+            public string LastUsedAtDisplay => LastUsedAt.HasValue ? LastUsedAt.Value.ToString("yyyy-MM-dd HH:mm") : "";
+
+            private static string FormatBytes(long bytes)
+            {
+                if (bytes <= 0) return "";
+                const double kb = 1024;
+                const double mb = kb * 1024;
+                const double gb = mb * 1024;
+                const double tb = gb * 1024;
+
+                if (bytes >= tb) return $"{bytes / tb:0.##} TB";
+                if (bytes >= gb) return $"{bytes / gb:0.##} GB";
+                if (bytes >= mb) return $"{bytes / mb:0.##} MB";
+                if (bytes >= kb) return $"{bytes / kb:0.##} KB";
+                return $"{bytes} B";
             }
         }
 
@@ -800,8 +992,8 @@ namespace HouseVictoria.App.Screens.Windows
             var modelName = ExtractModelName(OllamaRunCommand);
             if (string.IsNullOrWhiteSpace(modelName))
             {
-                PullModelStatus = "✗ Invalid command format. Please enter a model name (e.g., 'llama2' or 'ollama run llama2')";
-                AppendLoadModelLog("Invalid command. Please enter a model name (e.g., 'llama2').");
+                PullModelStatus = "✗ Invalid model name. Please enter a model name (e.g., 'llama3.1' or 'mistral:latest')";
+                AppendLoadModelLog("Invalid model name. Please enter a model name (e.g., 'llama3.1').");
                 return;
             }
 

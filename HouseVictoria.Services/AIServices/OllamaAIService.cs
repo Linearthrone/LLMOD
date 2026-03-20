@@ -3,6 +3,7 @@ using HouseVictoria.Core.Models;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -210,7 +211,7 @@ namespace HouseVictoria.Services.AIServices
                     ?? Environment.GetEnvironmentVariable("STABLE_DIFFUSION_ENDPOINT")
                     ?? "http://localhost:8188"; // Default to ComfyUI
 
-                // Use the local image generation endpoint (ComfyUI / A1111-compatible) only.
+                // Automatic1111 WebUI exposes /sdapi/v1/txt2img; ComfyUI (default :8188) uses /prompt instead — try both.
                 return await GenerateImageWithComfyUIAsync(imageEndpoint, prompt);
             }
             catch (Exception ex)
@@ -224,42 +225,288 @@ namespace HouseVictoria.Services.AIServices
             }
         }
 
-        private async Task<Stream> GenerateImageWithComfyUIAsync(string endpoint, string prompt)
+        private async Task<Stream> GenerateImageWithComfyUIAsync(string endpoint, string promptText)
         {
-            // Try local ComfyUI (or Automatic1111-compatible) first: /sdapi/v1/txt2img
-            try
-            {
-                var requestBody = new
-                {
-                    prompt = prompt,
-                    negative_prompt = "",
-                    steps = 20,
-                    width = 512,
-                    height = 512,
-                    cfg_scale = 7,
-                    seed = -1,
-                    sampler_index = "Euler"
-                };
+            var baseUrl = endpoint.TrimEnd('/');
 
-                var response = await _httpClient.PostAsJsonAsync($"{endpoint}/sdapi/v1/txt2img", requestBody);
-                
+            // 1) Automatic1111 WebUI: POST /sdapi/v1/txt2img → { "images": [ base64, ... ] }
+            var a1111Url = $"{baseUrl}/sdapi/v1/txt2img";
+            var a1111Body = new
+            {
+                prompt = promptText,
+                negative_prompt = "",
+                steps = 20,
+                width = 512,
+                height = 512,
+                cfg_scale = 7,
+                seed = -1,
+                sampler_index = "Euler"
+            };
+
+            using (var response = await _httpClient.PostAsJsonAsync(a1111Url, a1111Body))
+            {
+                var content = await response.Content.ReadAsStringAsync();
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = await response.Content.ReadFromJsonAsync<StableDiffusionResponse>();
-                    if (result?.Images != null && result.Images.Count > 0)
+                    try
                     {
-                        // Decode base64 image
-                        var imageBytes = Convert.FromBase64String(result.Images[0]);
-                        return new MemoryStream(imageBytes);
+                        var result = JsonSerializer.Deserialize<StableDiffusionResponse>(content);
+                        if (result?.Images != null && result.Images.Count > 0 && !string.IsNullOrWhiteSpace(result.Images[0]))
+                            return new MemoryStream(Convert.FromBase64String(result.Images[0]));
                     }
+                    catch (Exception parseEx)
+                    {
+                        throw new Exception(
+                            "Image server returned 200 but the body was not a valid Automatic1111 `txt2img` response. " +
+                            $"POST {a1111Url}. Response: {TruncateForLog(content)}", parseEx);
+                    }
+
+                    throw new Exception(
+                        "Automatic1111 API returned success but no `images` in the response. " +
+                        $"POST {a1111Url}. Response: {TruncateForLog(content)}");
+                }
+
+                // ComfyUI (and others) often return 404/405 on /sdapi/v1/txt2img — use native ComfyUI /prompt API.
+                if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotImplemented)
+                {
+                    return await GenerateImageViaComfyUiNativeAsync(baseUrl, promptText, width: 512, height: 512);
+                }
+
+                throw new HttpRequestException(
+                    $"Image generation request failed: {(int)response.StatusCode} {response.ReasonPhrase}. " +
+                    $"Tried POST {a1111Url}. Response: {TruncateForLog(content)}");
+            }
+        }
+
+        /// <summary>
+        /// Runs a minimal SD checkpoint txt2img graph on ComfyUI (POST /prompt, poll /history, GET /view).
+        /// </summary>
+        private async Task<Stream> GenerateImageViaComfyUiNativeAsync(string baseUrl, string positivePrompt, int width, int height)
+        {
+            var ckpt = await ResolveComfyUiCheckpointNameAsync(baseUrl);
+            var seed = Random.Shared.Next(0, int.MaxValue);
+            var prefix = "HouseVictoria_" + Guid.NewGuid().ToString("N")[..8];
+
+            // API-format graph (same as ComfyUI "Save (API format)").
+            var workflow = BuildComfyUiTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix);
+
+            var clientId = Guid.NewGuid().ToString("N");
+            using var promptResp = await _httpClient.PostAsJsonAsync($"{baseUrl}/prompt", new { prompt = workflow, client_id = clientId });
+            var promptJson = await promptResp.Content.ReadAsStringAsync();
+            if (!promptResp.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"ComfyUI POST /prompt failed: {(int)promptResp.StatusCode} {promptResp.ReasonPhrase}. Response: {TruncateForLog(promptJson)}");
+            }
+
+            using var promptDoc = JsonDocument.Parse(string.IsNullOrWhiteSpace(promptJson) ? "{}" : promptJson);
+            var root = promptDoc.RootElement;
+            if (root.TryGetProperty("node_errors", out var nodeErrors) &&
+                nodeErrors.ValueKind == JsonValueKind.Object &&
+                nodeErrors.EnumerateObject().Any())
+            {
+                throw new Exception(
+                    "ComfyUI rejected the workflow (node_errors). Typical causes: wrong checkpoint type (e.g. Flux-only install), or custom nodes missing. " +
+                    $"Details: {TruncateForLog(nodeErrors.GetRawText(), 4000)}");
+            }
+
+            var promptId = root.TryGetProperty("prompt_id", out var pid) ? pid.GetString() : null;
+            if (string.IsNullOrWhiteSpace(promptId))
+                throw new Exception($"ComfyUI /prompt did not return prompt_id. Response: {TruncateForLog(promptJson)}");
+
+            var (filename, subfolder, type) = await PollComfyUiForOutputImageAsync(baseUrl, promptId);
+            var viewUrl =
+                $"{baseUrl}/view?filename={Uri.EscapeDataString(filename)}&subfolder={Uri.EscapeDataString(subfolder)}&type={Uri.EscapeDataString(type)}";
+            using var imgResp = await _httpClient.GetAsync(viewUrl);
+            var imgBytes = await imgResp.Content.ReadAsByteArrayAsync();
+            if (!imgResp.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"ComfyUI GET /view failed: {(int)imgResp.StatusCode}. URL: {viewUrl}. Body: {TruncateForLog(System.Text.Encoding.UTF8.GetString(imgBytes))}");
+            }
+
+            return new MemoryStream(imgBytes);
+        }
+
+        private static Dictionary<string, object> BuildComfyUiTxt2ImgWorkflow(
+            string ckptName, string positive, int width, int height, int seed, string filenamePrefix)
+        {
+            object Link(string nodeId, int slot) => new object[] { nodeId, slot };
+
+            return new Dictionary<string, object>
+            {
+                ["4"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "CheckpointLoaderSimple",
+                    ["inputs"] = new Dictionary<string, object> { ["ckpt_name"] = ckptName }
+                },
+                ["5"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "EmptyLatentImage",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["width"] = width,
+                        ["height"] = height,
+                        ["batch_size"] = 1
+                    }
+                },
+                ["6"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "CLIPTextEncode",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["text"] = positive,
+                        ["clip"] = Link("4", 1)
+                    }
+                },
+                ["7"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "CLIPTextEncode",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["text"] = "low quality, blurry, watermark, text, ugly",
+                        ["clip"] = Link("4", 1)
+                    }
+                },
+                ["3"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "KSampler",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["seed"] = seed,
+                        ["steps"] = 20,
+                        ["cfg"] = 7,
+                        ["sampler_name"] = "euler",
+                        ["scheduler"] = "normal",
+                        ["denoise"] = 1.0,
+                        ["model"] = Link("4", 0),
+                        ["positive"] = Link("6", 0),
+                        ["negative"] = Link("7", 0),
+                        ["latent_image"] = Link("5", 0)
+                    }
+                },
+                ["8"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "VAEDecode",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["samples"] = Link("3", 0),
+                        ["vae"] = Link("4", 2)
+                    }
+                },
+                ["9"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "SaveImage",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["filename_prefix"] = filenamePrefix,
+                        ["images"] = Link("8", 0)
+                    }
+                }
+            };
+        }
+
+        private async Task<string> ResolveComfyUiCheckpointNameAsync(string baseUrl)
+        {
+            try
+            {
+                using var r = await _httpClient.GetAsync($"{baseUrl}/models/checkpoints");
+                if (r.IsSuccessStatusCode)
+                {
+                    var names = await r.Content.ReadFromJsonAsync<List<string>>();
+                    var first = names?.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+                    if (first != null)
+                        return first;
                 }
             }
             catch
             {
-                // If local endpoint fails, fall back to generic error handling below.
+                // try object_info
             }
 
-            throw new Exception("Image generation endpoint did not return any images. Verify that ComfyUI (or an Automatic1111-compatible server) is running and reachable.");
+            using var r2 = await _httpClient.GetAsync($"{baseUrl}/object_info/CheckpointLoaderSimple");
+            if (!r2.IsSuccessStatusCode)
+            {
+                var body = await r2.Content.ReadAsStringAsync();
+                throw new Exception(
+                    "Could not list ComfyUI checkpoints. Ensure ComfyUI is running and has at least one model in models/checkpoints. " +
+                    $"GET /object_info/CheckpointLoaderSimple returned {(int)r2.StatusCode}. {TruncateForLog(body)}");
+            }
+
+            var json = await r2.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("CheckpointLoaderSimple", out var node))
+                throw new Exception("ComfyUI object_info missing CheckpointLoaderSimple. Is this a ComfyUI server?");
+
+            var input = node.GetProperty("input");
+            var required = input.GetProperty("required");
+            if (!required.TryGetProperty("ckpt_name", out var ckptEl) || ckptEl.ValueKind != JsonValueKind.Array || ckptEl.GetArrayLength() < 1)
+                throw new Exception("ComfyUI returned no checkpoint list. Add a .safetensors or .ckpt to ComfyUI models/checkpoints.");
+
+            var options = ckptEl[0];
+            if (options.ValueKind != JsonValueKind.Array)
+                throw new Exception("Unexpected ComfyUI ckpt_name schema.");
+
+            foreach (var x in options.EnumerateArray())
+            {
+                var s = x.GetString();
+                if (!string.IsNullOrWhiteSpace(s))
+                    return s;
+            }
+
+            throw new Exception("No checkpoints found in ComfyUI. Add a Stable Diffusion checkpoint under models/checkpoints.");
+        }
+
+        private async Task<(string filename, string subfolder, string type)> PollComfyUiForOutputImageAsync(string baseUrl, string promptId)
+        {
+            var deadline = DateTime.UtcNow.AddMinutes(4);
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(400);
+                using var r = await _httpClient.GetAsync($"{baseUrl}/history/{Uri.EscapeDataString(promptId)}");
+                if (!r.IsSuccessStatusCode)
+                    continue;
+
+                var json = await r.Content.ReadAsStringAsync();
+                if (string.IsNullOrWhiteSpace(json) || json == "{}")
+                    continue;
+
+                using var doc = JsonDocument.Parse(json);
+                foreach (var entry in doc.RootElement.EnumerateObject())
+                {
+                    if (!entry.Value.TryGetProperty("outputs", out var outputs) || outputs.ValueKind != JsonValueKind.Object)
+                        continue;
+
+                    foreach (var outNode in outputs.EnumerateObject())
+                    {
+                        if (!outNode.Value.TryGetProperty("images", out var images) || images.ValueKind != JsonValueKind.Array)
+                            continue;
+
+                        foreach (var img in images.EnumerateArray())
+                        {
+                            var fn = img.TryGetProperty("filename", out var f) ? f.GetString() : null;
+                            if (string.IsNullOrWhiteSpace(fn))
+                                continue;
+                            var sf = img.TryGetProperty("subfolder", out var s) ? (s.GetString() ?? "") : "";
+                            var ty = img.TryGetProperty("type", out var t) ? (t.GetString() ?? "output") : "output";
+                            return (fn, sf, ty);
+                        }
+                    }
+                }
+            }
+
+            throw new Exception(
+                $"ComfyUI image generation timed out waiting for outputs (prompt_id={promptId}). " +
+                "Check the ComfyUI console for errors or queue backlog.");
+        }
+
+        private static string TruncateForLog(string? text, int maxChars = 1200)
+        {
+            if (string.IsNullOrEmpty(text))
+                return "<empty>";
+            if (text.Length <= maxChars)
+                return text;
+            return text.Substring(0, maxChars) + $"… (truncated, {text.Length} chars total)";
         }
 
         private async Task<Stream> GenerateImageWithOllamaAsync(AIContact contact, string prompt)

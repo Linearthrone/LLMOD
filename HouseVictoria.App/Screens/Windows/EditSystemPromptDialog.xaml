@@ -4,10 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Edit System Prompt" Height="500" Width="700"
+        Title="Edit System Prompt" Height="560" Width="720" MinHeight="480" MinWidth="640"
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
-    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+    <Border Background="Transparent" CornerRadius="8" ClipToBounds="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -15,53 +15,124 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+            <!-- Header (matches AI Models & Personas) -->
+            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,12" CornerRadius="8,8,0,0"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Border.Effect>
+                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
+                </Border.Effect>
                 <Grid>
-                    <TextBlock Text="✏️ Edit System Prompt" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock FontSize="14" Foreground="White" 
-                              VerticalAlignment="Center" Margin="200,0,0,0">
-                        <Run Text="Editing: "/>
-                        <Run Text="{Binding ContactName, FallbackValue='Unknown'}"/>
-                    </TextBlock>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="✏️ Edit System Prompt" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                        <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="#B8E8F5" TextWrapping="Wrap">
+                            <Run Text="Contact: "/>
+                            <Run Text="{Binding ContactName, Mode=OneWay, FallbackValue='Unknown'}"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="✕"
+                            Width="32" Height="32"
+                            Background="#40FF3366"
+                            BorderThickness="0"
+                            FontSize="16" FontWeight="Bold"
+                            Foreground="#E0F7FF"
+                            Cursor="Hand"
+                            VerticalAlignment="Top"
+                            Click="CloseButton_Click"
+                            ToolTip="Close">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#60FF3366"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </Grid>
             </Border>
 
-            <!-- Content Area -->
-            <ScrollViewer Grid.Row="1" Padding="20" Style="{StaticResource ModernScrollViewer}">
-                <StackPanel>
-                    <TextBlock Text="TTS Voice:" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
-                    <ComboBox ItemsSource="{Binding AvailablePiperVoices}" 
-                              Text="{Binding PiperVoiceId, UpdateSourceTrigger=PropertyChanged}"
-                              IsEditable="True"
-                              Background="#CC222222" BorderBrush="#CC444444" 
-                              Foreground="White" Padding="10" Margin="0,0,0,15"/>
-                    <TextBlock Text="System Prompt:" FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
-                    <TextBox Text="{Binding SystemPrompt, UpdateSourceTrigger=PropertyChanged}" 
-                            Background="#CC222222" BorderBrush="#CC444444" 
-                            Foreground="White" Padding="10" 
-                            TextWrapping="Wrap" 
-                            AcceptsReturn="True"
-                            VerticalScrollBarVisibility="Hidden"
-                            Height="300"
-                            FontFamily="Consolas"
-                            FontSize="12"/>
-                    <TextBlock Text="Enter the system prompt that defines how this AI contact behaves and responds." 
-                              FontSize="11" Foreground="#CCCCCC" 
-                              Margin="0,10,0,0" 
-                              TextWrapping="Wrap"/>
-                </StackPanel>
-            </ScrollViewer>
+            <!-- Content (no window-level ScrollViewer — avoids outer scrollbars) -->
+            <Border Grid.Row="1" Background="#CC0A0E27" Padding="12">
+                <Border Style="{StaticResource Card}" Margin="0" Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-            <!-- Footer Buttons -->
-            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+                        <TextBlock Grid.Row="0" Text="🎙️ Voice &amp; behavior" FontSize="15" FontWeight="Bold"
+                                   Foreground="#00D4FF" Margin="0,0,0,10"/>
+
+                        <Border Grid.Row="1" Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1"
+                                CornerRadius="5" Padding="12" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="TTS voice (Piper)" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="#E0F7FF" Margin="0,0,0,8"/>
+                                <ComboBox Grid.Row="1"
+                                          ItemsSource="{Binding AvailablePiperVoices}"
+                                          Text="{Binding PiperVoiceId, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEditable="True"
+                                          Background="#252F3F" BorderBrush="#4000D4FF" BorderThickness="1"
+                                          Foreground="#E0F7FF" Padding="8"/>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Grid.Row="2" Text="System prompt" FontSize="15" FontWeight="Bold"
+                                   Foreground="#00D4FF" Margin="0,0,0,8"/>
+
+                        <TextBox Grid.Row="3"
+                                 Text="{Binding SystemPrompt, UpdateSourceTrigger=PropertyChanged}"
+                                 MinHeight="260"
+                                 VerticalAlignment="Stretch"
+                                 Background="#0B1220" BorderBrush="#4000D4FF" BorderThickness="1"
+                                 Foreground="#E0F7FF" Padding="10"
+                                 FontFamily="Consolas" FontSize="12"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 AcceptsTab="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 HorizontalScrollBarVisibility="Disabled"/>
+
+                        <TextBlock Grid.Row="4"
+                                   Text="Defines how this AI contact behaves. Long lines wrap; scroll inside this box if needed."
+                                   FontSize="11" Foreground="#80C4D4"
+                                   Margin="0,10,0,0"
+                                   TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
+            </Border>
+
+            <!-- Footer -->
+            <Border Grid.Row="2" Background="#141B2E" Padding="14,12" CornerRadius="0,0,8,8"
+                    BorderBrush="#4000D4FF" BorderThickness="0,1,0,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource GlassButton}" Content="💾 Save" 
-                           Width="120" Height="35" Margin="0,0,10,0"
-                           Click="SaveButton_Click"/>
-                    <Button Style="{StaticResource GlassButton}" Content="❌ Cancel" 
-                           Width="120" Height="35"
-                           Click="CancelButton_Click"/>
+                    <Button Style="{StaticResource GlassButton}" Content="💾 Save"
+                            Width="120" Height="36" Margin="0,0,10,0"
+                            Click="SaveButton_Click"/>
+                    <Button Style="{StaticResource GlassButton}" Content="Cancel"
+                            Width="120" Height="36"
+                            Click="CancelButton_Click"/>
                 </StackPanel>
             </Border>
         </Grid>

@@ -10,13 +10,7 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize">
     <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/HouseVictoria.App;component/Styles/GlassEffect.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/HouseVictoria.App;component/Styles/OverlayStyles.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
-            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        </ResourceDictionary>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
 
     <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
@@ -27,8 +21,8 @@
         </Grid.RowDefinitions>
 
         <!-- Header with Close Button -->
-        <Border Grid.Row="0" 
-                Background="#CCe94560" 
+        <Border Grid.Row="0"
+                Background="#3000D4FF"
                 Padding="15,10"
                 MouseLeftButtonDown="Header_MouseLeftButtonDown">
             <Grid>
@@ -257,11 +251,13 @@
                                           Margin="5,0,0,0">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <!-- Default: show the unread badge -->
+                                            <Setter Property="Visibility" Value="Visible"/>
                                             <Setter Property="Text" Value="{Binding UnreadCount, StringFormat=' ({0} unread)'}"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding UnreadCount, Converter={StaticResource BoolToVisibilityConverter}}" Value="{x:Static Visibility.Visible}">
-                                                    <Setter Property="Visibility" Value="{x:Static Visibility.Visible}"/>
+                                                <!-- Hide when UnreadCount is exactly 0 -->
+                                                <DataTrigger Binding="{Binding UnreadCount}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

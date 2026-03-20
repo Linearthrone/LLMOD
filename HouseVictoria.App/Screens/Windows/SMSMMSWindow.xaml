@@ -613,18 +613,67 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            
-                            <Button Grid.Column="0" Content="←" FontSize="20" 
-                                   Background="Transparent" BorderThickness="0" 
-                                   Foreground="{StaticResource TextPrimaryBrush}" Padding="8,0" Margin="0,0,12,0"
-                                   Command="{Binding BackToConversationListCommand}"/>
-                            
-                            <TextBlock Grid.Column="1" Text="Contact" 
-                                      Foreground="{StaticResource TextPrimaryBrush}" FontSize="18" FontWeight="SemiBold" 
-                                      VerticalAlignment="Center"/>
-                        </Grid> 
+
+                            <!-- Back -->
+                            <Button Grid.Column="0" Content="←" FontSize="20"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="{StaticResource TextPrimaryBrush}" Padding="8,0" Margin="0,0,12,0"
+                                    Command="{Binding BackToConversationListCommand}"/>
+
+                            <!-- Avatar -> Contact profile overlay -->
+                            <Button Grid.Column="1"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Width="44"
+                                    Height="44"
+                                    Padding="0"
+                                    Margin="0,0,12,0"
+                                    Command="{Binding OpenContactProfileCommand}"
+                                    ToolTip="Contact profile">
+                                <Ellipse Width="44" Height="44" Fill="{StaticResource PrimaryBrush}">
+                                    <Ellipse.Clip>
+                                        <EllipseGeometry Center="22,22" RadiusX="22" RadiusY="22"/>
+                                    </Ellipse.Clip>
+                                </Ellipse>
+                            </Button>
+
+                            <!-- Contact Name -->
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding SelectedConversationContactName}"
+                                       Foreground="{StaticResource TextPrimaryBrush}" FontSize="18" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap"/>
+
+                            <!-- Voice call -->
+                            <Button Grid.Column="3"
+                                    Width="44" Height="44"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding StartPhoneCallCommand}"
+                                    ToolTip="Start voice call"
+                                    Visibility="{Binding CanStartCall, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="📞" FontSize="20" Foreground="{StaticResource SuccessBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Video call -->
+                            <Button Grid.Column="4"
+                                    Width="44" Height="44"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding StartCallCommand}"
+                                    ToolTip="Start video call"
+                                    Visibility="{Binding CanStartCall, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="🎥" FontSize="18" Foreground="{StaticResource PrimaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+                        </Grid>
                     </Border>
 
                     <!-- Messages -->
@@ -942,6 +991,68 @@
                             </Grid>
                         </Grid>
                     </Border>
+
+                    <!-- Contact Profile Overlay (in-place, no SMS navigation) -->
+                    <Grid Grid.RowSpan="3"
+                          Background="#66000000"
+                          Visibility="{Binding ShowContactProfile, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border Background="{StaticResource DarkCardBrush}"
+                                CornerRadius="20"
+                                Padding="16"
+                                Width="340"
+                                MaxHeight="420"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Profile Header -->
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Ellipse Grid.Column="0" Width="48" Height="48" Fill="{StaticResource PrimaryBrush}" Margin="0,0,12,0">
+                                        <Ellipse.Clip>
+                                            <EllipseGeometry Center="24,24" RadiusX="24" RadiusY="24"/>
+                                        </Ellipse.Clip>
+                                    </Ellipse>
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding SelectedConversationContactName}"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                    <Button Grid.Column="2"
+                                            Content="✕"
+                                            Width="34" Height="34"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Foreground="{StaticResource TextSecondaryBrush}"
+                                            Command="{Binding CloseContactProfileCommand}"
+                                            ToolTip="Close profile"/>
+                                </Grid>
+
+                                <!-- Profile Body -->
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              Margin="0,12,0,0">
+                                    <TextBlock Text="{Binding ContactProfileBody}"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Grid>
                 
                 <!-- Android Navigation Buttons -->
@@ -959,19 +1070,6 @@
                         <!-- TTS/STT Call buttons (visible in message/chat view only) -->
                         <Grid Grid.Column="1" Visibility="{Binding ShowMessageView, Converter={StaticResource BoolToVisibilityConverter}}">
                             <!-- Start voice call (TTS/STT) -->
-                            <Button Width="50" Height="50"
-                                   Background="Transparent" 
-                                   BorderThickness="0"
-                                   Command="{Binding StartCallCommand}"
-                                   ToolTip="Start voice call (TTS/STT)"
-                                   Visibility="{Binding CanStartCall, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Text="📞" 
-                                          FontSize="24" 
-                                          Foreground="{StaticResource SuccessBrush}"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                            </Button>
-                            
                             <!-- End voice call -->
                             <Button Width="50" Height="50"
                                    Background="Transparent" 

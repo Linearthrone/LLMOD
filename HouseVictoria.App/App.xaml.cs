@@ -391,9 +391,21 @@ catch (Exception ex)
 
         private void ConfigureLogging()
         {
+            // Keep Serilog's file output aligned with AppConfig.LogsPath so GLD can discover it reliably
+            // regardless of current working directory.
+            var appConfig = ServiceProvider?.GetService<AppConfig>();
+            var logsDir = appConfig?.LogsPath;
+            if (string.IsNullOrWhiteSpace(logsDir))
+            {
+                logsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            }
+
+            Directory.CreateDirectory(logsDir);
+            var logFilePath = Path.Combine(logsDir, "HouseVictoria-.log");
+
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console()
-                .WriteTo.File("Logs/HouseVictoria-.log", rollingInterval: RollingInterval.Day)
+                .WriteTo.File(logFilePath, rollingInterval: RollingInterval.Day)
                 .CreateLogger();
         }
 

@@ -11,19 +11,83 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
 
-    <Grid>
-        <!-- Toggle Button (Left Edge) -->
-        <ToggleButton x:Name="DrawerToggle"
-                      HorizontalAlignment="Left"
-                      VerticalAlignment="Top"
-                      Width="80" Height="80"
-                      Margin="10,100,0,0"
-                      IsChecked="{Binding IsDrawerOpen, Mode=TwoWay}"
-                      Style="{StaticResource TrayToggleButton}">
-            <ToggleButton.Content>
-                <TextBlock Text="📊" FontSize="48"/>
-            </ToggleButton.Content>
-        </ToggleButton>
+    <Grid x:Name="RootGrid"
+          Background="Transparent"
+          MouseDown="RootGrid_MouseDown">
+        <!-- Collapsed Pull Handle (Left Edge) -->
+        <Button x:Name="CollapsedPullHandle"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                Width="14"
+                Height="140"
+                Margin="0"
+                Command="{Binding ToggleDrawerCommand}"
+                Background="Transparent"
+                BorderThickness="0"
+                Cursor="Hand"
+                Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="#2000D4FF"
+                            BorderBrush="#4000D4FF"
+                            BorderThickness="1,1,0,1"
+                            CornerRadius="0,8,8,0">
+                        <TextBlock Text="⮞"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="#8000D4FF"
+                                   FontSize="10"
+                                   FontFamily="Segoe UI"/>
+                    </Border>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+
+        <!-- Expanded Pull Tab (Left Edge) -->
+        <Border x:Name="PullTabHost"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                Width="48"
+                Height="140"
+                Background="#2000D4FF"
+                BorderBrush="#4000D4FF"
+                BorderThickness="1,1,0,1"
+                CornerRadius="0,8,8,0"
+                Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Button x:Name="SystemHealthPullButton"
+                        Grid.Row="0"
+                        Command="{Binding OpenSystemHealthCommand}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand">
+                    <TextBlock Text="❤️"
+                               FontSize="20"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+
+                <Separator Grid.Row="1" Margin="6,0" Background="#4000D4FF" />
+
+                <Button x:Name="ComponentsPullButton"
+                        Grid.Row="2"
+                        Command="{Binding OpenComponentsCommand}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Cursor="Hand">
+                    <TextBlock Text="🧩"
+                               FontSize="20"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+            </Grid>
+        </Border>
 
         <!-- Drawer Panel -->
         <Border x:Name="DrawerPanel"
@@ -31,7 +95,7 @@
                 Width="330"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
-                Margin="95,100,0,100"
+                Margin="48,40,0,40"
                 CornerRadius="6"
                 Padding="10"
                 Visibility="Collapsed"
@@ -54,9 +118,17 @@
                 <TabControl Grid.Row="1" Padding="0" Margin="0,0,0,0"
                             Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Stretch"
-                            VerticalContentAlignment="Stretch">
+                            VerticalContentAlignment="Stretch"
+                            SelectedIndex="{Binding SelectedTabIndex}"
+                            ItemContainerStyle="{DynamicResource DrawerTabItemStyle}">
                     <TabControl.Resources>
-                        <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                        <!--
+                        IMPORTANT:
+                        An implicit Style with TargetType="TabItem" is keyed by {x:Type TabItem}.
+                        Using BasedOn="{StaticResource {x:Type TabItem}}" inside that implicit style can
+                        resolve to itself and throw during XAML load (FrameworkElement.Style exception).
+                        -->
+                        <Style x:Key="DrawerTabItemStyle" TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">

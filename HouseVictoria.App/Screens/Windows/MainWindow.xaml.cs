@@ -70,12 +70,34 @@ namespace HouseVictoria.App.Screens.Windows
             }
             catch (Exception ex)
             {
-                var errorMsg = $"CRITICAL MainWindow Constructor Error: {ex.Message}\n{ex.StackTrace}";
+                var errorMsg = $"CRITICAL MainWindow Constructor Error:\n{FormatExceptionChain(ex)}";
                 System.Diagnostics.Debug.WriteLine(errorMsg);
                 WriteToStartupLog(errorMsg);
-                MessageBox.Show($"MainWindow Constructor Error: {ex.Message}\n\n{ex.StackTrace}", "Constructor Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(errorMsg, "Constructor Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw; // Re-throw to prevent silent failure
             }
+        }
+
+        private static string FormatExceptionChain(Exception ex)
+        {
+            // XAML load failures often wrap the real cause inside multiple InnerExceptions.
+            // Print the full chain so we can pinpoint the exact Style/Resource key/type.
+            var sb = new System.Text.StringBuilder();
+            int depth = 0;
+            Exception? current = ex;
+            while (current != null && depth < 12)
+            {
+                sb.AppendLine($"[{depth}] {current.GetType().FullName}: {current.Message}");
+                if (!string.IsNullOrWhiteSpace(current.StackTrace))
+                {
+                    sb.AppendLine(current.StackTrace);
+                }
+                current = current.InnerException;
+                if (current != null)
+                    sb.AppendLine("---- InnerException ----");
+                depth++;
+            }
+            return sb.ToString();
         }
 
         protected override void OnSourceInitialized(EventArgs e)
