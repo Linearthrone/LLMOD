@@ -10,6 +10,7 @@ using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Utils;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Core.Events;
 using System.Windows;
 using NAudio.Wave;
 
@@ -65,6 +66,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand ExitMessageSelectionModeCommand { get; }
         public ICommand ToggleMessageSelectionCommand { get; }
         public ICommand DeleteSelectedMessagesCommand { get; }
+        public ICommand RefreshContactsCommand { get; }
 
         // Media attachment state
         private string? _pendingMediaPath;
@@ -492,13 +494,30 @@ namespace HouseVictoria.App.Screens.Windows
                 }
             });
             DeleteSelectedMessagesCommand = new RelayCommand(async () => await DeleteSelectedMessagesAsync(), () => CanDeleteSelectedMessages);
+            RefreshContactsCommand = new RelayCommand(async () => await RefreshContactsAsync());
 
             // Subscribe to message received events
             _communicationService.MessageReceived += CommunicationService_MessageReceived;
             _communicationService.CallStateChanged += CommunicationService_CallStateChanged;
 
+            // Subscribe to persona created - refresh contact list when new personas are added
+            _eventAggregator.Subscribe<PersonaCreatedEvent>(ev => { _ = RefreshContactsAsync(); });
+
             // Load initial data
             LoadDataAsync();
+        }
+
+        private async Task RefreshContactsAsync()
+        {
+            try
+            {
+                await _communicationService.RefreshContactsAsync();
+                LoadDataAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing contacts: {ex.Message}");
+            }
         }
 
         private async void LoadDataAsync()
@@ -865,39 +884,34 @@ namespace HouseVictoria.App.Screens.Windows
 
             try
             {
-                // Check if conversation already exists
-                var existingConversation = Conversations.FirstOrDefault(c => c.Contact?.Id == contact.Id)?.Conversation;
-                
-                if (existingConversation != null)
+                // Check if conversation already exists in UI list
+                var existingConversationVm = Conversations.FirstOrDefault(c => c.Contact?.Id == contact.Id);
+                if (existingConversationVm != null)
                 {
-                    // Conversation exists, just select it
-                    await SelectConversationAsync(existingConversation);
+                    await SelectConversationAsync(existingConversationVm.Conversation);
+                    return;
                 }
-                else
+
+                // Get or create the canonical conversation (one per contact) from the communication service
+                var conversation = await _communicationService.GetOrCreateConversationForContactAsync(contact.Id);
+
+                // If this is an AI contact, load the persona
+                if (contact.Type == ContactType.AI)
                 {
-                    // Create new conversation
-                    var newConversation = new Conversation
-                    {
-                        Id = $"conv-{contact.Id}-{Guid.NewGuid()}",
-                        ContactId = contact.Id,
-                        LastMessageAt = DateTime.Now
-                    };
+                    await LoadAIPersonaAsync(contact.Id);
+                }
 
-                    // If this is an AI contact, load the persona
-                    if (contact.Type == ContactType.AI)
-                    {
-                        await LoadAIPersonaAsync(contact.Id);
-                    }
-
-                    // Add conversation to the list
-                    var convVm = new ConversationViewModel(newConversation, contact);
+                // Add conversation to the list if not already present
+                var convVm = new ConversationViewModel(conversation, contact);
+                var alreadyInList = Conversations.Any(c => c.Conversation.Id == conversation.Id);
+                if (!alreadyInList)
+                {
                     Conversations.Insert(0, convVm);
-
-                    // Select the new conversation
-                    SelectedConversation = newConversation;
-                    ShowContactSelection = false;
-                    ShowConversationList = false;
                 }
+
+                SelectedConversation = conversation;
+                ShowContactSelection = false;
+                ShowConversationList = false;
             }
             catch (Exception ex)
             {

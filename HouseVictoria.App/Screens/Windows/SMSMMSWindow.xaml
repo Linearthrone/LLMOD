@@ -393,10 +393,16 @@
                             <Border Grid.Column="1" Background="{StaticResource DarkInputBrush}" CornerRadius="20" Padding="12,8">
                                 <TextBlock Text="Search" Foreground="{StaticResource TextSecondaryBrush}" FontSize="14" VerticalAlignment="Center"/>
                             </Border>
-                            <Button Grid.Column="2" Content="✚" FontSize="24" 
+                            <Button Grid.Column="2" Content="📖" FontSize="18" 
+                                   Background="{StaticResource DarkCardBrush}" BorderThickness="0" 
+                                   Foreground="{StaticResource TextPrimaryBrush}" Width="40" Height="40" 
+                                   Margin="8,0,0,0"
+                                   Command="{Binding RefreshContactsCommand}"
+                                   ToolTip="Refresh contacts - load new personas"/>
+                            <Button Grid.Column="3" Content="✚" FontSize="24" 
                                    Background="{StaticResource PrimaryBrush}" BorderThickness="0" 
                                    Foreground="{StaticResource TextPrimaryBrush}" Width="40" Height="40" 
-                                   Margin="12,0,0,0"
+                                   Margin="8,0,0,0"
                                    Command="{Binding StartNewConversationCommand}"
                                    ToolTip="Start New Conversation">
                                 <Button.Style>

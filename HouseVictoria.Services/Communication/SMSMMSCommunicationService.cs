@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
@@ -270,7 +274,119 @@ namespace HouseVictoria.Services.Communication
 
         public Task<List<Conversation>> GetConversationsAsync()
         {
-            return Task.FromResult(_conversations);
+            // Ensure one conversation per contact - deduplicate by ContactId, keep most recent
+            var deduplicated = _conversations
+                .GroupBy(c => c.ContactId)
+                .Select(g => g.OrderByDescending(c => c.LastMessageAt).First())
+                .OrderByDescending(c => c.LastMessageAt)
+                .ToList();
+            return Task.FromResult(deduplicated);
+        }
+
+        public async Task RefreshContactsAsync()
+        {
+            _contacts.Clear();
+            _conversations.Clear();
+            _aiContacts.Clear();
+
+            if (_persistenceService != null)
+            {
+                try
+                {
+                    var savedContacts = await _persistenceService.GetAllAsync<AIContact>();
+                    foreach (var aiContact in savedContacts.Values)
+                    {
+                        var contact = new Contact
+                        {
+                            Id = aiContact.Id,
+                            Name = aiContact.Name,
+                            PhoneNumber = null,
+                            Type = ContactType.AI,
+                            AvatarUrl = aiContact.AvatarUrl
+                        };
+                        _contacts.Add(contact);
+                        _aiContacts[aiContact.Id] = aiContact;
+
+                        var conversation = new Conversation
+                        {
+                            Id = $"conv-{aiContact.Id}",
+                            ContactId = aiContact.Id,
+                            LastMessageAt = aiContact.LastUsedAt
+                        };
+                        _conversations.Add(conversation);
+                        if (!_chatContexts.ContainsKey(conversation.Id))
+                            _chatContexts[conversation.Id] = new List<ChatMessage>();
+
+                        if (_persistenceService is DatabasePersistenceService dbService)
+                        {
+                            try
+                            {
+                                var existingMessages = await dbService.GetMessagesAsync(conversation.Id, 100);
+                                if (existingMessages.Count > 0)
+                                    _messages[conversation.Id] = existingMessages;
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error loading messages for conversation {conversation.Id}: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error refreshing AI contacts from persistence: {ex.Message}");
+                }
+            }
+
+            // Fallback to sample data if no persisted contacts (first-time setup)
+            if (_aiService != null && _aiContacts.Count == 0)
+            {
+                var aiContact1 = new AIContact
+                {
+                    Id = "ai-1",
+                    Name = "AI Assistant",
+                    ModelName = "llama3.2",
+                    ServerEndpoint = "http://localhost:11434",
+                    SystemPrompt = "You are a helpful AI assistant. Be friendly, concise, and helpful.",
+                    Description = "General purpose AI assistant",
+                    IsPrimaryAI = true
+                };
+                var aiContact2 = new AIContact
+                {
+                    Id = "ai-2",
+                    Name = "Code Helper",
+                    ModelName = "codellama",
+                    ServerEndpoint = "http://localhost:11434",
+                    SystemPrompt = "You are a coding assistant. Help with programming questions, code review, and debugging.",
+                    Description = "Specialized coding assistant"
+                };
+                foreach (var ac in new[] { aiContact1, aiContact2 })
+                {
+                    _contacts.Add(new Contact { Id = ac.Id, Name = ac.Name, PhoneNumber = null, Type = ContactType.AI, AvatarUrl = ac.AvatarUrl });
+                    _aiContacts[ac.Id] = ac;
+                    var conv = new Conversation { Id = $"conv-{ac.Id}", ContactId = ac.Id, LastMessageAt = DateTime.Now };
+                    _conversations.Add(conv);
+                    _chatContexts[conv.Id] = new List<ChatMessage>();
+                }
+            }
+        }
+
+        public Task<Conversation> GetOrCreateConversationForContactAsync(string contactId)
+        {
+            var existing = _conversations.FirstOrDefault(c => c.ContactId == contactId);
+            if (existing != null)
+                return Task.FromResult(existing);
+
+            var conversation = new Conversation
+            {
+                Id = $"conv-{contactId}",
+                ContactId = contactId,
+                LastMessageAt = DateTime.Now
+            };
+            _conversations.Add(conversation);
+            if (!_chatContexts.ContainsKey(conversation.Id))
+                _chatContexts[conversation.Id] = new List<ChatMessage>();
+            return Task.FromResult(conversation);
         }
 
         public async Task<List<ConversationMessage>> GetMessagesAsync(string conversationId)

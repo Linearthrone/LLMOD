@@ -280,18 +280,60 @@ namespace HouseVictoria.Services.AIServices
 
         /// <summary>
         /// Runs a minimal SD checkpoint txt2img graph on ComfyUI (POST /prompt, poll /history, GET /view).
+        /// Uses custom workflow file if configured; otherwise SD/SDXL or Flux built-in workflow based on checkpoint type.
         /// </summary>
         private async Task<Stream> GenerateImageViaComfyUiNativeAsync(string baseUrl, string positivePrompt, int width, int height)
         {
-            var ckpt = await ResolveComfyUiCheckpointNameAsync(baseUrl);
             var seed = Random.Shared.Next(0, int.MaxValue);
             var prefix = "HouseVictoria_" + Guid.NewGuid().ToString("N")[..8];
+            const string defaultNegative = "low quality, blurry, watermark, text, ugly";
 
-            // API-format graph (same as ComfyUI "Save (API format)").
-            var workflow = BuildComfyUiTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix);
+            Dictionary<string, object>? workflow = null;
+            var customPath = (_appConfig?.ComfyUICustomWorkflowPath ?? string.Empty).Trim();
+            if (!string.IsNullOrEmpty(customPath) && File.Exists(customPath))
+            {
+                try
+                {
+                    var template = await File.ReadAllTextAsync(customPath);
+                    // Placeholders: {{positive}}, {{negative}}, {{filename_prefix}} = embed as JSON string content (e.g. "text": "{{positive}}" or "text": {{positive}})
+                    static string EscapeForJsonEmbed(string s)
+                    {
+                        var serialized = JsonSerializer.Serialize(s);
+                        return serialized.Length >= 2 ? serialized[1..^1] : serialized; // strip outer quotes for embedding
+                    }
+                    var substituted = template
+                        .Replace("{{positive}}", EscapeForJsonEmbed(positivePrompt))
+                        .Replace("{{negative}}", EscapeForJsonEmbed(defaultNegative))
+                        .Replace("{{width}}", width.ToString())
+                        .Replace("{{height}}", height.ToString())
+                        .Replace("{{seed}}", seed.ToString())
+                        .Replace("{{filename_prefix}}", EscapeForJsonEmbed(prefix));
+                            workflow = LoadAndParseComfyUiWorkflow(substituted);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ComfyUI] Custom workflow load failed: {ex.Message}");
+                    throw new Exception(
+                        $"Failed to load custom workflow from {Path.GetFileName(customPath)}: {ex.Message}. " +
+                        "Ensure the file is valid JSON (ComfyUI API format) with placeholders {{positive}}, {{negative}}, {{width}}, {{height}}, {{seed}}, {{filename_prefix}}.", ex);
+                }
+            }
+
+            object workflowPayload;
+            if (workflow != null)
+            {
+                workflowPayload = workflow;
+            }
+            else
+            {
+                var (ckpt, isFlux) = await ResolveComfyUiCheckpointNameAsync(baseUrl);
+                workflowPayload = isFlux
+                    ? BuildComfyUiFluxTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix)
+                    : BuildComfyUiTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix);
+            }
 
             var clientId = Guid.NewGuid().ToString("N");
-            using var promptResp = await _httpClient.PostAsJsonAsync($"{baseUrl}/prompt", new { prompt = workflow, client_id = clientId });
+            using var promptResp = await _httpClient.PostAsJsonAsync($"{baseUrl}/prompt", new { prompt = workflowPayload, client_id = clientId });
             var promptJson = await promptResp.Content.ReadAsStringAsync();
             if (!promptResp.IsSuccessStatusCode)
             {
@@ -324,7 +366,7 @@ namespace HouseVictoria.Services.AIServices
             if (string.IsNullOrWhiteSpace(promptId))
                 throw new Exception($"ComfyUI /prompt did not return prompt_id. Response: {TruncateForLog(promptJson)}");
 
-            System.Diagnostics.Debug.WriteLine($"[ComfyUI] Queued image gen prompt_id={promptId}, checkpoint={ckpt}, prefix={prefix}");
+            System.Diagnostics.Debug.WriteLine($"[ComfyUI] Queued image gen prompt_id={promptId}, prefix={prefix}");
 
             var (filename, subfolder, type) = await PollComfyUiForOutputImageAsync(baseUrl, promptId);
             var viewUrl =
@@ -338,6 +380,85 @@ namespace HouseVictoria.Services.AIServices
             }
 
             return new MemoryStream(imgBytes);
+        }
+
+        /// <summary>Flux/SD3 workflow: 16-channel latents via EmptySD3LatentImage. Avoids "tensor 64 vs 16" mismatch.</summary>
+        private static Dictionary<string, object> BuildComfyUiFluxTxt2ImgWorkflow(
+            string ckptName, string positive, int width, int height, int seed, string filenamePrefix)
+        {
+            object Link(string nodeId, int slot) => new object[] { nodeId, slot };
+
+            return new Dictionary<string, object>
+            {
+                ["4"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "CheckpointLoaderSimple",
+                    ["inputs"] = new Dictionary<string, object> { ["ckpt_name"] = ckptName }
+                },
+                ["5"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "EmptySD3LatentImage",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["width"] = width,
+                        ["height"] = height,
+                        ["batch_size"] = 1
+                    }
+                },
+                ["6"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "CLIPTextEncode",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["text"] = positive,
+                        ["clip"] = Link("4", 1)
+                    }
+                },
+                ["7"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "CLIPTextEncode",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["text"] = "low quality, blurry, watermark, text, ugly",
+                        ["clip"] = Link("4", 1)
+                    }
+                },
+                ["3"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "KSampler",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["seed"] = seed,
+                        ["steps"] = 20,
+                        ["cfg"] = 7,
+                        ["sampler_name"] = "euler",
+                        ["scheduler"] = "simple",
+                        ["denoise"] = 1.0,
+                        ["model"] = Link("4", 0),
+                        ["positive"] = Link("6", 0),
+                        ["negative"] = Link("7", 0),
+                        ["latent_image"] = Link("5", 0)
+                    }
+                },
+                ["8"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "VAEDecode",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["samples"] = Link("3", 0),
+                        ["vae"] = Link("4", 2)
+                    }
+                },
+                ["9"] = new Dictionary<string, object>
+                {
+                    ["class_type"] = "SaveImage",
+                    ["inputs"] = new Dictionary<string, object>
+                    {
+                        ["filename_prefix"] = filenamePrefix,
+                        ["images"] = Link("8", 0)
+                    }
+                }
+            };
         }
 
         private static Dictionary<string, object> BuildComfyUiTxt2ImgWorkflow(
@@ -419,17 +540,62 @@ namespace HouseVictoria.Services.AIServices
             };
         }
 
-        private async Task<string> ResolveComfyUiCheckpointNameAsync(string baseUrl)
+        /// <summary>Loads a ComfyUI workflow from JSON. Handles both raw workflow and {"prompt": workflow} wrapper.</summary>
+        private static Dictionary<string, object> LoadAndParseComfyUiWorkflow(string json)
         {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("prompt", out var promptEl))
+                root = promptEl;
+            return JsonElementToDictionary(root) ?? throw new Exception("Workflow JSON is empty or invalid.");
+        }
+
+        private static Dictionary<string, object>? JsonElementToDictionary(JsonElement el)
+        {
+            if (el.ValueKind != JsonValueKind.Object) return null;
+            var dict = new Dictionary<string, object>();
+            foreach (var prop in el.EnumerateObject())
+            {
+                dict[prop.Name] = JsonElementToObject(prop.Value);
+            }
+            return dict;
+        }
+
+        private static object JsonElementToObject(JsonElement el)
+        {
+            return el.ValueKind switch
+            {
+                JsonValueKind.Object => JsonElementToDictionary(el)!,
+                JsonValueKind.Array => el.EnumerateArray().Select(JsonElementToObject).ToList<object>(),
+                JsonValueKind.String => el.GetString() ?? "",
+                JsonValueKind.Number => el.TryGetInt64(out var i) ? i : el.GetDouble(),
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Null => (object?)null!,
+                _ => el.GetRawText()
+            };
+        }
+
+        /// <summary>Returns (checkpoint name, isFlux). Prefers SD/SDXL over Flux when both exist to avoid 4ch vs 16ch latent mismatch.</summary>
+        private async Task<(string ckptName, bool isFlux)> ResolveComfyUiCheckpointNameAsync(string baseUrl)
+        {
+            static bool IsFluxCheckpoint(string name) =>
+                !string.IsNullOrWhiteSpace(name) && name.Contains("flux", StringComparison.OrdinalIgnoreCase);
+
             try
             {
                 using var r = await _httpClient.GetAsync($"{baseUrl}/models/checkpoints");
                 if (r.IsSuccessStatusCode)
                 {
                     var names = await r.Content.ReadFromJsonAsync<List<string>>();
-                    var first = names?.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
-                    if (first != null)
-                        return first;
+                    if (names != null && names.Count > 0)
+                    {
+                        var nonFlux = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s) && !IsFluxCheckpoint(s));
+                        var first = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+                        var chosen = nonFlux ?? first;
+                        if (chosen != null)
+                            return (chosen, IsFluxCheckpoint(chosen));
+                    }
                 }
             }
             catch
@@ -460,14 +626,23 @@ namespace HouseVictoria.Services.AIServices
             if (options.ValueKind != JsonValueKind.Array)
                 throw new Exception("Unexpected ComfyUI ckpt_name schema.");
 
+            string? nonFluxFromList = null;
+            string? firstFromList = null;
             foreach (var x in options.EnumerateArray())
             {
                 var s = x.GetString();
-                if (!string.IsNullOrWhiteSpace(s))
-                    return s;
+                if (string.IsNullOrWhiteSpace(s)) continue;
+                firstFromList ??= s;
+                if (!IsFluxCheckpoint(s))
+                {
+                    nonFluxFromList ??= s;
+                    break;
+                }
             }
-
-            throw new Exception("No checkpoints found in ComfyUI. Add a Stable Diffusion checkpoint under models/checkpoints.");
+            var chosenFromList = nonFluxFromList ?? firstFromList;
+            if (chosenFromList == null)
+                throw new Exception("No checkpoints found in ComfyUI. Add a Stable Diffusion checkpoint under models/checkpoints.");
+            return (chosenFromList, IsFluxCheckpoint(chosenFromList));
         }
 
         private async Task<(string filename, string subfolder, string type)> PollComfyUiForOutputImageAsync(string baseUrl, string promptId)

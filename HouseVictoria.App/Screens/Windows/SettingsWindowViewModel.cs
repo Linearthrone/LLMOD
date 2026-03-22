@@ -207,6 +207,13 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _comfyUIPortablePath, value ?? string.Empty);
         }
 
+        private string _comfyUICustomWorkflowPath = string.Empty;
+        public string ComfyUICustomWorkflowPath
+        {
+            get => _comfyUICustomWorkflowPath;
+            set => SetProperty(ref _comfyUICustomWorkflowPath, value ?? string.Empty);
+        }
+
         // Color Scheme
         private int _selectedThemeIndex;
         public int SelectedThemeIndex
@@ -467,6 +474,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand StartComfyUICommand { get; }
         public ICommand BrowseStabilityMatrixPathCommand { get; }
         public ICommand BrowseComfyUIPortablePathCommand { get; }
+        public ICommand BrowseComfyUICustomWorkflowPathCommand { get; }
         public ICommand ImportSettingsCommand { get; }
         public ICommand ExportSettingsCommand { get; }
         public ICommand ResetToDefaultsCommand { get; }
@@ -499,6 +507,7 @@ namespace HouseVictoria.App.Screens.Windows
             StableDiffusionEndpoint = appConfig.StableDiffusionEndpoint;
             StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
             ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
+            ComfyUICustomWorkflowPath = appConfig.ComfyUICustomWorkflowPath ?? string.Empty;
             SelectedThemeIndex = ThemeManager.GetThemeIndexById(appConfig.ColorScheme ?? "CyanBlueDark");
             foreach (var t in ThemeManager.Themes)
                 AvailableThemes.Add(t);
@@ -534,6 +543,7 @@ namespace HouseVictoria.App.Screens.Windows
             StartComfyUICommand = new RelayCommand(() => StartComfyUI());
             BrowseStabilityMatrixPathCommand = new RelayCommand(() => BrowseStabilityMatrixPath());
             BrowseComfyUIPortablePathCommand = new RelayCommand(() => BrowseComfyUIPortablePath());
+            BrowseComfyUICustomWorkflowPathCommand = new RelayCommand(() => BrowseComfyUICustomWorkflowPath());
             ImportSettingsCommand = new RelayCommand(() => ImportSettings());
             ExportSettingsCommand = new RelayCommand(() => ExportSettings());
             ResetToDefaultsCommand = new RelayCommand(() => ResetToDefaults());
@@ -1240,6 +1250,26 @@ d_comfyui_models:
                 ComfyUIPortablePath = Path.GetDirectoryName(dialog.FileName) ?? path;
         }
 
+        private void BrowseComfyUICustomWorkflowPath()
+        {
+            var path = (ComfyUICustomWorkflowPath ?? string.Empty).Trim();
+            var initialDir = !string.IsNullOrEmpty(path) && File.Exists(path)
+                ? Path.GetDirectoryName(path)
+                : (!string.IsNullOrEmpty(ComfyUIPortablePath) && Directory.Exists(ComfyUIPortablePath)
+                    ? Path.Combine(ComfyUIPortablePath, "user", "default")
+                    : null);
+            var dialog = new OpenFileDialog
+            {
+                Title = "Select custom ComfyUI workflow (API format JSON)",
+                Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*",
+                DefaultExt = "json",
+                FileName = "AIGEN.api.json",
+                InitialDirectory = initialDir
+            };
+            if (dialog.ShowDialog() == true && !string.IsNullOrEmpty(dialog.FileName))
+                ComfyUICustomWorkflowPath = dialog.FileName;
+        }
+
         private void ImportSettings()
         {
             try
@@ -1270,6 +1300,7 @@ d_comfyui_models:
                         StableDiffusionEndpoint = importedConfig.StableDiffusionEndpoint;
                         StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
                         ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
+                        ComfyUICustomWorkflowPath = importedConfig.ComfyUICustomWorkflowPath ?? string.Empty;
                         SelectedThemeIndex = ThemeManager.GetThemeIndexById(importedConfig.ColorScheme ?? "CyanBlueDark");
                         EnableOverlay = importedConfig.EnableOverlay;
                         OverlayOpacity = importedConfig.OverlayOpacity;
@@ -1326,6 +1357,7 @@ d_comfyui_models:
                         StableDiffusionEndpoint = StableDiffusionEndpoint,
                         StabilityMatrixPath = StabilityMatrixPath,
                         ComfyUIPortablePath = ComfyUIPortablePath,
+                        ComfyUICustomWorkflowPath = ComfyUICustomWorkflowPath,
                         ColorScheme = ThemeManager.GetThemeIdByIndex(SelectedThemeIndex),
                         EnableOverlay = EnableOverlay,
                         OverlayOpacity = OverlayOpacity,
@@ -1379,6 +1411,7 @@ d_comfyui_models:
                 _appConfig.StableDiffusionEndpoint = StableDiffusionEndpoint;
                 _appConfig.StabilityMatrixPath = StabilityMatrixPath;
                 _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
+                _appConfig.ComfyUICustomWorkflowPath = ComfyUICustomWorkflowPath;
                 _appConfig.ColorScheme = ThemeManager.GetThemeIdByIndex(SelectedThemeIndex);
                 _appConfig.EnableOverlay = EnableOverlay;
                 _appConfig.OverlayOpacity = OverlayOpacity;
@@ -1411,6 +1444,7 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
                 UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
+                UpdateOrAddSetting(config, "ComfyUICustomWorkflowPath", ComfyUICustomWorkflowPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ColorScheme", ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
                 UpdateOrAddSetting(config, "EnableOverlay", EnableOverlay.ToString());
                 UpdateOrAddSetting(config, "OverlayOpacity", OverlayOpacity.ToString());
@@ -1492,6 +1526,7 @@ d_comfyui_models:
                 StableDiffusionEndpoint = defaults.StableDiffusionEndpoint;
                 StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
                 ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;
+                ComfyUICustomWorkflowPath = defaults.ComfyUICustomWorkflowPath ?? string.Empty;
                 SelectedThemeIndex = ThemeManager.GetThemeIndexById(defaults.ColorScheme ?? "CyanBlueDark");
                 EnableOverlay = defaults.EnableOverlay;
                 OverlayOpacity = defaults.OverlayOpacity;

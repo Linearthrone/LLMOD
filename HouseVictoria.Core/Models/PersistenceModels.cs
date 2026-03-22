@@ -100,6 +100,8 @@ namespace HouseVictoria.Core.Models
         public string StabilityMatrixPath { get; set; } = string.Empty;
         /// <summary>Full path to ComfyUI portable folder (contains run_nvidia_gpu.bat). Can be the ComfyUI install managed by Stability Matrix.</summary>
         public string ComfyUIPortablePath { get; set; } = string.Empty;
+        /// <summary>Full path to a custom ComfyUI workflow JSON file (API format). Use placeholders {{positive}}, {{negative}}, {{width}}, {{height}}, {{seed}}, {{filename_prefix}}.</summary>
+        public string ComfyUICustomWorkflowPath { get; set; } = string.Empty;
         /// <summary>Color scheme/theme ID (e.g. CyanBlueDark, EmeraldLight). See ThemeManager.Themes for available values.</summary>
         public string ColorScheme { get; set; } = "CyanBlueDark";
         public string MT4DataPath { get; set; } = "C:\\Program Files\\MetaTrader 4";

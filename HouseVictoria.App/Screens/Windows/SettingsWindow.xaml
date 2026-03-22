@@ -276,6 +276,21 @@
                             </Grid>
                             <TextBlock Text="Default: http://localhost:8188 (ComfyUI)" 
                                       FontSize="11" Foreground="#5A6A7A" Margin="0,5,0,0" FontStyle="Italic"/>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Custom workflow:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding ComfyUICustomWorkflowPath, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <Button Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
+                                       Command="{Binding BrowseComfyUICustomWorkflowPathCommand}" Width="70" Margin="5,0"/>
+                            </Grid>
+                            <TextBlock Text="Optional: Path to custom workflow JSON (ComfyUI API format). Use placeholders {{positive}}, {{negative}}, {{width}}, {{height}}, {{seed}}, {{filename_prefix}}."
+                                      FontSize="11" Foreground="#5A6A7A" Margin="0,3,0,0" FontStyle="Italic" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
 

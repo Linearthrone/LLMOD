@@ -1,4 +1,4 @@
-@echo off
+ v @echo off
 setlocal
 REM House Victoria - one-time setup. Run from repo root. Use start.bat to run services.
 

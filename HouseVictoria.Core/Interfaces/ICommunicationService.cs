@@ -9,6 +9,8 @@ namespace HouseVictoria.Core.Interfaces
     {
         Task<List<Contact>> GetContactsAsync();
         Task<List<Conversation>> GetConversationsAsync();
+        Task RefreshContactsAsync();
+        Task<Conversation> GetOrCreateConversationForContactAsync(string contactId);
         Task<List<ConversationMessage>> GetMessagesAsync(string conversationId);
         Task<ConversationMessage?> GetLastMessageAsync(string conversationId);
         Task SendMessageAsync(ConversationMessage message);

@@ -723,6 +723,16 @@ namespace HouseVictoria.App.Screens.Windows
                 // Reload contacts from persistence to ensure consistency
                 await LoadAIContactsAsync();
 
+                // Notify Messages app to refresh its contact/conversation lists
+                try
+                {
+                    App.GetService<IEventAggregator>()?.Publish(new HouseVictoria.Core.Events.PersonaCreatedEvent());
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to publish PersonaCreatedEvent: {ex.Message}");
+                }
+
                 // Clear form
                 NewPersonaName = string.Empty;
                 NewPersonaModel = string.Empty;

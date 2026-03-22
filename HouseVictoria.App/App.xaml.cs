@@ -331,6 +331,7 @@ catch (Exception ex)
                 ColorScheme = config["ColorScheme"] ?? "CyanBlueDark",
                 StabilityMatrixPath = config["StabilityMatrixPath"] ?? string.Empty,
                 ComfyUIPortablePath = config["ComfyUIPortablePath"] ?? string.Empty,
+                ComfyUICustomWorkflowPath = config["ComfyUICustomWorkflowPath"] ?? string.Empty,
                 MT4DataPath = config["MT4DataPath"] ?? "C:\\Program Files\\MetaTrader 4",
                 DataBankPath = config["DataBankPath"] ?? "Data\\Databanks",
                 LogsPath = config["LogsPath"] ?? "Logs",
