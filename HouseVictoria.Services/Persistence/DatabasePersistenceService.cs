@@ -846,6 +846,16 @@ namespace HouseVictoria.Services.Persistence
                 new { ConversationId = conversationId });
         }
 
+        public async Task DeleteMessageAsync(string messageId)
+        {
+            using var connection = new SQLiteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            await connection.ExecuteAsync(
+                "DELETE FROM Messages WHERE Id = @Id",
+                new { Id = messageId });
+        }
+
         public async Task<ConversationMessage?> GetLastMessageAsync(string conversationId)
         {
             using var connection = new SQLiteConnection(_connectionString);

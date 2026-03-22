@@ -6,6 +6,7 @@
         xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
         mc:Ignorable="d"
         Title="Data Bank Management" Height="900" Width="1400"
+        Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
          <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>

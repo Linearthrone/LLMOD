@@ -131,8 +131,18 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
 
+        private void MessageBorder_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!ViewModel.IsMessageSelectionMode) return;
+            if (sender is FrameworkElement element && element.DataContext is ConversationMessage message)
+            {
+                ViewModel.ToggleMessageSelectionCommand.Execute(message);
+            }
+        }
+
         private void MediaPreview_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            if (ViewModel.IsMessageSelectionMode) return;
             ConversationMessage? message = null;
             
             // Get message from DataContext (works for Image, TextBlock, or Border)

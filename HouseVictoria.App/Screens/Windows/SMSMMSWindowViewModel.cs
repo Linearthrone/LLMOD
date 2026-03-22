@@ -32,6 +32,8 @@ namespace HouseVictoria.App.Screens.Windows
         private string? _activeCallConversationId = null; // Conversation id for the active call (dialer or conversation) for TTS
         private bool _showContactProfile = false;
         private string _contactProfileBody = string.Empty;
+        private bool _isMessageSelectionMode = false;
+        private readonly HashSet<string> _selectedMessageIds = new();
 
         public ObservableCollection<ConversationViewModel> Conversations { get; }
         public ObservableCollection<ConversationMessage> Messages { get; }
@@ -57,6 +59,12 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand BackFromDialerCommand { get; }
         public ICommand OpenContactProfileCommand { get; }
         public ICommand CloseContactProfileCommand { get; }
+        public ICommand DeleteConversationCommand { get; }
+        public ICommand ArchiveConversationCommand { get; }
+        public ICommand EnterMessageSelectionModeCommand { get; }
+        public ICommand ExitMessageSelectionModeCommand { get; }
+        public ICommand ToggleMessageSelectionCommand { get; }
+        public ICommand DeleteSelectedMessagesCommand { get; }
 
         // Media attachment state
         private string? _pendingMediaPath;
@@ -199,6 +207,7 @@ namespace HouseVictoria.App.Screens.Windows
                     OnPropertyChanged(nameof(ShowDialerView));
                     OnPropertyChanged(nameof(SelectedConversationContact));
                     OnPropertyChanged(nameof(SelectedConversationContactName));
+                    System.Windows.Input.CommandManager.InvalidateRequerySuggested();
                 }
             }
         }
@@ -321,6 +330,25 @@ namespace HouseVictoria.App.Screens.Windows
         public bool IsCallActive => _currentCallState == CallState.Connected || _currentCallState == CallState.Outgoing || _currentCallState == CallState.Incoming;
         public bool CanStartCall => _selectedConversation != null && !IsCallActive;
         public bool CanEndCall => IsCallActive;
+        public bool IsMessageSelectionMode
+        {
+            get => _isMessageSelectionMode;
+            set
+            {
+                if (SetProperty(ref _isMessageSelectionMode, value))
+                {
+                    if (!value) _selectedMessageIds.Clear();
+                    OnPropertyChanged(nameof(SelectedMessageCount));
+                    OnPropertyChanged(nameof(CanDeleteSelectedMessages));
+                }
+            }
+        }
+
+        public int SelectedMessageCount => _selectedMessageIds.Count;
+        public bool CanDeleteSelectedMessages => _selectedMessageIds.Count > 0;
+
+        public bool IsMessageSelected(string messageId) => _selectedMessageIds.Contains(messageId);
+
         public bool ShowContactSelection
         {
             get => _showContactSelection;
@@ -436,6 +464,34 @@ namespace HouseVictoria.App.Screens.Windows
                 ShowAppsView = true;
                 SelectedDialerContact = null;
             });
+
+            DeleteConversationCommand = new RelayCommand(async (parameter) =>
+            {
+                if (parameter is ConversationViewModel convVm)
+                {
+                    await DeleteConversationAsync(convVm);
+                }
+            });
+            ArchiveConversationCommand = new RelayCommand(async (parameter) =>
+            {
+                var conv = parameter as ConversationViewModel ?? (_selectedConversation != null ? Conversations.FirstOrDefault(c => c.Conversation.Id == _selectedConversation.Id) : null);
+                await ArchiveConversationAsync(conv);
+            }, (parameter) => _selectedConversation != null || parameter is ConversationViewModel);
+            EnterMessageSelectionModeCommand = new RelayCommand(() => { IsMessageSelectionMode = true; });
+            ExitMessageSelectionModeCommand = new RelayCommand(() => { IsMessageSelectionMode = false; });
+            ToggleMessageSelectionCommand = new RelayCommand((parameter) =>
+            {
+                if (parameter is ConversationMessage msg)
+                {
+                    if (_selectedMessageIds.Contains(msg.Id))
+                        _selectedMessageIds.Remove(msg.Id);
+                    else
+                        _selectedMessageIds.Add(msg.Id);
+                    OnPropertyChanged(nameof(SelectedMessageCount));
+                    OnPropertyChanged(nameof(CanDeleteSelectedMessages));
+                }
+            });
+            DeleteSelectedMessagesCommand = new RelayCommand(async () => await DeleteSelectedMessagesAsync(), () => CanDeleteSelectedMessages);
 
             // Subscribe to message received events
             _communicationService.MessageReceived += CommunicationService_MessageReceived;
@@ -898,6 +954,99 @@ namespace HouseVictoria.App.Screens.Windows
                 ".txt" => "text/plain",
                 _ => "application/octet-stream"
             };
+        }
+
+        private async Task DeleteConversationAsync(ConversationViewModel convVm)
+        {
+            if (convVm == null) return;
+            var conversationId = convVm.Conversation.Id;
+            var wasSelected = _selectedConversation?.Id == conversationId;
+
+            var result = MessageBox.Show(
+                $"Delete this conversation with {convVm.DisplayName}? All messages will be permanently removed.",
+                "Delete Conversation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _communicationService.DeleteConversationAsync(conversationId);
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var toRemove = Conversations.FirstOrDefault(c => c.Conversation.Id == conversationId);
+                    if (toRemove != null)
+                        Conversations.Remove(toRemove);
+                    if (wasSelected)
+                    {
+                        SelectedConversation = null;
+                        ShowConversationList = true;
+                        Messages.Clear();
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error deleting conversation: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task ArchiveConversationAsync(ConversationViewModel? convVm)
+        {
+            var conversationId = convVm?.Conversation.Id ?? _selectedConversation?.Id;
+            if (string.IsNullOrEmpty(conversationId)) return;
+
+            var contactName = convVm?.DisplayName ?? SelectedConversationContactName;
+            var result = MessageBox.Show(
+                $"Archive this conversation with {contactName} to AI long-term memory? The full chat history will be saved permanently for this contact.",
+                "Archive Conversation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _communicationService.ArchiveConversationAsync(conversationId);
+                MessageBox.Show("Conversation archived to AI long-term memory.", "Archived", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error archiving conversation: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task DeleteSelectedMessagesAsync()
+        {
+            if (_selectedConversation == null || _selectedMessageIds.Count == 0) return;
+
+            var result = MessageBox.Show(
+                $"Delete {_selectedMessageIds.Count} selected message(s)? This cannot be undone.",
+                "Delete Messages",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var idsToDelete = _selectedMessageIds.ToList();
+                await _communicationService.DeleteMessagesAsync(_selectedConversation.Id, idsToDelete);
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var id in idsToDelete)
+                    {
+                        var msg = Messages.FirstOrDefault(m => m.Id == id);
+                        if (msg != null) Messages.Remove(msg);
+                        _selectedMessageIds.Remove(id);
+                    }
+                    IsMessageSelectionMode = false;
+                    OnPropertyChanged(nameof(SelectedMessageCount));
+                    OnPropertyChanged(nameof(CanDeleteSelectedMessages));
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error deleting messages: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void CommunicationService_MessageReceived(object? sender, MessageReceivedEventArgs e)

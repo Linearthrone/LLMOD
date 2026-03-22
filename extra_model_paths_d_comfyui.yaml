@@ -1,0 +1,14 @@
+# Extra models from D:\ComfyUI\models - loaded by House Victoria on ComfyUI startup
+# ComfyUI automatically loads this when placed in its root as extra_model_paths.yaml
+d_comfyui_models:
+    base_path: D:\ComfyUI\models
+    checkpoints: checkpoints
+    text_encoders: text_encoders
+    clip_vision: clip_vision
+    configs: configs
+    controlnet: controlnet
+    diffusion_models: diffusion_models
+    embeddings: embeddings
+    loras: loras
+    upscale_models: upscale_models
+    vae: vae

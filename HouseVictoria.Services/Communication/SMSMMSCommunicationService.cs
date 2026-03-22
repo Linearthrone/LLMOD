@@ -47,17 +47,6 @@ namespace HouseVictoria.Services.Communication
 
         private async Task InitializeDataAsync()
         {
-            // Initialize with some sample data
-            var contact1 = new Contact
-            {
-                Id = "1",
-                Name = "John Doe",
-                PhoneNumber = "+1234567890",
-                Type = ContactType.Human
-            };
-            
-            _contacts.Add(contact1);
-            
             // Load AI contacts from persistence if available
             if (_persistenceService != null)
             {
@@ -218,29 +207,6 @@ namespace HouseVictoria.Services.Communication
                     }
                 };
             }
-            
-            // Create sample conversation for human contact
-            var conv1 = new Conversation
-            {
-                Id = "conv1",
-                ContactId = contact1.Id,
-                LastMessageAt = DateTime.Now.AddMinutes(-30)
-            };
-            
-            _conversations.Add(conv1);
-            
-            // Add sample messages
-            _messages[conv1.Id] = new List<ConversationMessage>
-            {
-                new ConversationMessage
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    ConversationId = conv1.Id,
-                    Content = "Hey, how are you?",
-                    Direction = MessageDirection.Incoming,
-                    Timestamp = DateTime.Now.AddMinutes(-30)
-                }
-            };
         }
         
         private async void AIService_MessageReceived(object? sender, AIMessageEventArgs e)
@@ -1225,6 +1191,120 @@ namespace HouseVictoria.Services.Communication
             };
 
             return SendMessageAsync(message);
+        }
+
+        public async Task DeleteConversationAsync(string conversationId)
+        {
+            try
+            {
+                _conversations.RemoveAll(c => c.Id == conversationId);
+                _messages.Remove(conversationId);
+                _chatContexts.Remove(conversationId);
+                _activeCalls.Remove(conversationId);
+
+                if (_persistenceService is DatabasePersistenceService dbService)
+                {
+                    await dbService.DeleteMessagesAsync(conversationId);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Deleted conversation {conversationId}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting conversation: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task DeleteMessagesAsync(string conversationId, IReadOnlyList<string> messageIds)
+        {
+            if (messageIds == null || messageIds.Count == 0)
+                return;
+
+            try
+            {
+                if (_messages.TryGetValue(conversationId, out var msgList))
+                {
+                    var idsToRemove = new HashSet<string>(messageIds);
+                    msgList.RemoveAll(m => idsToRemove.Contains(m.Id));
+                }
+
+                if (_persistenceService is DatabasePersistenceService dbService)
+                {
+                    foreach (var id in messageIds)
+                    {
+                        await dbService.DeleteMessageAsync(id);
+                    }
+                }
+
+                if (_chatContexts.TryGetValue(conversationId, out var context))
+                {
+                    var idsToRemove = new HashSet<string>(messageIds);
+                    var msgs = _messages.TryGetValue(conversationId, out var m) ? m : new List<ConversationMessage>();
+                    var rebuilt = new List<ChatMessage>();
+                    foreach (var msg in msgs.OrderBy(x => x.Timestamp))
+                    {
+                        if (idsToRemove.Contains(msg.Id)) continue;
+                        rebuilt.Add(new ChatMessage
+                        {
+                            Role = msg.Direction == MessageDirection.Outgoing ? "user" : "assistant",
+                            Content = msg.Content,
+                            Timestamp = msg.Timestamp
+                        });
+                    }
+                    _chatContexts[conversationId] = rebuilt;
+                }
+
+                var conv = _conversations.FirstOrDefault(c => c.Id == conversationId);
+                if (conv != null && _messages.TryGetValue(conversationId, out var remaining) && remaining.Count > 0)
+                {
+                    conv.LastMessageAt = remaining.Max(m => m.Timestamp);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Deleted {messageIds.Count} messages from conversation {conversationId}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting messages: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task ArchiveConversationAsync(string conversationId)
+        {
+            if (_memoryService == null)
+            {
+                throw new InvalidOperationException("Memory service is not available for archiving.");
+            }
+
+            var conversation = _conversations.FirstOrDefault(c => c.Id == conversationId);
+            if (conversation == null)
+                throw new ArgumentException($"Conversation {conversationId} not found.");
+
+            var contactId = conversation.ContactId;
+            var messages = await GetMessagesAsync(conversationId);
+            if (messages.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"No messages to archive for conversation {conversationId}");
+                return;
+            }
+
+            var contact = _contacts.FirstOrDefault(c => c.Id == contactId);
+            var contactName = contact?.Name ?? contactId;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"[Archived chat with {contactName} – {DateTime.Now:yyyy-MM-dd HH:mm}]");
+            sb.AppendLine();
+            foreach (var m in messages.OrderBy(x => x.Timestamp))
+            {
+                var role = m.Direction == MessageDirection.Outgoing ? "User" : contactName;
+                var content = m.Type == MessageType.Text ? m.Content : $"[{m.Type}: {m.Content}]";
+                sb.AppendLine($"{m.Timestamp:yyyy-MM-dd HH:mm} | {role}: {content}");
+            }
+
+            var archiveContent = sb.ToString();
+            await _memoryService.AddMemoryAsync(contactId, archiveContent);
+
+            System.Diagnostics.Debug.WriteLine($"Archived conversation {conversationId} ({messages.Count} messages) to AI long-term memory.");
         }
     }
 }

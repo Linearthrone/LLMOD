@@ -164,10 +164,21 @@ if defined STABILITY_MATRIX_PATH (
 )
 echo.
 
-REM --- ComfyUI (portable path from Settings, or auto-discover exe/main.py) ---
+REM --- ComfyUI (portable path from Settings or comfyui-portable-path.txt, or auto-discover) ---
+REM Read ComfyUI path from file written by Settings (like primary-llm.txt)
+if not defined COMFYUI_PORTABLE_PATH (
+    if exist "%SCRIPT_DIR%\comfyui-portable-path.txt" (
+        set /p COMFYUI_PORTABLE_PATH=<"%SCRIPT_DIR%\comfyui-portable-path.txt"
+        set "COMFYUI_PORTABLE_PATH=!COMFYUI_PORTABLE_PATH: =!"
+    )
+)
 set "COMFYUI_STARTED=0"
 if defined COMFYUI_PORTABLE_PATH (
     echo Starting ComfyUI...
+    REM Ensure D:\ComfyUI\models is loaded as extra models (copy config to ComfyUI root)
+    if exist "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" (
+        copy /Y "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" "%COMFYUI_PORTABLE_PATH%\extra_model_paths.yaml" >nul 2>&1
+    )
     if exist "%COMFYUI_PORTABLE_PATH%\run_nvidia_gpu.bat" (
         start "ComfyUI" /B /D "%COMFYUI_PORTABLE_PATH%" cmd /c "run_nvidia_gpu.bat"
         timeout /t 2 /nobreak >nul
@@ -205,6 +216,10 @@ if "!COMFYUI_STARTED!" == "0" (
         if !COMFYUI_IS_EXE! == 1 (
             start "" "!COMFYUI_PATH!"
         ) else (
+            REM Ensure D:\ComfyUI\models is loaded as extra models
+            if exist "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" (
+                copy /Y "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" "!COMFYUI_PATH!\extra_model_paths.yaml" >nul 2>&1
+            )
             pushd "!COMFYUI_PATH!"
             start "ComfyUI" /B cmd /c "python main.py --port 8188"
             popd

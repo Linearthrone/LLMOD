@@ -1167,6 +1167,8 @@ namespace HouseVictoria.App.Screens.Windows
             }
             try
             {
+                // Ensure D:\ComfyUI\models is loaded as extra models on startup
+                WriteComfyUIExtraModelsConfig(path);
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = batPath,
@@ -1178,6 +1180,33 @@ namespace HouseVictoria.App.Screens.Windows
             catch (Exception ex)
             {
                 MessageBox.Show($"Could not start ComfyUI: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static void WriteComfyUIExtraModelsConfig(string comfyUIRoot)
+        {
+            const string extraModelsYaml = @"# Extra models from D:\ComfyUI\models - loaded by House Victoria on ComfyUI startup
+d_comfyui_models:
+    base_path: D:\ComfyUI\models
+    checkpoints: checkpoints
+    text_encoders: text_encoders
+    clip_vision: clip_vision
+    configs: configs
+    controlnet: controlnet
+    diffusion_models: diffusion_models
+    embeddings: embeddings
+    loras: loras
+    upscale_models: upscale_models
+    vae: vae
+";
+            try
+            {
+                var destPath = Path.Combine(comfyUIRoot, "extra_model_paths.yaml");
+                File.WriteAllText(destPath, extraModelsYaml);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Could not write ComfyUI extra_model_paths.yaml: {ex.Message}");
             }
         }
 
@@ -1394,7 +1423,7 @@ namespace HouseVictoria.App.Screens.Windows
                 // Apply theme immediately
                 ThemeManager.ApplyTheme(ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
 
-                // Write primary-llm.txt for start.bat to read (only starts primary LLM server)
+                // Write primary-llm.txt and comfyui-portable-path.txt for start.bat to read
                 try
                 {
                     var appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
@@ -1404,6 +1433,11 @@ namespace HouseVictoria.App.Screens.Windows
                         if (File.Exists(Path.Combine(dir.FullName, "HouseVictoria.sln")))
                         {
                             File.WriteAllText(Path.Combine(dir.FullName, "primary-llm.txt"), PrimaryLLM);
+                            var comfyPath = Path.Combine(dir.FullName, "comfyui-portable-path.txt");
+                            if (!string.IsNullOrWhiteSpace(ComfyUIPortablePath))
+                                File.WriteAllText(comfyPath, ComfyUIPortablePath.Trim());
+                            else if (File.Exists(comfyPath))
+                                File.Delete(comfyPath);
                             break;
                         }
                         dir = dir.Parent;
@@ -1411,7 +1445,7 @@ namespace HouseVictoria.App.Screens.Windows
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Could not write primary-llm.txt: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Could not write primary-llm.txt / comfyui-portable-path.txt: {ex.Message}");
                 }
 
                 MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);

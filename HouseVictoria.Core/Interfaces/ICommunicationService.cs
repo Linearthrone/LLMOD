@@ -16,6 +16,16 @@ namespace HouseVictoria.Core.Interfaces
         Task StartVideoCallAsync(string contactId);
         Task EndVideoCallAsync(string conversationId);
         Task ShareDocumentAsync(string conversationId, string filePath);
+
+        /// <summary>Deletes an entire conversation and all its messages.</summary>
+        Task DeleteConversationAsync(string conversationId);
+
+        /// <summary>Deletes specific messages from a conversation.</summary>
+        Task DeleteMessagesAsync(string conversationId, IReadOnlyList<string> messageIds);
+
+        /// <summary>Archives a conversation to AI long-term memory (permanent storage).</summary>
+        Task ArchiveConversationAsync(string conversationId);
+
         event EventHandler<MessageReceivedEventArgs>? MessageReceived;
         event EventHandler<CallStateChangedEventArgs>? CallStateChanged;
     }

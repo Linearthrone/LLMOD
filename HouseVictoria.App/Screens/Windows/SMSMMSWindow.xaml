@@ -19,6 +19,7 @@
         <converters:FilePathToImageSourceConverter x:Key="FilePathToImageSourceConverter"/>
         <converters:MessageToImageSourceConverter x:Key="MessageToImageSourceConverter"/>
         <converters:CallStateToTextConverter x:Key="CallStateToTextConverter"/>
+        <converters:MessageSelectionConverter x:Key="MessageSelectionConverter"/>
     </Window.Resources>
 
     <!-- Resize Border - Invisible but allows resizing -->
@@ -436,6 +437,18 @@
                                            Margin="0,0,0,1"
                                            HorizontalContentAlignment="Stretch"
                                            HorizontalAlignment="Stretch">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Delete conversation" 
+                                                          Command="{Binding DataContext.DeleteConversationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <MenuItem Header="Archive to memory" 
+                                                          Command="{Binding DataContext.ArchiveConversationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          Foreground="{StaticResource TextPrimaryBrush}"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Background" Value="{StaticResource DarkCardBrush}"/>
@@ -608,13 +621,16 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Message Header -->
-                    <Border Grid.Row="0" Background="{StaticResource DarkCardBrush}" Padding="16,12">
+                    <!-- Message Header (normal mode) -->
+                    <Border Grid.Row="0" Background="{StaticResource DarkCardBrush}" Padding="16,12"
+                            Visibility="{Binding IsMessageSelectionMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
@@ -650,8 +666,30 @@
                                        TextTrimming="CharacterEllipsis"
                                        TextWrapping="NoWrap"/>
 
-                            <!-- Voice call -->
+                            <!-- Archive -->
                             <Button Grid.Column="3"
+                                    Width="44" Height="44"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding ArchiveConversationCommand}"
+                                    ToolTip="Archive to AI memory">
+                                <TextBlock Text="📦" FontSize="18" Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Select messages (delete mode) -->
+                            <Button Grid.Column="4"
+                                    Width="44" Height="44"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding EnterMessageSelectionModeCommand}"
+                                    ToolTip="Delete messages">
+                                <TextBlock Text="🗑" FontSize="18" Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+
+                            <!-- Voice call -->
+                            <Button Grid.Column="5"
                                     Width="44" Height="44"
                                     Background="Transparent"
                                     BorderThickness="0"
@@ -662,7 +700,7 @@
                             </Button>
 
                             <!-- Video call -->
-                            <Button Grid.Column="4"
+                            <Button Grid.Column="6"
                                     Width="44" Height="44"
                                     Background="Transparent"
                                     BorderThickness="0"
@@ -674,6 +712,37 @@
                         </Grid>
                     </Border>
 
+                    <!-- Message Header (selection mode) -->
+                    <Border Grid.Row="0" Background="{StaticResource DarkCardBrush}" Padding="16,12"
+                            Visibility="{Binding IsMessageSelectionMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="Cancel" FontSize="14"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="{StaticResource TextPrimaryBrush}" Padding="8,0" Margin="0,0,12,0"
+                                    Command="{Binding ExitMessageSelectionModeCommand}"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding SelectedMessageCount, StringFormat='{}{0} selected'}"
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="14"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="2" Content="Delete" FontSize="14"
+                                    Background="{StaticResource ErrorBrush}" BorderThickness="0"
+                                    Foreground="White" Padding="12,6" Margin="0,0,8,0"
+                                    Command="{Binding DeleteSelectedMessagesCommand}"
+                                    ToolTip="Delete selected messages"/>
+                            <Button Grid.Column="3" Content="✕" FontSize="18"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="{StaticResource TextPrimaryBrush}" Padding="4,0"
+                                    Command="{Binding ExitMessageSelectionModeCommand}"
+                                    ToolTip="Cancel"/>
+                        </Grid>
+                    </Border>
+
                     <!-- Messages -->
                     <ScrollViewer x:Name="MessagesScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" 
                                  Padding="12,8" Background="{StaticResource DarkBackgroundBrush}">
@@ -682,13 +751,29 @@
                             <DataTemplate>
                                     <Grid Margin="0,4">
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         
-                                        <!-- Incoming Message -->
-                                        <Border Grid.Column="0" Grid.ColumnSpan="2"
+                                        <!-- Selection CheckBox (visible in selection mode) -->
+                                        <CheckBox Grid.Column="0" Margin="8,0,8,0" VerticalAlignment="Center"
+                                                  Command="{Binding DataContext.ToggleMessageSelectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  CommandParameter="{Binding}"
+                                                  Visibility="{Binding DataContext.IsMessageSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <CheckBox.IsChecked>
+                                                <MultiBinding Converter="{StaticResource MessageSelectionConverter}" Mode="OneWay">
+                                                    <Binding/>
+                                                    <Binding Path="DataContext.SelectedMessageCount" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                    <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                </MultiBinding>
+                                            </CheckBox.IsChecked>
+                                        </CheckBox>
+                                        
+                                        <!-- Incoming Message (clickable in selection mode to toggle) -->
+                                        <Border Grid.Column="1"
                                                HorizontalAlignment="{Binding Direction, Converter={StaticResource IncomingToAlignmentConverter}}"
+                                               MouseLeftButtonDown="MessageBorder_MouseLeftButtonDown"
                                                MaxWidth="280"
                                                Padding="12,8"
                                                CornerRadius="18"
@@ -698,11 +783,24 @@
                                                     <Setter Property="Background" Value="{StaticResource DarkInputBrush}"/>
                                                     <Setter Property="HorizontalAlignment" Value="Left"/>
                                                     <Setter Property="Margin" Value="12,0,60,0"/>
+                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                    <Setter Property="BorderThickness" Value="0"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding Direction}" Value="Outgoing">
                                                             <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
                                                             <Setter Property="HorizontalAlignment" Value="Right"/>
                                                             <Setter Property="Margin" Value="60,0,12,0"/>
+                                                </DataTrigger>
+                                                <DataTrigger Value="True">
+                                                    <DataTrigger.Binding>
+                                                        <MultiBinding Converter="{StaticResource MessageSelectionConverter}">
+                                                            <Binding/>
+                                                            <Binding Path="DataContext.SelectedMessageCount" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                            <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                        </MultiBinding>
+                                                    </DataTrigger.Binding>
+                                                    <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="2"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>

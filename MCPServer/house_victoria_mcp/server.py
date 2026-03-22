@@ -1,5 +1,6 @@
 """Main MCP Server implementation for House Victoria."""
 
+import anyio
 import asyncio
 import json
 import sqlite3
@@ -904,16 +905,15 @@ async def register_tt_tools(
 
 def main():
     """Main entry point for the MCP server."""
-    
+
     async def run_server():
         # Initialize server
         server = await create_server()
-        
-        # Run server
+        # Run server (use run_stdio_async directly to avoid nested anyio.run)
         logger.info("Starting House Victoria MCP Server...")
-        await server.run(transport="stdio")
-    
-    asyncio.run(run_server())
+        await server.run_stdio_async()
+
+    anyio.run(run_server)
 
 
 if __name__ == "__main__":
