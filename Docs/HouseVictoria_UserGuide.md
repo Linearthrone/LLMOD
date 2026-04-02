@@ -10,68 +10,76 @@
 ## Table of Contents
 
 ### Getting Started
-1. [Introduction](#introduction)
-2. [Installation & Setup](#installation--setup)
-3. [First Launch](#first-launch)
-4. [Understanding the Interface](#understanding-the-interface)
+
+- **1.** [Introduction](#introduction)
+- **2.** [Installation & Setup](#installation--setup)
+- **3.** [First Launch](#first-launch)
+- **4.** [Understanding the Interface](#understanding-the-interface)
 
 ### Core Features
-5. [Main Tray (Bottom Right)](#main-tray-bottom-right)
-6. [Top Tray (Auto-hiding)](#top-tray-auto-hiding)
-7. [System Monitor Drawer](#system-monitor-drawer)
+
+- **5.** [Main Tray (Bottom Right)](#main-tray-bottom-right)
+- **6.** [Top Tray (Auto-hiding)](#top-tray-auto-hiding)
+- **7.** [System Monitor Drawer](#system-monitor-drawer)
 
 ### Communication
-8. [SMS/MMS Chat Window](#smsmms-chat-window)
-   - [Starting Conversations](#starting-conversations)
-   - [Sending Messages](#sending-messages)
-   - [Sending Media Attachments](#sending-media-attachments)
-   - [Viewing Media](#viewing-media)
-   - [Managing Conversations](#managing-conversations)
+
+- **8.** [SMS/MMS Chat Window](#smsmms-chat-window)
+  - [Starting Conversations](#starting-conversations)
+  - [Sending Messages](#sending-messages)
+  - [Sending Media Attachments](#sending-media-attachments)
+  - [Viewing Media](#viewing-media)
+  - [Managing Conversations](#managing-conversations)
 
 ### AI Management
-9. [AI Models & Personas Window](#ai-models--personas-window)
-   - [Creating AI Personas](#creating-ai-personas)
-   - [Configuring LLM Parameters](#configuring-llm-parameters)
-   - [Loading Models](#loading-models)
-   - [Pulling Models from Ollama](#pulling-models-from-ollama)
-   - [Editing Personas](#editing-personas)
-   - [Deleting Personas](#deleting-personas)
+
+- **9.** [AI Models & Personas Window](#ai-models--personas-window)
+  - [Creating AI Personas](#creating-ai-personas)
+  - [Configuring LLM Parameters](#configuring-llm-parameters)
+  - [Loading Models](#loading-models)
+  - [Pulling Models from Ollama](#pulling-models-from-ollama)
+  - [Editing Personas](#editing-personas)
+  - [Deleting Personas](#deleting-personas)
 
 ### Project Management
-10. [Projects Window](#projects-window)
-    - [Creating Projects](#creating-projects)
-    - [Viewing Project List](#viewing-project-list)
-    - [Filtering and Sorting Projects](#filtering-and-sorting-projects)
-    - [Viewing Project Details](#viewing-project-details)
-    - [Managing Roadblocks](#managing-roadblocks)
-    - [Managing Artifacts](#managing-artifacts)
-    - [Viewing AI Collaboration Logs](#viewing-ai-collaboration-logs)
-    - [Editing Projects](#editing-projects)
-    - [Deleting Projects](#deleting-projects)
+
+- **10.** [Projects Window](#projects-window)
+  - [Creating Projects](#creating-projects)
+  - [Viewing Project List](#viewing-project-list)
+  - [Filtering and Sorting Projects](#filtering-and-sorting-projects)
+  - [Viewing Project Details](#viewing-project-details)
+  - [Managing Roadblocks](#managing-roadblocks)
+  - [Managing Artifacts](#managing-artifacts)
+  - [Viewing AI Collaboration Logs](#viewing-ai-collaboration-logs)
+  - [Editing Projects](#editing-projects)
+  - [Deleting Projects](#deleting-projects)
 
 ### Settings & Configuration
-11. [Settings Window](#settings-window)
-    - [LLM Server Settings](#llm-server-settings)
-    - [MCP Server Settings](#mcp-server-settings)
-    - [TTS Settings](#tts-settings)
-    - [Virtual Environment Settings](#virtual-environment-settings)
-    - [Overlay Settings](#overlay-settings)
-    - [Avatar Settings](#avatar-settings)
-    - [Locomotion Settings](#locomotion-settings)
-    - [Tools Configuration](#tools-configuration)
-    - [Persistent Memory Configuration](#persistent-memory-configuration)
-    - [Importing and Exporting Settings](#importing-and-exporting-settings)
-    - [Resetting Settings](#resetting-settings)
+
+- **11.** [Settings Window](#settings-window)
+  - [LLM Server Settings](#llm-server-settings)
+  - [MCP Server Settings](#mcp-server-settings)
+  - [TTS Settings](#tts-settings)
+  - [Virtual Environment Settings](#virtual-environment-settings)
+  - [Overlay Settings](#overlay-settings)
+  - [Avatar Settings](#avatar-settings)
+  - [Locomotion Settings](#locomotion-settings)
+  - [Tools Configuration](#tools-configuration)
+  - [Persistent Memory Configuration](#persistent-memory-configuration)
+  - [Importing and Exporting Settings](#importing-and-exporting-settings)
+  - [Resetting Settings](#resetting-settings)
 
 ### Utilities
-12. [Global Log Directory Window](#global-log-directory-window)
-13. [Generated Files](#generated-files)
+
+- **12.** [Global Log Directory Window](#global-log-directory-window)
+- **13.** [Generated Files](#generated-files)
 
 ### Tips & Troubleshooting
-14. [Keyboard Shortcuts](#keyboard-shortcuts)
-15. [Common Tasks](#common-tasks)
-16. [Troubleshooting](#troubleshooting)
-17. [FAQ](#faq)
+
+- **14.** [Keyboard Shortcuts](#keyboard-shortcuts)
+- **15.** [Common Tasks](#common-tasks)
+- **16.** [Troubleshooting](#troubleshooting)
+- **17.** [FAQ](#faq)
 
 ---
 
@@ -135,16 +143,19 @@ The application runs in the background and can be minimized to the system tray.
 House Victoria uses three main overlay components:
 
 ### 1. Main Tray (Bottom Right)
+
 - Always visible glass panel
 - Three buttons: SMS/MMS, AI Models, Settings
 - Click-through support (won't interfere with other applications)
 
 ### 2. Top Tray (Top Edge)
+
 - Auto-hides when not in use
 - Drag-and-drop file processing
 - Quick access to generated files, logs, and projects
 
 ### 3. System Monitor Drawer (Left Edge)
+
 - Toggle open/close
 - Real-time system metrics
 - Server status and controls
@@ -172,7 +183,7 @@ The Main Tray is your primary access point to House Victoria's features.
    - Configure all application settings
    - Test service connections
 
-### Window Management
+### Main Tray: window management
 
 - Windows opened from the Main Tray can be minimized to the system tray
 - Right-click the system tray icon to restore minimized windows
@@ -187,6 +198,7 @@ The Top Tray provides quick access to file processing and utilities.
 ### Features
 
 #### Drag-and-Drop File Upload
+
 1. Drag files from Windows Explorer onto the Top Tray
 2. Supported file types:
    - Text files: `.txt`, `.md`, `.json`, `.xml`, `.csv`, `.log`
@@ -196,16 +208,19 @@ The Top Tray provides quick access to file processing and utilities.
 4. Processing results are displayed with error reporting
 
 #### Generated Files Button 📁
+
 - Opens the folder containing AI-generated files
 - Shows message if no files are available
 - Files are organized by generation date
 
 #### Global Log Directory Button 📋
+
 - Opens the Global Log Directory window
 - View categorized log entries
 - Export logs in various formats
 
 #### Projects/Goals Button 📊
+
 - Opens the Projects Window
 - Quick access to project management
 
@@ -230,12 +245,14 @@ The System Monitor Drawer provides real-time system information and server manag
 ### System Metrics
 
 **Real-Time Monitoring:**
+
 - **CPU Usage**: Current CPU utilization percentage
 - **RAM Usage**: Current memory usage and available memory
 - **CPU Temperature**: Temperature in Celsius (via WMI)
 - **System Uptime**: How long your system has been running
 
 **Status Indicators:**
+
 - **Primary AI**: Currently active AI persona
 - **Current AI Contact**: AI contact in active conversation
 - **Virtual Environment**: Connection status to Unreal Engine
@@ -243,12 +260,14 @@ The System Monitor Drawer provides real-time system information and server manag
 ### Server Management
 
 **Server Status List:**
+
 - **Ollama**: LLM server status
 - **MCP Server**: Model Context Protocol server status
 - **TTS**: Text-to-speech service status
 - **Unreal Engine**: Virtual environment connection status
 
 **Server Controls:**
+
 - **Restart**: Restart a stopped server
 - **Stop**: Stop a running server
 - Status indicators show connection state
@@ -264,7 +283,7 @@ The drawer features "House Victoria" calligraphy branding at the bottom.
 
 The SMS/MMS Chat Window is your primary interface for communicating with contacts (both human and AI).
 
-### Window Layout
+### Chat window layout
 
 - **Left Panel**: Conversation list (all your conversations)
 - **Center Panel**: Message view (messages in selected conversation)
@@ -281,12 +300,14 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 ### Sending Messages
 
 **Text Messages:**
+
 1. Type your message in the input area at the bottom
 2. Press **Enter** to send
 3. Press **Shift+Enter** for a new line
 4. Messages appear immediately in the conversation (optimistic update)
 
 **Message Types:**
+
 - **Text**: Standard text messages
 - **Image**: Image attachments (jpg, jpeg, png, gif, bmp)
 - **Video**: Video attachments (mp4, avi, mov, wmv)
@@ -311,6 +332,7 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 6. Type your message (optional) and press Enter to send
 
 **File Size Limits:**
+
 - Maximum file size: **50MB**
 - Error messages appear if file is too large
 - Large files are stored on disk; small images (<10MB) are cached in memory
@@ -318,11 +340,13 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 ### Viewing Media
 
 **In Message Bubbles:**
+
 - **Images**: Thumbnail preview (max 250x200px)
 - **Videos**: Placeholder with play icon and filename
 - **Audio/Documents**: Icon with filename
 
 **Opening Full Media:**
+
 - Click on any media preview in a message bubble
 - Images open in default image viewer
 - Videos open in default video player
@@ -332,6 +356,7 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 ### Managing Conversations
 
 **Conversation List:**
+
 - Shows all conversations sorted by last message time
 - Displays:
   - Contact name
@@ -340,6 +365,7 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 - Click a conversation to open it
 
 **Message View:**
+
 - Displays last 100 messages in the conversation
 - Incoming messages on the left
 - Outgoing messages on the right
@@ -347,6 +373,7 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 - Auto-scrolls to latest message
 
 **Window Features:**
+
 - **Minimize**: Minimize to system tray
 - **Restore**: Restore from system tray icon
 - **Resizable**: Drag edges to resize (maintains phone-like aspect ratio)
@@ -357,11 +384,13 @@ The SMS/MMS Chat Window is your primary interface for communicating with contact
 You can talk during a call: your speech is transcribed and sent as a message, and the AI’s reply is spoken aloud.
 
 **Prerequisites:**
+
 - Run `start.bat` so the STT server (port 8000) and TTS server (port 5000, or Windows TTS fallback) are started.
 - In **Settings**, ensure **STT Endpoint** is `http://localhost:8000/transcribe` (or your STT URL) and **TTS Endpoint** is `http://localhost:5000`. Use **Test** next to each to confirm they are reachable.
 - Optional: add Piper voice `.onnx` files to `Media\PiperVoices` for better TTS; otherwise the app uses Windows TTS.
 
 **During a call:**
+
 1. Start a call with an AI contact (green phone button).
 2. When connected, use the **microphone / record** button to start recording from your default microphone.
 3. Speak, then press the button again to stop recording.
@@ -373,6 +402,7 @@ You can talk during a call: your speech is transcribed and sent as a message, an
 ### AI Response Handling
 
 When chatting with AI contacts:
+
 - AI responses are generated automatically
 - **Timeout**: 5-minute timeout for AI responses (configurable)
 - **Error Messages**: User-friendly error messages if timeout occurs
@@ -384,7 +414,7 @@ When chatting with AI contacts:
 
 The AI Models & Personas Window allows you to create and manage AI personas for conversations.
 
-### Window Layout
+### AI Models window layout
 
 - **Contact Book View**: List of all AI personas
 - **Create Persona Button**: Create new AI persona
@@ -412,6 +442,7 @@ The AI Models & Personas Window allows you to create and manage AI personas for 
 5. Click **"Create"** to save the persona
 
 **Validation:**
+
 - Model must be available in Ollama
 - Name must be unique
 - Data path is created automatically
@@ -429,6 +460,7 @@ LLM parameters control how the AI generates responses:
 - **Context Length**: How much conversation history to remember
 
 **Tips:**
+
 - Lower temperature for factual/task-oriented conversations
 - Higher temperature for creative writing or brainstorming
 - Adjust MaxTokens if responses are cut off or too long
@@ -452,6 +484,7 @@ LLM parameters control how the AI generates responses:
 6. **Timeout**: 30 minutes for large model downloads
 
 **Model Names:**
+
 - Use format: `modelname` or `modelname:tag`
 - Examples: `llama2`, `mistral:7b`, `codellama:13b`
 
@@ -482,7 +515,7 @@ LLM parameters control how the AI generates responses:
 
 The Projects Window helps you organize and track your goals and projects with AI collaboration.
 
-### Window Layout
+### Projects window layout
 
 - **Top Bar**: Filter and sort controls
 - **Project List**: Card-based display of all projects
@@ -507,6 +540,7 @@ The Projects Window helps you organize and track your goals and projects with AI
 ### Viewing Project List
 
 **Project Cards Display:**
+
 - **Priority Indicator**: Color-coded (red = high, orange = medium, green = low)
 - **Project Type Badge**: Development, Research, Personal, etc.
 - **Phase Badge**: Current project phase
@@ -518,10 +552,12 @@ The Projects Window helps you organize and track your goals and projects with AI
 ### Filtering and Sorting Projects
 
 **Filter Options:**
+
 - **By Type**: All, Development, Research, Personal, Business, Other
 - **By Phase**: All, Planning, InProgress, Review, Completed, OnHold, Cancelled
 
 **Sort Options:**
+
 - **By Name**: A-Z or Z-A
 - **By Priority**: High-Low or Low-High
 - **By Deadline**: Soonest or Latest
@@ -534,6 +570,7 @@ Filters and sorts update the project list in real-time.
 Click any project card to open the **Project Detail Dialog**.
 
 **Overview Tab:**
+
 - **Project Information**: Name, description, type, priority
 - **Phase Management**: Dropdown to change phase
 - **Timeline**: Start date, deadline, created date
@@ -546,11 +583,13 @@ Click any project card to open the **Project Detail Dialog**.
   - Days remaining
 
 **Roadblocks Tab:**
+
 - **Add Roadblock**: Text input to add new roadblocks
 - **Roadblocks List**: All roadblocks with remove buttons
 - **Edit Mode**: Toggle to enable/disable editing
 
 **Artifacts Tab:**
+
 - **Upload Artifact**: File picker to upload files
 - **Artifacts List**: All uploaded files with:
   - Type icons
@@ -559,6 +598,7 @@ Click any project card to open the **Project Detail Dialog**.
   - Preview, Download, Delete buttons
 
 **AI Collaboration Logs Tab:**
+
 - **Filter by AI Contact**: Dropdown to filter logs
 - **Search**: Text search in logs
 - **Timeline View**: Chronological list of AI interactions
@@ -568,6 +608,7 @@ Click any project card to open the **Project Detail Dialog**.
 ### Managing Roadblocks
 
 **Adding Roadblocks:**
+
 1. Open project details
 2. Go to **Roadblocks Tab**
 3. Type roadblock description in input field
@@ -575,6 +616,7 @@ Click any project card to open the **Project Detail Dialog**.
 5. Roadblock appears in list
 
 **Removing Roadblocks:**
+
 1. Open project details
 2. Go to **Roadblocks Tab**
 3. Click **Remove** button next to roadblock
@@ -583,6 +625,7 @@ Click any project card to open the **Project Detail Dialog**.
 ### Managing Artifacts
 
 **Uploading Artifacts:**
+
 1. Open project details
 2. Go to **Artifacts Tab**
 3. Click **"Upload Artifact"** button
@@ -590,12 +633,14 @@ Click any project card to open the **Project Detail Dialog**.
 5. Files appear in artifacts list
 
 **Viewing Artifacts:**
+
 - Click **Preview** to view file
 - Click **Download** to save file
 - File type icons indicate file format
 - File size and description displayed
 
 **Deleting Artifacts:**
+
 1. Open project details
 2. Go to **Artifacts Tab**
 3. Click **Delete** button next to artifact
@@ -628,6 +673,7 @@ Click any project card to open the **Project Detail Dialog**.
 5. Click **"Cancel"** to discard changes
 
 **Phase Changes:**
+
 - Use dropdown in Overview tab to change phase
 - Changes are saved immediately
 
@@ -647,9 +693,10 @@ Click any project card to open the **Project Detail Dialog**.
 
 The Settings Window allows you to configure all aspects of House Victoria.
 
-### Window Layout
+### Settings window layout
 
 Settings are organized into collapsible sections:
+
 - LLM Server Settings
 - MCP Server Settings
 - TTS Settings
@@ -663,11 +710,13 @@ Settings are organized into collapsible sections:
 ### LLM Server Settings
 
 **Ollama Configuration:**
+
 - **Endpoint**: Ollama server URL (default: `http://localhost:11434`)
 - **Test Connection**: Button to test Ollama connectivity
 - **Status Indicator**: Shows ✓ Connected, ✗ Failed, or Testing...
 
 **Connection Testing:**
+
 1. Enter Ollama endpoint URL
 2. Click **"Test Connection"** button
 3. Status indicator updates:
@@ -678,6 +727,7 @@ Settings are organized into collapsible sections:
 ### MCP Server Settings
 
 **MCP Server Configuration:**
+
 - **Endpoint**: MCP Server URL (default: `http://localhost:8080`)
 - **Test Connection**: Button to test MCP Server connectivity
 - **Status Indicator**: Connection status
@@ -687,6 +737,7 @@ Settings are organized into collapsible sections:
 ### TTS Settings
 
 **Text-to-Speech Configuration:**
+
 - **Endpoint**: TTS service URL (default: `http://localhost:5000`)
 - **Test Connection**: Button to test TTS service
 - **Status Indicator**: Connection status
@@ -696,6 +747,7 @@ Settings are organized into collapsible sections:
 ### STT Settings (Speech-to-Text)
 
 **Speech-to-Text Configuration:**
+
 - **STT Endpoint**: URL for transcription (default: `http://localhost:8000/transcribe`)
 - **Test STT**: Button to verify the STT server is reachable (see Settings UI)
 
@@ -704,6 +756,7 @@ Settings are organized into collapsible sections:
 ### Virtual Environment Settings
 
 **Unreal Engine Configuration:**
+
 - **Endpoint**: WebSocket URL (default: `ws://localhost:8888`)
 - **Test Connection**: Button to test WebSocket connection
 - **Status Indicator**: Connection status
@@ -715,12 +768,14 @@ Settings are organized into collapsible sections:
 ### Overlay Settings
 
 **Overlay Behavior:**
+
 - **Enable Overlay**: Toggle to enable/disable overlay functionality
 - **Opacity**: Slider (0.1-1.0) to control overlay transparency
 - **Auto-Hide Trays**: Toggle to enable/disable auto-hide for trays
 - **Auto-Hide Delay**: Milliseconds (0-60000) before trays auto-hide
 
 **Validation:**
+
 - Opacity must be between 0.1 and 1.0
 - Auto-hide delay must be between 0 and 60000ms
 - Error messages appear for invalid values
@@ -728,30 +783,35 @@ Settings are organized into collapsible sections:
 ### Avatar Settings
 
 **Avatar Configuration:**
+
 - **Model Path**: Path to avatar 3D model file
 - **Voice Model**: Voice model identifier
 - **Voice Speed**: Slider (0.1-3.0) for speech speed
 - **Voice Pitch**: Slider (0.1-3.0) for voice pitch
 
 **Validation:**
+
 - Voice Speed and Pitch must be between 0.1 and 3.0
 - Error messages for invalid values
 
 ### Locomotion Settings
 
 **Movement Parameters:**
+
 - **Walk Speed**: Slider (0.1-10.0) for walking speed
 - **Run Speed**: Slider (0.1-20.0) for running speed
 - **Jump Height**: Slider (0.1-10.0) for jump height
 - **Enable Physics Interaction**: Checkbox to enable physics
 
 **Validation:**
+
 - All speed/height values have specific ranges
 - Error messages for invalid values
 
 ### Tools Configuration
 
 **Available Tools:**
+
 - **File System Access**: Checkbox to enable file system operations
 - **Network Access**: Checkbox to enable network operations
 - **System Commands**: Checkbox to enable system command execution
@@ -761,6 +821,7 @@ Settings are organized into collapsible sections:
 ### Persistent Memory Configuration
 
 **Memory Settings:**
+
 - **Enable Memory**: Toggle to enable persistent memory
 - **Memory Path**: Directory path for memory storage
 - **Max Entries**: Maximum memory entries (1-1000000)
@@ -768,6 +829,7 @@ Settings are organized into collapsible sections:
 - **Retention Days**: Days to retain memories (1-3650)
 
 **Validation:**
+
 - Max Entries: 1-1000000
 - Importance Threshold: 0.0-1.0
 - Retention Days: 1-3650
@@ -776,12 +838,14 @@ Settings are organized into collapsible sections:
 ### Importing and Exporting Settings
 
 **Export Settings:**
+
 1. Click **"Export Settings"** button
 2. Choose save location
 3. Settings are exported as JSON file
 4. File can be shared or backed up
 
 **Import Settings:**
+
 1. Click **"Import Settings"** button
 2. Select JSON settings file
 3. Settings are imported and applied
@@ -802,11 +866,13 @@ Settings are organized into collapsible sections:
 ### Settings Management
 
 **Saving Settings:**
+
 - Settings are automatically saved to `App.config` file
 - No manual save button needed
 - Changes persist across application restarts
 
 **Validation:**
+
 - Real-time validation with error messages
 - Invalid values are highlighted
 - Settings cannot be saved with invalid values
@@ -822,7 +888,7 @@ The Global Log Directory Window provides access to all application logs.
 - Click **"Global Log Directory"** button in Top Tray
 - Or access from other windows that reference logs
 
-### Window Layout
+### Global Log window layout
 
 - **Left Panel**: Hierarchical log categories (tree view)
 - **Right Panel**: Log entry details
@@ -831,12 +897,14 @@ The Global Log Directory Window provides access to all application logs.
 ### Viewing Logs
 
 **Category Navigation:**
+
 - Expand categories in tree view
 - Categories and subcategories organize logs
 - **Unread Count Badges**: Show number of unread logs per category
 - **Total Count**: Total logs in selected category
 
 **Log Entry Details:**
+
 - **Title**: Log entry title
 - **Timestamp**: When the log was created
 - **Severity**: Log level (Info, Warning, Error, etc.)
@@ -849,20 +917,24 @@ The Global Log Directory Window provides access to all application logs.
 ### Log Actions
 
 **Refresh Logs:**
+
 - Click **"Refresh"** button
 - Reloads logs from storage
 - Updates unread counts
 
 **Mark All as Read:**
+
 - Click **"Mark All as Read"** button
 - Marks all logs in current category as read
 - Updates unread count badges
 
 **Auto-Mark as Read:**
+
 - Logs are automatically marked as read when selected
 - No manual action needed
 
 **Export Logs:**
+
 1. Click **"Export"** button
 2. Choose export format:
    - **TXT**: Plain text format
@@ -874,6 +946,7 @@ The Global Log Directory Window provides access to all application logs.
 ### Log Categories
 
 Logs are organized into categories such as:
+
 - Application Events
 - AI Interactions
 - System Events
@@ -903,6 +976,7 @@ AI-generated files are stored in a dedicated folder accessible from the Top Tray
 ### No Files Available
 
 If no files have been generated:
+
 - Button shows a message: "No generated files available"
 - Folder may be empty or not yet created
 
@@ -911,15 +985,18 @@ If no files have been generated:
 ## Keyboard Shortcuts
 
 ### General
+
 - **Enter**: Send message (in SMS/MMS window)
 - **Shift+Enter**: New line (in message input)
 - **Escape**: Close dialogs or cancel operations
 
-### Window Management
+### Shortcuts: window management
+
 - **Minimize**: Click minimize button (minimizes to system tray)
 - **Restore**: Right-click system tray icon → Restore window
 
 ### Navigation
+
 - **Click**: Select items, open dialogs
 - **Double-click**: Open project details (in Projects window)
 
@@ -985,6 +1062,7 @@ If no files have been generated:
 **Problem**: AI responses take too long or timeout.
 
 **Solutions:**
+
 1. **Reduce Max Tokens**: Lower the MaxTokens parameter in persona settings
 2. **Reduce Context Length**: Decrease context window size
 3. **Try Different Model**: Use a smaller/faster model
@@ -998,6 +1076,7 @@ If no files have been generated:
 **Problem**: Connection test fails for Ollama, MCP Server, etc.
 
 **Solutions:**
+
 1. **Verify Service is Running**: Check if service is actually running
 2. **Check Endpoint URL**: Ensure URL is correct (e.g., `http://localhost:11434`)
 3. **Check Firewall**: Windows Firewall may be blocking connections
@@ -1011,6 +1090,7 @@ If no files have been generated:
 **Problem**: Files dropped on Top Tray are not processed.
 
 **Solutions:**
+
 1. **Check File Type**: Ensure file type is supported
 2. **Check File Size**: Very large files may take time
 3. **Check Permissions**: Ensure write permissions for data directory
@@ -1022,6 +1102,7 @@ If no files have been generated:
 **Problem**: Projects window crashes or doesn't open.
 
 **Solutions:**
+
 1. **Restart Application**: Close and restart House Victoria
 2. **Check Database**: Database may be corrupted (check logs)
 3. **Clear Cache**: Delete temporary files if needed
@@ -1032,6 +1113,7 @@ If no files have been generated:
 **Problem**: CPU/RAM metrics show 0% or incorrect values.
 
 **Solutions:**
+
 1. **Refresh**: Click refresh or wait for next update (500ms interval)
 2. **Check Permissions**: Application may need elevated permissions
 3. **Restart**: Restart the application
@@ -1044,6 +1126,7 @@ If no files have been generated:
 **Problem**: Settings changes are not persisted.
 
 **Solutions:**
+
 1. **Check Validation**: Ensure all values are valid (no error messages)
 2. **Check Permissions**: Ensure write permissions for App.config
 3. **Manual Save**: Settings auto-save, but try closing and reopening Settings window
@@ -1067,7 +1150,8 @@ If no files have been generated:
 
 ### Q: How do I create my first AI persona?
 
-**A**: 
+**A**:
+
 1. Click **AI Models** button in Main Tray
 2. Click **"Create Persona"**
 3. Enter name, select model, write system prompt
