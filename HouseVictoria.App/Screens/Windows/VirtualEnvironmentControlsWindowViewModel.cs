@@ -223,7 +223,7 @@ namespace HouseVictoria.App.Screens.Windows
 
                     var result = await _virtualEnvironmentService.SpawnAvatarAsync(avatar);
                     MessageBox.Show($"Avatar spawned: {result}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
-                    
+
                     Avatars.Add(new AvatarViewModel
                     {
                         Id = avatar.Id,

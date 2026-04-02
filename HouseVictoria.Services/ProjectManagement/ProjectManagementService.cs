@@ -145,7 +145,7 @@ namespace HouseVictoria.Services.ProjectManagement
                 if (artifact != null)
                 {
                     artifacts.Remove(artifact);
-                    
+
                     // If no artifacts remain, remove the project entry
                     if (artifacts.Count == 0)
                     {

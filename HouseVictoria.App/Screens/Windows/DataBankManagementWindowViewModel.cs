@@ -32,8 +32,8 @@ namespace HouseVictoria.App.Screens.Windows
         private readonly ObservableCollection<string> _availableCategories = new();
 
         public ObservableCollection<DataBankViewModel> FilteredDataBanks { get; }
-        public ObservableCollection<DataBankEntryViewModel> SelectedDataBankEntries 
-        { 
+        public ObservableCollection<DataBankEntryViewModel> SelectedDataBankEntries
+        {
             get => _selectedDataBankEntries;
             private set => SetProperty(ref _selectedDataBankEntries, value);
         }
@@ -138,7 +138,7 @@ namespace HouseVictoria.App.Screens.Windows
             if (!string.IsNullOrWhiteSpace(_searchQuery))
             {
                 var searchLower = _searchQuery.ToLowerInvariant();
-                query = query.Where(b => 
+                query = query.Where(b =>
                     b.Name.ToLowerInvariant().Contains(searchLower) ||
                     (b.Description != null && b.Description.ToLowerInvariant().Contains(searchLower)));
             }
@@ -217,20 +217,20 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 var banks = await _memoryService.GetAllDataBanksAsync();
-                
+
                 if (banks == null)
                 {
                     System.Diagnostics.Debug.WriteLine("GetAllDataBanksAsync returned null");
                     return;
                 }
-                
+
                 var app = Application.Current;
                 if (app == null || app.Dispatcher == null)
                 {
                     System.Diagnostics.Debug.WriteLine("Application or Dispatcher is null, cannot update UI");
                     return;
                 }
-                
+
                 DataBankViewModel? reselectedBank = null;
 
                 await app.Dispatcher.InvokeAsync(() =>
@@ -245,9 +245,9 @@ namespace HouseVictoria.App.Screens.Windows
                                 _allDataBanks.Add(new DataBankViewModel(bank));
                             }
                         }
-                        
+
                         ApplyFilter();
-                        
+
                         // If selected bank still exists, reselect it
                         if (_selectedDataBank != null)
                         {
@@ -334,14 +334,14 @@ namespace HouseVictoria.App.Screens.Windows
                 var dialog = new CreateDataBankDialog();
                 dialog.Owner = Application.Current.Windows.OfType<Window>()
                     .FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow;
-                
+
                 var result = dialog.ShowDialog();
-                
+
                 if (result == true && dialog.CreatedDataBank != null)
                 {
                     await _memoryService.AddDataBankAsync(dialog.CreatedDataBank);
                     await LoadDataBanksAsync();
-                    
+
                     // Select the newly created bank
                     if (dialog.CreatedDataBank.Id != null)
                     {
@@ -372,14 +372,14 @@ namespace HouseVictoria.App.Screens.Windows
                 var dialog = new CreateDataBankDialog(bank);
                 dialog.Owner = Application.Current.Windows.OfType<Window>()
                     .FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow;
-                
+
                 var result = dialog.ShowDialog();
-                
+
                 if (result == true && dialog.CreatedDataBank != null)
                 {
                     await _memoryService.AddDataBankAsync(dialog.CreatedDataBank);
                     await LoadDataBanksAsync();
-                    
+
                     // Reselect the edited bank
                     await SelectDataBankAsync(dialog.CreatedDataBank.Id);
                 }
@@ -407,7 +407,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 await _memoryService.DeleteDataBankAsync(bankViewModel.Id);
                 await LoadDataBanksAsync();
-                
+
                 // Clear selection if the deleted bank was selected
                 if (_selectedDataBank?.Id == bankViewModel.Id)
                 {
@@ -441,7 +441,7 @@ namespace HouseVictoria.App.Screens.Windows
                 var dialog = new AddDataEntryDialog();
                 dialog.Owner = Application.Current.Windows.OfType<Window>()
                     .FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow;
-                
+
                 var result = dialog.ShowDialog();
                 if (result == true && dialog.ResultEntry != null)
                 {

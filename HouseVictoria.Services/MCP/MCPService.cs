@@ -28,7 +28,7 @@ namespace HouseVictoria.Services.MCP
                 MaxConnectionsPerServer = 5,
                 UseCookies = false
             };
-            
+
             _httpClient = new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromSeconds(10),
@@ -63,12 +63,12 @@ namespace HouseVictoria.Services.MCP
             {
                 var healthUrl = EnsureEndpointHasPath(endpoint, "/health");
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-                
+
                 // Use Task.Run to ensure exception is observed even in background operations
                 HttpResponseMessage response;
                 try
                 {
-                    response = await Task.Run(async () => 
+                    response = await Task.Run(async () =>
                         await _httpClient.GetAsync(healthUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false),
                         cts.Token).ConfigureAwait(false);
                 }
@@ -77,7 +77,7 @@ namespace HouseVictoria.Services.MCP
                     // Re-throw to be caught by outer handlers
                     throw;
                 }
-                
+
                 var health = new MCPServerHealth
                 {
                     LastChecked = DateTime.Now,
@@ -94,13 +94,13 @@ namespace HouseVictoria.Services.MCP
                             var healthData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(content);
                             if (healthData != null)
                             {
-                                health.Status = healthData.TryGetValue("status", out var status) 
-                                    ? status.GetString() ?? "unknown" 
+                                health.Status = healthData.TryGetValue("status", out var status)
+                                    ? status.GetString() ?? "unknown"
                                     : "ok";
-                                health.Version = healthData.TryGetValue("version", out var version) 
-                                    ? version.GetString() 
+                                health.Version = healthData.TryGetValue("version", out var version)
+                                    ? version.GetString()
                                     : null;
-                                
+
                                 var details = new Dictionary<string, object>();
                                 foreach (var kvp in healthData)
                                 {
@@ -153,13 +153,13 @@ namespace HouseVictoria.Services.MCP
                 };
                 _healthCache[endpoint] = health;
                 _lastHealthCheck[endpoint] = DateTime.Now;
-                
+
                 // Log only if not a cancellation (timeout is expected)
                 if (ex.CancellationToken != default && !ex.CancellationToken.IsCancellationRequested)
                 {
                     System.Diagnostics.Debug.WriteLine($"MCP health check timeout for {endpoint}: {ex.Message}");
                 }
-                
+
                 return health;
             }
             catch (System.Net.Http.HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
@@ -246,10 +246,10 @@ namespace HouseVictoria.Services.MCP
 
                 if (infoData.TryGetValue("name", out var name))
                     info.Name = name.GetString() ?? string.Empty;
-                
+
                 if (infoData.TryGetValue("version", out var version))
                     info.Version = version.GetString() ?? string.Empty;
-                
+
                 if (infoData.TryGetValue("description", out var desc))
                     info.Description = desc.GetString();
 
@@ -313,7 +313,7 @@ namespace HouseVictoria.Services.MCP
             try
             {
                 var commandUrl = EnsureEndpointHasPath(endpoint, "/command");
-                
+
                 var requestBody = new Dictionary<string, object>
                 {
                     ["command"] = command.Command
@@ -402,7 +402,7 @@ namespace HouseVictoria.Services.MCP
             try
             {
                 var contextUrl = EnsureEndpointHasPath(endpoint, "/context/init");
-                
+
                 var requestBody = new Dictionary<string, object>
                 {
                     ["personaId"] = personaId,
@@ -436,7 +436,7 @@ namespace HouseVictoria.Services.MCP
             try
             {
                 var contextUrl = EnsureEndpointHasPath(endpoint, $"/context/{personaId}");
-                
+
                 var requestBody = new Dictionary<string, object>
                 {
                     ["data"] = contextData
@@ -486,21 +486,21 @@ namespace HouseVictoria.Services.MCP
                 var context = new MCPContext
                 {
                     PersonaId = personaId,
-                    ContextId = contextData.TryGetValue("contextId", out var ctxId) 
-                        ? ctxId.GetString() ?? personaId 
+                    ContextId = contextData.TryGetValue("contextId", out var ctxId)
+                        ? ctxId.GetString() ?? personaId
                         : personaId
                 };
 
                 if (contextData.TryGetValue("data", out var data))
                     context.Data = data.GetString();
 
-                if (contextData.TryGetValue("createdAt", out var createdAt) && 
+                if (contextData.TryGetValue("createdAt", out var createdAt) &&
                     DateTime.TryParse(createdAt.GetString(), out var created))
                     context.CreatedAt = created;
                 else
                     context.CreatedAt = DateTime.Now;
 
-                if (contextData.TryGetValue("lastUpdated", out var lastUpdated) && 
+                if (contextData.TryGetValue("lastUpdated", out var lastUpdated) &&
                     DateTime.TryParse(lastUpdated.GetString(), out var updated))
                     context.LastUpdated = updated;
                 else
@@ -509,7 +509,7 @@ namespace HouseVictoria.Services.MCP
                 var metadata = new Dictionary<string, object>();
                 foreach (var kvp in contextData)
                 {
-                    if (kvp.Key != "contextId" && kvp.Key != "personaId" && kvp.Key != "data" && 
+                    if (kvp.Key != "contextId" && kvp.Key != "personaId" && kvp.Key != "data" &&
                         kvp.Key != "createdAt" && kvp.Key != "lastUpdated")
                     {
                         metadata[kvp.Key] = kvp.Value.ToString();

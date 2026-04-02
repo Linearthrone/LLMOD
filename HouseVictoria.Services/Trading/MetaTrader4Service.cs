@@ -85,7 +85,7 @@ namespace HouseVictoria.Services.Trading
         public async Task DisconnectAsync()
         {
             _marketDataTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-            
+
             lock (_lockObject)
             {
                 _marketDataCache.Clear();
@@ -263,7 +263,7 @@ namespace HouseVictoria.Services.Trading
             {
                 // Check for CSV files in the command folder (exported by EA)
                 var csvPath = Path.Combine(_mt4DataPath!, "MQL4", "Files", _commandFolder, $"{symbol}_{GetTimeFrameCode(timeFrame)}.csv");
-                
+
                 if (File.Exists(csvPath))
                 {
                     var lines = await File.ReadAllLinesAsync(csvPath);
@@ -375,7 +375,7 @@ namespace HouseVictoria.Services.Trading
             {
                 // Get historical data
                 var bars = await GetHistoricalDataAsync(request.Symbol, request.TimeFrame, request.StartDate, request.EndDate);
-                
+
                 if (bars.Count == 0)
                 {
                     return new BacktestResult
@@ -389,7 +389,7 @@ namespace HouseVictoria.Services.Trading
                 var result = PerformBacktest(bars, request);
 
                 // Save backtest result
-                var resultFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder, 
+                var resultFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder,
                     $"Backtest_{request.StrategyName}_{DateTime.Now:yyyyMMddHHmmss}.json");
                 var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(resultFile, json);
@@ -600,8 +600,8 @@ namespace HouseVictoria.Services.Trading
                 var filePath = Path.Combine(expertsPath, fileName);
 
                 // If code is provided, use it; otherwise generate a template
-                var code = !string.IsNullOrWhiteSpace(strategy.Code) 
-                    ? strategy.Code 
+                var code = !string.IsNullOrWhiteSpace(strategy.Code)
+                    ? strategy.Code
                     : GenerateStrategyTemplate(strategy);
 
                 await File.WriteAllTextAsync(filePath, code, Encoding.UTF8);
@@ -800,9 +800,9 @@ namespace HouseVictoria.Services.Trading
 
             try
             {
-                var commandFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder, 
+                var commandFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder,
                     $"Trade_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}.json");
-                
+
                 var json = JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(commandFile, json);
 

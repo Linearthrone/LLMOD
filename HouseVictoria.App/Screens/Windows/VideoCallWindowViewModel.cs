@@ -45,7 +45,9 @@ namespace HouseVictoria.App.Screens.Windows
 
         public string RemoteVideoStatusText => _callState switch
         {
-            CallState.Connected => "Connected. Waiting for video stream...",
+            CallState.Connected => _isVoiceCall
+                ? "Voice call (no remote video)."
+                : "Connected. Remote WebRTC video is not implemented; local camera preview may show below.",
             CallState.Outgoing => "Connecting to contact...",
             CallState.Incoming => "Incoming call...",
             CallState.Ended => "Call ended",
@@ -53,8 +55,11 @@ namespace HouseVictoria.App.Screens.Windows
         };
 
         public string LocalPreviewStatusText => _isVideoEnabled
-            ? "No video stream (camera not connected)"
+            ? (_isVoiceCall ? "Voice call — camera off" : "Local camera preview (OpenCv). No peer WebRTC stream.")
             : "Camera off";
+
+        /// <summary>When true, the window may start a local OpenCv camera preview (not WebRTC).</summary>
+        public bool UseCameraPreview => !_isVoiceCall && IsVideoEnabled;
 
         public bool IsMuted
         {
@@ -77,6 +82,7 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     OnPropertyChanged(nameof(VideoButtonText));
                     OnPropertyChanged(nameof(LocalPreviewStatusText));
+                    OnPropertyChanged(nameof(UseCameraPreview));
                 }
             }
         }
@@ -143,6 +149,9 @@ namespace HouseVictoria.App.Screens.Windows
 
             OnPropertyChanged(nameof(TitleText));
             OnPropertyChanged(nameof(ContactName));
+            OnPropertyChanged(nameof(UseCameraPreview));
+            OnPropertyChanged(nameof(LocalPreviewStatusText));
+            OnPropertyChanged(nameof(RemoteVideoStatusText));
 
             if (string.IsNullOrWhiteSpace(_conversationId))
             {
@@ -191,6 +200,8 @@ namespace HouseVictoria.App.Screens.Windows
                 OnPropertyChanged(nameof(CallStatusText));
                 OnPropertyChanged(nameof(CallDurationText));
                 OnPropertyChanged(nameof(RemoteVideoStatusText));
+                OnPropertyChanged(nameof(LocalPreviewStatusText));
+                OnPropertyChanged(nameof(UseCameraPreview));
             });
         }
 

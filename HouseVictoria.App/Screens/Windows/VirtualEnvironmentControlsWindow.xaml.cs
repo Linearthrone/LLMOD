@@ -10,7 +10,7 @@ namespace HouseVictoria.App.Screens.Windows
     {
         private readonly IVirtualEnvironmentService? _virtualEnvironmentService;
         public VirtualEnvironmentControlsWindowViewModel ViewModel { get; }
-        
+
         private bool _isMinimized = false;
         private bool _isClosed = false;
 
@@ -26,7 +26,7 @@ namespace HouseVictoria.App.Screens.Windows
                 MessageBox.Show($"Error initializing Virtual Environment Controls Window: {ex.Message}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-            
+
             try
             {
                 _virtualEnvironmentService = App.GetService<IVirtualEnvironmentService>();
@@ -35,7 +35,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to get IVirtualEnvironmentService: {ex.Message}");
             }
-            
+
             try
             {
                 ViewModel = new VirtualEnvironmentControlsWindowViewModel(_virtualEnvironmentService);

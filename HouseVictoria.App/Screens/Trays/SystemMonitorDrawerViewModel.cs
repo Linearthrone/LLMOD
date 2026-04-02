@@ -231,13 +231,13 @@ namespace HouseVictoria.App.Screens.Trays
             _systemMonitorService = systemMonitorService ?? throw new ArgumentNullException(nameof(systemMonitorService));
             _drawerPanel = drawerPanel ?? throw new ArgumentNullException(nameof(drawerPanel));
             _dispatcher = drawerPanel.Dispatcher;
-            
+
             // Try to get VirtualEnvironmentService and AppConfig from DI
             try
             {
                 _virtualEnvironmentService = App.GetService<IVirtualEnvironmentService>();
                 _appConfig = App.GetService<AppConfig>();
-                
+
                 if (_virtualEnvironmentService != null)
                 {
                     _virtualEnvironmentService.StatusChanged += OnVirtualEnvironmentStatusChanged;
@@ -247,7 +247,7 @@ namespace HouseVictoria.App.Screens.Trays
             {
                 System.Diagnostics.Debug.WriteLine($"Could not get VirtualEnvironmentService or AppConfig: {ex.Message}");
             }
-            
+
             ToggleDrawerCommand = new RelayCommand(() => IsDrawerOpen = !IsDrawerOpen);
             OpenSystemHealthCommand = new RelayCommand(() =>
             {
@@ -294,11 +294,11 @@ namespace HouseVictoria.App.Screens.Trays
                 VirtualEnvironmentIsConnected = e.Status.IsConnected;
                 VirtualEnvironmentStatusText = e.Status.IsConnected ? "Connected" : "Disconnected";
                 VirtualEnvironmentStatusColor = e.Status.IsConnected ? Brushes.Green : Brushes.Red;
-                VirtualEnvironmentDetails = e.Status.IsConnected 
+                VirtualEnvironmentDetails = e.Status.IsConnected
                     ? $"Avatars: {e.Status.AvatarCount}, FPS: {e.Status.FrameRate:F1}, Uptime: {FormatTimeSpan(e.Status.Uptime)}"
                     : "Not connected";
                 VirtualEnvironmentConnectButtonText = e.Status.IsConnected ? "Reconnect" : "Connect";
-                
+
                 // Update scene information
                 if (e.Status.IsConnected)
                 {
@@ -397,7 +397,7 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 var statuses = await _systemMonitorService.GetAllServerStatusesAsync();
-                
+
                 // Ensure collection updates happen on UI thread
                 await _dispatcher.InvokeAsync(() =>
                 {
@@ -432,7 +432,7 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 var metrics = _systemMonitorService.GetCurrentMetrics();
-                
+
                 // CPU
                 CPUUsage = $"{metrics.CPUUsage:F1}%";
                 CPUUsageValue = metrics.CPUUsage;
@@ -442,10 +442,10 @@ namespace HouseVictoria.App.Screens.Trays
                 // GPU
                 GPUUsage = $"{metrics.GPUUsage:F1}%";
                 GPUUsageValue = metrics.GPUUsage;
-                
+
                 // Detect GPU vendor and availability
                 GPUMetricsAvailable = metrics.GPUUsage > 0 || metrics.GPUTemperature > 0 || metrics.GPUFanSpeed > 0;
-                
+
                 // Try to detect vendor from system monitor service
                 // For now, if metrics are available, assume NVIDIA (NVML) or set to Unknown
                 if (GPUMetricsAvailable)
@@ -458,7 +458,7 @@ namespace HouseVictoria.App.Screens.Trays
                 {
                     GPUVendor = "Not Supported";
                 }
-                
+
                 if (GPUMetricsAvailable)
                 {
                     GPUTemperature = $"{metrics.GPUTemperature:F1}°C";
@@ -492,11 +492,11 @@ namespace HouseVictoria.App.Screens.Trays
                 VirtualEnvironmentIsConnected = veStatus.IsConnected;
                 VirtualEnvironmentStatusText = veStatus.IsConnected ? "Connected" : "Disconnected";
                 VirtualEnvironmentStatusColor = veStatus.IsConnected ? Brushes.Green : Brushes.Red;
-                VirtualEnvironmentDetails = veStatus.IsConnected 
+                VirtualEnvironmentDetails = veStatus.IsConnected
                     ? $"Avatars: {veStatus.AvatarCount}, FPS: {veStatus.FrameRate:F1}, Uptime: {FormatTimeSpan(veStatus.Uptime)}"
                     : "Not connected";
                 VirtualEnvironmentConnectButtonText = veStatus.IsConnected ? "Reconnect" : "Connect";
-                
+
                 // Update scene information
                 if (veStatus.IsConnected)
                 {

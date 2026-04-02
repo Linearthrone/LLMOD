@@ -21,7 +21,7 @@ namespace HouseVictoria.App.Converters
                 if (!string.IsNullOrWhiteSpace(message.FilePath))
                 {
                     var filePath = message.FilePath;
-                    
+
                     // Check if it's an absolute path, if not try to make it absolute
                     if (!Path.IsPathRooted(filePath))
                     {
@@ -53,14 +53,14 @@ namespace HouseVictoria.App.Converters
                 }
 
                 // Fallback to MediaData if FilePath doesn't work and MediaData exists
-                if (message.MediaData != null && message.MediaData.Length > 0 && 
+                if (message.MediaData != null && message.MediaData.Length > 0 &&
                     (message.Type == MessageType.Image || message.MediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true))
                 {
                     try
                     {
                         var dataCopy = new byte[message.MediaData.Length];
                         Array.Copy(message.MediaData, dataCopy, message.MediaData.Length);
-                        
+
                         var bitmap = new BitmapImage();
                         bitmap.BeginInit();
                         bitmap.StreamSource = new MemoryStream(dataCopy);

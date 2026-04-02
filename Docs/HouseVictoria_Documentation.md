@@ -2,7 +2,9 @@
 
 **Generated:** January 2025  
 **Version:** 1.0  
-**Status:** Development Phase
+**Status:** Development Phase  
+
+**Consolidated entry point:** For current status, doc index, and what is left to do, see **[HouseVictoria_Guide.md](HouseVictoria_Guide.md)** first.
 
 ---
 
@@ -1078,9 +1080,9 @@ The following components are **stubs or placeholders**. Enabling them does not p
 
 | Component | Location | Current behavior | To get real behavior |
 |-----------|----------|------------------|------------------------|
-| **PgVectorClient** | `HouseVictoria.Services/Memory/PgVectorClient.cs` | No-op: `InitializeAsync`, `UpsertAsync`, `DeleteAsync` do nothing; `SearchAsync` returns empty. Used when `EnablePgVector` is true and a connection string is set. | Implement a real Postgres + pgvector client: create extension/table, upsert vectors, run similarity search. |
-| **EmbeddingHelper** | `HouseVictoria.Services/Memory/EmbeddingHelper.cs` | Hash-based pseudo-embeddings (SHA256-derived), not semantic. Used by `DatabasePersistenceService` for “hybrid” search when PgVector is enabled. | Replace with a real embedding model (e.g. Ollama embedding endpoint or a small local model) for actual semantic search. |
-| **MCP vector_search** | `MCPServer/house_victoria_mcp/memory/vector_search.py` | Stub: `index()` and `search()` are no-ops; `search()` always returns `[]`. | Implement with a real vector store (e.g. Postgres/pgvector or a local index) and real embeddings. |
+| **PgVectorClient** | `HouseVictoria.Services/Memory/PgVectorClient.cs` | When `EnablePgVector` and a Postgres connection string are set: creates `house_victoria_memory_embeddings`, upserts/deletes vectors, cosine search. | Requires running Postgres with the `vector` extension. |
+| **OllamaEmbeddingClient** / **EmbeddingHelper** | `HouseVictoria.Services/Memory/` | Ollama `/api/embed` (fallback `/api/embeddings`); hash pseudo-embedding if Ollama is unavailable. | Match embedding model dimensions to `EmbeddingVectorDimensions` in Settings. |
+| **MCP vector_search** | `MCPServer/house_victoria_mcp/memory/vector_search.py` | Queries the same table when `PGVECTOR_CONNECTION_STRING` is set; uses Ollama for query embeddings. | Set `PGVECTOR_CONNECTION_STRING` (and optionally `OLLAMA_HOST`, `OLLAMA_EMBEDDING_MODEL`) in the MCP environment. |
 
 **Summary:** Persistent memory and hybrid search currently use SQLite and lexical (FTS) only. When PgVector is enabled, vector operations are stubbed and embeddings are hash-based, so “hybrid” search effectively falls back to lexical behavior. See [HouseVictoria_MemoryDesign.md](HouseVictoria_MemoryDesign.md) for the target architecture.
 

@@ -9,7 +9,7 @@ namespace HouseVictoria.App.Screens.Windows
     public partial class AIModelsWindow : Window
     {
         public AIModelsWindowViewModel ViewModel { get; }
-        
+
         private bool _isMinimized = false;
         private bool _isClosed = false;
         private double _savedWidth;
@@ -20,24 +20,24 @@ namespace HouseVictoria.App.Screens.Windows
         public AIModelsWindow()
         {
             InitializeComponent();
-            
+
             var aiService = App.GetService<IAIService>();
             var persistenceService = App.GetService<IPersistenceService>();
             var memoryService = App.GetService<IMemoryService>();
             var mcpService = App.GetService<IMCPService>();
             var appConfig = App.GetService<AppConfig>();
-            
+
             ViewModel = new AIModelsWindowViewModel(aiService, persistenceService, memoryService, appConfig, mcpService);
             DataContext = ViewModel;
-            
+
             Loaded += AIModelsWindow_Loaded;
-            
+
             Closed += (s, e) => { _isClosed = true; };
         }
 
         public bool IsClosed() => _isClosed;
         public bool IsMinimized() => _isMinimized;
-        
+
         public void RestoreFromMinimized()
         {
             WindowHelper.RestoreFromTray(this, ref _isMinimized, _savedWidth, _savedHeight, _savedLeft, _savedTop);

@@ -222,7 +222,7 @@ namespace HouseVictoria.App.Screens.Windows
         {
             _projectManagementService = projectManagementService ?? throw new ArgumentNullException(nameof(projectManagementService));
             _persistenceService = persistenceService ?? throw new ArgumentNullException(nameof(persistenceService));
-            
+
             if (project == null)
             {
                 throw new ArgumentNullException(nameof(project));
@@ -262,7 +262,7 @@ namespace HouseVictoria.App.Screens.Windows
             // Initialize commands
             ToggleEditCommand = new RelayCommand(() => { IsReadOnly = false; IsEditable = true; });
             SaveProjectCommand = new RelayCommand(async () => await SaveProjectAsync(), () => IsEditable);
-            CancelEditCommand = new RelayCommand(() => 
+            CancelEditCommand = new RelayCommand(() =>
             {
                 LoadProjectData();
                 IsReadOnly = true;
@@ -352,7 +352,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 var artifacts = await _projectManagementService.GetArtifactsAsync(_currentProject.Id);
-                
+
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     _artifacts.Clear();
@@ -375,7 +375,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 var logs = await _projectManagementService.GetProjectLogsAsync(_currentProject.Id);
-                
+
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     _logs.Clear();
@@ -426,7 +426,7 @@ namespace HouseVictoria.App.Screens.Windows
             if (!string.IsNullOrWhiteSpace(LogSearchText))
             {
                 var searchLower = LogSearchText.ToLower();
-                query = query.Where(l => 
+                query = query.Where(l =>
                     (l.Action?.ToLower().Contains(searchLower) ?? false) ||
                     (l.Details?.ToLower().Contains(searchLower) ?? false) ||
                     (l.PerformedBy?.ToLower().Contains(searchLower) ?? false));
@@ -490,7 +490,7 @@ namespace HouseVictoria.App.Screens.Windows
                 }
 
                 var updatedProject = await _projectManagementService.UpdateProjectAsync(_currentProject);
-                
+
                 // Update original project reference
                 _originalProject = updatedProject;
                 _currentProject = new Project
@@ -589,7 +589,7 @@ namespace HouseVictoria.App.Screens.Windows
                     };
 
                     await _projectManagementService.AddArtifactAsync(_currentProject.Id, artifact);
-                    
+
                     // Reload artifacts
                     await LoadArtifactsAsync();
 
@@ -679,10 +679,10 @@ namespace HouseVictoria.App.Screens.Windows
                 try
                 {
                     await _projectManagementService.DeleteArtifactAsync(_currentProject.Id, artifact.Id);
-                    
+
                     // Reload artifacts to reflect the deletion
                     await LoadArtifactsAsync();
-                    
+
                     MessageBox.Show("Artifact deleted successfully.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 catch (Exception ex)

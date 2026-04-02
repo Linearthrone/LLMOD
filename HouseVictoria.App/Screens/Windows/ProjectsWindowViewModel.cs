@@ -75,7 +75,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ProjectsWindowViewModel(IProjectManagementService projectManagementService)
         {
             _projectManagementService = projectManagementService ?? throw new ArgumentNullException(nameof(projectManagementService));
-            
+
             // Try to get persistence service, but don't fail if not available
             try
             {
@@ -94,7 +94,7 @@ namespace HouseVictoria.App.Screens.Windows
 
             CreateProjectCommand = new RelayCommand(async () => await CreateProjectAsync());
             RefreshCommand = new RelayCommand(async () => await LoadProjectsAsync());
-            
+
             // Load existing projects asynchronously (fire and forget, but with error handling)
             _ = LoadProjectsAsync().ContinueWith(task =>
             {
@@ -195,20 +195,20 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 var projects = await _projectManagementService.GetAllProjectsAsync();
-                
+
                 if (projects == null)
                 {
                     System.Diagnostics.Debug.WriteLine("GetAllProjectsAsync returned null");
                     return;
                 }
-                
+
                 var app = Application.Current;
                 if (app == null || app.Dispatcher == null)
                 {
                     System.Diagnostics.Debug.WriteLine("Application or Dispatcher is null, cannot update UI");
                     return;
                 }
-                
+
                 await app.Dispatcher.InvokeAsync(() =>
                 {
                     try
@@ -229,14 +229,14 @@ namespace HouseVictoria.App.Screens.Windows
                                 }
                             }
                         }
-                        
+
                         // Also update Projects collection for backward compatibility
                         Projects.Clear();
                         foreach (var projectViewModel in _allProjects)
                         {
                             Projects.Add(projectViewModel);
                         }
-                        
+
                         // Apply filters and sort
                         ApplyFiltersAndSort();
                     }
@@ -285,9 +285,9 @@ namespace HouseVictoria.App.Screens.Windows
                 var dialog = new ProjectDetailDialog(project, _projectManagementService, persistenceService);
                 dialog.Owner = Application.Current.Windows.OfType<Window>()
                     .FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow;
-                
+
                 dialog.ShowDialog();
-                
+
                 // Refresh if project was updated or deleted
                 if (dialog.ProjectWasUpdated || dialog.ProjectWasDeleted)
                 {
@@ -308,9 +308,9 @@ namespace HouseVictoria.App.Screens.Windows
                 var dialog = new CreateProjectDialog();
                 dialog.Owner = System.Windows.Application.Current.Windows.OfType<Window>()
                     .FirstOrDefault(w => w.IsActive) ?? System.Windows.Application.Current.MainWindow;
-                
+
                 var result = dialog.ShowDialog();
-                
+
                 if (result == true && dialog.CreatedProject != null)
                 {
                     // Refresh project list
@@ -351,7 +351,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 if (_project == null)
                     return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88)); // Gray default
-                
+
                 // Color gradient based on priority (1-10)
                 // Lower priority (1-3): Red/Orange
                 // Medium priority (4-7): Yellow/Orange

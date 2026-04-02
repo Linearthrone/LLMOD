@@ -4,13 +4,11 @@ This bridges the FastMCP server to HTTP REST endpoints
 that the C# MCPService expects.
 """
 
-import asyncio
 import json
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import uvicorn
 
 from house_victoria_mcp.server import create_server, mcp, get_tool_registry, call_tool_by_name
@@ -170,7 +168,7 @@ async def _execute_mcp_tool(
     try:
         # Use the server's tool calling function
         return await call_tool_by_name(command, **parameters)
-    except ValueError as e:
+    except ValueError:
         raise
     except Exception as e:
         logger.error(f"Error executing tool {command}: {e}", exc_info=True)

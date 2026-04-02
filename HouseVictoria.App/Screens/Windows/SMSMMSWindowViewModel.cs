@@ -266,7 +266,7 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
         public bool ShowMessageView => !_showConversationList && !_showContactSelection && !_showAppsView && !_showDialerView && _selectedConversation != null;
-        
+
         public bool ShowAppsView
         {
             get => _showAppsView;
@@ -280,7 +280,7 @@ namespace HouseVictoria.App.Screens.Windows
                 }
             }
         }
-        
+
         public bool ShowDialerView
         {
             get => _showDialerView;
@@ -294,7 +294,7 @@ namespace HouseVictoria.App.Screens.Windows
                 }
             }
         }
-        
+
         public Contact? SelectedDialerContact
         {
             get => _selectedDialerContact;
@@ -307,7 +307,7 @@ namespace HouseVictoria.App.Screens.Windows
                 }
             }
         }
-        
+
         public bool CanStartDialerCall => _selectedDialerContact != null && !IsCallActive;
         public bool CanEndDialerCall => IsCallActive && _showDialerView;
         public bool IsDialerContactSelected => _selectedDialerContact != null;
@@ -381,16 +381,16 @@ namespace HouseVictoria.App.Screens.Windows
                 OnPropertyChanged(nameof(SelectedConversationContactName));
             };
 
-            SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), () => 
+            SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), () =>
                 (!string.IsNullOrWhiteSpace(MessageText) || HasPendingMedia) && _selectedConversation != null);
-            SelectConversationCommand = new RelayCommand(async (parameter) => 
+            SelectConversationCommand = new RelayCommand(async (parameter) =>
             {
                 if (parameter is ConversationViewModel convVm)
                 {
                     await SelectConversationAsync(convVm.Conversation);
                 }
             });
-            BackToConversationListCommand = new RelayCommand(() => 
+            BackToConversationListCommand = new RelayCommand(() =>
             {
                 ShowConversationList = true;
                 ShowContactSelection = false;
@@ -400,7 +400,7 @@ namespace HouseVictoria.App.Screens.Windows
                 ShowContactProfile = false;
                 ContactProfileBody = string.Empty;
             });
-            StartNewConversationCommand = new RelayCommand(() => 
+            StartNewConversationCommand = new RelayCommand(() =>
             {
                 ShowContactSelection = true;
                 ShowConversationList = false;
@@ -409,7 +409,7 @@ namespace HouseVictoria.App.Screens.Windows
                 ShowContactProfile = false;
                 ContactProfileBody = string.Empty;
             });
-            SelectContactCommand = new RelayCommand(async (parameter) => 
+            SelectContactCommand = new RelayCommand(async (parameter) =>
             {
                 if (parameter is Contact contact)
                 {
@@ -428,7 +428,7 @@ namespace HouseVictoria.App.Screens.Windows
                 ShowContactProfile = false;
                 ContactProfileBody = string.Empty;
             });
-            ToggleAppsViewCommand = new RelayCommand(() => 
+            ToggleAppsViewCommand = new RelayCommand(() =>
             {
                 ShowAppsView = !ShowAppsView;
                 if (ShowAppsView)
@@ -438,20 +438,20 @@ namespace HouseVictoria.App.Screens.Windows
                     ShowDialerView = false;
                 }
             });
-            OpenMessagesAppCommand = new RelayCommand(() => 
+            OpenMessagesAppCommand = new RelayCommand(() =>
             {
                 ShowAppsView = false;
                 ShowConversationList = true;
                 ShowDialerView = false;
             });
-            OpenPhoneAppCommand = new RelayCommand(() => 
+            OpenPhoneAppCommand = new RelayCommand(() =>
             {
                 ShowAppsView = false;
                 ShowDialerView = true;
                 ShowConversationList = false;
                 SelectedDialerContact = null;
             });
-            SelectDialerContactCommand = new RelayCommand((parameter) => 
+            SelectDialerContactCommand = new RelayCommand((parameter) =>
             {
                 if (parameter is Contact contact)
                 {
@@ -460,7 +460,7 @@ namespace HouseVictoria.App.Screens.Windows
             });
             StartDialerCallCommand = new RelayCommand(async () => await StartDialerCallAsync(), () => CanStartDialerCall);
             EndDialerCallCommand = new RelayCommand(async () => await EndDialerCallAsync(), () => CanEndDialerCall);
-            BackFromDialerCommand = new RelayCommand(() => 
+            BackFromDialerCommand = new RelayCommand(() =>
             {
                 ShowDialerView = false;
                 ShowAppsView = true;
@@ -531,15 +531,15 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     Contacts.Add(contact);
                 }
-                
+
                 // Then load conversations (which need contacts)
                 var conversations = await _communicationService.GetConversationsAsync().ConfigureAwait(false);
-                
+
                 // Load last messages in parallel to avoid blocking
                 var conversationTasks = conversations.OrderByDescending(c => c.LastMessageAt).Select(async conv =>
                 {
                     var contact = Contacts.FirstOrDefault(c => c.Id == conv.ContactId);
-                    
+
                     // Get only the last message for preview (much faster than loading all messages)
                     ConversationMessage? lastMessage = null;
                     try
@@ -550,12 +550,12 @@ namespace HouseVictoria.App.Screens.Windows
                     {
                         System.Diagnostics.Debug.WriteLine($"Error loading last message for conversation {conv.Id}: {ex.Message}");
                     }
-                    
+
                     return new ConversationViewModel(conv, contact, lastMessage);
                 });
-                
+
                 var conversationViewModels = await Task.WhenAll(conversationTasks).ConfigureAwait(false);
-                
+
                 // Update UI on UI thread
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
@@ -580,18 +580,18 @@ namespace HouseVictoria.App.Screens.Windows
                 System.Diagnostics.Debug.WriteLine($"LoadMessages already in progress for conversation {conversationId}. Skipping duplicate load.");
                 return;
             }
-            
+
             try
             {
                 _loadingConversationId = conversationId;
                 var messages = await _communicationService.GetMessagesAsync(conversationId).ConfigureAwait(false);
-                
+
                 // Update UI on UI thread
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     // Get existing message IDs to check for duplicates - refresh this right before use to avoid race conditions
                     var existingMessageIds = new HashSet<string>(Messages.Select(m => m.Id));
-                    
+
                     // Load last 100 messages, ordered chronologically, and deduplicate at source
                     var orderedMessages = messages
                         .GroupBy(m => m.Id) // Group by ID to remove duplicates
@@ -599,17 +599,17 @@ namespace HouseVictoria.App.Screens.Windows
                         .OrderBy(m => m.Timestamp)
                         .TakeLast(100)
                         .ToList();
-                    
+
                     // Merge: add messages from service that we don't already have
                     // This avoids clearing the collection and preserves messages added via event handler
                     // Re-check existing IDs right before adding to prevent race conditions
-                    var messagesToAdd = orderedMessages.Where(m => 
+                    var messagesToAdd = orderedMessages.Where(m =>
                     {
                         // Double-check that message doesn't exist - refresh check right before adding
                         var exists = Messages.Any(existing => existing.Id == m.Id);
                         return !exists;
                     }).ToList();
-                    
+
                     int messagesAdded = 0;
                     foreach (var msg in messagesToAdd)
                     {
@@ -620,7 +620,7 @@ namespace HouseVictoria.App.Screens.Windows
                             messagesAdded++;
                         }
                     }
-                    
+
                     // Remove any messages that don't belong to this conversation
                     var messagesToRemove = Messages.Where(m => m.ConversationId != conversationId).ToList();
                     int messagesRemoved = messagesToRemove.Count;
@@ -628,7 +628,7 @@ namespace HouseVictoria.App.Screens.Windows
                     {
                         Messages.Remove(msg);
                     }
-                    
+
                     // Check if we need to re-sort by comparing IDs in order
                     var sortedMessages = Messages.OrderBy(m => m.Timestamp).ToList();
                     bool needsResort = sortedMessages.Count != Messages.Count;
@@ -644,7 +644,7 @@ namespace HouseVictoria.App.Screens.Windows
                             }
                         }
                     }
-                    
+
                     if (needsResort)
                     {
                         Messages.Clear();
@@ -653,7 +653,7 @@ namespace HouseVictoria.App.Screens.Windows
                             Messages.Add(msg);
                         }
                     }
-                    
+
                     System.Diagnostics.Debug.WriteLine($"Loaded messages for conversation {conversationId}: Total={Messages.Count}, Added={messagesAdded}, Removed={messagesRemoved}, NeedsResort={needsResort}");
                 });
             }
@@ -745,11 +745,11 @@ namespace HouseVictoria.App.Screens.Windows
             PendingMediaType = MessageType.Text;
             PendingMediaFileName = null;
             PendingMediaFileSize = 0;
-            
+
             // Explicitly notify property changes to ensure UI updates
             OnPropertyChanged(nameof(HasPendingMedia));
             OnPropertyChanged(nameof(PendingMediaDisplayInfo));
-            
+
             // Update command states
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
@@ -771,19 +771,19 @@ namespace HouseVictoria.App.Screens.Windows
                 try
                 {
                     var fileInfo = new FileInfo(PendingMediaPath);
-                    
+
                     // Copy media to app's media storage directory
                     var mediaStorageDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "Media", _selectedConversation.Id);
                     Directory.CreateDirectory(mediaStorageDir);
-                    
+
                     var storedFileName = $"{Guid.NewGuid()}{fileInfo.Extension}";
                     var storedFilePath = Path.Combine(mediaStorageDir, storedFileName);
-                    
+
                     File.Copy(PendingMediaPath, storedFilePath, overwrite: true);
-                    
+
                     // Ensure FilePath is absolute
                     mediaFilePath = Path.GetFullPath(storedFilePath);
-                    
+
                     // Read media data (limit size to avoid memory issues - only read small files)
                     // For images, we can store in memory for faster display
                     if (fileInfo.Length <= 10 * 1024 * 1024 && (PendingMediaType == MessageType.Image || PendingMediaType == MessageType.Document))
@@ -801,7 +801,7 @@ namespace HouseVictoria.App.Screens.Windows
                     }
                     mediaType = GetMimeType(fileInfo.Extension);
                     messageType = PendingMediaType;
-                    
+
                     // If no text, set content to filename or media type indicator
                     if (string.IsNullOrWhiteSpace(messageText))
                     {
@@ -814,7 +814,7 @@ namespace HouseVictoria.App.Screens.Windows
                             _ => "📎 Attachment"
                         };
                     }
-                    
+
                     // Clear pending media
                     PendingMediaPath = null;
                     PendingMediaType = MessageType.Text;
@@ -851,7 +851,7 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     Messages.Add(message);
                 }
-                
+
                 // Send message (this will trigger AI response if it's an AI contact)
                 await _communicationService.SendMessageAsync(message);
             }
@@ -925,7 +925,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 var aiService = App.GetService<IAIService>();
                 var persistenceService = App.GetService<IPersistenceService>();
-                
+
                 // Load AI contact from persistence
                 var aiContact = await persistenceService.GetAsync<AIContact>($"AIContact_{contactId}");
                 if (aiContact != null)
@@ -934,10 +934,10 @@ namespace HouseVictoria.App.Screens.Windows
                     await aiService.LoadModelAsync(aiContact);
                     aiContact.IsLoaded = true;
                     aiContact.LastUsedAt = DateTime.Now;
-                    
+
                     // Save updated contact
                     await persistenceService.SetAsync($"AIContact_{aiContact.Id}", aiContact);
-                    
+
                     System.Diagnostics.Debug.WriteLine($"Persona loaded: {aiContact.Name} with model {aiContact.ModelName}");
                 }
             }
@@ -1074,11 +1074,11 @@ namespace HouseVictoria.App.Screens.Windows
                     // Check if message already exists in the collection by ID - use direct comparison
                     // Re-check right before adding to prevent race conditions with LoadMessages
                     var messageExists = Messages.Any(m => m.Id == e.Message.Id);
-                    
+
                     if (!messageExists)
                     {
                         Messages.Add(e.Message);
-                        
+
                         // Re-sort by timestamp to maintain chronological order
                         // Use ID comparison instead of SequenceEqual which compares by reference
                         var sortedMessages = Messages.OrderBy(m => m.Timestamp).ToList();
@@ -1095,7 +1095,7 @@ namespace HouseVictoria.App.Screens.Windows
                                 }
                             }
                         }
-                        
+
                         if (needsResort)
                         {
                             Messages.Clear();
@@ -1104,7 +1104,7 @@ namespace HouseVictoria.App.Screens.Windows
                                 Messages.Add(msg);
                             }
                         }
-                        
+
                         System.Diagnostics.Debug.WriteLine($"Added incoming message {e.Message.Id} to UI. Total messages: {Messages.Count}");
                     }
                     else
@@ -1112,14 +1112,14 @@ namespace HouseVictoria.App.Screens.Windows
                         System.Diagnostics.Debug.WriteLine($"Message {e.Message.Id} already exists in UI collection. Skipping duplicate.");
                     }
                 }
-                
+
                 // Update the conversation's last message in the list without reloading everything
                 var conversationVm = Conversations.FirstOrDefault(c => c.Conversation.Id == e.ConversationId);
                 if (conversationVm != null)
                 {
                     // Update the conversation's last message timestamp
                     conversationVm.Conversation.LastMessageAt = e.Message.Timestamp;
-                    
+
                     // Recreate the ConversationViewModel with updated last message using the message we already have
                     var index = Conversations.IndexOf(conversationVm);
                     if (index >= 0)
@@ -1127,7 +1127,7 @@ namespace HouseVictoria.App.Screens.Windows
                         Conversations.RemoveAt(index);
                         var contact = Contacts.FirstOrDefault(c => c.Id == conversationVm.Conversation.ContactId);
                         Conversations.Insert(index, new ConversationViewModel(conversationVm.Conversation, contact, e.Message));
-                        
+
                         // Sort conversations by last message time (move updated conversation to top)
                         var sorted = Conversations.OrderByDescending(c => c.LastMessageAt).ToList();
                         Conversations.Clear();
@@ -1153,7 +1153,7 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     OpenVideoCallWindow(contact, _selectedConversation.Id, isVoiceCall: isVoiceCall);
                 }
-                
+
                 // Update call state
                 OnPropertyChanged(nameof(IsCallActive));
                 OnPropertyChanged(nameof(CanStartCall));
@@ -1175,7 +1175,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 await _communicationService.EndVideoCallAsync(_selectedConversation.Id);
-                
+
                 // Update call state
                 CurrentCallState = CallState.None;
                 OnPropertyChanged(nameof(IsCallActive));
@@ -1268,7 +1268,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 await _communicationService.StartVideoCallAsync(_selectedDialerContact.Id);
                 OpenVideoCallWindow(_selectedDialerContact, null, isVoiceCall: true);
-                
+
                 // Update call state
                 OnPropertyChanged(nameof(IsCallActive));
                 OnPropertyChanged(nameof(CanStartDialerCall));
@@ -1301,7 +1301,7 @@ namespace HouseVictoria.App.Screens.Windows
                     var tempConversationId = $"conv-{_selectedDialerContact.Id}-temp";
                     await _communicationService.EndVideoCallAsync(tempConversationId);
                 }
-                
+
                 // Update call state
                 CurrentCallState = CallState.None;
                 OnPropertyChanged(nameof(IsCallActive));
@@ -1344,20 +1344,20 @@ namespace HouseVictoria.App.Screens.Windows
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 bool isRelevantCall = false;
-                
+
                 // Check if it's for the selected conversation
                 if (_selectedConversation != null && e.ConversationId == _selectedConversation.Id)
                 {
                     isRelevantCall = true;
                 }
                 // Check if it's for the dialer contact (check if conversation ID contains the contact ID)
-                else if (_showDialerView && _selectedDialerContact != null && 
-                         (e.ConversationId.Contains(_selectedDialerContact.Id) || 
+                else if (_showDialerView && _selectedDialerContact != null &&
+                         (e.ConversationId.Contains(_selectedDialerContact.Id) ||
                           _selectedDialerContact.Id == e.ConversationId))
                 {
                     isRelevantCall = true;
                 }
-                
+
                 if (isRelevantCall)
                 {
                     CurrentCallState = e.State;
@@ -1596,9 +1596,9 @@ namespace HouseVictoria.App.Screens.Windows
         public Conversation Conversation { get; }
         public Contact? Contact { get; }
         private readonly ConversationMessage? _lastMessage;
-        
+
         public string DisplayName => Contact?.Name ?? Conversation.ContactId;
-        public string LastMessagePreview => _lastMessage != null 
+        public string LastMessagePreview => _lastMessage != null
             ? (_lastMessage.Content.Length > 50 ? _lastMessage.Content.Substring(0, 50) + "..." : _lastMessage.Content)
             : "Tap to start conversation";
         public DateTime LastMessageAt => Conversation.LastMessageAt;

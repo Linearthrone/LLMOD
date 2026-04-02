@@ -2,7 +2,9 @@
 
 **Generated:** January 2025  
 **Version:** 2.0  
-**Status:** Development Phase - ~75% Complete
+**Status:** Development Phase - ~75% Complete  
+
+**Canonical status summary:** [HouseVictoria_Guide.md](HouseVictoria_Guide.md) — use this file for phased detail, risks, and metrics; reconcile dates with the guide when they differ.
 
 ---
 

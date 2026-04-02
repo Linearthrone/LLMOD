@@ -16,7 +16,7 @@ namespace HouseVictoria.Services.FileGeneration
         {
             _basePath = basePath;
             _generatedFilesPath = System.IO.Path.Combine(basePath, "GeneratedFiles");
-            
+
             // Ensure the directory exists
             if (!System.IO.Directory.Exists(_generatedFilesPath))
             {
@@ -36,7 +36,7 @@ namespace HouseVictoria.Services.FileGeneration
 
                 var filePath = await PrepareFilePathAsync(fileName, subdirectory);
                 await System.IO.File.WriteAllTextAsync(filePath, content, Encoding.UTF8);
-                
+
                 System.Diagnostics.Debug.WriteLine($"Created file: {filePath}");
                 return filePath;
             }
@@ -53,7 +53,7 @@ namespace HouseVictoria.Services.FileGeneration
             {
                 var filePath = await PrepareFilePathAsync(fileName, subdirectory);
                 await System.IO.File.WriteAllBytesAsync(filePath, content);
-                
+
                 System.Diagnostics.Debug.WriteLine($"Created file: {filePath}");
                 return filePath;
             }
@@ -80,7 +80,7 @@ namespace HouseVictoria.Services.FileGeneration
             }
 
             var filePath = System.IO.Path.Combine(targetDir, fileName);
-            
+
             // If file exists, append timestamp to make it unique
             if (System.IO.File.Exists(filePath))
             {
@@ -97,7 +97,7 @@ namespace HouseVictoria.Services.FileGeneration
         public async Task<List<GeneratedFile>> GetGeneratedFilesAsync()
         {
             var files = new List<GeneratedFile>();
-            
+
             try
             {
                 if (!System.IO.Directory.Exists(_generatedFilesPath))
@@ -106,7 +106,7 @@ namespace HouseVictoria.Services.FileGeneration
                 }
 
                 var filePaths = System.IO.Directory.GetFiles(_generatedFilesPath, "*", System.IO.SearchOption.AllDirectories);
-                
+
                 foreach (var filePath in filePaths)
                 {
                     var fileInfo = new System.IO.FileInfo(filePath);
@@ -184,16 +184,16 @@ namespace HouseVictoria.Services.FileGeneration
             {
                 fileName = fileName.Replace(c, '_');
             }
-            
+
             // Remove leading/trailing spaces and dots
             fileName = fileName.Trim().Trim('.');
-            
+
             // Ensure it's not empty
             if (string.IsNullOrWhiteSpace(fileName))
             {
                 fileName = $"generated_file_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
             }
-            
+
             return fileName;
         }
     }

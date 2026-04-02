@@ -17,7 +17,7 @@ namespace HouseVictoria.App.Converters
                     return messageType == targetMessageType ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
-            
+
             return Visibility.Collapsed;
         }
 

@@ -12,12 +12,12 @@ namespace HouseVictoria.App.Screens.Windows
         public CreateProjectDialog()
         {
             InitializeComponent();
-            
+
             try
             {
                 var projectManagementService = App.GetService<IProjectManagementService>();
                 var persistenceService = App.GetService<IPersistenceService>();
-                
+
                 ViewModel = new CreateProjectDialogViewModel(projectManagementService, persistenceService);
                 DataContext = ViewModel;
             }

@@ -12,7 +12,7 @@ namespace HouseVictoria.App.Screens.Windows
         private readonly IMemoryService _memoryService;
 
         public DataBankManagementWindowViewModel ViewModel { get; }
-        
+
         private bool _isMinimized = false;
         private bool _isClosed = false;
 
@@ -28,7 +28,7 @@ namespace HouseVictoria.App.Screens.Windows
                 MessageBox.Show($"Error initializing Data Bank Management Window: {ex.Message}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-            
+
             try
             {
                 _memoryService = App.GetService<IMemoryService>();
@@ -39,7 +39,7 @@ namespace HouseVictoria.App.Screens.Windows
                 MessageBox.Show($"Error: Could not access Memory Service. {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-            
+
             try
             {
                 ViewModel = new DataBankManagementWindowViewModel(_memoryService);

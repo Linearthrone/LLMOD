@@ -1,7 +1,9 @@
 # House Victoria - User Guide
 
 **Version:** 1.0  
-**Last Updated:** January 2025
+**Last Updated:** January 2025  
+
+**Start here for overview:** [HouseVictoria_Guide.md](HouseVictoria_Guide.md) — then use this guide for step-by-step UI and troubleshooting.
 
 ---
 

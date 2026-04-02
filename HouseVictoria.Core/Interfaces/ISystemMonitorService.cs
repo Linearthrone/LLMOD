@@ -18,7 +18,7 @@ namespace HouseVictoria.Core.Interfaces
         AIStatus GetPrimaryAIStatus();
         AIStatus GetCurrentAIContactStatus();
         VirtualEnvironmentStatus GetVirtualEnvironmentStatus();
-        
+
         event EventHandler<SystemMetricsUpdatedEventArgs>? MetricsUpdated;
         event EventHandler<ServerStatusChangedEventArgs>? ServerStatusChanged;
     }

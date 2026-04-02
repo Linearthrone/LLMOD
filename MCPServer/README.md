@@ -58,6 +58,11 @@ PROJECTS_PATH=./data/projects
 # Logging
 LOG_LEVEL=INFO
 LOG_FILE=./logs/server.log
+
+# Optional: same Postgres + pgvector as the WPF app (semantic vector_search tool)
+# PGVECTOR_CONNECTION_STRING=Host=127.0.0.1;Port=5432;Database=housevictoria;Username=...;Password=...
+# OLLAMA_HOST=http://127.0.0.1:11434
+# OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 ```
 
 ## Usage

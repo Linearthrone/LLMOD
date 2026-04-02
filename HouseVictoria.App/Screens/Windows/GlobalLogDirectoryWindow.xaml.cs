@@ -9,7 +9,7 @@ namespace HouseVictoria.App.Screens.Windows
     public partial class GlobalLogDirectoryWindow : Window
     {
         public GlobalLogDirectoryWindowViewModel ViewModel { get; }
-        
+
         private bool _isMinimized = false;
         private bool _isClosed = false;
         private double _savedWidth;
@@ -20,19 +20,19 @@ namespace HouseVictoria.App.Screens.Windows
         public GlobalLogDirectoryWindow()
         {
             InitializeComponent();
-            
+
             var loggingService = App.GetService<ILoggingService>();
             ViewModel = new GlobalLogDirectoryWindowViewModel(loggingService);
             DataContext = ViewModel;
-            
+
             Loaded += GlobalLogDirectoryWindow_Loaded;
-            
+
             Closed += (s, e) => { _isClosed = true; };
         }
 
         public bool IsClosed() => _isClosed;
         public bool IsMinimized() => _isMinimized;
-        
+
         public void RestoreFromMinimized()
         {
             WindowHelper.RestoreFromTray(this, ref _isMinimized, _savedWidth, _savedHeight, _savedLeft, _savedTop);
@@ -83,7 +83,7 @@ namespace HouseVictoria.App.Screens.Windows
             var logSummary = FindName("LogSummary") as System.Windows.Controls.TextBlock;
             var logContent = FindName("LogContent") as System.Windows.Controls.TextBlock;
             var logTags = FindName("LogTags") as System.Windows.Controls.ItemsControl;
-            
+
             if (e.NewValue is LogCategoryViewModel selectedItem)
             {
                 if (selectedItem.LogEntry != null)

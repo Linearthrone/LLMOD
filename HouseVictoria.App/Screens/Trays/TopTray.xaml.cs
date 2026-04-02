@@ -40,11 +40,11 @@ namespace HouseVictoria.App.Screens.Trays
             else
                 e.Effects = System.Windows.DragDropEffects.None;
         }
-        
+
         public void DataBankBox_DragLeave(object sender, System.Windows.DragEventArgs e)
         {
         }
-        
+
         private async void DataBankBox_Drop(object sender, System.Windows.DragEventArgs e)
         {
             if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
@@ -102,7 +102,7 @@ namespace HouseVictoria.App.Screens.Trays
                         var fileExtension = fileInfo.Extension.ToLowerInvariant();
 
                         // Handle text files
-                        if (fileExtension == ".txt" || fileExtension == ".md" || fileExtension == ".json" || 
+                        if (fileExtension == ".txt" || fileExtension == ".md" || fileExtension == ".json" ||
                             fileExtension == ".xml" || fileExtension == ".csv" || fileExtension == ".log" ||
                             fileExtension == ".cs" || fileExtension == ".js" || fileExtension == ".py" ||
                             fileExtension == ".html" || fileExtension == ".css")
@@ -194,7 +194,7 @@ namespace HouseVictoria.App.Screens.Trays
                 }
 
                 var files = await fileGenerationService.GetGeneratedFilesAsync();
-                
+
                 if (files == null || files.Count == 0)
                 {
                     System.Windows.MessageBox.Show(

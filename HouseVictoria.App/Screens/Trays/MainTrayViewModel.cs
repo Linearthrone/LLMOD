@@ -65,7 +65,7 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 System.Diagnostics.Debug.WriteLine($"MainTrayViewModel: Showing window '{windowType}'");
-            _eventAggregator.Publish(new ShowWindowEvent { WindowType = windowType });
+                _eventAggregator.Publish(new ShowWindowEvent { WindowType = windowType });
             }
             catch (Exception ex)
             {

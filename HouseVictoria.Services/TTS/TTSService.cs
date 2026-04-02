@@ -68,7 +68,7 @@ namespace HouseVictoria.Services.TTS
                         piperRequestBody["voice"] = voiceToUse;
                     var piperJson = JsonSerializer.Serialize(piperRequestBody);
                     var piperContent = new StringContent(piperJson, Encoding.UTF8, "application/json");
-                    
+
                     var piperResponse = await _httpClient.PostAsync($"{_endpoint}/", piperContent);
                     if (piperResponse.IsSuccessStatusCode)
                     {
@@ -142,7 +142,7 @@ namespace HouseVictoria.Services.TTS
 
                         var json = JsonSerializer.Serialize(requestBody);
                         var content = new StringContent(json, Encoding.UTF8, "application/json");
-                        
+
                         var response = await _httpClient.PostAsync(endpoint, content);
                         if (response.IsSuccessStatusCode)
                         {
@@ -214,7 +214,7 @@ namespace HouseVictoria.Services.TTS
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"TTS Error: {ex.Message}\n{ex.StackTrace}");
-                
+
                 // Try Windows TTS fallback on exception if enabled
                 if (_useWindowsTTSFallback && _windowsSynthesizer != null)
                 {
@@ -229,7 +229,7 @@ namespace HouseVictoria.Services.TTS
                         System.Diagnostics.Debug.WriteLine($"TTS: Windows TTS fallback also failed: {winTtsEx.Message}");
                     }
                 }
-                
+
                 return null;
             }
         }
@@ -260,7 +260,7 @@ namespace HouseVictoria.Services.TTS
                             var selectedVoice = voices.FirstOrDefault(v =>
                                 v.VoiceInfo.Name.Contains(voice, StringComparison.OrdinalIgnoreCase) ||
                                 v.VoiceInfo.Description.Contains(voice, StringComparison.OrdinalIgnoreCase));
-                            
+
                             if (selectedVoice != null)
                             {
                                 _windowsSynthesizer.SelectVoice(selectedVoice.VoiceInfo.Name);
@@ -279,10 +279,10 @@ namespace HouseVictoria.Services.TTS
                     {
                         _windowsSynthesizer.SetOutputToWaveStream(memoryStream);
                         _windowsSynthesizer.Speak(text);
-                        
+
                         // Reset output to default
                         _windowsSynthesizer.SetOutputToDefaultAudioDevice();
-                        
+
                         return memoryStream.ToArray();
                     }
                 }
@@ -300,7 +300,7 @@ namespace HouseVictoria.Services.TTS
             {
                 // First check external TTS endpoint
                 var endpoints = new[] { "/health", "/", "/api/health" };
-                
+
                 foreach (var path in endpoints)
                 {
                     try
@@ -318,7 +318,7 @@ namespace HouseVictoria.Services.TTS
                         continue;
                     }
                 }
-                
+
                 // If external service is not available, check Windows TTS fallback
                 if (_useWindowsTTSFallback && _windowsSynthesizer != null)
                 {
@@ -336,7 +336,7 @@ namespace HouseVictoria.Services.TTS
                         System.Diagnostics.Debug.WriteLine($"TTS: Windows TTS check failed: {ex.Message}");
                     }
                 }
-                
+
                 System.Diagnostics.Debug.WriteLine("TTS: No TTS service available (external or Windows fallback)");
                 return false;
             }

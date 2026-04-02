@@ -56,7 +56,7 @@ namespace HouseVictoria.App.Converters
                     // BitmapImage requires the stream to remain open, so we create a persistent copy
                     var dataCopy = new byte[mediaData.Length];
                     Array.Copy(mediaData, dataCopy, mediaData.Length);
-                    
+
                     var bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.StreamSource = new MemoryStream(dataCopy);

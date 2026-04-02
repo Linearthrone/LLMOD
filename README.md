@@ -2,6 +2,8 @@
 
 A modular overlay desktop application inspired by Xbox Game Bar, featuring multimodal AI chat interface, SMS/MMS communication, project management, system monitoring, and virtual environment integration.
 
+**Documentation:** Start with [Docs/HouseVictoria_Guide.md](Docs/HouseVictoria_Guide.md) (consolidated status, roadmap pointers, and links to all other docs).
+
 ## Features
 
 ### Core Modules
@@ -30,7 +32,7 @@ A modular overlay desktop application inspired by Xbox Game Bar, featuring multi
    - Multimodal chat interface
    - Text, image, video, and document sharing
    - AI Contact book integration
-   - Video call support
+   - Voice-style calls (STT + TTS) when servers are configured; separate **video call window** exists for call state/UI — **real WebRTC video/audio is not implemented yet**
 
 5. **AI Models & Personas Window**
    - Load/unload AI models from Ollama
@@ -200,6 +202,7 @@ The project is designed to be developed module-by-module with testing at each st
 
 ### Phase 8: Virtual Environment 🚧
 - [x] Unreal Engine WebSocket service (UnrealEnvironmentService.cs – connect, send/receive, reconnect)
+- [x] Document JSON protocol and mock server — [Docs/Unreal_Protocol.md](Docs/Unreal_Protocol.md), [Tools/unreal_mock_ws.py](Tools/unreal_mock_ws.py)
 - [ ] Validate with Unreal Engine build (service code exists; test with real Unreal instance)
 - [ ] Implement avatar spawning
 - [ ] Add pose/movement controls

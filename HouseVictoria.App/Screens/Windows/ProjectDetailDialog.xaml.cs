@@ -14,7 +14,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ProjectDetailDialog(Project project, IProjectManagementService projectManagementService, IPersistenceService persistenceService)
         {
             InitializeComponent();
-            
+
             if (project == null)
             {
                 throw new ArgumentNullException(nameof(project));
@@ -24,17 +24,17 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 ViewModel = new ProjectDetailDialogViewModel(project, projectManagementService, persistenceService);
                 DataContext = ViewModel;
-                
+
                 // Subscribe to events
-                ViewModel.ProjectDeleted += (s, e) => 
-                { 
-                    ProjectWasDeleted = true; 
-                    DialogResult = false; 
-                    Close(); 
+                ViewModel.ProjectDeleted += (s, e) =>
+                {
+                    ProjectWasDeleted = true;
+                    DialogResult = false;
+                    Close();
                 };
-                ViewModel.ProjectSaved += (s, e) => 
-                { 
-                    ProjectWasUpdated = true; 
+                ViewModel.ProjectSaved += (s, e) =>
+                {
+                    ProjectWasUpdated = true;
                 };
             }
             catch (Exception ex)
@@ -49,7 +49,7 @@ namespace HouseVictoria.App.Screens.Windows
         {
             if (ViewModel.IsEditable)
             {
-                var result = MessageBox.Show("You have unsaved changes. Are you sure you want to close?", "Unsaved Changes", 
+                var result = MessageBox.Show("You have unsaved changes. Are you sure you want to close?", "Unsaved Changes",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.No)
                 {

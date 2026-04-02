@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using HouseVictoria.App.Services;
 using HouseVictoria.Core.Interfaces;
 
 namespace HouseVictoria.App.Screens.Windows
@@ -9,6 +10,7 @@ namespace HouseVictoria.App.Screens.Windows
         private bool _isMinimized;
         private bool _isClosed;
         private readonly ICommunicationService _communicationService;
+        private LocalCameraPreviewService? _cameraPreview;
 
         public VideoCallWindowViewModel ViewModel { get; }
 
@@ -38,11 +40,23 @@ namespace HouseVictoria.App.Screens.Windows
             ViewModel = new VideoCallWindowViewModel(_communicationService, context);
             DataContext = ViewModel;
             Closed += VideoCallWindow_Closed;
+            Loaded += VideoCallWindow_Loaded;
+        }
+
+        private void VideoCallWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.UseCameraPreview && LocalPreviewImage != null)
+            {
+                _cameraPreview = new LocalCameraPreviewService();
+                _cameraPreview.Start(LocalPreviewImage, Dispatcher);
+            }
         }
 
         private void VideoCallWindow_Closed(object? sender, EventArgs e)
         {
             _isClosed = true;
+            _cameraPreview?.Dispose();
+            _cameraPreview = null;
             ViewModel.Dispose();
         }
 

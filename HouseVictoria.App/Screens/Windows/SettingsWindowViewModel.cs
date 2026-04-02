@@ -2,6 +2,7 @@ using HouseVictoria.Core.Models;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using System.Configuration;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using System.Text.RegularExpressions;
@@ -29,7 +30,7 @@ namespace HouseVictoria.App.Screens.Windows
         private string? _validationError;
         private bool _isTestingConnection;
         private string? _connectionTestResult;
-        
+
         // LLM Server Settings
         private string _lmStudioEndpoint = string.Empty;
         public string LmStudioEndpoint
@@ -101,8 +102,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string OllamaEndpoint
         {
             get => _ollamaEndpoint;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _ollamaEndpoint, value))
                 {
                     ValidateSettings();
@@ -133,8 +134,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string MCPServerEndpoint
         {
             get => _mcpServerEndpoint;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _mcpServerEndpoint, value))
                 {
                     ValidateSettings();
@@ -147,8 +148,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string TTSEndpoint
         {
             get => _ttsEndpoint;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _ttsEndpoint, value))
                 {
                     ValidateSettings();
@@ -169,8 +170,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string UnrealEngineEndpoint
         {
             get => _unrealEngineEndpoint;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _unrealEngineEndpoint, value))
                 {
                     ValidateSettings();
@@ -183,8 +184,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string StableDiffusionEndpoint
         {
             get => _stableDiffusionEndpoint;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _stableDiffusionEndpoint, value))
                 {
                     ValidateSettings();
@@ -238,8 +239,8 @@ namespace HouseVictoria.App.Screens.Windows
         public double OverlayOpacity
         {
             get => _overlayOpacity;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _overlayOpacity, value))
                 {
                     ValidateSettings();
@@ -258,8 +259,8 @@ namespace HouseVictoria.App.Screens.Windows
         public int AutoHideDelayMs
         {
             get => _autoHideDelayMs;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _autoHideDelayMs, value))
                 {
                     ValidateSettings();
@@ -272,8 +273,8 @@ namespace HouseVictoria.App.Screens.Windows
         public double WalkSpeed
         {
             get => _walkSpeed;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _walkSpeed, value))
                 {
                     ValidateSettings();
@@ -285,8 +286,8 @@ namespace HouseVictoria.App.Screens.Windows
         public double RunSpeed
         {
             get => _runSpeed;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _runSpeed, value))
                 {
                     ValidateSettings();
@@ -298,8 +299,8 @@ namespace HouseVictoria.App.Screens.Windows
         public double JumpHeight
         {
             get => _jumpHeight;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _jumpHeight, value))
                 {
                     ValidateSettings();
@@ -355,8 +356,8 @@ namespace HouseVictoria.App.Screens.Windows
         public int MemoryMaxEntries
         {
             get => _memoryMaxEntries;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _memoryMaxEntries, value))
                 {
                     ValidateSettings();
@@ -368,8 +369,8 @@ namespace HouseVictoria.App.Screens.Windows
         public double MemoryImportanceThreshold
         {
             get => _memoryImportanceThreshold;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _memoryImportanceThreshold, value))
                 {
                     ValidateSettings();
@@ -381,13 +382,52 @@ namespace HouseVictoria.App.Screens.Windows
         public int MemoryRetentionDays
         {
             get => _memoryRetentionDays;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _memoryRetentionDays, value))
                 {
                     ValidateSettings();
                 }
             }
+        }
+
+        private bool _enablePgVector;
+        public bool EnablePgVector
+        {
+            get => _enablePgVector;
+            set => SetProperty(ref _enablePgVector, value);
+        }
+
+        private string _pgVectorConnectionString = string.Empty;
+        public string PgVectorConnectionString
+        {
+            get => _pgVectorConnectionString;
+            set => SetProperty(ref _pgVectorConnectionString, value);
+        }
+
+        private string _ollamaEmbeddingModel = "nomic-embed-text";
+        public string OllamaEmbeddingModel
+        {
+            get => _ollamaEmbeddingModel;
+            set => SetProperty(ref _ollamaEmbeddingModel, value);
+        }
+
+        private int _embeddingVectorDimensions = 768;
+        public int EmbeddingVectorDimensions
+        {
+            get => _embeddingVectorDimensions;
+            set
+            {
+                if (SetProperty(ref _embeddingVectorDimensions, value))
+                    ValidateSettings();
+            }
+        }
+
+        private double _hybridLexicalWeight = 0.5;
+        public double HybridLexicalWeight
+        {
+            get => _hybridLexicalWeight;
+            set => SetProperty(ref _hybridLexicalWeight, value);
         }
 
         // Validation and Connection Testing
@@ -484,7 +524,7 @@ namespace HouseVictoria.App.Screens.Windows
         public SettingsWindowViewModel(AppConfig appConfig)
         {
             _appConfig = appConfig;
-            
+
             // Get TTS service from service provider
             try
             {
@@ -494,7 +534,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 _ttsService = null;
             }
-            
+
             // Load settings from AppConfig
             LmStudioEndpoint = appConfig.LmStudioEndpoint;
             PrimaryLLM = appConfig.PrimaryLLM;
@@ -529,6 +569,11 @@ namespace HouseVictoria.App.Screens.Windows
             MemoryMaxEntries = appConfig.MemoryMaxEntries;
             MemoryImportanceThreshold = appConfig.MemoryImportanceThreshold;
             MemoryRetentionDays = appConfig.MemoryRetentionDays;
+            EnablePgVector = appConfig.EnablePgVector;
+            PgVectorConnectionString = appConfig.PgVectorConnectionString ?? string.Empty;
+            OllamaEmbeddingModel = string.IsNullOrWhiteSpace(appConfig.OllamaEmbeddingModel) ? "nomic-embed-text" : appConfig.OllamaEmbeddingModel;
+            EmbeddingVectorDimensions = appConfig.EmbeddingVectorDimensions > 0 ? appConfig.EmbeddingVectorDimensions : 768;
+            HybridLexicalWeight = appConfig.HybridLexicalWeight;
 
             // Initialize commands
             TestOllamaConnectionCommand = new RelayCommand(async () => await TestOllamaConnectionAsync());
@@ -551,7 +596,7 @@ namespace HouseVictoria.App.Screens.Windows
             StopKokoroCommand = new RelayCommand(async () => await StopKokoroAsync());
 
             ValidateSettings();
-            
+
             _ = RefreshKokoroStatusAsync();
         }
 
@@ -685,6 +730,30 @@ namespace HouseVictoria.App.Screens.Windows
             if (MemoryRetentionDays < 1 || MemoryRetentionDays > 3650)
             {
                 _validationError = "Memory retention days must be between 1 and 3650";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (EmbeddingVectorDimensions < 8 || EmbeddingVectorDimensions > 4096)
+            {
+                _validationError = "Embedding vector dimensions must be between 8 and 4096";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (HybridLexicalWeight < 0 || HybridLexicalWeight > 1)
+            {
+                _validationError = "Hybrid lexical weight must be between 0 and 1";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (EnablePgVector && string.IsNullOrWhiteSpace(PgVectorConnectionString))
+            {
+                _validationError = "Postgres connection string is required when pgvector is enabled";
                 OnPropertyChanged(nameof(ValidationError));
                 OnPropertyChanged(nameof(IsValid));
                 return;
@@ -1318,6 +1387,11 @@ d_comfyui_models:
                         MemoryMaxEntries = importedConfig.MemoryMaxEntries;
                         MemoryImportanceThreshold = importedConfig.MemoryImportanceThreshold;
                         MemoryRetentionDays = importedConfig.MemoryRetentionDays;
+                        EnablePgVector = importedConfig.EnablePgVector;
+                        PgVectorConnectionString = importedConfig.PgVectorConnectionString ?? string.Empty;
+                        OllamaEmbeddingModel = string.IsNullOrWhiteSpace(importedConfig.OllamaEmbeddingModel) ? "nomic-embed-text" : importedConfig.OllamaEmbeddingModel;
+                        EmbeddingVectorDimensions = importedConfig.EmbeddingVectorDimensions > 0 ? importedConfig.EmbeddingVectorDimensions : 768;
+                        HybridLexicalWeight = importedConfig.HybridLexicalWeight;
 
                         MessageBox.Show("Settings imported successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
@@ -1374,7 +1448,12 @@ d_comfyui_models:
                         PersistentMemoryPath = PersistentMemoryPath,
                         MemoryMaxEntries = MemoryMaxEntries,
                         MemoryImportanceThreshold = MemoryImportanceThreshold,
-                        MemoryRetentionDays = MemoryRetentionDays
+                        MemoryRetentionDays = MemoryRetentionDays,
+                        EnablePgVector = EnablePgVector,
+                        PgVectorConnectionString = string.IsNullOrWhiteSpace(PgVectorConnectionString) ? null : PgVectorConnectionString,
+                        OllamaEmbeddingModel = OllamaEmbeddingModel,
+                        EmbeddingVectorDimensions = EmbeddingVectorDimensions,
+                        HybridLexicalWeight = HybridLexicalWeight
                     };
 
                     var json = JsonSerializer.Serialize(exportConfig, new JsonSerializerOptions { WriteIndented = true });
@@ -1429,10 +1508,15 @@ d_comfyui_models:
                 _appConfig.MemoryMaxEntries = MemoryMaxEntries;
                 _appConfig.MemoryImportanceThreshold = MemoryImportanceThreshold;
                 _appConfig.MemoryRetentionDays = MemoryRetentionDays;
+                _appConfig.EnablePgVector = EnablePgVector;
+                _appConfig.PgVectorConnectionString = string.IsNullOrWhiteSpace(PgVectorConnectionString) ? null : PgVectorConnectionString;
+                _appConfig.OllamaEmbeddingModel = OllamaEmbeddingModel;
+                _appConfig.EmbeddingVectorDimensions = EmbeddingVectorDimensions;
+                _appConfig.HybridLexicalWeight = HybridLexicalWeight;
 
                 // Save to App.config file (basic settings only)
                 var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-                
+
                 UpdateOrAddSetting(config, "LmStudioEndpoint", LmStudioEndpoint);
                 UpdateOrAddSetting(config, "PrimaryLLM", PrimaryLLM);
                 UpdateOrAddSetting(config, "OllamaEndpoint", OllamaEndpoint);
@@ -1450,6 +1534,11 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "OverlayOpacity", OverlayOpacity.ToString());
                 UpdateOrAddSetting(config, "AutoHideTrays", AutoHideTrays.ToString());
                 UpdateOrAddSetting(config, "AutoHideDelayMs", AutoHideDelayMs.ToString());
+                UpdateOrAddSetting(config, "EnablePgVector", EnablePgVector.ToString());
+                UpdateOrAddSetting(config, "PgVectorConnectionString", PgVectorConnectionString ?? string.Empty);
+                UpdateOrAddSetting(config, "OllamaEmbeddingModel", OllamaEmbeddingModel);
+                UpdateOrAddSetting(config, "EmbeddingVectorDimensions", EmbeddingVectorDimensions.ToString());
+                UpdateOrAddSetting(config, "HybridLexicalWeight", HybridLexicalWeight.ToString(CultureInfo.InvariantCulture));
 
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
@@ -1544,6 +1633,11 @@ d_comfyui_models:
                 MemoryMaxEntries = defaults.MemoryMaxEntries;
                 MemoryImportanceThreshold = defaults.MemoryImportanceThreshold;
                 MemoryRetentionDays = defaults.MemoryRetentionDays;
+                EnablePgVector = defaults.EnablePgVector;
+                PgVectorConnectionString = defaults.PgVectorConnectionString ?? string.Empty;
+                OllamaEmbeddingModel = defaults.OllamaEmbeddingModel;
+                EmbeddingVectorDimensions = defaults.EmbeddingVectorDimensions;
+                HybridLexicalWeight = defaults.HybridLexicalWeight;
 
                 // Clear connection statuses
                 LmStudioConnectionStatus = null;

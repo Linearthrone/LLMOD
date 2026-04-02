@@ -20,7 +20,7 @@ namespace HouseVictoria.Core.Models
         public DateTime LastUsedAt { get; set; } = DateTime.Now;
         public bool IsPrimaryAI { get; set; }
         public string? DataPath { get; set; } // Path to store this persona's data
-        
+
         /// <summary>
         /// Piper TTS voice/model ID (e.g., en_US-lessac-medium). Used when this AI contact speaks during calls.
         /// </summary>
@@ -33,33 +33,33 @@ namespace HouseVictoria.Core.Models
         public double AvatarVoiceSpeed { get; set; } = 1.0;
         /// <summary>Voice pitch (0.1–3.0) when this persona speaks as an avatar. Default: 1.0.</summary>
         public double AvatarVoicePitch { get; set; } = 1.0;
-        
+
         // LLM Parameters
         /// <summary>
         /// Temperature (0.0-2.0): Controls randomness. Lower = more focused, Higher = more creative. Default: 0.7
         /// </summary>
         public double Temperature { get; set; } = 0.7;
-        
+
         /// <summary>
         /// Top P (0.0-1.0): Nucleus sampling. Controls diversity via nucleus probability. Default: 0.9
         /// </summary>
         public double TopP { get; set; } = 0.9;
-        
+
         /// <summary>
         /// Top K (1-100): Limits sampling to top K most likely tokens. Default: 40
         /// </summary>
         public int TopK { get; set; } = 40;
-        
+
         /// <summary>
         /// Repeat Penalty (0.0-2.0): Penalizes repetition. Higher = less repetition. Default: 1.1
         /// </summary>
         public double RepeatPenalty { get; set; } = 1.1;
-        
+
         /// <summary>
         /// Max Tokens / Num Predict: Maximum tokens to generate. -1 = unlimited. Default: -1
         /// </summary>
         public int MaxTokens { get; set; } = -1;
-        
+
         /// <summary>
         /// Context Length / Num Ctx: Size of the context window. Default: 4096
         /// </summary>

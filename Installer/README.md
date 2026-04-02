@@ -3,6 +3,8 @@
 This folder contains an **Inno Setup** script that builds a standard Windows installer (`.exe`) for the **HouseVictoria** desktop app.  
 The installer includes a normal **uninstaller** entry in “Apps & Features” (Programs and Features), so non-technical users can install and remove the app easily.
 
+From the repository root, run **`install.bat`** once to restore NuGet packages, build the solution, and set up the MCP Python virtual environment. Use **`start.bat`** for day-to-day launching (Ollama/MCP/TTS/STT/app as configured).
+
 ### Prerequisites
 
 - **.NET SDK 8.0** (for building the app)

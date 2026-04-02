@@ -95,7 +95,7 @@ namespace HouseVictoria.App.Screens.Windows
             // Calculate window size and position
             var screenWidth = SystemParameters.PrimaryScreenWidth;
             var screenHeight = SystemParameters.PrimaryScreenHeight;
-            
+
             // Galaxy S23 actual dimensions: 146.3mm x 70.9mm = 2.064:1 aspect ratio
             // Base size then scaled: 0.66x width, 2.25x height of original proportions
             const double sizeScaleFactor = 2.25;
@@ -105,20 +105,20 @@ namespace HouseVictoria.App.Screens.Windows
             var originalHeight = baseWidth / aspectRatio;
             var windowWidth = originalWidth * 0.66;
             var windowHeight = originalHeight * 2.25;
-            
+
             // MainTray is 90px wide + 20px margin = 110px from right edge
             var trayWidth = 110;
-            
+
             // Position on right side, but to the left of the tray
             // Aligned more to the top (about 10% from top)
             var left = screenWidth - windowWidth - trayWidth - 20; // 20px gap between window and tray
             var top = screenHeight * 0.1; // 10% from top
-            
+
             this.Width = windowWidth;
             this.Height = windowHeight;
             this.Left = left;
             this.Top = top;
-            
+
             // Make window resizable with proper min/max constraints
             this.ResizeMode = ResizeMode.CanResize;
             this.MinWidth = 350;
@@ -144,13 +144,13 @@ namespace HouseVictoria.App.Screens.Windows
         {
             if (ViewModel.IsMessageSelectionMode) return;
             ConversationMessage? message = null;
-            
+
             // Get message from DataContext (works for Image, TextBlock, or Border)
             if (sender is FrameworkElement element && element.DataContext is ConversationMessage msg)
             {
                 message = msg;
             }
-            
+
             if (message != null && !string.IsNullOrWhiteSpace(message.FilePath) && System.IO.File.Exists(message.FilePath))
             {
                 try
@@ -223,7 +223,7 @@ namespace HouseVictoria.App.Screens.Windows
                 _savedHeight = this.Height;
                 _savedLeft = this.Left;
                 _savedTop = this.Top;
-                
+
                 // Hide window completely (don't show on screen at all)
                 this.Visibility = Visibility.Hidden;
                 _isMinimized = true;
@@ -282,17 +282,17 @@ namespace HouseVictoria.App.Screens.Windows
 
                 // Resize border thickness (the transparent border around the phone frame)
                 var borderThickness = 8;
-                
+
                 // Get screen coordinates
                 var x = (int)(lParam.ToInt64() & 0xFFFF);
                 var y = (int)((lParam.ToInt64() >> 16) & 0xFFFF);
                 var screenPoint = new System.Windows.Point(x, y);
-                
+
                 try
                 {
                     // Convert to window coordinates
                     var point = PointFromScreen(screenPoint);
-                    
+
                     var width = this.ActualWidth;
                     var height = this.ActualHeight;
 

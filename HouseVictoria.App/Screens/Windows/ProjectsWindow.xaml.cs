@@ -11,7 +11,7 @@ namespace HouseVictoria.App.Screens.Windows
         private readonly IProjectManagementService _projectManagementService;
 
         public ProjectsWindowViewModel ViewModel { get; }
-        
+
         private bool _isMinimized = false;
         private bool _isClosed = false;
         private double _savedWidth;
@@ -31,7 +31,7 @@ namespace HouseVictoria.App.Screens.Windows
                 MessageBox.Show($"Error initializing Projects Window: {ex.Message}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-            
+
             try
             {
                 InitializeConverters();
@@ -41,7 +41,7 @@ namespace HouseVictoria.App.Screens.Windows
                 System.Diagnostics.Debug.WriteLine($"Error initializing converters: {ex.Message}");
                 // Continue without converters - window will still work
             }
-            
+
             try
             {
                 _projectManagementService = App.GetService<IProjectManagementService>();
@@ -51,7 +51,7 @@ namespace HouseVictoria.App.Screens.Windows
                 System.Diagnostics.Debug.WriteLine($"Failed to get IProjectManagementService: {ex.Message}");
                 _projectManagementService = new HouseVictoria.Services.ProjectManagement.ProjectManagementService();
             }
-            
+
             try
             {
                 ViewModel = new ProjectsWindowViewModel(_projectManagementService);
@@ -63,15 +63,15 @@ namespace HouseVictoria.App.Screens.Windows
                 MessageBox.Show($"Error initializing Projects Window: {ex.Message}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-            
+
             Loaded += ProjectsWindow_Loaded;
-            
+
             Closed += (s, e) => { _isClosed = true; };
         }
 
         public bool IsClosed() => _isClosed;
         public bool IsMinimized() => _isMinimized;
-        
+
         public void RestoreFromMinimized()
         {
             WindowHelper.RestoreFromTray(this, ref _isMinimized, _savedWidth, _savedHeight, _savedLeft, _savedTop);
@@ -106,7 +106,7 @@ namespace HouseVictoria.App.Screens.Windows
             if (sender is System.Windows.FrameworkElement element && element.Tag is string projectId)
             {
                 await ViewModel.OpenProjectDetailAsync(projectId);
-                
+
                 // Refresh projects list after detail dialog closes (in case project was updated or deleted)
                 _ = ViewModel.LoadProjectsAsync();
             }

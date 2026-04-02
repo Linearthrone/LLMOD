@@ -11,22 +11,22 @@ namespace HouseVictoria.Core.Interfaces
         /// Creates a text file with the specified content and saves it to the file retrieval location
         /// </summary>
         Task<string> CreateTextFileAsync(string fileName, string content, string? subdirectory = null);
-        
+
         /// <summary>
         /// Creates a file with the specified content and extension
         /// </summary>
         Task<string> CreateFileAsync(string fileName, byte[] content, string? subdirectory = null);
-        
+
         /// <summary>
         /// Gets all generated files available for retrieval
         /// </summary>
         Task<List<GeneratedFile>> GetGeneratedFilesAsync();
-        
+
         /// <summary>
         /// Gets the file path for a generated file
         /// </summary>
         Task<string?> GetFilePathAsync(string fileName);
-        
+
         /// <summary>
         /// Deletes a generated file
         /// </summary>

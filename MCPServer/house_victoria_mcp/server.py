@@ -58,8 +58,6 @@ async def call_tool_by_name(tool_name: str, **kwargs):
 async def create_server():
     """Create and configure the MCP server."""
 
-    config = get_config()
-    
     # Initialize memory system
     logger.info("Initializing memory system...")
     storage = MemoryStorage()

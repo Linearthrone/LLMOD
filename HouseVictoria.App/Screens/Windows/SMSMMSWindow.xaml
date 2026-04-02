@@ -711,7 +711,7 @@
                                     Background="Transparent"
                                     BorderThickness="0"
                                     Command="{Binding StartCallCommand}"
-                                    ToolTip="Start video call">
+                                    ToolTip="Video call (local preview; remote WebRTC not implemented)">
                                 <TextBlock Text="🎥" FontSize="18" Foreground="{StaticResource PrimaryBrush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Button>
@@ -751,8 +751,13 @@
 
                     <!-- Messages -->
                     <ScrollViewer x:Name="MessagesScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" 
-                                 Padding="12,8" Background="{StaticResource DarkBackgroundBrush}">
+                                 Padding="12,8" Background="{StaticResource DarkBackgroundBrush}" CanContentScroll="True">
                     <ItemsControl ItemsSource="{Binding Messages}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                     <Grid Margin="0,4">

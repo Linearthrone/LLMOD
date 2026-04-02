@@ -58,15 +58,15 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 IsLoading = true;
                 System.Diagnostics.Debug.WriteLine("GLD: Starting log refresh...");
-                
+
                 // Force refresh by calling RefreshLogsAsync directly
                 await _loggingService.RefreshLogsAsync();
                 var categories = await _loggingService.GetLogCategoriesAsync();
-                
+
                 System.Diagnostics.Debug.WriteLine($"GLD: Loaded {categories.Count} categories");
-                
+
                 var categoryViewModels = new ObservableCollection<LogCategoryViewModel>();
-                
+
                 if (categories.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("GLD: No categories found - adding placeholder");
@@ -141,7 +141,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 System.Diagnostics.Debug.WriteLine($"GLD Error refreshing logs: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"GLD Stack trace: {ex.StackTrace}");
-                
+
                 // Add error category to UI so user knows something went wrong
                 var errorVm = new LogCategoryViewModel
                 {
@@ -200,17 +200,17 @@ namespace HouseVictoria.App.Screens.Windows
                     };
 
                     await _loggingService.ExportLogsAsync(dialog.FileName, options);
-                    System.Windows.MessageBox.Show($"Logs exported successfully to:\n{dialog.FileName}", 
-                        "Export Complete", 
-                        System.Windows.MessageBoxButton.OK, 
+                    System.Windows.MessageBox.Show($"Logs exported successfully to:\n{dialog.FileName}",
+                        "Export Complete",
+                        System.Windows.MessageBoxButton.OK,
                         System.Windows.MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error exporting logs: {ex.Message}", 
-                    "Export Error", 
-                    System.Windows.MessageBoxButton.OK, 
+                System.Windows.MessageBox.Show($"Error exporting logs: {ex.Message}",
+                    "Export Error",
+                    System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);
             }
         }

@@ -9,7 +9,7 @@ namespace HouseVictoria.App.HelperClasses
     /// </summary>
     public static class WindowHelper
     {
-        public static void MinimizeToTray(Window window, ref bool isMinimized, ref double savedWidth, 
+        public static void MinimizeToTray(Window window, ref bool isMinimized, ref double savedWidth,
             ref double savedHeight, ref double savedLeft, ref double savedTop)
         {
             if (!isMinimized)
@@ -19,14 +19,14 @@ namespace HouseVictoria.App.HelperClasses
                 savedHeight = window.Height;
                 savedLeft = window.Left;
                 savedTop = window.Top;
-                
+
                 // Hide window completely
                 window.Visibility = Visibility.Hidden;
                 isMinimized = true;
             }
         }
 
-        public static void RestoreFromTray(Window window, ref bool isMinimized, 
+        public static void RestoreFromTray(Window window, ref bool isMinimized,
             double savedWidth, double savedHeight, double savedLeft, double savedTop)
         {
             if (isMinimized)

@@ -25,7 +25,7 @@ namespace HouseVictoria.App.Converters
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException("MessageSelectionConverter does not support ConvertBack.");
         }
     }
 }

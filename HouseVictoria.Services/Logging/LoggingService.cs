@@ -74,7 +74,7 @@ namespace HouseVictoria.Services.Logging
                     }
                 }
             }
-            
+
             // Return a copy to prevent external modification
             return new Dictionary<string, LogCategory>(_categories);
         }
@@ -162,7 +162,7 @@ namespace HouseVictoria.Services.Logging
             try
             {
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Starting RefreshLogsAsync at {DateTime.Now}");
-                
+
                 _categories.Clear();
                 _allEntries.Clear();
 
@@ -210,7 +210,7 @@ namespace HouseVictoria.Services.Logging
             {
                 var logsPath = _appConfig.LogsPath;
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Loading Serilog files from: {logsPath}");
-                
+
                 if (!Directory.Exists(logsPath))
                 {
                     System.Diagnostics.Debug.WriteLine($"LoggingService: Logs directory does not exist, creating: {logsPath}");
@@ -220,14 +220,14 @@ namespace HouseVictoria.Services.Logging
 
                 var logFiles = Directory.GetFiles(logsPath, "HouseVictoria-*.log", SearchOption.TopDirectoryOnly);
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Found {logFiles.Length} log files");
-                
+
                 if (logFiles.Length == 0)
                 {
                     // Also check for any .log files
                     var allLogFiles = Directory.GetFiles(logsPath, "*.log", SearchOption.TopDirectoryOnly);
                     System.Diagnostics.Debug.WriteLine($"LoggingService: Found {allLogFiles.Length} total .log files");
                 }
-                
+
                 foreach (var logFile in logFiles)
                 {
                     try
@@ -235,7 +235,7 @@ namespace HouseVictoria.Services.Logging
                         System.Diagnostics.Debug.WriteLine($"LoggingService: Reading log file: {logFile}");
                         var lines = await File.ReadAllLinesAsync(logFile).ConfigureAwait(false);
                         System.Diagnostics.Debug.WriteLine($"LoggingService: File {logFile} has {lines.Length} lines");
-                        
+
                         int parsedCount = 0;
                         foreach (var line in lines)
                         {
@@ -284,7 +284,7 @@ namespace HouseVictoria.Services.Logging
                         {
                             var jsonDoc = System.Text.Json.JsonDocument.Parse(line);
                             var root = jsonDoc.RootElement;
-                            
+
                             var timestampStr = root.TryGetProperty("Timestamp", out var tsProp) ? tsProp.GetString() : null;
                             var levelStr = root.TryGetProperty("Level", out var levelProp) ? levelProp.GetString() : "Information";
                             var jsonMessage = root.TryGetProperty("Message", out var msgProp) ? msgProp.GetString() : line;
@@ -317,7 +317,7 @@ namespace HouseVictoria.Services.Logging
                             // Not valid JSON, continue with fallback
                         }
                     }
-                    
+
                     // Fallback: create entry from entire line if it doesn't match standard format
                     return new LogEntry
                     {
@@ -388,14 +388,14 @@ namespace HouseVictoria.Services.Logging
         {
             if (severity == LogSeverity.Error || severity == LogSeverity.Critical)
                 return "System";
-            
-            if (source.Contains("AI", StringComparison.OrdinalIgnoreCase) || 
+
+            if (source.Contains("AI", StringComparison.OrdinalIgnoreCase) ||
                 source.Contains("Model", StringComparison.OrdinalIgnoreCase))
                 return "AI";
-            
+
             if (source.Contains("Project", StringComparison.OrdinalIgnoreCase))
                 return "Project";
-            
+
             return "System";
         }
 
@@ -403,41 +403,41 @@ namespace HouseVictoria.Services.Logging
         {
             if (source.Contains("Application", StringComparison.OrdinalIgnoreCase))
                 return "Application";
-            
+
             if (source.Contains("Error", StringComparison.OrdinalIgnoreCase))
                 return "Errors";
-            
-            if (source.Contains("Performance", StringComparison.OrdinalIgnoreCase) || 
+
+            if (source.Contains("Performance", StringComparison.OrdinalIgnoreCase) ||
                 source.Contains("Perf", StringComparison.OrdinalIgnoreCase))
                 return "Performance";
-            
+
             if (source.Contains("Model", StringComparison.OrdinalIgnoreCase))
                 return "Model Interactions";
-            
+
             if (source.Contains("Training", StringComparison.OrdinalIgnoreCase))
                 return "Training";
-            
+
             return "General";
         }
 
         private List<string> ExtractTags(string message)
         {
             var tags = new List<string>();
-            
+
             if (message.Contains("ERROR", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("EXCEPTION", StringComparison.OrdinalIgnoreCase))
                 tags.Add("Error");
-            
+
             if (message.Contains("WARNING", StringComparison.OrdinalIgnoreCase))
                 tags.Add("Warning");
-            
+
             if (message.Contains("AI", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("Model", StringComparison.OrdinalIgnoreCase))
                 tags.Add("AI");
-            
+
             if (message.Contains("Project", StringComparison.OrdinalIgnoreCase))
                 tags.Add("Project");
-            
+
             return tags;
         }
 
@@ -445,10 +445,10 @@ namespace HouseVictoria.Services.Logging
         {
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
-            
+
             if (text.Length <= maxLength)
                 return text;
-            
+
             return text.Substring(0, maxLength - 3) + "...";
         }
 
@@ -465,7 +465,7 @@ namespace HouseVictoria.Services.Logging
                 System.Diagnostics.Debug.WriteLine("LoggingService: Loading project logs...");
                 var projects = await _projectManagementService.GetAllProjectsAsync();
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Found {projects.Count} projects");
-                
+
                 int projectLogCount = 0;
                 foreach (var project in projects)
                 {
@@ -831,7 +831,7 @@ namespace HouseVictoria.Services.Logging
         {
             using var writer = new StreamWriter(filePath);
             await writer.WriteLineAsync("Timestamp,Severity,Category,SubCategory,Source,Title,IsRead,Tags,Content");
-            
+
             foreach (var entry in entries)
             {
                 var tags = string.Join(";", entry.Tags);

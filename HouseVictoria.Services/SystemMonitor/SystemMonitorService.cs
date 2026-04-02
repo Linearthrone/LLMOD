@@ -37,20 +37,20 @@ namespace HouseVictoria.Services.SystemMonitor
         private readonly TimeSpan _mcpCheckInterval = TimeSpan.FromSeconds(30);
         private readonly HttpClient _httpClient;
         private readonly CancellationTokenSource _cts = new();
-        
+
         // Hardware monitoring via WMI (Windows Management Instrumentation)
         // WMI doesn't require kernel drivers and won't trigger Windows Defender
         private DateTime _lastWmiUpdate = DateTime.MinValue;
         private readonly TimeSpan _wmiUpdateInterval = TimeSpan.FromSeconds(2); // Update WMI queries every 2 seconds
         private double? _cachedCpuTemperature = null;
-        
+
         // NVML (NVIDIA Management Library) for GPU monitoring
         private DateTime _lastNvmlUpdate = DateTime.MinValue;
         private readonly TimeSpan _nvmlUpdateInterval = TimeSpan.FromSeconds(1); // Update NVML every 1 second
         private double? _cachedGpuTemperature = null;
         private double? _cachedGpuFanSpeed = null;
         private int _nvmlDeviceIndex = 0; // Use first NVIDIA GPU
-        
+
         // Circuit breaker: Track consecutive failures per server to avoid hammering unreachable servers
         private readonly Dictionary<string, int> _consecutiveFailures = new();
         private readonly Dictionary<string, DateTime> _lastFailureTime = new();
@@ -68,7 +68,7 @@ namespace HouseVictoria.Services.SystemMonitor
             _rootDirectory = LocateRootDirectory();
             _startTime = DateTime.Now;
             _systemProcess = Process.GetCurrentProcess();
-            
+
             // Configure HttpClient with better settings for reliability
             var handler = new HttpClientHandler
             {
@@ -76,24 +76,24 @@ namespace HouseVictoria.Services.SystemMonitor
                 UseCookies = false,
                 AllowAutoRedirect = false
             };
-            
+
             _httpClient = new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromSeconds(5),
                 MaxResponseContentBufferSize = 512 * 1024 // 512KB
             };
-            
+
             InitializeServers();
             ApplyConfigOverrides();
             InitializePerformanceCounters();
             // WMI-based hardware monitoring (no kernel drivers needed)
             // Note: WMI has limited temperature/fan speed support compared to WinRing0-based solutions
-            
+
             // Initialize NVML for NVIDIA GPU monitoring (if available)
             InitializeNvml();
 
             _ = AutoStartCriticalServicesAsync();
-            
+
             if (_mcpService != null)
             {
                 _mcpService.ServerStatusChanged += OnMCPServerStatusChanged;
@@ -247,7 +247,7 @@ namespace HouseVictoria.Services.SystemMonitor
                             return task.IsCompletedSuccessfully;
                         },
                         TaskContinuationOptions.ExecuteSynchronously)).ToArray();
-                    
+
                     await Task.WhenAll(completedTasks).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
@@ -429,10 +429,10 @@ namespace HouseVictoria.Services.SystemMonitor
                 // Initialize CPU counter once and cache it
                 _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
                 _cpuCounter.NextValue(); // First call always returns 0
-                
+
                 // Initialize memory counter
                 _memoryCounter = new PerformanceCounter("Memory", "Available MBytes");
-                
+
                 // Initialize GPU counters
                 InitializeGPUCounters();
             }
@@ -447,11 +447,11 @@ namespace HouseVictoria.Services.SystemMonitor
             try
             {
                 _gpuCounters = new List<PerformanceCounter>();
-                
+
                 // Try to get GPU usage via Performance Counters
                 // On Windows 10/11, GPU metrics are available via "GPU Engine" category
                 var categoryNames = new[] { "GPU Engine", "GPU Adapter Engine" };
-                
+
                 foreach (var categoryName in categoryNames)
                 {
                     try
@@ -460,21 +460,21 @@ namespace HouseVictoria.Services.SystemMonitor
                         {
                             var category = new PerformanceCounterCategory(categoryName);
                             var instanceNames = category.GetInstanceNames();
-                            
+
                             // Find instances related to GPU usage (typically contain "engtype_3D" or "engtype_VideoDecode" or "engtype_VideoEncode")
                             // We want to track 3D engine usage primarily
-                            var gpuInstances = instanceNames.Where(name => 
-                                name.Contains("engtype_3D") || 
+                            var gpuInstances = instanceNames.Where(name =>
+                                name.Contains("engtype_3D") ||
                                 name.Contains("engtype_VideoDecode") ||
                                 name.Contains("engtype_VideoEncode") ||
                                 name.Contains("engtype_Compute")).ToList();
-                            
+
                             if (gpuInstances.Count == 0)
                             {
                                 // Fallback: try all instances and sum them
                                 gpuInstances = instanceNames.ToList();
                             }
-                            
+
                             foreach (var instanceName in gpuInstances)
                             {
                                 try
@@ -505,7 +505,7 @@ namespace HouseVictoria.Services.SystemMonitor
                                     System.Diagnostics.Debug.WriteLine($"Failed to create GPU counter for instance {instanceName}: {ex.Message}");
                                 }
                             }
-                            
+
                             if (_gpuCounters.Count > 0)
                             {
                                 break; // Found working GPU counters, exit loop
@@ -518,7 +518,7 @@ namespace HouseVictoria.Services.SystemMonitor
                         continue;
                     }
                 }
-                
+
                 if (_gpuCounters.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("No GPU performance counters found. GPU usage will show 0%.");
@@ -633,7 +633,7 @@ namespace HouseVictoria.Services.SystemMonitor
             if (_serverStatuses.TryGetValue(serverName, out var status))
             {
                 // For MCP server, check actual status if service is available
-                if (serverName == "MCP" && _mcpService != null && 
+                if (serverName == "MCP" && _mcpService != null &&
                     !string.IsNullOrWhiteSpace(status.Endpoint) &&
                     (DateTime.Now - _lastMCPCheck) > _mcpCheckInterval)
                 {
@@ -1171,7 +1171,7 @@ namespace HouseVictoria.Services.SystemMonitor
                     {
                         InitializeGPUCounters();
                     }
-                    
+
                     if (_gpuCounters == null || _gpuCounters.Count == 0)
                     {
                         return 0.0; // No GPU counters available
@@ -1181,7 +1181,7 @@ namespace HouseVictoria.Services.SystemMonitor
                 // Sum up GPU usage from all counters (multiple engines may be active)
                 double totalUsage = 0.0;
                 int validCounters = 0;
-                
+
                 foreach (var counter in _gpuCounters)
                 {
                     try
@@ -1205,10 +1205,10 @@ namespace HouseVictoria.Services.SystemMonitor
                     // Average the usage across all counters, or take max - let's use max as it's more representative
                     // of actual GPU load (one engine at 100% means GPU is fully utilized)
                     var gpuUsage = totalUsage / validCounters;
-                    
+
                     // Clamp to 0-100 range
                     gpuUsage = Math.Max(0, Math.Min(100, gpuUsage));
-                    
+
                     _cachedGpuUsage = gpuUsage;
                     _lastGpuUpdate = DateTime.Now;
                     return gpuUsage;
@@ -1242,7 +1242,7 @@ namespace HouseVictoria.Services.SystemMonitor
                         return temperature;
                     }
                 }
-                
+
                 // Fallback: WMI does not provide GPU temperature information
                 // Returning 0.0 to indicate data not available
                 return 0.0;
@@ -1293,7 +1293,7 @@ namespace HouseVictoria.Services.SystemMonitor
                         return estimatedRpm;
                     }
                 }
-                
+
                 // Fallback: WMI does not provide GPU fan speed information
                 // Returning 0.0 to indicate data not available
                 return 0.0;
@@ -1462,17 +1462,17 @@ namespace HouseVictoria.Services.SystemMonitor
 
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
-                
+
                 try
                 {
                     // Use Task.Run to ensure exception is observed even if it happens in background
-                    var response = await Task.Run(async () => 
+                    var response = await Task.Run(async () =>
                         await _httpClient.GetAsync($"{status.Endpoint}/api/tags", linked.Token).ConfigureAwait(false),
                         linked.Token).ConfigureAwait(false);
-                    
+
                     var isRunning = response.IsSuccessStatusCode;
                     UpdateServerStatus(status, isRunning, "Ollama");
-                    
+
                     // Reset failure count on success
                     if (isRunning)
                     {
@@ -1587,7 +1587,7 @@ namespace HouseVictoria.Services.SystemMonitor
         {
             if (string.IsNullOrWhiteSpace(endpoint))
                 return true;
-                
+
             // Check if we should skip due to circuit breaker
             if (_consecutiveFailures.TryGetValue(serverName, out var failures) && failures >= 3)
             {
@@ -1898,7 +1898,7 @@ namespace HouseVictoria.Services.SystemMonitor
 
             _cpuCounter?.Dispose();
             _memoryCounter?.Dispose();
-            
+
             if (_gpuCounters != null)
             {
                 foreach (var counter in _gpuCounters)
@@ -1912,7 +1912,7 @@ namespace HouseVictoria.Services.SystemMonitor
                 _gpuCounters.Clear();
                 _gpuCounters = null;
             }
-            
+
             // Dispose HttpClient
             try
             {
@@ -1948,14 +1948,14 @@ namespace HouseVictoria.Services.SystemMonitor
                 }
             }
             catch { }
-            
+
             // Shutdown NVML if it was initialized
             try
             {
                 NvmlWrapper.Shutdown();
             }
             catch { }
-            
+
             // Cancel any in-flight checks to avoid ObjectDisposedException on IO completion threads
             try { _cts.Cancel(); } catch { }
             try { _cts.Dispose(); } catch { }

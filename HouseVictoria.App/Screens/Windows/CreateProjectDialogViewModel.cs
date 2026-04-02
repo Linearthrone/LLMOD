@@ -153,7 +153,7 @@ namespace HouseVictoria.App.Screens.Windows
             CancelCommand = new RelayCommand(() => { }); // Not used, handled in code-behind
             AddRoadblockCommand = new RelayCommand(() => AddRoadblock(), () => !string.IsNullOrWhiteSpace(NewRoadblockText?.Trim()));
             RemoveRoadblockCommand = new RelayCommand(
-                (parameter) => RemoveRoadblock(parameter as string), 
+                (parameter) => RemoveRoadblock(parameter as string),
                 (parameter) => !string.IsNullOrWhiteSpace(parameter as string));
 
             // Load AI contacts
@@ -167,17 +167,17 @@ namespace HouseVictoria.App.Screens.Windows
                 var contacts = await _persistenceService.GetAllAsync<AIContact>();
                 _aiContacts.Clear();
                 _aiContactsWithNone.Clear();
-                
+
                 // Add "None" option first
                 var noneOption = new AIContactOption { Id = null, Name = "None" };
                 _aiContactsWithNone.Add(noneOption);
-                
+
                 foreach (var contact in contacts.Values)
                 {
                     _aiContacts.Add(contact);
                     _aiContactsWithNone.Add(new AIContactOption { Id = contact.Id, Name = contact.Name });
                 }
-                
+
                 // Set default selected AI to "None" after loading
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {

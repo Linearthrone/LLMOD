@@ -13,7 +13,7 @@ namespace HouseVictoria.App.Screens.Windows
         public CreateDataBankDialog(DataBank? existingBank = null)
         {
             InitializeComponent();
-            
+
             try
             {
                 ViewModel = new CreateDataBankDialogViewModel(existingBank);

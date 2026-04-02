@@ -42,7 +42,7 @@ namespace HouseVictoria.App.Screens.Windows
         private string _newPersonaMCPServer = string.Empty;
         private string _newPersonaPiperVoice = string.Empty;
         private ObservableCollection<string> _availablePiperVoices = new();
-        
+
         // LLM Parameters
         private double _newPersonaTemperature = 0.7;
         private double _newPersonaTopP = 0.9;
@@ -55,19 +55,19 @@ namespace HouseVictoria.App.Screens.Windows
         private string _newPersonaAvatarModelPath = string.Empty;
         private double _newPersonaAvatarVoiceSpeed = 1.0;
         private double _newPersonaAvatarVoicePitch = 1.0;
-        
+
         // Pull Model fields
         private string _pullModelName = string.Empty;
         private string _pullModelEndpoint = "http://localhost:11434";
         private bool _isPullingModel = false;
         private string _pullModelStatus = string.Empty;
-        
+
         // Ollama Run fields
         private string _ollamaRunCommand = string.Empty;
         private string _loadModelLog = string.Empty;
         private bool _isRunningOllamaCommand = false;
         private CancellationTokenSource? _ollamaCts;
-        
+
         // Image Generation fields
         private string _imageGenerationPrompt = string.Empty;
         private int _imageWidth = 512;
@@ -137,8 +137,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string NewPersonaName
         {
             get => _newPersonaName;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _newPersonaName, value))
                 {
                     // Trigger command re-evaluation
@@ -150,8 +150,8 @@ namespace HouseVictoria.App.Screens.Windows
         public string NewPersonaModel
         {
             get => _newPersonaModel;
-            set 
-            { 
+            set
+            {
                 if (SetProperty(ref _newPersonaModel, value))
                 {
                     // Trigger command re-evaluation
@@ -368,7 +368,7 @@ namespace HouseVictoria.App.Screens.Windows
             _mcpService = mcpService;
 
             LoadModelCommand = new RelayCommand(() => CurrentView = "LoadModel");
-            CreatePersonaCommand = new RelayCommand(async () => 
+            CreatePersonaCommand = new RelayCommand(async () =>
             {
                 CurrentView = "CreatePersona";
                 // Load available models when switching to Create Persona view
@@ -655,8 +655,8 @@ namespace HouseVictoria.App.Screens.Windows
 
                 // Generate unique MCP server endpoint for this persona
                 var personaId = Guid.NewGuid().ToString();
-                var mcpEndpoint = string.IsNullOrWhiteSpace(NewPersonaMCPServer) 
-                    ? $"http://localhost:{8080 + _aiContacts.Count}" 
+                var mcpEndpoint = string.IsNullOrWhiteSpace(NewPersonaMCPServer)
+                    ? $"http://localhost:{8080 + _aiContacts.Count}"
                     : NewPersonaMCPServer;
 
                 // Create data path for this persona
@@ -669,7 +669,7 @@ namespace HouseVictoria.App.Screens.Windows
                         System.IO.Directory.CreateDirectory(_appConfig.DataBankPath);
                         System.Diagnostics.Debug.WriteLine($"Created DataBankPath directory: {_appConfig.DataBankPath}");
                     }
-                    
+
                     // Create the persona-specific directory
                     System.IO.Directory.CreateDirectory(dataPath);
                     System.Diagnostics.Debug.WriteLine($"Created persona data directory: {dataPath}");
@@ -768,7 +768,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 // Create initial memory entry for this persona
                 await _memoryService.AddMemoryAsync(contact.Id, $"Persona created: {contact.Name} on {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                
+
                 // Create initial data bank for this persona
                 var dataBank = new DataBank
                 {
@@ -931,17 +931,17 @@ namespace HouseVictoria.App.Screens.Windows
                 catch (Exception dialogEx)
                 {
                     System.Diagnostics.Debug.WriteLine($"Error creating EditSystemPromptDialog: {dialogEx.Message}\n{dialogEx.StackTrace}");
-                    System.Windows.MessageBox.Show($"Error opening edit dialog: {dialogEx.Message}", "Error", 
+                    System.Windows.MessageBox.Show($"Error opening edit dialog: {dialogEx.Message}", "Error",
                         System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                     return;
                 }
-                
+
                 if (dialog == null)
                 {
                     System.Diagnostics.Debug.WriteLine("EditSystemPromptDialog is null after creation");
                     return;
                 }
-                
+
                 var result = dialog.ShowDialog();
 
                 // If user clicked Save, update the contact
@@ -952,20 +952,20 @@ namespace HouseVictoria.App.Screens.Windows
                     contact.AvatarModelPath = string.IsNullOrWhiteSpace(dialog.AvatarModelPath) ? null : dialog.AvatarModelPath.Trim();
                     contact.AvatarVoiceSpeed = dialog.AvatarVoiceSpeed;
                     contact.AvatarVoicePitch = dialog.AvatarVoicePitch;
-                    
+
                     // Save updated contact to persistence
                     await _persistenceService.SetAsync($"AIContact_{contact.Id}", contact);
-                    
+
                     // Reload contacts to refresh UI
                     await LoadAIContactsAsync();
-                    
+
                     System.Diagnostics.Debug.WriteLine($"System prompt updated for persona: {contact.Name}");
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error editing persona: {ex.Message}");
-                System.Windows.MessageBox.Show($"Error editing persona: {ex.Message}", "Error", 
+                System.Windows.MessageBox.Show($"Error editing persona: {ex.Message}", "Error",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
         }
@@ -979,14 +979,14 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 IsPullingModel = true;
                 PullModelStatus = $"Pulling model '{PullModelName}'...";
-                
+
                 await _aiService.PullModelAsync(PullModelEndpoint, PullModelName);
-                
+
                 PullModelStatus = $"✓ Successfully pulled model '{PullModelName}'";
-                
+
                 // Refresh available models list
                 await LoadAvailableModelsAsync();
-                
+
                 // Clear the input
                 PullModelName = string.Empty;
             }
@@ -1010,11 +1010,11 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 IsPullingModel = true;
                 PullModelStatus = $"Pulling model '{NewPersonaModel}'...";
-                
+
                 await _aiService.PullModelAsync(AvailableModelsEndpoint, NewPersonaModel);
-                
+
                 PullModelStatus = $"✓ Successfully pulled model '{NewPersonaModel}'";
-                
+
                 // Refresh available models list
                 await LoadAvailableModelsAsync();
             }
@@ -1303,7 +1303,7 @@ namespace HouseVictoria.App.Screens.Windows
                 var fileGenerationService = App.GetService<IFileGenerationService>();
                 if (fileGenerationService == null)
                 {
-                    System.Windows.MessageBox.Show("File generation service is not available.", "Error", 
+                    System.Windows.MessageBox.Show("File generation service is not available.", "Error",
                         System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                     return;
                 }
@@ -1315,31 +1315,31 @@ namespace HouseVictoria.App.Screens.Windows
                     var uri = new Uri(GeneratedImagePath);
                     sourcePath = uri.LocalPath;
                 }
-                
+
                 if (!System.IO.File.Exists(sourcePath))
                 {
-                    System.Windows.MessageBox.Show("Generated image file not found.", "Error", 
+                    System.Windows.MessageBox.Show("Generated image file not found.", "Error",
                         System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                     return;
                 }
 
                 // Read image bytes
                 var imageBytes = await System.IO.File.ReadAllBytesAsync(sourcePath);
-                
+
                 // Generate filename with timestamp
                 var fileName = $"generated_image_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-                
+
                 // Save using FileGenerationService
                 var savedPath = await fileGenerationService.CreateFileAsync(fileName, imageBytes, "Images");
-                
-                System.Windows.MessageBox.Show($"Image saved successfully!\n\nSaved to: {savedPath}", "Success", 
+
+                System.Windows.MessageBox.Show($"Image saved successfully!\n\nSaved to: {savedPath}", "Success",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                
+
                 ImageGenerationStatus = $"✓ Image saved to: {savedPath}";
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error saving image: {ex.Message}", "Error", 
+                System.Windows.MessageBox.Show($"Error saving image: {ex.Message}", "Error",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Error saving generated image: {ex.Message}\n{ex.StackTrace}");
             }

@@ -131,6 +131,11 @@
             <!-- Projects Board -->
             <Border Grid.Row="2" Padding="10">
                 <ItemsControl ItemsSource="{Binding FilteredProjects}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Style="{StaticResource Card}" Margin="0,5" Cursor="Hand"

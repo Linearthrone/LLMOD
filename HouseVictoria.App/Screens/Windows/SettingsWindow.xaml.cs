@@ -10,7 +10,7 @@ namespace HouseVictoria.App.Screens.Windows
     public partial class SettingsWindow : Window
     {
         private readonly SettingsWindowViewModel? _viewModel;
-        
+
         private bool _isMinimized = false;
         private bool _isClosed = false;
         private double _savedWidth;
@@ -21,10 +21,10 @@ namespace HouseVictoria.App.Screens.Windows
         public SettingsWindow()
         {
             InitializeComponent();
-            
+
             // Get AppConfig from service provider
             var appConfig = App.ServiceProvider?.GetService<AppConfig>();
-            
+
             if (appConfig != null)
             {
                 _viewModel = new SettingsWindowViewModel(appConfig);
@@ -36,15 +36,15 @@ namespace HouseVictoria.App.Screens.Windows
                 _viewModel = new SettingsWindowViewModel(new Core.Models.AppConfig());
                 DataContext = _viewModel;
             }
-            
+
             Loaded += SettingsWindow_Loaded;
-            
+
             Closed += (s, e) => { _isClosed = true; };
         }
 
         public bool IsClosed() => _isClosed;
         public bool IsMinimized() => _isMinimized;
-        
+
         public void RestoreFromMinimized()
         {
             WindowHelper.RestoreFromTray(this, ref _isMinimized, _savedWidth, _savedHeight, _savedLeft, _savedTop);

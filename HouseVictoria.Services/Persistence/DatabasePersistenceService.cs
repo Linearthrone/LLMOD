@@ -33,10 +33,10 @@ namespace HouseVictoria.Services.Persistence
                 ? appConfig.DataBankPath
                 : Path.Combine(resolvedBasePath, "Databanks");
             Directory.CreateDirectory(_dataBankFilesPath);
-            
+
             _connectionString = $"Data Source={_databasePath};Version=3;";
             _pgVector = (appConfig?.EnablePgVector == true && !string.IsNullOrWhiteSpace(appConfig.PgVectorConnectionString))
-                ? new PgVectorClient(appConfig.PgVectorConnectionString)
+                ? new PgVectorClient(appConfig.PgVectorConnectionString, appConfig.EmbeddingVectorDimensions)
                 : null;
             InitializeDatabase();
             EnsureMemoryV2Columns();
@@ -312,7 +312,7 @@ namespace HouseVictoria.Services.Persistence
             await connection.OpenAsync();
 
             var result = await connection.QueryFirstOrDefaultAsync(
-                "SELECT Value, Type FROM KeyValueStore WHERE Key = @Key", 
+                "SELECT Value, Type FROM KeyValueStore WHERE Key = @Key",
                 new { Key = key });
 
             if (result == null) return null;
@@ -367,7 +367,7 @@ namespace HouseVictoria.Services.Persistence
                 {
                     var key = row.Key as string;
                     var valueJson = row.Value as string;
-                    
+
                     if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(valueJson))
                     {
                         System.Diagnostics.Debug.WriteLine($"Warning: Skipping row with null key or value. Key: {key}");
@@ -954,8 +954,8 @@ namespace HouseVictoria.Services.Persistence
             {
                 try
                 {
-                    var embedding = await EmbeddingHelper.CreateEmbeddingAsync(item.Content);
-                    await _pgVector.UpsertAsync(item.Id, embedding);
+                    var embedding = await EmbeddingHelper.CreateEmbeddingAsync(item.Content, _appConfig);
+                    await _pgVector.UpsertAsync(item.Id, embedding, item.Content);
                 }
                 catch (Exception ex)
                 {
@@ -1120,7 +1120,7 @@ namespace HouseVictoria.Services.Persistence
             {
                 try
                 {
-                    var embedding = await EmbeddingHelper.CreateEmbeddingAsync(request.Query ?? string.Empty);
+                    var embedding = await EmbeddingHelper.CreateEmbeddingAsync(request.Query ?? string.Empty, _appConfig);
                     var vectorResults = await _pgVector.SearchAsync(embedding, fetchLimit);
 
                     foreach (var (id, vecScore) in vectorResults)

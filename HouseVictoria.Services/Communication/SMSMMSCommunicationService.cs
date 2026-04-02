@@ -37,14 +37,14 @@ namespace HouseVictoria.Services.Communication
             _memoryService = memoryService;
             _fileGenerationService = fileGenerationService;
             _ttsService = ttsService;
-            
+
             // Subscribe to AI service events if available
             if (_aiService != null)
             {
                 _aiService.MessageReceived += AIService_MessageReceived;
                 _aiService.ErrorOccurred += AIService_ErrorOccurred;
             }
-            
+
             // Initialize data asynchronously
             _ = InitializeDataAsync();
         }
@@ -70,7 +70,7 @@ namespace HouseVictoria.Services.Communication
                         };
                         _contacts.Add(contact);
                         _aiContacts[aiContact.Id] = aiContact;
-                        
+
                         // Create conversation for this AI contact
                         var conversation = _conversations.FirstOrDefault(c => c.ContactId == aiContact.Id);
                         if (conversation == null)
@@ -83,7 +83,7 @@ namespace HouseVictoria.Services.Communication
                             };
                             _conversations.Add(conversation);
                             _chatContexts[conversation.Id] = new List<ChatMessage>();
-                            
+
                             // Load existing messages from persistence for this conversation
                             if (_persistenceService is DatabasePersistenceService dbServiceInit)
                             {
@@ -127,7 +127,7 @@ namespace HouseVictoria.Services.Communication
                     System.Diagnostics.Debug.WriteLine($"Error loading AI contacts from persistence: {ex.Message}");
                 }
             }
-            
+
             // Create AI contacts if AI service is available (fallback to sample data)
             if (_aiService != null && _aiContacts.Count == 0)
             {
@@ -141,7 +141,7 @@ namespace HouseVictoria.Services.Communication
                     Description = "General purpose AI assistant",
                     IsPrimaryAI = true
                 };
-                
+
                 var aiContact2 = new AIContact
                 {
                     Id = "ai-2",
@@ -151,7 +151,7 @@ namespace HouseVictoria.Services.Communication
                     SystemPrompt = "You are a coding assistant. Help with programming questions, code review, and debugging.",
                     Description = "Specialized coding assistant"
                 };
-                
+
                 // Convert AIContacts to Contacts for display
                 var contact2 = new Contact
                 {
@@ -161,7 +161,7 @@ namespace HouseVictoria.Services.Communication
                     Type = ContactType.AI,
                     AvatarUrl = aiContact1.AvatarUrl
                 };
-                
+
                 var contact3 = new Contact
                 {
                     Id = aiContact2.Id,
@@ -170,12 +170,12 @@ namespace HouseVictoria.Services.Communication
                     Type = ContactType.AI,
                     AvatarUrl = aiContact2.AvatarUrl
                 };
-                
+
                 _contacts.Add(contact2);
                 _contacts.Add(contact3);
                 _aiContacts[aiContact1.Id] = aiContact1;
                 _aiContacts[aiContact2.Id] = aiContact2;
-                
+
                 // Create conversations for AI contacts
                 var conv2 = new Conversation
                 {
@@ -183,21 +183,21 @@ namespace HouseVictoria.Services.Communication
                     ContactId = aiContact1.Id,
                     LastMessageAt = DateTime.Now.AddHours(-2)
                 };
-                
+
                 var conv3 = new Conversation
                 {
                     Id = "conv-ai-2",
                     ContactId = aiContact2.Id,
                     LastMessageAt = DateTime.Now.AddDays(-1)
                 };
-                
+
                 _conversations.Add(conv2);
                 _conversations.Add(conv3);
-                
+
                 // Initialize chat contexts
                 _chatContexts[conv2.Id] = new List<ChatMessage>();
                 _chatContexts[conv3.Id] = new List<ChatMessage>();
-                
+
                 // Add welcome message
                 _messages[conv2.Id] = new List<ConversationMessage>
                 {
@@ -212,13 +212,13 @@ namespace HouseVictoria.Services.Communication
                 };
             }
         }
-        
+
         private async void AIService_MessageReceived(object? sender, AIMessageEventArgs e)
         {
             // This handler receives intermediate messages from the AI service (including thinking tokens).
             // We do NOT display these to the UI - only the final processed response from SendMessageAsync
             // should be shown to the user. This prevents showing the AI's thinking process.
-            
+
             // Still save to memory/context for internal processing, but don't update UI
             if (_aiContacts.TryGetValue(e.ContactId, out var aiContact) && _memoryService != null)
             {
@@ -235,11 +235,11 @@ namespace HouseVictoria.Services.Communication
                             var lastUserMsg = chatContext.LastOrDefault(m => m != null && m.Role == "user");
                             lastUserMessage = lastUserMsg?.Content ?? "";
                         }
-                        
+
                         // Save the conversation exchange as a memory (for internal use only)
                         var experience = $"User: {lastUserMessage}\nAI: {e.Message}\nTimestamp: {e.Timestamp:yyyy-MM-dd HH:mm:ss}";
                         await _memoryService.AddMemoryAsync(e.ContactId, experience);
-                        
+
                         // Also save to data bank if available
                         var dataBanks = await _memoryService.GetAllDataBanksAsync();
                         if (dataBanks != null && !string.IsNullOrWhiteSpace(aiContact?.Name))
@@ -257,10 +257,10 @@ namespace HouseVictoria.Services.Communication
                     System.Diagnostics.Debug.WriteLine($"Error saving AI experience: {ex.Message}\n{ex.StackTrace}");
                 }
             }
-            
+
             // Do NOT fire MessageReceived event here - only the final processed response should be displayed
         }
-        
+
         private void AIService_ErrorOccurred(object? sender, AIEErrorEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine($"AI Service Error: {e.ErrorMessage}");
@@ -409,13 +409,13 @@ namespace HouseVictoria.Services.Communication
                 try
                 {
                     var persistedMessages = await ((DatabasePersistenceService)_persistenceService).GetMessagesAsync(conversationId, 100).ConfigureAwait(false);
-                    
+
                     // Deduplicate persisted messages by ID
                     var deduplicatedPersisted = persistedMessages
                         .GroupBy(m => m.Id)
                         .Select(g => g.First())
                         .ToList();
-                    
+
                     // Update in-memory cache with deduplicated messages
                     if (deduplicatedPersisted.Count > 0)
                     {
@@ -435,10 +435,10 @@ namespace HouseVictoria.Services.Communication
                         {
                             _messages[conversationId] = deduplicatedPersisted;
                         }
-                        
+
                         return _messages[conversationId].OrderBy(m => m.Timestamp).TakeLast(100).ToList();
                     }
-                    
+
                     return deduplicatedPersisted;
                 }
                 catch (Exception ex)
@@ -484,7 +484,7 @@ namespace HouseVictoria.Services.Communication
                 // Try to extract contact ID from conversation ID format: "conv-{contactId}-{guid}"
                 var parts = message.ConversationId.Split('-');
                 var contactId = parts.Length >= 2 ? parts[1] : message.ConversationId;
-                
+
                 conversation = new Conversation
                 {
                     Id = message.ConversationId,
@@ -492,7 +492,7 @@ namespace HouseVictoria.Services.Communication
                     LastMessageAt = DateTime.Now
                 };
                 _conversations.Add(conversation);
-                
+
                 // Initialize chat context for this conversation
                 if (!_chatContexts.ContainsKey(message.ConversationId))
                 {
@@ -504,7 +504,7 @@ namespace HouseVictoria.Services.Communication
             {
                 _messages[message.ConversationId] = new List<ConversationMessage>();
             }
-            
+
             // Ensure chat context exists for this conversation
             if (!_chatContexts.ContainsKey(message.ConversationId))
             {
@@ -512,13 +512,13 @@ namespace HouseVictoria.Services.Communication
             }
             message.Direction = MessageDirection.Outgoing;
             message.Timestamp = DateTime.Now;
-            
+
             // Check for duplicates before adding to cache
             if (!_messages[message.ConversationId].Any(m => m.Id == message.Id))
             {
                 _messages[message.ConversationId].Add(message);
             }
-            
+
             // Persist message to database
             if (_persistenceService is DatabasePersistenceService dbService)
             {
@@ -531,10 +531,10 @@ namespace HouseVictoria.Services.Communication
                     System.Diagnostics.Debug.WriteLine($"Error saving message to persistence: {ex.Message}");
                 }
             }
-            
+
             // Update conversation timestamp
             conversation.LastMessageAt = message.Timestamp;
-            
+
             // If this is a message to an AI contact, route through AI service
             if (conversation != null && _aiService != null)
             {
@@ -548,9 +548,9 @@ namespace HouseVictoria.Services.Communication
                         {
                             _chatContexts[message.ConversationId] = new List<ChatMessage>();
                         }
-                        
+
                         var context = _chatContexts[message.ConversationId];
-                        
+
                         // Add user message to context
                         context.Add(new ChatMessage
                         {
@@ -558,7 +558,7 @@ namespace HouseVictoria.Services.Communication
                             Content = message.Content,
                             Timestamp = message.Timestamp
                         });
-                        
+
                         // If user asked for image generation, generate and save to File Retrieval (no link) via ComfyUI/image server
                         if (IsImageGenerationRequest(message.Content) && _fileGenerationService != null)
                         {
@@ -611,24 +611,24 @@ namespace HouseVictoria.Services.Communication
                             if (context.Count > 20) context.RemoveRange(0, context.Count - 20);
                             return;
                         }
-                        
+
                         // Send to AI service
                         var aiResponse = await _aiService.SendMessageAsync(aiContact, message.Content, context);
-                        
+
                         // Check if user requested file creation or AI wants to create a file
                         var userRequestedFile = message.Content.Contains("file", StringComparison.OrdinalIgnoreCase) &&
                                                (message.Content.Contains("create", StringComparison.OrdinalIgnoreCase) ||
                                                 message.Content.Contains("save", StringComparison.OrdinalIgnoreCase) ||
                                                 message.Content.Contains("put", StringComparison.OrdinalIgnoreCase) ||
                                                 message.Content.Contains("generate", StringComparison.OrdinalIgnoreCase));
-                        
+
                         // Process file creation if requested
                         var (fileCreated, responseMessage, fileName) = await ProcessFileCreationRequestAsync(
-                            aiResponse, 
-                            aiContact.Id, 
+                            aiResponse,
+                            aiContact.Id,
                             message.Content,
                             userRequestedFile);
-                        
+
                         // Add AI response to context (use the processed message)
                         context.Add(new ChatMessage
                         {
@@ -637,7 +637,7 @@ namespace HouseVictoria.Services.Communication
                             Timestamp = DateTime.Now,
                             ModelUsed = aiContact.ModelName
                         });
-                        
+
                         // Create and send the response message to the user
                         var responseMsg = new ConversationMessage
                         {
@@ -648,7 +648,7 @@ namespace HouseVictoria.Services.Communication
                             Type = MessageType.Text,
                             Timestamp = DateTime.Now
                         };
-                        
+
                         if (!_messages.ContainsKey(message.ConversationId))
                         {
                             _messages[message.ConversationId] = new List<ConversationMessage>();
@@ -658,7 +658,7 @@ namespace HouseVictoria.Services.Communication
                         {
                             _messages[message.ConversationId].Add(responseMsg);
                         }
-                        
+
                         // Persist AI response message to database
                         if (_persistenceService is DatabasePersistenceService dbService2)
                         {
@@ -671,17 +671,17 @@ namespace HouseVictoria.Services.Communication
                                 System.Diagnostics.Debug.WriteLine($"Error saving AI response message to persistence: {ex.Message}");
                             }
                         }
-                        
+
                         // Update conversation timestamp
                         conversation.LastMessageAt = responseMsg.Timestamp;
-                        
+
                         // Fire event to notify UI
                         MessageReceived?.Invoke(this, new MessageReceivedEventArgs
                         {
                             Message = responseMsg,
                             ConversationId = message.ConversationId
                         });
-                        
+
                         // Keep context size manageable (last 20 messages)
                         if (context.Count > 20)
                         {
@@ -692,7 +692,7 @@ namespace HouseVictoria.Services.Communication
                     {
                         // Handle timeout - HttpClient throws TaskCanceledException on timeout
                         System.Diagnostics.Debug.WriteLine($"AI Service Timeout: Request took too long. This may happen with:\n- Large context windows\n- High MaxTokens settings\n- Slow model responses\n- Network issues\nException: {ex.Message}");
-                        
+
                         var errorMessage = new ConversationMessage
                         {
                             Id = Guid.NewGuid().ToString(),
@@ -702,13 +702,13 @@ namespace HouseVictoria.Services.Communication
                             Type = MessageType.Text,
                             Timestamp = DateTime.Now
                         };
-                        
+
                         if (!_messages.ContainsKey(message.ConversationId))
                         {
                             _messages[message.ConversationId] = new List<ConversationMessage>();
                         }
                         _messages[message.ConversationId].Add(errorMessage);
-                        
+
                         // Fire event to notify UI
                         MessageReceived?.Invoke(this, new MessageReceivedEventArgs
                         {
@@ -717,16 +717,16 @@ namespace HouseVictoria.Services.Communication
                     }
                     catch (Exception ex)
                     {
-                        var errorDetails = ex is HttpRequestException httpEx 
-                            ? $"HTTP Error: {httpEx.Message}" 
+                        var errorDetails = ex is HttpRequestException httpEx
+                            ? $"HTTP Error: {httpEx.Message}"
                             : $"Error: {ex.Message}";
-                        
+
                         System.Diagnostics.Debug.WriteLine($"Error sending message to AI: {errorDetails}");
                         if (ex.InnerException != null)
                         {
                             System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
                         }
-                        
+
                         // Add error message to conversation
                         var errorMessage = new ConversationMessage
                         {
@@ -737,13 +737,13 @@ namespace HouseVictoria.Services.Communication
                             Type = MessageType.Text,
                             Timestamp = DateTime.Now
                         };
-                        
+
                         if (!_messages.ContainsKey(message.ConversationId))
                         {
                             _messages[message.ConversationId] = new List<ConversationMessage>();
                         }
                         _messages[message.ConversationId].Add(errorMessage);
-                        
+
                         MessageReceived?.Invoke(this, new MessageReceivedEventArgs
                         {
                             Message = errorMessage,
@@ -755,8 +755,8 @@ namespace HouseVictoria.Services.Communication
         }
 
         private async Task<(bool fileCreated, string responseMessage, string? fileName)> ProcessFileCreationRequestAsync(
-            string aiResponse, 
-            string contactId, 
+            string aiResponse,
+            string contactId,
             string userMessage,
             bool userRequestedFile)
         {
@@ -771,20 +771,20 @@ namespace HouseVictoria.Services.Communication
                 if (userRequestedFile)
                 {
                     // Extract filename from user message or generate one
-                    string fileName = ExtractFileNameFromMessage(userMessage) ?? 
+                    string fileName = ExtractFileNameFromMessage(userMessage) ??
                                      ExtractFileNameFromMessage(aiResponse) ??
                                      $"ai_generated_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-                    
+
                     // Extract content from AI response
                     // Look for markers like [FILE]...[/FILE] or code blocks, or use the entire response
                     string content = ExtractFileContent(aiResponse);
-                    
+
                     if (string.IsNullOrWhiteSpace(content))
                     {
                         // If no markers found, use the entire response as content
                         // But remove any "copy/paste friendly" prefixes the AI might have added
                         content = aiResponse;
-                        
+
                         // Remove common prefixes like "Here's the content:", "Copy this:", etc.
                         var prefixes = new[] { "Here's the content:", "Copy this:", "Here it is:", "Here's your file:", "File content:" };
                         foreach (var prefix in prefixes)
@@ -796,15 +796,15 @@ namespace HouseVictoria.Services.Communication
                             }
                         }
                     }
-                    
+
                     // Create the file
                     var filePath = await _fileGenerationService.CreateTextFileAsync(fileName, content);
-                    
+
                     System.Diagnostics.Debug.WriteLine($"File created: {filePath}");
-                    
+
                     // Modify response to indicate file was created (remove the content, just show confirmation)
                     var modifiedResponse = aiResponse;
-                    
+
                     // If the response is just the content, replace it with a confirmation
                     if (content == aiResponse || content.Length > aiResponse.Length * 0.8)
                     {
@@ -814,27 +814,27 @@ namespace HouseVictoria.Services.Communication
                     {
                         modifiedResponse = $"{aiResponse}\n\n✅ File created: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval";
                     }
-                    
+
                     return (true, modifiedResponse, System.IO.Path.GetFileName(filePath));
                 }
-                
+
                 // Check for explicit file markers in AI response
                 if (aiResponse.Contains("[FILE]", StringComparison.OrdinalIgnoreCase) ||
                     (aiResponse.Contains("```", StringComparison.OrdinalIgnoreCase) && userMessage.Contains("file", StringComparison.OrdinalIgnoreCase)))
                 {
-                    string fileName = ExtractFileNameFromMessage(userMessage) ?? 
+                    string fileName = ExtractFileNameFromMessage(userMessage) ??
                                      ExtractFileNameFromMessage(aiResponse) ??
                                      $"ai_generated_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
                     string content = ExtractFileContent(aiResponse);
-                    
+
                     if (!string.IsNullOrWhiteSpace(content))
                     {
                         var filePath = await _fileGenerationService.CreateTextFileAsync(fileName, content);
                         System.Diagnostics.Debug.WriteLine($"File created from markers: {filePath}");
-                        
+
                         var modifiedResponse = aiResponse.Replace("[FILE]", "").Replace("[/FILE]", "");
                         modifiedResponse = $"{modifiedResponse}\n\n✅ File created: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval";
-                        
+
                         return (true, modifiedResponse, System.IO.Path.GetFileName(filePath));
                     }
                 }
@@ -843,7 +843,7 @@ namespace HouseVictoria.Services.Communication
             {
                 System.Diagnostics.Debug.WriteLine($"Error processing file creation request: {ex.Message}\n{ex.StackTrace}");
             }
-            
+
             return (false, aiResponse, null);
         }
 
@@ -940,7 +940,7 @@ namespace HouseVictoria.Services.Communication
                 @"([a-zA-Z0-9_\-\.]+\.(txt|md|json|csv|xml|html|css|js|py|cs|cpp|h|hpp))",
                 @"(?:file|filename|name).*?([a-zA-Z0-9_\-\.]+\.(txt|md|json|csv|xml|html|css|js|py|cs|cpp|h|hpp))"
             };
-            
+
             foreach (var pattern in patterns)
             {
                 var match = System.Text.RegularExpressions.Regex.Match(message, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -949,7 +949,7 @@ namespace HouseVictoria.Services.Communication
                     return match.Groups[1].Value;
                 }
             }
-            
+
             return null;
         }
 
@@ -962,7 +962,7 @@ namespace HouseVictoria.Services.Communication
             {
                 return match.Groups[1].Value.Trim();
             }
-            
+
             // Look for code blocks (```filename\ncontent\n```)
             var codeBlockPattern = @"```(?:[a-zA-Z0-9_\-\.]+)?\n(.*?)```";
             match = System.Text.RegularExpressions.Regex.Match(response, codeBlockPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
@@ -970,7 +970,7 @@ namespace HouseVictoria.Services.Communication
             {
                 return match.Groups[1].Value.Trim();
             }
-            
+
             return string.Empty;
         }
 
@@ -1130,7 +1130,7 @@ namespace HouseVictoria.Services.Communication
                 System.Diagnostics.Debug.WriteLine("TTS: Service is not available (null)");
                 return;
             }
-            
+
             if (string.IsNullOrWhiteSpace(text))
             {
                 System.Diagnostics.Debug.WriteLine("TTS: Text is empty, cannot synthesize speech");
@@ -1257,7 +1257,7 @@ namespace HouseVictoria.Services.Communication
                         {
                             await Task.Delay(100);
                         }
-                        
+
                         // Stop playback if still playing after timeout
                         if (outputDevice.PlaybackState == PlaybackState.Playing)
                         {

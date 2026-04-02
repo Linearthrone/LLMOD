@@ -50,7 +50,7 @@ namespace HouseVictoria.Core.Utils
                 var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {exception.GetType().Name}\n" +
                               $"Message: {exception.Message}\n" +
                               $"Stack: {exception.StackTrace}\n\n";
-                              
+
                 File.AppendAllText(logPath, logEntry);
             }
             catch

@@ -52,10 +52,10 @@ namespace HouseVictoria.Services.AIServices
                 {
                     foreach (var msg in context)
                     {
-                        messages.Add(new 
-                        { 
-                            role = msg.Role, 
-                            content = msg.Content 
+                        messages.Add(new
+                        {
+                            role = msg.Role,
+                            content = msg.Content
                         });
                     }
                 }
@@ -73,7 +73,7 @@ namespace HouseVictoria.Services.AIServices
                     ["repeat_penalty"] = contact.RepeatPenalty,
                     ["num_ctx"] = contact.ContextLength
                 };
-                
+
                 // Only include num_predict if it's a positive value (-1 means unlimited)
                 if (contact.MaxTokens > 0)
                 {
@@ -89,7 +89,7 @@ namespace HouseVictoria.Services.AIServices
                 };
 
                 var response = await _httpClient.PostAsJsonAsync($"{endpoint}/api/chat", requestBody);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
@@ -98,7 +98,7 @@ namespace HouseVictoria.Services.AIServices
 
                 var result = await response.Content.ReadFromJsonAsync<OllamaResponse>();
                 var reply = result?.Message?.Content ?? string.Empty;
-                
+
                 if (string.IsNullOrEmpty(reply))
                 {
                     System.Diagnostics.Debug.WriteLine($"Warning: Empty response from Ollama. Response: {await response.Content.ReadAsStringAsync()}");
@@ -308,7 +308,7 @@ namespace HouseVictoria.Services.AIServices
                         .Replace("{{height}}", height.ToString())
                         .Replace("{{seed}}", seed.ToString())
                         .Replace("{{filename_prefix}}", EscapeForJsonEmbed(prefix));
-                            workflow = LoadAndParseComfyUiWorkflow(substituted);
+                    workflow = LoadAndParseComfyUiWorkflow(substituted);
                 }
                 catch (Exception ex)
                 {
@@ -813,7 +813,7 @@ namespace HouseVictoria.Services.AIServices
 
             [JsonPropertyName("output")]
             public List<string>? Output { get; set; }
-            
+
             [JsonPropertyName("meta")]
             public Dictionary<string, object>? Meta { get; set; }
         }
@@ -889,7 +889,7 @@ namespace HouseVictoria.Services.AIServices
                     ?? Environment.GetEnvironmentVariable("WHISPER_ENDPOINT")
                     ?? Environment.GetEnvironmentVariable("STT_ENDPOINT")
                     ?? "http://localhost:8000/transcribe"; // Default: local faster-whisper STT server
-                
+
                 // Try local Whisper API first, then cloud services
                 try
                 {
@@ -910,7 +910,7 @@ namespace HouseVictoria.Services.AIServices
                             // Fall through to error message
                         }
                     }
-                    
+
                     throw new HttpRequestException(
                         "Speech-to-text service is not available. " +
                         "Please install and configure a Whisper API server, or set OPENAI_API_KEY environment variable. " +
@@ -1000,7 +1000,7 @@ namespace HouseVictoria.Services.AIServices
             try
             {
                 var endpoint = contact.ServerEndpoint;
-                
+
                 // Check if model exists by trying to get available models
                 var availableModels = await GetAvailableModelsAsync(endpoint);
                 if (!availableModels.Contains(contact.ModelName))
@@ -1008,7 +1008,7 @@ namespace HouseVictoria.Services.AIServices
                     // Model doesn't exist, try to pull it
                     await PullModelAsync(endpoint, contact.ModelName);
                 }
-                
+
                 // Model is available (either already existed or was just pulled)
                 contact.IsLoaded = true;
             }
@@ -1034,15 +1034,15 @@ namespace HouseVictoria.Services.AIServices
                     Timeout = TimeSpan.FromMinutes(30) // Large models can take a while
                 };
 
-                var response = await pullClient.PostAsync($"{serverUrl}/api/pull", 
+                var response = await pullClient.PostAsync($"{serverUrl}/api/pull",
                     JsonContent.Create(new { name = modelName }));
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     throw new HttpRequestException($"Failed to pull model: {response.StatusCode} - {errorContent}");
                 }
-                
+
                 // Wait for pull to complete (Ollama streams the pull as JSON lines)
                 var stream = await response.Content.ReadAsStreamAsync();
                 using var reader = new System.IO.StreamReader(stream);
@@ -1065,7 +1065,7 @@ namespace HouseVictoria.Services.AIServices
                         if (root.TryGetProperty("status", out var statusElement))
                         {
                             var status = statusElement.GetString();
-                            
+
                             if (status == "success")
                             {
                                 pullCompleted = true;
@@ -1099,13 +1099,13 @@ namespace HouseVictoria.Services.AIServices
                 {
                     // Wait a moment for Ollama to update its model list
                     await Task.Delay(1000);
-                    
+
                     var availableModels = await GetAvailableModelsAsync(serverUrl);
                     // Check if model exists (with or without tag)
-                    var modelExists = availableModels.Any(m => 
+                    var modelExists = availableModels.Any(m =>
                         m.Equals(modelName, StringComparison.OrdinalIgnoreCase) ||
                         m.StartsWith(modelName + ":", StringComparison.OrdinalIgnoreCase));
-                    
+
                     if (!modelExists)
                     {
                         throw new Exception($"Model '{modelName}' was not found in available models after pull. The pull may have failed silently.");
@@ -1207,7 +1207,7 @@ namespace HouseVictoria.Services.AIServices
             try
             {
                 var response = await _httpClient.GetAsync($"{serverUrl}/api/tags");
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
@@ -1266,7 +1266,7 @@ namespace HouseVictoria.Services.AIServices
         {
             [JsonPropertyName("content")]
             public string? Content { get; set; }
-            
+
             [JsonPropertyName("role")]
             public string? Role { get; set; }
         }

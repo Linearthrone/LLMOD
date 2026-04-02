@@ -34,23 +34,23 @@ namespace HouseVictoria.App
             // These errors occur when crashpad tries to register crash handlers
             Environment.SetEnvironmentVariable("CHROME_CRASH_DIR", "");
             Environment.SetEnvironmentVariable("BREAKPAD_DUMP_LOCATION", "");
-            
+
             // Handle unobserved task exceptions globally - CRITICAL for catching background HTTP exceptions
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
-            
+
             // Handle AppDomain unhandled exceptions
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-            
+
             // Handle dispatcher unhandled exceptions (UI thread)
             this.DispatcherUnhandledException += OnDispatcherUnhandledException;
-            
+
             // Set up exception handling BEFORE any async operations
             ConfigureExceptionHandling();
-            
+
             try
             {
                 LoggingHelper.WriteToStartupLog("Starting application...");
-                
+
                 base.OnStartup(e);
                 LoggingHelper.WriteToStartupLog("base.OnStartup completed");
 
@@ -89,7 +89,7 @@ namespace HouseVictoria.App
                     LoggingHelper.WriteToStartupLog(errorMsg);
                     // Continue even if logging fails
                 }
-                
+
                 // Manually create and show MainWindow after services are initialized
                 try
                 {
@@ -109,7 +109,7 @@ namespace HouseVictoria.App
                     Shutdown();
                     return;
                 }
-                
+
                 System.Diagnostics.Debug.WriteLine("OnStartup completed successfully");
                 LoggingHelper.WriteToStartupLog("OnStartup completed successfully");
             }
@@ -122,17 +122,17 @@ namespace HouseVictoria.App
                 Shutdown();
             }
         }
-        
+
         private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine($"Dispatcher Unhandled Exception: {e.Exception.GetType().Name}: {e.Exception.Message}");
             System.Diagnostics.Debug.WriteLine($"Stack: {e.Exception.StackTrace}");
-            
+
             LoggingHelper.WriteExceptionToLog(e.Exception, "UnhandledExceptions.log");
-            
+
             // Show error to user
             MessageBox.Show($"An error occurred: {e.Exception.Message}\n\nDetails have been logged.", "Application Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            
+
             // Mark as handled to prevent app crash, but log it
             e.Handled = true;
         }
@@ -148,7 +148,7 @@ namespace HouseVictoria.App
             // Log unobserved task exceptions to prevent crashes
             // These often come from HttpClient's internal connection pool operations
             var exception = e.Exception.GetBaseException();
-            
+
             // Filter out expected HTTP connection exceptions to reduce noise
             var isHttpException = exception is System.Net.Http.HttpRequestException ||
                                   exception is System.Net.Sockets.SocketException ||
@@ -156,7 +156,7 @@ namespace HouseVictoria.App
                                   exception.Message.Contains("HttpConnection") ||
                                   exception.Message.Contains("connection") ||
                                   exception.Message.Contains("timeout");
-            
+
             if (isHttpException)
             {
                 // HTTP connection failures are expected when servers are down
@@ -169,10 +169,10 @@ namespace HouseVictoria.App
                 System.Diagnostics.Debug.WriteLine($"Unobserved task exception: {exception.GetType().Name}: {exception.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack: {exception.StackTrace}");
             }
-            
+
             // Always log to file for debugging
             LoggingHelper.WriteExceptionToLog(exception, "UnhandledExceptions.log");
-            
+
             // ALWAYS mark as observed to prevent application crash
             // These are background exceptions that don't need to crash the app
             e.SetObserved();
@@ -185,10 +185,10 @@ namespace HouseVictoria.App
             {
                 System.Diagnostics.Debug.WriteLine($"Unhandled exception: {exception.GetType().Name}: {exception.Message}");
                 System.Diagnostics.Debug.WriteLine($"Stack: {exception.StackTrace}");
-                
+
                 // Log to file
                 LoggingHelper.WriteExceptionToLog(exception, "UnhandledExceptions.log");
-                
+
                 // If it's a terminating exception, show a user-friendly message
                 if (e.IsTerminating)
                 {
@@ -252,18 +252,18 @@ namespace HouseVictoria.App
                     var piperDefaultVoice = appConfig?.PiperDefaultModel;
                     return new HouseVictoria.Services.TTS.TTSService(endpoint, useWindowsTTSFallback: true, piperDataDir: piperDataDir, piperDefaultVoice: piperDefaultVoice);
                 }
-catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error creating TTS service: {ex.Message}");
-                        // Return a service that will fail gracefully
-                        var appConfig = sp.GetService<AppConfig>();
-                        return new HouseVictoria.Services.TTS.TTSService("http://localhost:8880", true, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
-                    }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error creating TTS service: {ex.Message}");
+                    // Return a service that will fail gracefully
+                    var appConfig = sp.GetService<AppConfig>();
+                    return new HouseVictoria.Services.TTS.TTSService("http://localhost:8880", true, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
+                }
             });
             // Register CommunicationService with AI service dependency
-            services.AddSingleton<ICommunicationService>(sp => 
+            services.AddSingleton<ICommunicationService>(sp =>
                 new SMSMMSCommunicationService(
-                    sp.GetService<IAIService>(), 
+                    sp.GetService<IAIService>(),
                     sp.GetService<IPersistenceService>(),
                     sp.GetService<IMemoryService>(),
                     sp.GetService<IFileGenerationService>(),
@@ -340,6 +340,8 @@ catch (Exception ex)
                 AutoHideTrays = bool.TryParse(config["AutoHideTrays"], out var autoHideTrays) && autoHideTrays,
                 EnablePgVector = bool.TryParse(config["EnablePgVector"], out var enablePg) && enablePg,
                 PgVectorConnectionString = config["PgVectorConnectionString"],
+                OllamaEmbeddingModel = string.IsNullOrWhiteSpace(config["OllamaEmbeddingModel"]) ? "nomic-embed-text" : (config["OllamaEmbeddingModel"] ?? "nomic-embed-text"),
+                EmbeddingVectorDimensions = int.TryParse(config["EmbeddingVectorDimensions"], out var embDim) && embDim > 0 ? embDim : 768,
                 HybridLexicalWeight = double.TryParse(config["HybridLexicalWeight"], out var hybridWeight) ? hybridWeight : 0.5,
                 CovasBridgeEnabled = bool.TryParse(config["CovasBridgeEnabled"], out var covasEnabled) && covasEnabled,
                 CovasBridgeEndpoint = config["CovasBridgeEndpoint"] ?? "http://localhost:11435",
@@ -348,14 +350,14 @@ catch (Exception ex)
 
             // Resolve relative paths to absolute paths
             var appDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
-            appConfig.DataBankPath = System.IO.Path.IsPathRooted(appConfig.DataBankPath) 
-                ? appConfig.DataBankPath 
+            appConfig.DataBankPath = System.IO.Path.IsPathRooted(appConfig.DataBankPath)
+                ? appConfig.DataBankPath
                 : System.IO.Path.Combine(appDirectory, appConfig.DataBankPath);
-            appConfig.LogsPath = System.IO.Path.IsPathRooted(appConfig.LogsPath) 
-                ? appConfig.LogsPath 
+            appConfig.LogsPath = System.IO.Path.IsPathRooted(appConfig.LogsPath)
+                ? appConfig.LogsPath
                 : System.IO.Path.Combine(appDirectory, appConfig.LogsPath);
-            appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath) 
-                ? appConfig.MediaPath 
+            appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath)
+                ? appConfig.MediaPath
                 : System.IO.Path.Combine(appDirectory, appConfig.MediaPath);
             // Piper voices: resolve relative path; prefer Media\PiperVoices next to app or under a parent that contains Media
             var piperDataDirRelative = appConfig.PiperDataDir;
@@ -435,13 +437,13 @@ catch (Exception ex)
                 TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
             }
             catch { }
-            
+
             try
             {
                 AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
             }
             catch { }
-            
+
             try
             {
                 this.DispatcherUnhandledException -= OnDispatcherUnhandledException;
@@ -471,7 +473,7 @@ catch (Exception ex)
             }
 
             Log.CloseAndFlush();
-            
+
             base.OnExit(e);
         }
 
@@ -485,7 +487,7 @@ catch (Exception ex)
                 {
                     // Use reflection to call SaveReadStatusAsync since it's private
                     // This ensures any pending read status changes are persisted
-                    var saveMethod = loggingService.GetType().GetMethod("SaveReadStatusAsync", 
+                    var saveMethod = loggingService.GetType().GetMethod("SaveReadStatusAsync",
                         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     if (saveMethod != null)
                     {

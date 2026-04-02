@@ -38,11 +38,11 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 WriteToStartupLog("MainWindow constructor starting...");
                 System.Diagnostics.Debug.WriteLine("MainWindow constructor starting...");
-                
+
                 InitializeComponent();
                 WriteToStartupLog("MainWindow InitializeComponent completed");
                 System.Diagnostics.Debug.WriteLine("MainWindow InitializeComponent completed");
-                
+
                 try
                 {
                     _eventAggregator = App.GetService<IEventAggregator>();
@@ -58,12 +58,12 @@ namespace HouseVictoria.App.Screens.Windows
                     WriteToStartupLog("Using fallback EventAggregator");
                     System.Diagnostics.Debug.WriteLine("Using fallback EventAggregator");
                 }
-                
+
                 // Ensure window is visible - CRITICAL FIX
                 this.Visibility = Visibility.Visible;
                 this.Show();
                 this.Activate();
-                
+
                 var visibilityMsg = $"MainWindow created - Visibility: {this.Visibility}, WindowState: {this.WindowState}, IsVisible: {this.IsVisible}";
                 WriteToStartupLog(visibilityMsg);
                 System.Diagnostics.Debug.WriteLine(visibilityMsg);
@@ -103,7 +103,7 @@ namespace HouseVictoria.App.Screens.Windows
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            
+
             // Setup window message hook for click-through handling as soon as handle is available
             var source = PresentationSource.FromVisual(this) as HwndSource;
             if (source != null)
@@ -130,13 +130,13 @@ namespace HouseVictoria.App.Screens.Windows
 
                 // Setup auto-hide for both trays
                 SetupAutoHide();
-                
+
                 // Ensure window is visible - CRITICAL FIX
                 this.Visibility = Visibility.Visible;
                 this.Show();
                 this.Activate();
                 this.BringIntoView();
-                
+
                 System.Diagnostics.Debug.WriteLine("MainWindow Window_Loaded completed successfully");
                 System.Diagnostics.Debug.WriteLine($"Window bounds: {this.Left},{this.Top},{this.Width},{this.Height}");
             }
@@ -341,7 +341,7 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 source.RemoveHook(WndProc);
             }
-            
+
             _eventAggregator.Unsubscribe<ShowWindowEvent>(OnShowWindow);
             _eventAggregator.Unsubscribe<HideWindowEvent>(OnHideWindow);
             _eventAggregator.Unsubscribe<ToggleTrayEvent>(OnToggleTray);
@@ -384,7 +384,7 @@ namespace HouseVictoria.App.Screens.Windows
 
                     // Use InputHitTest to find what element was hit
                     var hitElement = InputHitTest(point);
-                    
+
                     // When hit test returns null (e.g. DPI/coordinate edge case), let WPF handle the click
                     // so the app stays clickable instead of passing through to desktop
                     if (hitElement == null)
@@ -392,7 +392,7 @@ namespace HouseVictoria.App.Screens.Windows
                         handled = false;
                         return IntPtr.Zero;
                     }
-                    
+
                     // Helper: is the point inside any of our tray/container bounds?
                     bool IsPointInTrayBounds(Point pt)
                     {
@@ -424,21 +424,21 @@ namespace HouseVictoria.App.Screens.Windows
                         }
                         return false;
                     }
-                    
+
                     // Helper function to check if an element is within one of our interactive elements
                     bool IsWithinInteractiveElement(DependencyObject element)
                     {
                         if (element == null)
                             return false;
-                            
+
                         var current = element;
                         int maxDepth = 50; // Prevent infinite loops
                         int depth = 0;
-                        
+
                         while (current != null && current != this && depth < maxDepth)
                         {
                             depth++;
-                            
+
                             // Check if this is an interactive element
                             if (current == PullHandle ||
                                 current == MainTrayElement ||
@@ -448,7 +448,7 @@ namespace HouseVictoria.App.Screens.Windows
                             {
                                 return true;
                             }
-                            
+
                             // Check if element is a button, textbox, or other interactive control
                             // (Do not treat every UIElement with IsHitTestVisible/IsEnabled as interactive,
                             // or Borders/Grids/panels would block click-through on glass overlay areas.)
@@ -460,7 +460,7 @@ namespace HouseVictoria.App.Screens.Windows
                             {
                                 return true;
                             }
-                            
+
                             // Traverse up the visual tree
                             var parent = VisualTreeHelper.GetParent(current);
                             if (parent == null)
@@ -471,7 +471,7 @@ namespace HouseVictoria.App.Screens.Windows
                         }
                         return false;
                     }
-                    
+
                     // If we hit something, check if it's within an interactive element
                     if (hitElement is DependencyObject hitObj)
                     {
@@ -496,7 +496,7 @@ namespace HouseVictoria.App.Screens.Windows
                             handled = true;
                             return new IntPtr(HTTRANSPARENT);
                         }
-                        
+
                         // Check if the hit element is within any interactive element
                         if (IsWithinInteractiveElement(hitObj))
                         {
@@ -567,7 +567,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 Window? windowToOpen = null;
-                
+
                 if (evt.WindowType == "SMS/MMS")
                 {
                     // Check if SMS window already exists
@@ -726,10 +726,10 @@ namespace HouseVictoria.App.Screens.Windows
                     }
                 }
 
-            if (windowToOpen != null)
-            {
-                windowToOpen.Owner = this;
-                windowToOpen.Show();
+                if (windowToOpen != null)
+                {
+                    windowToOpen.Owner = this;
+                    windowToOpen.Show();
                     windowToOpen.Activate();
                 }
                 else

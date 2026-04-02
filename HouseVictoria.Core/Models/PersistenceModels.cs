@@ -136,6 +136,10 @@ namespace HouseVictoria.Core.Models
         // Memory backends
         public bool EnablePgVector { get; set; } = false;
         public string? PgVectorConnectionString { get; set; }
+        /// <summary>Ollama embedding model (e.g. nomic-embed-text). Must match <see cref="EmbeddingVectorDimensions"/>.</summary>
+        public string OllamaEmbeddingModel { get; set; } = "nomic-embed-text";
+        /// <summary>Vector size for pgvector column and Ollama embeddings (e.g. 768 for nomic-embed-text).</summary>
+        public int EmbeddingVectorDimensions { get; set; } = 768;
         public double HybridLexicalWeight { get; set; } = 0.5;
 
         // COVAS: Next (Elite Dangerous) bridge - OpenAI-compatible API for ship computer AI

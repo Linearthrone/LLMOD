@@ -108,13 +108,16 @@
                                 CornerRadius="10"
                                 BorderBrush="#4000D4FF"
                                 BorderThickness="1">
-                            <TextBlock Text="{Binding LocalPreviewStatusText}"
-                                      Foreground="#B0C4DE"
-                                      FontSize="12"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      TextWrapping="Wrap"
-                                      Margin="8"/>
+                            <Grid>
+                                <Image x:Name="LocalPreviewImage" Stretch="UniformToFill"/>
+                                <TextBlock Text="{Binding LocalPreviewStatusText}"
+                                          Foreground="#E0F7FF"
+                                          FontSize="11"
+                                          VerticalAlignment="Bottom"
+                                          Background="#80000000"
+                                          Padding="6,4"
+                                          TextWrapping="Wrap"/>
+                            </Grid>
                         </Border>
                     </Grid>
                 </Border>

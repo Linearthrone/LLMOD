@@ -32,13 +32,13 @@ namespace HouseVictoria.App.Converters
 
                 return isNonZero ? Visibility.Visible : Visibility.Collapsed;
             }
-            
+
             // Handle string values (for PullModelStatus visibility)
             if (value is string strValue)
             {
                 return string.IsNullOrWhiteSpace(strValue) ? Visibility.Collapsed : Visibility.Visible;
             }
-            
+
             return Visibility.Collapsed;
         }
 

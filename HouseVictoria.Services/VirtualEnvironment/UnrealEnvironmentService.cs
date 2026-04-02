@@ -50,7 +50,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
                 _receiveTask = Task.Run(() => ReceiveMessagesAsync(_receiveCts.Token));
 
                 StatusChanged?.Invoke(this, new VirtualEnvironmentEventArgs { Status = _status });
-                
+
                 System.Diagnostics.Debug.WriteLine($"Virtual Environment connected to {endpoint}");
                 return true;
             }
@@ -59,13 +59,13 @@ namespace HouseVictoria.Services.VirtualEnvironment
                 System.Diagnostics.Debug.WriteLine($"Failed to connect to Virtual Environment: {ex.Message}");
                 _status.IsConnected = false;
                 StatusChanged?.Invoke(this, new VirtualEnvironmentEventArgs { Status = _status });
-                
+
                 // Attempt auto-reconnect if enabled
                 if (_autoReconnectEnabled && _reconnectAttempts < MaxReconnectAttempts)
                 {
                     _ = Task.Run(async () => await AttemptReconnectAsync());
                 }
-                
+
                 return false;
             }
         }
@@ -76,11 +76,11 @@ namespace HouseVictoria.Services.VirtualEnvironment
 
             _reconnectAttempts++;
             var delay = TimeSpan.FromSeconds(Math.Min(5 * _reconnectAttempts, 30)); // Exponential backoff, max 30s
-            
+
             System.Diagnostics.Debug.WriteLine($"Attempting to reconnect to Virtual Environment (attempt {_reconnectAttempts}/{MaxReconnectAttempts}) in {delay.TotalSeconds}s...");
-            
+
             await Task.Delay(delay);
-            
+
             if (_webSocket?.State != WebSocketState.Open && !string.IsNullOrEmpty(_endpoint))
             {
                 var connected = await ConnectAsync(_endpoint);
@@ -94,7 +94,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
         private async Task ReceiveMessagesAsync(CancellationToken cancellationToken)
         {
             var buffer = new byte[4096];
-            
+
             while (!cancellationToken.IsCancellationRequested && _webSocket != null)
             {
                 try
@@ -106,7 +106,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
                     }
 
                     var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                    
+
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         System.Diagnostics.Debug.WriteLine("Virtual Environment WebSocket closed by server");
@@ -151,7 +151,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
                     if (root.TryGetProperty("type", out var typeElement))
                     {
                         var messageType = typeElement.GetString();
-                        
+
                         if (messageType == "status")
                         {
                             UpdateStatusFromMessage(root);
@@ -178,18 +178,18 @@ namespace HouseVictoria.Services.VirtualEnvironment
         {
             if (root.TryGetProperty("scene", out var sceneElement))
                 _status.CurrentScene = sceneElement.GetString();
-            
+
             if (root.TryGetProperty("avatar_count", out var avatarCountElement))
                 _status.AvatarCount = avatarCountElement.GetInt32();
-            
+
             if (root.TryGetProperty("fps", out var fpsElement))
                 _status.FrameRate = fpsElement.GetDouble();
-            
+
             if (root.TryGetProperty("rendering", out var renderingElement))
                 _status.IsRendering = renderingElement.GetBoolean();
-            
+
             _status.Uptime = DateTime.Now - _connectionStartTime;
-            
+
             StatusChanged?.Invoke(this, new VirtualEnvironmentEventArgs { Status = _status });
         }
 
@@ -197,7 +197,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
         {
             var sceneName = root.TryGetProperty("scene", out var sceneElement) ? sceneElement.GetString() : _status.CurrentScene;
             var updateType = root.TryGetProperty("update_type", out var typeElement) ? typeElement.GetString() : "Unknown";
-            
+
             SceneUpdated?.Invoke(this, new SceneUpdateEventArgs
             {
                 SceneName = sceneName ?? "Unknown",
@@ -211,7 +211,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
             _status.IsConnected = false;
             _status.Uptime = TimeSpan.Zero;
             StatusChanged?.Invoke(this, new VirtualEnvironmentEventArgs { Status = _status });
-            
+
             if (_autoReconnectEnabled && _reconnectAttempts < MaxReconnectAttempts && !string.IsNullOrEmpty(_endpoint))
             {
                 await AttemptReconnectAsync();
@@ -221,7 +221,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
         public async Task DisconnectAsync()
         {
             _autoReconnectEnabled = false; // Disable auto-reconnect when manually disconnecting
-            
+
             // Stop receiving messages
             _receiveCts?.Cancel();
             if (_receiveTask != null)
@@ -259,7 +259,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
             _status.IsConnected = false;
             _status.Uptime = TimeSpan.Zero;
             StatusChanged?.Invoke(this, new VirtualEnvironmentEventArgs { Status = _status });
-            
+
             System.Diagnostics.Debug.WriteLine("Virtual Environment disconnected");
         }
 
@@ -294,7 +294,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
                 _status.IsConnected = false;
                 StatusChanged?.Invoke(this, new VirtualEnvironmentEventArgs { Status = _status });
             }
-            
+
             return await Task.FromResult(_status);
         }
 
@@ -310,7 +310,7 @@ namespace HouseVictoria.Services.VirtualEnvironment
 
                 var buffer = Encoding.UTF8.GetBytes(command);
                 await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
-                
+
                 // Note: Response will be handled by the background receive task
                 // For synchronous responses, we'd need a request-response pattern with TaskCompletionSource
                 // For now, return a simple acknowledgment

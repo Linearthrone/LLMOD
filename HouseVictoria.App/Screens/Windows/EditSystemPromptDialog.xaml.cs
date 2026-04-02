@@ -19,8 +19,8 @@ namespace HouseVictoria.App.Screens.Windows
         private double _avatarVoicePitch = 1.0;
 
         public AIContact Contact { get; set; }
-        public string ContactName 
-        { 
+        public string ContactName
+        {
             get => _contactName;
             private set
             {
@@ -29,7 +29,7 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
         public ObservableCollection<string> AvailablePiperVoices { get; } = new();
-        
+
         public string SystemPrompt
         {
             get => _systemPrompt;
@@ -74,7 +74,7 @@ namespace HouseVictoria.App.Screens.Windows
         {
             if (contact == null)
                 throw new ArgumentNullException(nameof(contact));
-            
+
             Contact = contact;
             ContactName = contact.Name ?? "Unknown";
             SystemPrompt = contact.SystemPrompt ?? string.Empty;
@@ -82,7 +82,7 @@ namespace HouseVictoria.App.Screens.Windows
             AvatarModelPath = contact.AvatarModelPath ?? string.Empty;
             AvatarVoiceSpeed = contact.AvatarVoiceSpeed;
             AvatarVoicePitch = contact.AvatarVoicePitch;
-            
+
             try
             {
                 InitializeComponent();
@@ -92,7 +92,7 @@ namespace HouseVictoria.App.Screens.Windows
                 System.Diagnostics.Debug.WriteLine($"Error initializing EditSystemPromptDialog XAML: {ex.Message}\n{ex.StackTrace}");
                 throw;
             }
-            
+
             DataContext = this;
             Loaded += OnLoaded;
         }
