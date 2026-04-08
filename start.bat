@@ -172,22 +172,26 @@ if not defined COMFYUI_PORTABLE_PATH (
         set "COMFYUI_PORTABLE_PATH=!COMFYUI_PORTABLE_PATH: =!"
     )
 )
+if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+set "COMFYUI_LOG=%SCRIPT_DIR%\Media\comfyui.log"
 set "COMFYUI_STARTED=0"
 if defined COMFYUI_PORTABLE_PATH (
-    echo Starting ComfyUI...
+    echo Starting ComfyUI ^(portable^)...
     REM Ensure D:\ComfyUI\models is loaded as extra models (copy config to ComfyUI root)
     if exist "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" (
         copy /Y "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" "%COMFYUI_PORTABLE_PATH%\extra_model_paths.yaml" >nul 2>&1
     )
     if exist "%COMFYUI_PORTABLE_PATH%\run_nvidia_gpu.bat" (
-        start "ComfyUI" /B /D "%COMFYUI_PORTABLE_PATH%" cmd /c "run_nvidia_gpu.bat"
+        start "ComfyUI" /B "%SCRIPT_DIR%\comfyui-launcher.cmd" gpu "!COMFYUI_PORTABLE_PATH!" "!COMFYUI_LOG!"
         timeout /t 2 /nobreak >nul
         echo [OK] ComfyUI starting - http://127.0.0.1:8188
+        echo [INFO] ComfyUI log: Media\comfyui.log
         set "COMFYUI_STARTED=1"
     ) else if exist "%COMFYUI_PORTABLE_PATH%\run_cpu.bat" (
-        start "ComfyUI" /B /D "%COMFYUI_PORTABLE_PATH%" cmd /c "run_cpu.bat"
+        start "ComfyUI" /B "%SCRIPT_DIR%\comfyui-launcher.cmd" cpu "!COMFYUI_PORTABLE_PATH!" "!COMFYUI_LOG!"
         timeout /t 2 /nobreak >nul
         echo [OK] ComfyUI ^(CPU^) starting - http://127.0.0.1:8188
+        echo [INFO] ComfyUI log: Media\comfyui.log
         set "COMFYUI_STARTED=1"
     ) else (
         echo [WARN] run_nvidia_gpu.bat / run_cpu.bat not found in %COMFYUI_PORTABLE_PATH%
@@ -197,8 +201,9 @@ if "!COMFYUI_STARTED!" == "0" (
     set "COMFYUI_FOUND=0"
     set "COMFYUI_PATH="
     set "COMFYUI_IS_EXE=0"
-    if exist "C:\Users\kurtw\AppData\Local\Programs\ComfyUI\ComfyUI.exe" (
-        set "COMFYUI_PATH=C:\Users\kurtw\AppData\Local\Programs\ComfyUI\ComfyUI.exe"
+    set "COMFYUI_DESKTOP_EXE=%LOCALAPPDATA%\Programs\ComfyUI\ComfyUI.exe"
+    if exist "!COMFYUI_DESKTOP_EXE!" (
+        set "COMFYUI_PATH=!COMFYUI_DESKTOP_EXE!"
         set "COMFYUI_FOUND=1"
         set "COMFYUI_IS_EXE=1"
     ) else if exist "C:\StabilityMatrix\Data\Packages\ComfyUI\main.py" (
@@ -214,18 +219,31 @@ if "!COMFYUI_STARTED!" == "0" (
     if !COMFYUI_FOUND! == 1 (
         echo Starting ComfyUI...
         if !COMFYUI_IS_EXE! == 1 (
-            start "" "!COMFYUI_PATH!"
+            REM ComfyUI desktop: ensure common custom-node deps (opencv-python, imageio-ffmpeg) in its venv
+            set "COMFYUI_DESKTOP_VENV=%USERPROFILE%\Documents\ComfyUI\.venv\Scripts\python.exe"
+            if exist "!COMFYUI_DESKTOP_VENV!" (
+                "!COMFYUI_DESKTOP_VENV!" -c "import cv2; import imageio_ffmpeg" 2>nul
+                if errorlevel 1 (
+                    echo [INFO] One-time: installing OpenCV + imageio-ffmpeg for ComfyUI custom nodes...
+                    "!COMFYUI_DESKTOP_VENV!" -m pip install opencv-python imageio-ffmpeg --disable-pip-version-check -q
+                )
+            )
+            REM Start-Process detaches from this console so the Electron/Python backend does not flood this terminal
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%LOCALAPPDATA%\Programs\ComfyUI\ComfyUI.exe' -WorkingDirectory '%LOCALAPPDATA%\Programs\ComfyUI'"
         ) else (
             REM Ensure D:\ComfyUI\models is loaded as extra models
             if exist "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" (
                 copy /Y "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" "!COMFYUI_PATH!\extra_model_paths.yaml" >nul 2>&1
             )
-            pushd "!COMFYUI_PATH!"
-            start "ComfyUI" /B cmd /c "python main.py --port 8188"
-            popd
+            start "ComfyUI" /B "%SCRIPT_DIR%\comfyui-launcher.cmd" main "!COMFYUI_PATH!" "!COMFYUI_LOG!"
         )
         timeout /t 2 /nobreak >nul
         echo [OK] ComfyUI - http://localhost:8188
+        if !COMFYUI_IS_EXE! == 1 (
+            echo [INFO] Desktop app logs also go to: %USERPROFILE%\Documents\ComfyUI\user\comfyui.log
+        ) else (
+            echo [INFO] ComfyUI log: Media\comfyui.log
+        )
         set "COMFYUI_STARTED=1"
     ) else (
         echo [INFO] ComfyUI not found. Set COMFYUI_PORTABLE_PATH in Settings or install to default locations.

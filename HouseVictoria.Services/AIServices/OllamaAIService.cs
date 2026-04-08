@@ -326,8 +326,8 @@ namespace HouseVictoria.Services.AIServices
             }
             else
             {
-                var (ckpt, isFlux) = await ResolveComfyUiCheckpointNameAsync(baseUrl);
-                workflowPayload = isFlux
+                var (ckpt, uses16ChLatent) = await ResolveComfyUiCheckpointNameAsync(baseUrl);
+                workflowPayload = uses16ChLatent
                     ? BuildComfyUiFluxTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix)
                     : BuildComfyUiTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix);
             }
@@ -576,11 +576,17 @@ namespace HouseVictoria.Services.AIServices
             };
         }
 
-        /// <summary>Returns (checkpoint name, isFlux). Prefers SD/SDXL over Flux when both exist to avoid 4ch vs 16ch latent mismatch.</summary>
-        private async Task<(string ckptName, bool isFlux)> ResolveComfyUiCheckpointNameAsync(string baseUrl)
+        /// <summary>Returns (checkpoint name, uses16ChLatent). True for Flux / SD3-style models (EmptySD3LatentImage). Prefers SD/SDXL when both exist to avoid 4ch vs 16ch latent mismatch.</summary>
+        private async Task<(string ckptName, bool uses16ChLatent)> ResolveComfyUiCheckpointNameAsync(string baseUrl)
         {
-            static bool IsFluxCheckpoint(string name) =>
-                !string.IsNullOrWhiteSpace(name) && name.Contains("flux", StringComparison.OrdinalIgnoreCase);
+            // Filename heuristics: built-in graph uses EmptyLatentImage (4ch) vs EmptySD3LatentImage (16ch). SD3
+            // checkpoints often omit "flux" in the name, which caused KSampler tensor 64 vs 16 errors.
+            static bool Uses16ChannelLatentByName(string name) =>
+                !string.IsNullOrWhiteSpace(name) && (
+                    name.Contains("flux", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("sd3", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("stable_diffusion_3", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("stable-diffusion-3", StringComparison.OrdinalIgnoreCase));
 
             try
             {
@@ -590,11 +596,11 @@ namespace HouseVictoria.Services.AIServices
                     var names = await r.Content.ReadFromJsonAsync<List<string>>();
                     if (names != null && names.Count > 0)
                     {
-                        var nonFlux = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s) && !IsFluxCheckpoint(s));
+                        var non16Ch = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s) && !Uses16ChannelLatentByName(s));
                         var first = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
-                        var chosen = nonFlux ?? first;
+                        var chosen = non16Ch ?? first;
                         if (chosen != null)
-                            return (chosen, IsFluxCheckpoint(chosen));
+                            return (chosen, Uses16ChannelLatentByName(chosen));
                     }
                 }
             }
@@ -626,23 +632,23 @@ namespace HouseVictoria.Services.AIServices
             if (options.ValueKind != JsonValueKind.Array)
                 throw new Exception("Unexpected ComfyUI ckpt_name schema.");
 
-            string? nonFluxFromList = null;
+            string? non16ChFromList = null;
             string? firstFromList = null;
             foreach (var x in options.EnumerateArray())
             {
                 var s = x.GetString();
                 if (string.IsNullOrWhiteSpace(s)) continue;
                 firstFromList ??= s;
-                if (!IsFluxCheckpoint(s))
+                if (!Uses16ChannelLatentByName(s))
                 {
-                    nonFluxFromList ??= s;
+                    non16ChFromList ??= s;
                     break;
                 }
             }
-            var chosenFromList = nonFluxFromList ?? firstFromList;
+            var chosenFromList = non16ChFromList ?? firstFromList;
             if (chosenFromList == null)
                 throw new Exception("No checkpoints found in ComfyUI. Add a Stable Diffusion checkpoint under models/checkpoints.");
-            return (chosenFromList, IsFluxCheckpoint(chosenFromList));
+            return (chosenFromList, Uses16ChannelLatentByName(chosenFromList));
         }
 
         private async Task<(string filename, string subfolder, string type)> PollComfyUiForOutputImageAsync(string baseUrl, string promptId)
