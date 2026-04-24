@@ -147,5 +147,23 @@ namespace HouseVictoria.Core.Models
         public string CovasBridgeEndpoint { get; set; } = "http://localhost:11435";
         /// <summary>Optional AI contact ID to use as ship computer. If empty, first available contact is used.</summary>
         public string CovasContactId { get; set; } = string.Empty;
+
+        /// <summary>When true, Kestrel exposes the remote companion HTTP API (text + optional audio).</summary>
+        public bool RemoteCompanionEnabled { get; set; }
+
+        /// <summary>TCP port for the remote companion API (default 17890).</summary>
+        public int RemoteCompanionListenPort { get; set; } = 17890;
+
+        /// <summary>Bearer / X-Api-Key secret. Required when remote companion is enabled; use at least 16 characters.</summary>
+        public string RemoteCompanionApiToken { get; set; } = string.Empty;
+
+        /// <summary>Optional AI contact id for remote chat; if empty, primary (or first) AI contact is used.</summary>
+        public string RemoteCompanionAiContactId { get; set; } = string.Empty;
+
+        /// <summary>Listen on all interfaces (0.0.0.0) for LAN access. If false, only loopback (recommended with a tunnel).</summary>
+        public bool RemoteCompanionListenOnLan { get; set; }
+
+        /// <summary>After each remote reply, send a JSON command to Unreal (see Docs/Unreal_Protocol.md).</summary>
+        public bool RemoteCompanionNotifyUnreal { get; set; }
     }
 }

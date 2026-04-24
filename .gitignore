@@ -357,6 +357,11 @@ healthchecksdb
 Data/Memory/
 **/HouseVictoria.db
 
+# Android Remote Companion build artifacts
+AndroidRemoteCompanion/.gradle/
+AndroidRemoteCompanion/**/build/
+AndroidRemoteCompanion/local.properties
+
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
 

@@ -11,6 +11,8 @@ using HouseVictoria.Services.FileGeneration;
 using HouseVictoria.Services.Logging;
 using HouseVictoria.Services.MCP;
 using HouseVictoria.Services.Trading;
+using HouseVictoria.Services.RemoteCompanion;
+using HouseVictoria.App.RemoteCompanion;
 using HouseVictoria.App.Services;
 using HouseVictoria.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +29,8 @@ namespace HouseVictoria.App
     public partial class App : Application
     {
         public static ServiceProvider? ServiceProvider { get; private set; }
+
+        private RemoteCompanionWebHost? _remoteCompanionHost;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -99,6 +103,29 @@ namespace HouseVictoria.App
                     mainWindow.Activate();
                     LoggingHelper.WriteToStartupLog("MainWindow created and shown");
                     System.Diagnostics.Debug.WriteLine("MainWindow created and shown successfully");
+
+                    try
+                    {
+                        _remoteCompanionHost = new RemoteCompanionWebHost();
+                        var host = _remoteCompanionHost;
+                        var sp = ServiceProvider;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                if (sp != null)
+                                    await host.StartIfEnabledAsync(sp).ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                LoggingHelper.WriteToStartupLog($"Remote companion host failed to start: {ex.Message}");
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        LoggingHelper.WriteToStartupLog($"Remote companion host setup error: {ex.Message}");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -308,6 +335,12 @@ namespace HouseVictoria.App
 
             // High-level cognitive agent service (composes AI + virtual environment)
             services.AddSingleton<IAgentService, AgentService>();
+            services.AddSingleton(sp => new RemoteCompanionChatService(
+                sp.GetRequiredService<IAIService>(),
+                sp.GetRequiredService<DatabasePersistenceService>(),
+                sp.GetService<IMemoryService>(),
+                sp.GetService<IVirtualEnvironmentService>(),
+                sp.GetRequiredService<AppConfig>()));
 
             ServiceProvider = services.BuildServiceProvider();
         }
@@ -345,7 +378,13 @@ namespace HouseVictoria.App
                 HybridLexicalWeight = double.TryParse(config["HybridLexicalWeight"], out var hybridWeight) ? hybridWeight : 0.5,
                 CovasBridgeEnabled = bool.TryParse(config["CovasBridgeEnabled"], out var covasEnabled) && covasEnabled,
                 CovasBridgeEndpoint = config["CovasBridgeEndpoint"] ?? "http://localhost:11435",
-                CovasContactId = config["CovasContactId"] ?? string.Empty
+                CovasContactId = config["CovasContactId"] ?? string.Empty,
+                RemoteCompanionEnabled = bool.TryParse(config["RemoteCompanionEnabled"], out var rce) && rce,
+                RemoteCompanionListenPort = int.TryParse(config["RemoteCompanionListenPort"], out var rcp) && rcp > 0 ? rcp : 17890,
+                RemoteCompanionApiToken = config["RemoteCompanionApiToken"] ?? string.Empty,
+                RemoteCompanionAiContactId = config["RemoteCompanionAiContactId"] ?? string.Empty,
+                RemoteCompanionListenOnLan = bool.TryParse(config["RemoteCompanionListenOnLan"], out var rclan) && rclan,
+                RemoteCompanionNotifyUnreal = bool.TryParse(config["RemoteCompanionNotifyUnreal"], out var rcnu) && rcnu
             };
 
             // Resolve relative paths to absolute paths
@@ -526,6 +565,20 @@ namespace HouseVictoria.App
         {
             try
             {
+                if (_remoteCompanionHost != null)
+                {
+                    try
+                    {
+                        await _remoteCompanionHost.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error stopping remote companion host: {ex.Message}");
+                    }
+
+                    _remoteCompanionHost = null;
+                }
+
                 // Stop SystemMonitorService servers (includes LocalTtsHttpHost and COVAS bridge)
                 var systemMonitorService = ServiceProvider?.GetService<ISystemMonitorService>();
                 if (systemMonitorService != null)

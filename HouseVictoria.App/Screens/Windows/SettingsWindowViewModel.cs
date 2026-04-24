@@ -179,6 +179,49 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        // Remote companion (phone → PC text / audio API)
+        private bool _remoteCompanionEnabled;
+        public bool RemoteCompanionEnabled
+        {
+            get => _remoteCompanionEnabled;
+            set { if (SetProperty(ref _remoteCompanionEnabled, value)) ValidateSettings(); }
+        }
+
+        private int _remoteCompanionListenPort = 17890;
+        public int RemoteCompanionListenPort
+        {
+            get => _remoteCompanionListenPort;
+            set { if (SetProperty(ref _remoteCompanionListenPort, value)) ValidateSettings(); }
+        }
+
+        private string _remoteCompanionApiToken = string.Empty;
+        public string RemoteCompanionApiToken
+        {
+            get => _remoteCompanionApiToken;
+            set { if (SetProperty(ref _remoteCompanionApiToken, value ?? string.Empty)) ValidateSettings(); }
+        }
+
+        private string _remoteCompanionAiContactId = string.Empty;
+        public string RemoteCompanionAiContactId
+        {
+            get => _remoteCompanionAiContactId;
+            set => SetProperty(ref _remoteCompanionAiContactId, value ?? string.Empty);
+        }
+
+        private bool _remoteCompanionListenOnLan;
+        public bool RemoteCompanionListenOnLan
+        {
+            get => _remoteCompanionListenOnLan;
+            set => SetProperty(ref _remoteCompanionListenOnLan, value);
+        }
+
+        private bool _remoteCompanionNotifyUnreal;
+        public bool RemoteCompanionNotifyUnreal
+        {
+            get => _remoteCompanionNotifyUnreal;
+            set => SetProperty(ref _remoteCompanionNotifyUnreal, value);
+        }
+
         // Image Generation Endpoint (ComfyUI - legacy StableDiffusionEndpoint setting name)
         private string _stableDiffusionEndpoint = string.Empty;
         public string StableDiffusionEndpoint
@@ -544,6 +587,12 @@ namespace HouseVictoria.App.Screens.Windows
             TTSEndpoint = appConfig.TTSEndpoint;
             STTEndpoint = appConfig.STTEndpoint ?? string.Empty;
             UnrealEngineEndpoint = appConfig.UnrealEngineEndpoint;
+            RemoteCompanionEnabled = appConfig.RemoteCompanionEnabled;
+            RemoteCompanionListenPort = appConfig.RemoteCompanionListenPort > 0 ? appConfig.RemoteCompanionListenPort : 17890;
+            RemoteCompanionApiToken = appConfig.RemoteCompanionApiToken ?? string.Empty;
+            RemoteCompanionAiContactId = appConfig.RemoteCompanionAiContactId ?? string.Empty;
+            RemoteCompanionListenOnLan = appConfig.RemoteCompanionListenOnLan;
+            RemoteCompanionNotifyUnreal = appConfig.RemoteCompanionNotifyUnreal;
             StableDiffusionEndpoint = appConfig.StableDiffusionEndpoint;
             StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
             ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
@@ -757,6 +806,25 @@ namespace HouseVictoria.App.Screens.Windows
                 OnPropertyChanged(nameof(ValidationError));
                 OnPropertyChanged(nameof(IsValid));
                 return;
+            }
+
+            if (RemoteCompanionEnabled)
+            {
+                if (string.IsNullOrWhiteSpace(RemoteCompanionApiToken) || RemoteCompanionApiToken.Length < 16)
+                {
+                    _validationError = "Remote companion API token must be at least 16 characters when remote access is enabled";
+                    OnPropertyChanged(nameof(ValidationError));
+                    OnPropertyChanged(nameof(IsValid));
+                    return;
+                }
+
+                if (RemoteCompanionListenPort < 1 || RemoteCompanionListenPort > 65535)
+                {
+                    _validationError = "Remote companion listen port must be between 1 and 65535";
+                    OnPropertyChanged(nameof(ValidationError));
+                    OnPropertyChanged(nameof(IsValid));
+                    return;
+                }
             }
 
             OnPropertyChanged(nameof(ValidationError));
@@ -1366,6 +1434,12 @@ d_comfyui_models:
                         TTSEndpoint = importedConfig.TTSEndpoint;
                         STTEndpoint = importedConfig.STTEndpoint ?? string.Empty;
                         UnrealEngineEndpoint = importedConfig.UnrealEngineEndpoint;
+                        RemoteCompanionEnabled = importedConfig.RemoteCompanionEnabled;
+                        RemoteCompanionListenPort = importedConfig.RemoteCompanionListenPort > 0 ? importedConfig.RemoteCompanionListenPort : 17890;
+                        RemoteCompanionApiToken = importedConfig.RemoteCompanionApiToken ?? string.Empty;
+                        RemoteCompanionAiContactId = importedConfig.RemoteCompanionAiContactId ?? string.Empty;
+                        RemoteCompanionListenOnLan = importedConfig.RemoteCompanionListenOnLan;
+                        RemoteCompanionNotifyUnreal = importedConfig.RemoteCompanionNotifyUnreal;
                         StableDiffusionEndpoint = importedConfig.StableDiffusionEndpoint;
                         StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
                         ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
@@ -1428,6 +1502,12 @@ d_comfyui_models:
                         TTSEndpoint = TTSEndpoint,
                         STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint,
                         UnrealEngineEndpoint = UnrealEngineEndpoint,
+                        RemoteCompanionEnabled = RemoteCompanionEnabled,
+                        RemoteCompanionListenPort = RemoteCompanionListenPort,
+                        RemoteCompanionApiToken = RemoteCompanionApiToken,
+                        RemoteCompanionAiContactId = RemoteCompanionAiContactId,
+                        RemoteCompanionListenOnLan = RemoteCompanionListenOnLan,
+                        RemoteCompanionNotifyUnreal = RemoteCompanionNotifyUnreal,
                         StableDiffusionEndpoint = StableDiffusionEndpoint,
                         StabilityMatrixPath = StabilityMatrixPath,
                         ComfyUIPortablePath = ComfyUIPortablePath,
@@ -1487,6 +1567,12 @@ d_comfyui_models:
                 _appConfig.TTSEndpoint = TTSEndpoint;
                 _appConfig.STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint;
                 _appConfig.UnrealEngineEndpoint = UnrealEngineEndpoint;
+                _appConfig.RemoteCompanionEnabled = RemoteCompanionEnabled;
+                _appConfig.RemoteCompanionListenPort = RemoteCompanionListenPort;
+                _appConfig.RemoteCompanionApiToken = RemoteCompanionApiToken;
+                _appConfig.RemoteCompanionAiContactId = RemoteCompanionAiContactId;
+                _appConfig.RemoteCompanionListenOnLan = RemoteCompanionListenOnLan;
+                _appConfig.RemoteCompanionNotifyUnreal = RemoteCompanionNotifyUnreal;
                 _appConfig.StableDiffusionEndpoint = StableDiffusionEndpoint;
                 _appConfig.StabilityMatrixPath = StabilityMatrixPath;
                 _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
@@ -1525,6 +1611,12 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
                 UpdateOrAddSetting(config, "STTEndpoint", STTEndpoint ?? string.Empty);
                 UpdateOrAddSetting(config, "UnrealEngineEndpoint", UnrealEngineEndpoint);
+                UpdateOrAddSetting(config, "RemoteCompanionEnabled", RemoteCompanionEnabled.ToString());
+                UpdateOrAddSetting(config, "RemoteCompanionListenPort", RemoteCompanionListenPort.ToString());
+                UpdateOrAddSetting(config, "RemoteCompanionApiToken", RemoteCompanionApiToken);
+                UpdateOrAddSetting(config, "RemoteCompanionAiContactId", RemoteCompanionAiContactId);
+                UpdateOrAddSetting(config, "RemoteCompanionListenOnLan", RemoteCompanionListenOnLan.ToString());
+                UpdateOrAddSetting(config, "RemoteCompanionNotifyUnreal", RemoteCompanionNotifyUnreal.ToString());
                 UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
                 UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
@@ -1612,6 +1704,12 @@ d_comfyui_models:
                 TTSEndpoint = defaults.TTSEndpoint;
                 STTEndpoint = defaults.STTEndpoint ?? string.Empty;
                 UnrealEngineEndpoint = defaults.UnrealEngineEndpoint;
+                RemoteCompanionEnabled = defaults.RemoteCompanionEnabled;
+                RemoteCompanionListenPort = defaults.RemoteCompanionListenPort > 0 ? defaults.RemoteCompanionListenPort : 17890;
+                RemoteCompanionApiToken = defaults.RemoteCompanionApiToken;
+                RemoteCompanionAiContactId = defaults.RemoteCompanionAiContactId;
+                RemoteCompanionListenOnLan = defaults.RemoteCompanionListenOnLan;
+                RemoteCompanionNotifyUnreal = defaults.RemoteCompanionNotifyUnreal;
                 StableDiffusionEndpoint = defaults.StableDiffusionEndpoint;
                 StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
                 ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;

@@ -30,6 +30,40 @@ async def handler(ws):
             mtype = (msg or {}).get("type", "")
             if mtype == "ping":
                 await ws.send(json.dumps({"type": "pong", "payload": msg.get("payload", {})}))
+            elif mtype == "command":
+                inner = (msg or {}).get("payload") or {}
+                cmd_name = inner.get("name")
+                args = inner.get("args") or {}
+                if cmd_name == "companion_remote_exchange":
+                    user_t = (args.get("user") or "")[:200]
+                    asst_t = (args.get("assistant") or "")[:200]
+                    corr = args.get("correlation_id") or ""
+                    logger.info(
+                        "companion_remote_exchange corr=%s user=%r assistant=%r",
+                        corr,
+                        user_t,
+                        asst_t,
+                    )
+                    await ws.send(
+                        json.dumps(
+                            {
+                                "type": "status",
+                                "payload": {
+                                    "handled": "companion_remote_exchange",
+                                    "correlation_id": corr,
+                                },
+                            }
+                        )
+                    )
+                else:
+                    await ws.send(
+                        json.dumps(
+                            {
+                                "type": "scene",
+                                "payload": {"name": "MockLevel", "echo": msg},
+                            }
+                        )
+                    )
             else:
                 await ws.send(
                     json.dumps(

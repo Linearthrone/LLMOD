@@ -384,6 +384,51 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Remote companion: phone → PC (text + audio); TLS at edge (tunnel). Restart app after changing. -->
+                    <Border Style="{StaticResource Card}" Margin="0,5">
+                        <StackPanel>
+                            <TextBlock Text="📱 Remote companion (phone → PC)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <Separator Margin="0,5" Background="#1A2332"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#80C4D4" Margin="0,0,0,8"
+                                      Text="HTTP API on this PC for text chat and optional voice (STT on PC). Bind to loopback and use Tailscale / Cloudflare Tunnel for secure remote access. Video can be added later. Restart House Victoria after enabling or changing port/token."/>
+                            <CheckBox IsChecked="{Binding RemoteCompanionEnabled}" Foreground="#E0F7FF" Margin="0,2"
+                                     Content="Enable remote companion API"/>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Listen port:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding RemoteCompanionListenPort, UpdateSourceTrigger=PropertyChanged}"
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                            </Grid>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="API token:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding RemoteCompanionApiToken, UpdateSourceTrigger=PropertyChanged}"
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"
+                                        ToolTip="Use at least 16 characters. Send as Authorization: Bearer &lt;token&gt; or X-Api-Key header."/>
+                            </Grid>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="AI contact ID:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding RemoteCompanionAiContactId, UpdateSourceTrigger=PropertyChanged}"
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"
+                                        ToolTip="Optional. Leave empty to use the primary AI contact."/>
+                            </Grid>
+                            <CheckBox IsChecked="{Binding RemoteCompanionListenOnLan}" Foreground="#E0F7FF" Margin="0,4"
+                                     Content="Listen on all interfaces (LAN) — off = loopback only (safer with a tunnel)"/>
+                            <CheckBox IsChecked="{Binding RemoteCompanionNotifyUnreal}" Foreground="#E0F7FF" Margin="0,2"
+                                     Content="Notify Unreal after each reply (JSON command companion_remote_exchange)"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- LLM Servers: LM Studio, Ollama, Anything LLM (single block, one primary) -->
                     <Border Style="{StaticResource Card}" Margin="0,5">
                         <StackPanel>

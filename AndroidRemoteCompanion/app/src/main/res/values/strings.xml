@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Remote Companion</string>
+    <string name="title_remote_companion">House Victoria Remote Companion</string>
+    <string name="hint_base_url">Base URL (e.g. https://your-tunnel.example)</string>
+    <string name="hint_api_token">API token (Bearer)</string>
+    <string name="hint_contact_id_optional">Contact ID (optional)</string>
+    <string name="button_health">Check Health</string>
+    <string name="health_idle">Health: not checked</string>
+    <string name="hint_message">Message</string>
+    <string name="button_send">Send</string>
+    <string name="button_audio">Record &amp; Send Audio</string>
+    <string name="button_retry">Retry</string>
+    <string name="button_audio_stop">Stop &amp; Send Audio</string>
+    <string name="label_conversation">Conversation</string>
+    <string name="conversation_placeholder">No messages yet.</string>
+</resources>
