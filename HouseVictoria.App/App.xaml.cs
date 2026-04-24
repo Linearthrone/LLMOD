@@ -94,6 +94,25 @@ namespace HouseVictoria.App
                     // Continue even if logging fails
                 }
 
+                // Allow running only the remote companion API host (no UI window).
+                // Safety: require BOTH env flag and explicit CLI arg to avoid accidental
+                // headless launches when the env var leaks into normal user sessions.
+                var remoteOnlyEnv = string.Equals(
+                    Environment.GetEnvironmentVariable("HV_REMOTE_COMPANION_ONLY"),
+                    "1",
+                    StringComparison.Ordinal);
+                var remoteOnlyArg = e.Args.Any(a =>
+                    string.Equals(a, "--remote-only", StringComparison.OrdinalIgnoreCase));
+                var remoteOnly = remoteOnlyEnv && remoteOnlyArg;
+                if (remoteOnly)
+                {
+                    LoggingHelper.WriteToStartupLog("Remote-only mode requested (env + --remote-only); starting remote companion host without UI.");
+                    ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                    StartRemoteCompanionHost();
+                    LoggingHelper.WriteToStartupLog("Remote-only mode initialized.");
+                    return;
+                }
+
                 // Manually create and show MainWindow after services are initialized
                 try
                 {
@@ -104,28 +123,7 @@ namespace HouseVictoria.App
                     LoggingHelper.WriteToStartupLog("MainWindow created and shown");
                     System.Diagnostics.Debug.WriteLine("MainWindow created and shown successfully");
 
-                    try
-                    {
-                        _remoteCompanionHost = new RemoteCompanionWebHost();
-                        var host = _remoteCompanionHost;
-                        var sp = ServiceProvider;
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                if (sp != null)
-                                    await host.StartIfEnabledAsync(sp).ConfigureAwait(false);
-                            }
-                            catch (Exception ex)
-                            {
-                                LoggingHelper.WriteToStartupLog($"Remote companion host failed to start: {ex.Message}");
-                            }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        LoggingHelper.WriteToStartupLog($"Remote companion host setup error: {ex.Message}");
-                    }
+                    StartRemoteCompanionHost();
                 }
                 catch (Exception ex)
                 {
@@ -147,6 +145,32 @@ namespace HouseVictoria.App
                 LoggingHelper.WriteToStartupLog(errorMsg);
                 MessageBox.Show($"Startup Error: {ex.Message}\n\n{ex.StackTrace}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
+            }
+        }
+
+        private void StartRemoteCompanionHost()
+        {
+            try
+            {
+                _remoteCompanionHost = new RemoteCompanionWebHost();
+                var host = _remoteCompanionHost;
+                var sp = ServiceProvider;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        if (sp != null)
+                            await host.StartIfEnabledAsync(sp).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        LoggingHelper.WriteToStartupLog($"Remote companion host failed to start: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.WriteToStartupLog($"Remote companion host setup error: {ex.Message}");
             }
         }
 

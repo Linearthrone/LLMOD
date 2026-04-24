@@ -253,6 +253,9 @@ echo.
 
 REM --- House Victoria App ---
 echo Starting House Victoria App...
+REM Ensure normal app launches are never forced into headless remote-only mode
+REM by inherited shell environment variables.
+set "HV_REMOTE_COMPANION_ONLY="
 set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Release\net8.0-windows\HouseVictoria.App.exe"
 if not exist "%APP_EXE%" set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Debug\net8.0-windows\HouseVictoria.App.exe"
 if exist "%APP_EXE%" (

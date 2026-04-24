@@ -85,7 +85,19 @@ namespace HouseVictoria.Services.SystemMonitor
 
             InitializeServers();
             ApplyConfigOverrides();
-            InitializePerformanceCounters();
+            // Avoid blocking UI startup on potentially slow/corrupted performance counter APIs.
+            // Counter initialization is deferred to a background task and retried lazily where needed.
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    InitializePerformanceCounters();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"SystemMonitorService: background counter init error: {ex.Message}");
+                }
+            });
             // WMI-based hardware monitoring (no kernel drivers needed)
             // Note: WMI has limited temperature/fan speed support compared to WinRing0-based solutions
 
