@@ -10,9 +10,13 @@
         Background="Transparent" Topmost="True"
         WindowState="Maximized" ShowInTaskbar="False"
         Visibility="Visible"
+        IsEnabled="True"
+        IsHitTestVisible="True"
         Loaded="Window_Loaded" Unloaded="Window_Unloaded">
 
-    <Grid Background="Transparent">
+    <Grid Background="Transparent"
+          IsEnabled="True"
+          IsHitTestVisible="True">
         <!-- Pull Handle at Top Edge for TopTray -->
         <Border x:Name="PullHandle"
                 Width="300" Height="12"

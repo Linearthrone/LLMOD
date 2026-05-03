@@ -319,67 +319,110 @@ namespace HouseVictoria.Services.AIServices
                 }
             }
 
+            static bool IsLatentChannelMismatch(string msg) =>
+                !string.IsNullOrWhiteSpace(msg) &&
+                msg.Contains("size of tensor a", StringComparison.OrdinalIgnoreCase) &&
+                msg.Contains("must match the size of tensor b", StringComparison.OrdinalIgnoreCase) &&
+                msg.Contains("KSampler", StringComparison.OrdinalIgnoreCase);
+
+            async Task<Stream> RunWorkflowAsync(object workflowPayload, string runPrefix)
+            {
+                var clientId = Guid.NewGuid().ToString("N");
+                using var promptResp = await _httpClient.PostAsJsonAsync($"{baseUrl}/prompt", new { prompt = workflowPayload, client_id = clientId });
+                var promptJson = await promptResp.Content.ReadAsStringAsync();
+                if (!promptResp.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException(
+                        $"ComfyUI POST /prompt failed: {(int)promptResp.StatusCode} {promptResp.ReasonPhrase}. Response: {TruncateForLog(promptJson)}");
+                }
+
+                using var promptDoc = JsonDocument.Parse(string.IsNullOrWhiteSpace(promptJson) ? "{}" : promptJson);
+                var root = promptDoc.RootElement;
+
+                if (root.TryGetProperty("error", out var topErr))
+                {
+                    var errText = topErr.ValueKind == JsonValueKind.String
+                        ? topErr.GetString()
+                        : topErr.GetRawText();
+                    throw new Exception($"ComfyUI /prompt error: {TruncateForLog(errText, 4000)}");
+                }
+
+                if (root.TryGetProperty("node_errors", out var nodeErrors) &&
+                    nodeErrors.ValueKind == JsonValueKind.Object &&
+                    nodeErrors.EnumerateObject().Any())
+                {
+                    throw new Exception(
+                        "ComfyUI rejected the workflow (node_errors). Typical causes: wrong checkpoint type (e.g. Flux-only install), or custom nodes missing. " +
+                        $"Details: {TruncateForLog(nodeErrors.GetRawText(), 4000)}");
+                }
+
+                var promptId = root.TryGetProperty("prompt_id", out var pid) ? pid.GetString() : null;
+                if (string.IsNullOrWhiteSpace(promptId))
+                    throw new Exception($"ComfyUI /prompt did not return prompt_id. Response: {TruncateForLog(promptJson)}");
+
+                System.Diagnostics.Debug.WriteLine($"[ComfyUI] Queued image gen prompt_id={promptId}, prefix={runPrefix}");
+
+                var (filename, subfolder, type) = await PollComfyUiForOutputImageAsync(baseUrl, promptId);
+                var viewUrl =
+                    $"{baseUrl}/view?filename={Uri.EscapeDataString(filename)}&subfolder={Uri.EscapeDataString(subfolder)}&type={Uri.EscapeDataString(type)}";
+                using var imgResp = await _httpClient.GetAsync(viewUrl);
+                var imgBytes = await imgResp.Content.ReadAsByteArrayAsync();
+                if (!imgResp.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException(
+                        $"ComfyUI GET /view failed: {(int)imgResp.StatusCode}. URL: {viewUrl}. Body: {TruncateForLog(System.Text.Encoding.UTF8.GetString(imgBytes))}");
+                }
+
+                return new MemoryStream(imgBytes);
+            }
+
             object workflowPayload;
+            bool? initialUses16Ch = null;
+            string? ckptName = null;
             if (workflow != null)
             {
                 workflowPayload = workflow;
             }
             else
             {
-                var (ckpt, uses16ChLatent) = await ResolveComfyUiCheckpointNameAsync(baseUrl);
-                workflowPayload = uses16ChLatent
-                    ? BuildComfyUiFluxTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix)
-                    : BuildComfyUiTxt2ImgWorkflow(ckpt, positivePrompt, width, height, seed, prefix);
+                var resolved = await ResolveComfyUiCheckpointNameAsync(baseUrl);
+                ckptName = resolved.ckptName;
+                initialUses16Ch = resolved.uses16ChLatent;
+                workflowPayload = initialUses16Ch.Value
+                    ? BuildComfyUiFluxTxt2ImgWorkflow(ckptName, positivePrompt, width, height, seed, prefix)
+                    : BuildComfyUiTxt2ImgWorkflow(ckptName, positivePrompt, width, height, seed, prefix);
             }
 
-            var clientId = Guid.NewGuid().ToString("N");
-            using var promptResp = await _httpClient.PostAsJsonAsync($"{baseUrl}/prompt", new { prompt = workflowPayload, client_id = clientId });
-            var promptJson = await promptResp.Content.ReadAsStringAsync();
-            if (!promptResp.IsSuccessStatusCode)
+            try
             {
-                throw new HttpRequestException(
-                    $"ComfyUI POST /prompt failed: {(int)promptResp.StatusCode} {promptResp.ReasonPhrase}. Response: {TruncateForLog(promptJson)}");
+                return await RunWorkflowAsync(workflowPayload, prefix);
             }
-
-            using var promptDoc = JsonDocument.Parse(string.IsNullOrWhiteSpace(promptJson) ? "{}" : promptJson);
-            var root = promptDoc.RootElement;
-
-            // Some ComfyUI versions return a top-level error string/object on validation failure.
-            if (root.TryGetProperty("error", out var topErr))
+            catch (Exception ex) when (IsLatentChannelMismatch(ex.Message))
             {
-                var errText = topErr.ValueKind == JsonValueKind.String
-                    ? topErr.GetString()
-                    : topErr.GetRawText();
-                throw new Exception($"ComfyUI /prompt error: {TruncateForLog(errText, 4000)}");
+                // Auto-recover common ComfyUI mismatch: wrong latent channel graph (4ch vs 16ch).
+                if (workflow != null)
+                {
+                    var resolved = await ResolveComfyUiCheckpointNameAsync(baseUrl);
+                    var retryPrefix = prefix + "_retry";
+                    var retryPayload = resolved.uses16ChLatent
+                        ? BuildComfyUiFluxTxt2ImgWorkflow(resolved.ckptName, positivePrompt, width, height, seed, retryPrefix)
+                        : BuildComfyUiTxt2ImgWorkflow(resolved.ckptName, positivePrompt, width, height, seed, retryPrefix);
+                    System.Diagnostics.Debug.WriteLine("[ComfyUI] Latent mismatch in custom workflow; retrying with built-in workflow.");
+                    return await RunWorkflowAsync(retryPayload, retryPrefix);
+                }
+
+                if (ckptName != null && initialUses16Ch.HasValue)
+                {
+                    var retryPrefix = prefix + "_retry";
+                    var retryPayload = initialUses16Ch.Value
+                        ? BuildComfyUiTxt2ImgWorkflow(ckptName, positivePrompt, width, height, seed, retryPrefix)
+                        : BuildComfyUiFluxTxt2ImgWorkflow(ckptName, positivePrompt, width, height, seed, retryPrefix);
+                    System.Diagnostics.Debug.WriteLine($"[ComfyUI] Latent mismatch; retrying with alternate workflow type (uses16={(!initialUses16Ch.Value)}).");
+                    return await RunWorkflowAsync(retryPayload, retryPrefix);
+                }
+
+                throw;
             }
-
-            if (root.TryGetProperty("node_errors", out var nodeErrors) &&
-                nodeErrors.ValueKind == JsonValueKind.Object &&
-                nodeErrors.EnumerateObject().Any())
-            {
-                throw new Exception(
-                    "ComfyUI rejected the workflow (node_errors). Typical causes: wrong checkpoint type (e.g. Flux-only install), or custom nodes missing. " +
-                    $"Details: {TruncateForLog(nodeErrors.GetRawText(), 4000)}");
-            }
-
-            var promptId = root.TryGetProperty("prompt_id", out var pid) ? pid.GetString() : null;
-            if (string.IsNullOrWhiteSpace(promptId))
-                throw new Exception($"ComfyUI /prompt did not return prompt_id. Response: {TruncateForLog(promptJson)}");
-
-            System.Diagnostics.Debug.WriteLine($"[ComfyUI] Queued image gen prompt_id={promptId}, prefix={prefix}");
-
-            var (filename, subfolder, type) = await PollComfyUiForOutputImageAsync(baseUrl, promptId);
-            var viewUrl =
-                $"{baseUrl}/view?filename={Uri.EscapeDataString(filename)}&subfolder={Uri.EscapeDataString(subfolder)}&type={Uri.EscapeDataString(type)}";
-            using var imgResp = await _httpClient.GetAsync(viewUrl);
-            var imgBytes = await imgResp.Content.ReadAsByteArrayAsync();
-            if (!imgResp.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException(
-                    $"ComfyUI GET /view failed: {(int)imgResp.StatusCode}. URL: {viewUrl}. Body: {TruncateForLog(System.Text.Encoding.UTF8.GetString(imgBytes))}");
-            }
-
-            return new MemoryStream(imgBytes);
         }
 
         /// <summary>Flux/SD3 workflow: 16-channel latents via EmptySD3LatentImage. Avoids "tensor 64 vs 16" mismatch.</summary>
@@ -588,6 +631,51 @@ namespace HouseVictoria.Services.AIServices
                     name.Contains("stable_diffusion_3", StringComparison.OrdinalIgnoreCase) ||
                     name.Contains("stable-diffusion-3", StringComparison.OrdinalIgnoreCase));
 
+            static bool IsNonImageOrSpecializedModel(string name) =>
+                !string.IsNullOrWhiteSpace(name) && (
+                    name.Contains("audio", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("3d", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("hunyuan", StringComparison.OrdinalIgnoreCase));
+
+            static bool IsLikelyClassic4ChModel(string name) =>
+                !string.IsNullOrWhiteSpace(name) && (
+                    name.Contains("sd_xl", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("sdxl", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("xl_base", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("v1-5", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("sd15", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("animayhem", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("dreamshaper", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("anything", StringComparison.OrdinalIgnoreCase));
+
+            static (string chosen, bool uses16Ch) PickBestCheckpoint(List<string> names, string? preferredCheckpoint)
+            {
+                var filtered = names
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Where(s => !IsNonImageOrSpecializedModel(s))
+                    .ToList();
+
+                if (!string.IsNullOrWhiteSpace(preferredCheckpoint))
+                {
+                    var preferred = filtered.FirstOrDefault(s => string.Equals(s, preferredCheckpoint, StringComparison.OrdinalIgnoreCase))
+                        ?? names.FirstOrDefault(s => string.Equals(s, preferredCheckpoint, StringComparison.OrdinalIgnoreCase));
+                    if (!string.IsNullOrWhiteSpace(preferred))
+                        return (preferred, Uses16ChannelLatentByName(preferred));
+                }
+
+                // Prefer known-stable SDXL/SD1.5 style checkpoints first.
+                var classic = filtered.FirstOrDefault(IsLikelyClassic4ChModel);
+                if (!string.IsNullOrWhiteSpace(classic))
+                    return (classic, false);
+
+                var non16 = filtered.FirstOrDefault(s => !Uses16ChannelLatentByName(s));
+                if (!string.IsNullOrWhiteSpace(non16))
+                    return (non16, false);
+
+                var first = filtered.FirstOrDefault() ?? names.First(s => !string.IsNullOrWhiteSpace(s));
+                return (first, Uses16ChannelLatentByName(first));
+            }
+
             try
             {
                 using var r = await _httpClient.GetAsync($"{baseUrl}/models/checkpoints");
@@ -596,11 +684,8 @@ namespace HouseVictoria.Services.AIServices
                     var names = await r.Content.ReadFromJsonAsync<List<string>>();
                     if (names != null && names.Count > 0)
                     {
-                        var non16Ch = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s) && !Uses16ChannelLatentByName(s));
-                        var first = names.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
-                        var chosen = non16Ch ?? first;
-                        if (chosen != null)
-                            return (chosen, Uses16ChannelLatentByName(chosen));
+                        var picked = PickBestCheckpoint(names, _appConfig?.ComfyUIPreferredCheckpoint);
+                        return picked;
                     }
                 }
             }
@@ -632,23 +717,16 @@ namespace HouseVictoria.Services.AIServices
             if (options.ValueKind != JsonValueKind.Array)
                 throw new Exception("Unexpected ComfyUI ckpt_name schema.");
 
-            string? non16ChFromList = null;
-            string? firstFromList = null;
+            var namesFromObjectInfo = new List<string>();
             foreach (var x in options.EnumerateArray())
             {
                 var s = x.GetString();
                 if (string.IsNullOrWhiteSpace(s)) continue;
-                firstFromList ??= s;
-                if (!Uses16ChannelLatentByName(s))
-                {
-                    non16ChFromList ??= s;
-                    break;
-                }
+                namesFromObjectInfo.Add(s);
             }
-            var chosenFromList = non16ChFromList ?? firstFromList;
-            if (chosenFromList == null)
+            if (namesFromObjectInfo.Count == 0)
                 throw new Exception("No checkpoints found in ComfyUI. Add a Stable Diffusion checkpoint under models/checkpoints.");
-            return (chosenFromList, Uses16ChannelLatentByName(chosenFromList));
+            return PickBestCheckpoint(namesFromObjectInfo, _appConfig?.ComfyUIPreferredCheckpoint);
         }
 
         private async Task<(string filename, string subfolder, string type)> PollComfyUiForOutputImageAsync(string baseUrl, string promptId)

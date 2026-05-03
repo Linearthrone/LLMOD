@@ -301,14 +301,16 @@ namespace HouseVictoria.App
                     }
                     var piperDataDir = appConfig?.PiperDataDir;
                     var piperDefaultVoice = appConfig?.PiperDefaultModel;
-                    return new HouseVictoria.Services.TTS.TTSService(endpoint, useWindowsTTSFallback: true, piperDataDir: piperDataDir, piperDefaultVoice: piperDefaultVoice);
+                    var winFallback = appConfig?.UseWindowsTTSFallback ?? true;
+                    return new HouseVictoria.Services.TTS.TTSService(endpoint, useWindowsTTSFallback: winFallback, piperDataDir: piperDataDir, piperDefaultVoice: piperDefaultVoice);
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Error creating TTS service: {ex.Message}");
                     // Return a service that will fail gracefully
                     var appConfig = sp.GetService<AppConfig>();
-                    return new HouseVictoria.Services.TTS.TTSService("http://localhost:8880", true, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
+                    var winFallback = appConfig?.UseWindowsTTSFallback ?? true;
+                    return new HouseVictoria.Services.TTS.TTSService("http://localhost:8880", winFallback, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
                 }
             });
             // Register CommunicationService with AI service dependency
@@ -384,11 +386,13 @@ namespace HouseVictoria.App
                 STTEndpoint = config["STTEndpoint"],
                 PiperDataDir = config["PiperDataDir"] ?? "Media/PiperVoices",
                 PiperDefaultModel = config["PiperDefaultModel"] ?? "en_US-amy-medium",
-                StableDiffusionEndpoint = config["StableDiffusionEndpoint"] ?? "http://localhost:7860",
+                UseWindowsTTSFallback = !bool.TryParse(config["UseWindowsTTSFallback"], out var noWinTts) || noWinTts,
+                StableDiffusionEndpoint = config["StableDiffusionEndpoint"] ?? "http://localhost:8188",
                 ColorScheme = config["ColorScheme"] ?? "CyanBlueDark",
                 StabilityMatrixPath = config["StabilityMatrixPath"] ?? string.Empty,
                 ComfyUIPortablePath = config["ComfyUIPortablePath"] ?? string.Empty,
                 ComfyUICustomWorkflowPath = config["ComfyUICustomWorkflowPath"] ?? string.Empty,
+                ComfyUIPreferredCheckpoint = string.IsNullOrWhiteSpace(config["ComfyUIPreferredCheckpoint"]) ? "sd_xl_base_1.0.safetensors" : (config["ComfyUIPreferredCheckpoint"] ?? "sd_xl_base_1.0.safetensors"),
                 MT4DataPath = config["MT4DataPath"] ?? "C:\\Program Files\\MetaTrader 4",
                 DataBankPath = config["DataBankPath"] ?? "Data\\Databanks",
                 LogsPath = config["LogsPath"] ?? "Logs",

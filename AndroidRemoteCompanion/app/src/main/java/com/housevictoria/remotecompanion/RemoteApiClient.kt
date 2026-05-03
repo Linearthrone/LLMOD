@@ -2,6 +2,7 @@ package com.housevictoria.remotecompanion
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -13,7 +14,7 @@ import java.io.File
 
 class RemoteApiClient {
     private val http = OkHttpClient()
-    private val moshi = Moshi.Builder().build()
+    private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val chatReqAdapter = moshi.adapter(ChatRequest::class.java)
     private val chatRespAdapter = moshi.adapter(ChatResponse::class.java)
     private val healthRespAdapter = moshi.adapter(HealthResponse::class.java)
@@ -28,7 +29,7 @@ class RemoteApiClient {
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) return "HTTP ${resp.code}: $body"
             val parsed = healthRespAdapter.fromJson(body)
-            return if (parsed?.ok == true) "Healthy (${parsed.service ?: "service"})" else "Unexpected response: $body"
+            return if (parsed?.ok ?: false) "Healthy (${parsed?.service ?: "service"})" else "Unexpected response: $body"
         }
     }
 

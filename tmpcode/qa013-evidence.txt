@@ -1,0 +1,5 @@
+[remote-port-17890] True
+[remote-health] 200 {"ok":true,"service":"house-victoria-remote","version":1}
+[remote-chat-short-token] 401 {"error":"unauthorized"}
+[comfy-object-info] Unable to connect to the remote server
+[comfy-invalid-endpoint] Unable to connect to the remote server

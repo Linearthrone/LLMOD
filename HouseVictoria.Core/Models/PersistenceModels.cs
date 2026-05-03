@@ -95,6 +95,8 @@ namespace HouseVictoria.Core.Models
         public string? STTEndpoint { get; set; }
         public string PiperDataDir { get; set; } = "Media/PiperVoices";
         public string PiperDefaultModel { get; set; } = "en_US-amy-medium";
+        /// <summary>When Kokoro/Piper HTTP synthesis fails, use System.Speech (Microsoft voices). Set false to avoid wrong-voice fallback; requires app restart.</summary>
+        public bool UseWindowsTTSFallback { get; set; } = true;
         public string StableDiffusionEndpoint { get; set; } = "http://localhost:8188"; // Legacy name: image endpoint (ComfyUI default)
         /// <summary>Full path to Stability Matrix executable (e.g. C:\...\Stability Matrix.exe). Used to launch the manager and ComfyUI.</summary>
         public string StabilityMatrixPath { get; set; } = string.Empty;
@@ -102,6 +104,8 @@ namespace HouseVictoria.Core.Models
         public string ComfyUIPortablePath { get; set; } = string.Empty;
         /// <summary>Full path to a custom ComfyUI workflow JSON file (API format). Use placeholders {{positive}}, {{negative}}, {{width}}, {{height}}, {{seed}}, {{filename_prefix}}.</summary>
         public string ComfyUICustomWorkflowPath { get; set; } = string.Empty;
+        /// <summary>Preferred ComfyUI checkpoint for image generation. Leave empty for automatic selection.</summary>
+        public string ComfyUIPreferredCheckpoint { get; set; } = "sd_xl_base_1.0.safetensors";
         /// <summary>Color scheme/theme ID (e.g. CyanBlueDark, EmeraldLight). See ThemeManager.Themes for available values.</summary>
         public string ColorScheme { get; set; } = "CyanBlueDark";
         public string MT4DataPath { get; set; } = "C:\\Program Files\\MetaTrader 4";

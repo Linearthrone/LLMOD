@@ -31,6 +31,8 @@ namespace HouseVictoria.App.Screens.Windows
         private DataBankManagementWindow? _dataBankManagementWindow;
         private VirtualEnvironmentControlsWindow? _virtualEnvironmentControlsWindow;
         private VideoCallWindow? _videoCallWindow;
+        // Temporarily force click-through OFF. This app should be fully interactive by default.
+        private readonly bool _enableOverlayClickThrough = false;
 
         public MainWindow()
         {
@@ -59,10 +61,9 @@ namespace HouseVictoria.App.Screens.Windows
                     System.Diagnostics.Debug.WriteLine("Using fallback EventAggregator");
                 }
 
-                // Ensure window is visible - CRITICAL FIX
+                // Keep constructor side-effect free for window activation;
+                // app startup manages showing/activation.
                 this.Visibility = Visibility.Visible;
-                this.Show();
-                this.Activate();
 
                 var visibilityMsg = $"MainWindow created - Visibility: {this.Visibility}, WindowState: {this.WindowState}, IsVisible: {this.IsVisible}";
                 WriteToStartupLog(visibilityMsg);
@@ -104,9 +105,9 @@ namespace HouseVictoria.App.Screens.Windows
         {
             base.OnSourceInitialized(e);
 
-            // Setup window message hook for click-through handling as soon as handle is available
+            // Setup window message hook only when click-through is explicitly enabled.
             var source = PresentationSource.FromVisual(this) as HwndSource;
-            if (source != null)
+            if (source != null && _enableOverlayClickThrough)
             {
                 source.AddHook(WndProc);
                 System.Diagnostics.Debug.WriteLine("MainWindow: WndProc hook installed in OnSourceInitialized");
@@ -128,14 +129,14 @@ namespace HouseVictoria.App.Screens.Windows
                 // Create system tray icon
                 SetupSystemTrayIcon();
 
-                // Setup auto-hide for both trays
+                // Setup auto-hide for trays
                 SetupAutoHide();
 
-                // Ensure window is visible - CRITICAL FIX
+                // Explicitly enforce interactive state after loading.
                 this.Visibility = Visibility.Visible;
-                this.Show();
-                this.Activate();
-                this.BringIntoView();
+                this.IsEnabled = true;
+                this.IsHitTestVisible = true;
+                this.Focusable = true;
 
                 System.Diagnostics.Debug.WriteLine("MainWindow Window_Loaded completed successfully");
                 System.Diagnostics.Debug.WriteLine($"Window bounds: {this.Left},{this.Top},{this.Width},{this.Height}");
@@ -362,6 +363,14 @@ namespace HouseVictoria.App.Screens.Windows
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            // Default to interactive desktop behavior. Click-through is opt-in only
+            // via HV_ENABLE_CLICK_THROUGH=1 for advanced overlay scenarios.
+            if (!_enableOverlayClickThrough)
+            {
+                handled = false;
+                return IntPtr.Zero;
+            }
+
             if (msg == WM_NCHITTEST)
             {
                 // Get screen coordinates

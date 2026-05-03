@@ -162,4 +162,27 @@ In Android app settings, enter the base URL only (no trailing endpoint path). Th
 - API host: `HouseVictoria.App/RemoteCompanion/RemoteCompanionWebHost.cs`
 - Config fields: `HouseVictoria.Core/Models/PersistenceModels.cs` (`RemoteCompanion*`)
 
-*Document version: 1.0 · OPS maintenance: keep aligned with Settings names and default port.*
+---
+
+## Ops note: ComfyUI preferred checkpoint override
+
+After settings reorganization, image generation keeps using:
+
+- endpoint key: `StableDiffusionEndpoint` (default `http://localhost:8188`)
+- preference key: `ComfyUIPreferredCheckpoint` (default `sd_xl_base_1.0.safetensors`)
+
+### Production-like override procedure
+
+1. Set checkpoint in app settings UI (`ComfyUI preferred checkpoint`) or in `App.config` key `ComfyUIPreferredCheckpoint`.
+2. Keep endpoint on `http://localhost:8188` unless your ComfyUI host/port differs.
+3. Restart House Victoria.
+4. Verify startup and image path:
+   - no startup exception when key is absent/empty
+   - generated images use the configured checkpoint (or fallback default if blank)
+
+Safe fallback behavior:
+
+- missing/blank `ComfyUIPreferredCheckpoint` auto-falls back to `sd_xl_base_1.0.safetensors`
+- missing `StableDiffusionEndpoint` falls back to `http://localhost:8188`
+
+*Document version: 1.1 · OPS maintenance: keep aligned with Settings names and default port.*

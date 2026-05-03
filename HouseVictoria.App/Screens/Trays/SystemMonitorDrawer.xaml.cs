@@ -16,6 +16,8 @@ namespace HouseVictoria.App.Screens.Trays
         private readonly ISystemMonitorService _systemMonitorService;
         private readonly DispatcherTimer _updateTimer;
         private readonly SystemMonitorDrawerViewModel _viewModel;
+        private bool _updateInProgress;
+        private bool _isUnloaded;
 
         public SystemMonitorDrawer()
         {
@@ -34,20 +36,39 @@ namespace HouseVictoria.App.Screens.Trays
 
             _updateTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(500) // Reduced frequency to avoid UI blocking
+                Interval = TimeSpan.FromMilliseconds(1500)
             };
             _updateTimer.Tick += UpdateTimer_Tick;
             _updateTimer.Start();
 
         }
 
-        private void UpdateTimer_Tick(object? sender, EventArgs e)
+        private async void UpdateTimer_Tick(object? sender, EventArgs e)
         {
-            _viewModel.UpdateMetrics();
+            if (_isUnloaded || _updateInProgress)
+            {
+                return;
+            }
+
+            _updateInProgress = true;
+            try
+            {
+                // Keep potentially expensive metric sampling off the UI thread.
+                await System.Threading.Tasks.Task.Run(() => _viewModel.UpdateMetrics()).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in metric update tick: {ex.Message}");
+            }
+            finally
+            {
+                _updateInProgress = false;
+            }
         }
 
         private void Control_Unloaded(object sender, RoutedEventArgs e)
         {
+            _isUnloaded = true;
             _updateTimer.Stop();
             _viewModel?.Dispose();
         }

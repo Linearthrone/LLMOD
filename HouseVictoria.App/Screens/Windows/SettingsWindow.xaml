@@ -11,6 +11,7 @@
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <converters:TabIndexVisibilityConverter x:Key="TabIndexVisibilityConverter"/>
     </Window.Resources>
 
     <Border Background="Transparent">
@@ -96,8 +97,25 @@
             <!-- Settings Categories (scrollable) -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10">
                 <StackPanel>
-                    <!-- SMS/MMS Settings -->
                     <Border Style="{StaticResource Card}" Margin="0,5">
+                        <StackPanel>
+                            <TextBlock Text="🗂️ Settings Categories" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <Separator Margin="0,5" Background="#1A2332"/>
+                            <TabControl SelectedIndex="{Binding SelectedSettingsTabIndex}" Margin="0,2,0,0">
+                                <TabItem Header="All"/>
+                                <TabItem Header="Core"/>
+                                <TabItem Header="Image"/>
+                                <TabItem Header="Remote"/>
+                                <TabItem Header="Memory"/>
+                                <TabItem Header="UI"/>
+                                <TabItem Header="Advanced"/>
+                            </TabControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- SMS/MMS Settings -->
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
                         <StackPanel>
                             <TextBlock Text="📱 SMS/MMS Communication" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -106,7 +124,8 @@
                     </Border>
 
                     <!-- MCP Server Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
                         <StackPanel>
                             <TextBlock Text="🔌 MCP Server" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -146,7 +165,8 @@
                     </Border>
 
                     <!-- TTS / STT Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
                         <StackPanel>
                             <TextBlock Text="🔊 Text-to-Speech &amp; Speech-to-Text" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -233,11 +253,17 @@
                             </Grid>
                             <TextBlock Text="Kokoro TTS runs on http://localhost:8880. Set TTS Endpoint above to this URL to use Kokoro. Start/stop also available in System Monitor tray." 
                                       FontSize="11" Foreground="#5A6A7A" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                            <CheckBox Margin="0,8,0,0" Foreground="#E0F7FF"
+                                      IsChecked="{Binding UseWindowsTTSFallback}"
+                                      Content="Allow Microsoft Windows TTS if Kokoro/Piper is unreachable"/>
+                            <TextBlock FontSize="11" Foreground="#5A6A7A" Margin="0,2,0,0" TextWrapping="Wrap"
+                                       Text="If you hear a generic Windows voice, Kokoro likely failed or was stopped—check Kokoro status above, or turn this off to avoid the fallback (restart app after changing)."/>
                         </StackPanel>
                     </Border>
 
                     <!-- Image Generation Endpoint (ComfyUI) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|2'}">
                         <StackPanel>
                             <TextBlock Text="🎨 Image Generation (ComfyUI)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -282,6 +308,27 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Checkpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding AvailableComfyUICheckpoints}"
+                                          Text="{Binding ComfyUIPreferredCheckpoint, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEditable="True"
+                                          Background="#252F3F"
+                                          BorderBrush="#4000D4FF"
+                                          Foreground="#E0F7FF"
+                                          Padding="8"
+                                          Margin="5,0"/>
+                                <Button Grid.Column="2" Content="Refresh" Style="{StaticResource GlassButton}"
+                                       Command="{Binding RefreshComfyUICheckpointsCommand}" Width="80" Margin="5,0"/>
+                            </Grid>
+                            <TextBlock Text="Preferred checkpoint for built-in ComfyUI image generation. Use SDXL/photoreal checkpoints for more realism; leave exact filename from ComfyUI."
+                                      FontSize="11" Foreground="#5A6A7A" Margin="0,3,0,0" FontStyle="Italic" TextWrapping="Wrap"/>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Custom workflow:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding ComfyUICustomWorkflowPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
@@ -295,7 +342,8 @@
                     </Border>
 
                     <!-- Stability Matrix & ComfyUI (image/video generation) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|2'}">
                         <StackPanel>
                             <TextBlock Text="🖼️ Stability Matrix &amp; ComfyUI" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -333,7 +381,8 @@
                     </Border>
 
                     <!-- Tools Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|6'}">
                         <StackPanel>
                             <TextBlock Text="🛠️ Tools" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -342,7 +391,8 @@
                     </Border>
 
                     <!-- Virtual Environment Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
                         <StackPanel>
                             <TextBlock Text="🌐 Virtual Environment (Unreal Engine)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -385,7 +435,8 @@
                     </Border>
 
                     <!-- Remote companion: phone → PC (text + audio); TLS at edge (tunnel). Restart app after changing. -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|3'}">
                         <StackPanel>
                             <TextBlock Text="📱 Remote companion (phone → PC)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -430,7 +481,8 @@
                     </Border>
 
                     <!-- LLM Servers: LM Studio, Ollama, Anything LLM (single block, one primary) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
                         <StackPanel>
                             <TextBlock Text="🧠 LLM Servers" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -557,7 +609,8 @@
                     </Border>
 
                     <!-- Color Scheme -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|5'}">
                         <StackPanel>
                             <TextBlock Text="🎨 Color Scheme" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -617,7 +670,8 @@
                     </Border>
 
                     <!-- Overlay Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|5'}">
                         <StackPanel>
                             <TextBlock Text="🖥️ Overlay Settings" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -662,7 +716,8 @@
                     </Border>
 
                     <!-- Locomotion Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|6'}">
                         <StackPanel>
                             <TextBlock Text="🚶 Locomotion Settings" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -721,7 +776,8 @@
                     </Border>
 
                     <!-- Tools Configuration -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|6'}">
                         <StackPanel>
                             <TextBlock Text="🛠️ Tools Configuration" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -756,7 +812,8 @@
                     </Border>
 
                     <!-- Persistent Memory Configuration -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
+                    <Border Style="{StaticResource Card}" Margin="0,5"
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|4'}">
                         <StackPanel>
                             <TextBlock Text="💾 Persistent Memory Configuration" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>

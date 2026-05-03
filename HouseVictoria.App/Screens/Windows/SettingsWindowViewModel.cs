@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Text.RegularExpressions;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Threading;
@@ -30,6 +31,13 @@ namespace HouseVictoria.App.Screens.Windows
         private string? _validationError;
         private bool _isTestingConnection;
         private string? _connectionTestResult;
+        private int _selectedSettingsTabIndex;
+
+        public int SelectedSettingsTabIndex
+        {
+            get => _selectedSettingsTabIndex;
+            set => SetProperty(ref _selectedSettingsTabIndex, value);
+        }
 
         // LLM Server Settings
         private string _lmStudioEndpoint = string.Empty;
@@ -157,6 +165,14 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private bool _useWindowsTTSFallback = true;
+        /// <summary>When Kokoro/Piper fails, use Microsoft System.Speech. Disable to avoid unexpected voices (no speech until Kokoro works). Takes effect after app restart.</summary>
+        public bool UseWindowsTTSFallback
+        {
+            get => _useWindowsTTSFallback;
+            set { if (SetProperty(ref _useWindowsTTSFallback, value)) ValidateSettings(); }
+        }
+
         // STT (Speech-to-Text) Settings
         private string _sttEndpoint = string.Empty;
         public string STTEndpoint
@@ -257,6 +273,15 @@ namespace HouseVictoria.App.Screens.Windows
             get => _comfyUICustomWorkflowPath;
             set => SetProperty(ref _comfyUICustomWorkflowPath, value ?? string.Empty);
         }
+
+        private string _comfyUIPreferredCheckpoint = "sd_xl_base_1.0.safetensors";
+        public string ComfyUIPreferredCheckpoint
+        {
+            get => _comfyUIPreferredCheckpoint;
+            set => SetProperty(ref _comfyUIPreferredCheckpoint, value ?? string.Empty);
+        }
+
+        public ObservableCollection<string> AvailableComfyUICheckpoints { get; } = new();
 
         // Color Scheme
         private int _selectedThemeIndex;
@@ -558,6 +583,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand BrowseStabilityMatrixPathCommand { get; }
         public ICommand BrowseComfyUIPortablePathCommand { get; }
         public ICommand BrowseComfyUICustomWorkflowPathCommand { get; }
+        public ICommand RefreshComfyUICheckpointsCommand { get; }
         public ICommand ImportSettingsCommand { get; }
         public ICommand ExportSettingsCommand { get; }
         public ICommand ResetToDefaultsCommand { get; }
@@ -585,6 +611,7 @@ namespace HouseVictoria.App.Screens.Windows
             AnythingLLMEndpoint = appConfig.AnythingLLMEndpoint;
             MCPServerEndpoint = appConfig.MCPServerEndpoint;
             TTSEndpoint = appConfig.TTSEndpoint;
+            UseWindowsTTSFallback = appConfig.UseWindowsTTSFallback;
             STTEndpoint = appConfig.STTEndpoint ?? string.Empty;
             UnrealEngineEndpoint = appConfig.UnrealEngineEndpoint;
             RemoteCompanionEnabled = appConfig.RemoteCompanionEnabled;
@@ -597,6 +624,8 @@ namespace HouseVictoria.App.Screens.Windows
             StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
             ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
             ComfyUICustomWorkflowPath = appConfig.ComfyUICustomWorkflowPath ?? string.Empty;
+            ComfyUIPreferredCheckpoint = string.IsNullOrWhiteSpace(appConfig.ComfyUIPreferredCheckpoint) ? "sd_xl_base_1.0.safetensors" : appConfig.ComfyUIPreferredCheckpoint;
+            AddComfyUICheckpointIfMissing(ComfyUIPreferredCheckpoint);
             SelectedThemeIndex = ThemeManager.GetThemeIndexById(appConfig.ColorScheme ?? "CyanBlueDark");
             foreach (var t in ThemeManager.Themes)
                 AvailableThemes.Add(t);
@@ -638,6 +667,7 @@ namespace HouseVictoria.App.Screens.Windows
             BrowseStabilityMatrixPathCommand = new RelayCommand(() => BrowseStabilityMatrixPath());
             BrowseComfyUIPortablePathCommand = new RelayCommand(() => BrowseComfyUIPortablePath());
             BrowseComfyUICustomWorkflowPathCommand = new RelayCommand(() => BrowseComfyUICustomWorkflowPath());
+            RefreshComfyUICheckpointsCommand = new RelayCommand(async () => await RefreshComfyUICheckpointsAsync());
             ImportSettingsCommand = new RelayCommand(() => ImportSettings());
             ExportSettingsCommand = new RelayCommand(() => ExportSettings());
             ResetToDefaultsCommand = new RelayCommand(() => ResetToDefaults());
@@ -647,6 +677,7 @@ namespace HouseVictoria.App.Screens.Windows
             ValidateSettings();
 
             _ = RefreshKokoroStatusAsync();
+            _ = RefreshComfyUICheckpointsAsync();
         }
 
         private void ValidateSettings()
@@ -1002,18 +1033,20 @@ namespace HouseVictoria.App.Screens.Windows
 
             try
             {
-                // Try /health endpoint first, then root
-                var endpoints = new[] { "/health", "/" };
-                bool isConnected = false;
+                var baseUrl = TTSEndpoint.TrimEnd('/');
+                var paths = baseUrl.Contains(":8880", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { "/health", "/api/health", "/v1/voices", "/" }
+                    : new[] { "/health", "/api/health", "/" };
 
-                foreach (var endpoint in endpoints)
+                string? okPath = null;
+                foreach (var path in paths)
                 {
                     try
                     {
-                        var response = await _httpClient.GetAsync($"{TTSEndpoint}{endpoint}");
+                        var response = await _httpClient.GetAsync($"{baseUrl}{path}");
                         if (response.IsSuccessStatusCode)
                         {
-                            isConnected = true;
+                            okPath = path;
                             break;
                         }
                     }
@@ -1023,8 +1056,21 @@ namespace HouseVictoria.App.Screens.Windows
                     }
                 }
 
-                TTSConnectionStatus = isConnected ? "✓ Connected" : "✗ Failed";
-                ConnectionTestResult = isConnected ? "TTS: ✓ Connection successful!" : "TTS: ✗ Connection failed";
+                if (okPath != null)
+                {
+                    TTSConnectionStatus = "✓ Connected";
+                    var kokoroHint = baseUrl.Contains(":8880", StringComparison.OrdinalIgnoreCase)
+                        ? " Synthesis is POST /v1/audio/speech; if speech sounds like Windows TTS, check startup.log for Kokoro HTTP errors or disable Windows fallback in Settings."
+                        : string.Empty;
+                    ConnectionTestResult = $"TTS: ✓ Reachable (GET {okPath}).{kokoroHint}";
+                }
+                else
+                {
+                    TTSConnectionStatus = "✗ Failed";
+                    ConnectionTestResult = baseUrl.Contains(":8880", StringComparison.OrdinalIgnoreCase)
+                        ? "TTS: ✗ No OK response from /health, /api/health, /v1/voices, or /. Start Kokoro or fix the endpoint."
+                        : "TTS: ✗ No OK response from /health, /api/health, or /. Fix TTSEndpoint or start your TTS server.";
+                }
             }
             catch (Exception ex)
             {
@@ -1357,6 +1403,69 @@ d_comfyui_models:
             }
         }
 
+        private void AddComfyUICheckpointIfMissing(string? checkpoint)
+        {
+            if (string.IsNullOrWhiteSpace(checkpoint))
+                return;
+
+            if (!AvailableComfyUICheckpoints.Any(c => string.Equals(c, checkpoint, StringComparison.OrdinalIgnoreCase)))
+                AvailableComfyUICheckpoints.Add(checkpoint);
+        }
+
+        private async Task RefreshComfyUICheckpointsAsync()
+        {
+            if (string.IsNullOrWhiteSpace(StableDiffusionEndpoint))
+                return;
+
+            try
+            {
+                var baseUrl = StableDiffusionEndpoint.TrimEnd('/');
+                using var response = await _httpClient.GetAsync($"{baseUrl}/models/checkpoints");
+                if (response.IsSuccessStatusCode)
+                {
+                    var names = await response.Content.ReadFromJsonAsync<List<string>>();
+                    if (names != null)
+                    {
+                        foreach (var name in names.Where(n => !string.IsNullOrWhiteSpace(n)))
+                            AddComfyUICheckpointIfMissing(name);
+                    }
+                    return;
+                }
+            }
+            catch
+            {
+                // Fall back to object_info below.
+            }
+
+            try
+            {
+                var baseUrl = StableDiffusionEndpoint.TrimEnd('/');
+                using var response = await _httpClient.GetAsync($"{baseUrl}/object_info/CheckpointLoaderSimple");
+                if (!response.IsSuccessStatusCode)
+                    return;
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                if (!doc.RootElement.TryGetProperty("CheckpointLoaderSimple", out var node))
+                    return;
+
+                var options = node
+                    .GetProperty("input")
+                    .GetProperty("required")
+                    .GetProperty("ckpt_name")[0];
+
+                if (options.ValueKind != JsonValueKind.Array)
+                    return;
+
+                foreach (var item in options.EnumerateArray())
+                    AddComfyUICheckpointIfMissing(item.GetString());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not refresh ComfyUI checkpoints: {ex.Message}");
+            }
+        }
+
         private void BrowseStabilityMatrixPath()
         {
             var path = (StabilityMatrixPath ?? string.Empty).Trim();
@@ -1432,6 +1541,7 @@ d_comfyui_models:
                         AnythingLLMEndpoint = importedConfig.AnythingLLMEndpoint;
                         MCPServerEndpoint = importedConfig.MCPServerEndpoint;
                         TTSEndpoint = importedConfig.TTSEndpoint;
+                        UseWindowsTTSFallback = importedConfig.UseWindowsTTSFallback;
                         STTEndpoint = importedConfig.STTEndpoint ?? string.Empty;
                         UnrealEngineEndpoint = importedConfig.UnrealEngineEndpoint;
                         RemoteCompanionEnabled = importedConfig.RemoteCompanionEnabled;
@@ -1444,6 +1554,8 @@ d_comfyui_models:
                         StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
                         ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
                         ComfyUICustomWorkflowPath = importedConfig.ComfyUICustomWorkflowPath ?? string.Empty;
+                        ComfyUIPreferredCheckpoint = string.IsNullOrWhiteSpace(importedConfig.ComfyUIPreferredCheckpoint) ? "sd_xl_base_1.0.safetensors" : importedConfig.ComfyUIPreferredCheckpoint;
+                        AddComfyUICheckpointIfMissing(ComfyUIPreferredCheckpoint);
                         SelectedThemeIndex = ThemeManager.GetThemeIndexById(importedConfig.ColorScheme ?? "CyanBlueDark");
                         EnableOverlay = importedConfig.EnableOverlay;
                         OverlayOpacity = importedConfig.OverlayOpacity;
@@ -1500,6 +1612,7 @@ d_comfyui_models:
                         AnythingLLMEndpoint = AnythingLLMEndpoint,
                         MCPServerEndpoint = MCPServerEndpoint,
                         TTSEndpoint = TTSEndpoint,
+                        UseWindowsTTSFallback = UseWindowsTTSFallback,
                         STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint,
                         UnrealEngineEndpoint = UnrealEngineEndpoint,
                         RemoteCompanionEnabled = RemoteCompanionEnabled,
@@ -1512,6 +1625,7 @@ d_comfyui_models:
                         StabilityMatrixPath = StabilityMatrixPath,
                         ComfyUIPortablePath = ComfyUIPortablePath,
                         ComfyUICustomWorkflowPath = ComfyUICustomWorkflowPath,
+                        ComfyUIPreferredCheckpoint = ComfyUIPreferredCheckpoint,
                         ColorScheme = ThemeManager.GetThemeIdByIndex(SelectedThemeIndex),
                         EnableOverlay = EnableOverlay,
                         OverlayOpacity = OverlayOpacity,
@@ -1565,6 +1679,7 @@ d_comfyui_models:
                 _appConfig.AnythingLLMEndpoint = AnythingLLMEndpoint;
                 _appConfig.MCPServerEndpoint = MCPServerEndpoint;
                 _appConfig.TTSEndpoint = TTSEndpoint;
+                _appConfig.UseWindowsTTSFallback = UseWindowsTTSFallback;
                 _appConfig.STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint;
                 _appConfig.UnrealEngineEndpoint = UnrealEngineEndpoint;
                 _appConfig.RemoteCompanionEnabled = RemoteCompanionEnabled;
@@ -1577,6 +1692,7 @@ d_comfyui_models:
                 _appConfig.StabilityMatrixPath = StabilityMatrixPath;
                 _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
                 _appConfig.ComfyUICustomWorkflowPath = ComfyUICustomWorkflowPath;
+                _appConfig.ComfyUIPreferredCheckpoint = ComfyUIPreferredCheckpoint;
                 _appConfig.ColorScheme = ThemeManager.GetThemeIdByIndex(SelectedThemeIndex);
                 _appConfig.EnableOverlay = EnableOverlay;
                 _appConfig.OverlayOpacity = OverlayOpacity;
@@ -1609,6 +1725,7 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "AnythingLLMEndpoint", AnythingLLMEndpoint);
                 UpdateOrAddSetting(config, "MCPServerEndpoint", MCPServerEndpoint);
                 UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
+                UpdateOrAddSetting(config, "UseWindowsTTSFallback", UseWindowsTTSFallback.ToString());
                 UpdateOrAddSetting(config, "STTEndpoint", STTEndpoint ?? string.Empty);
                 UpdateOrAddSetting(config, "UnrealEngineEndpoint", UnrealEngineEndpoint);
                 UpdateOrAddSetting(config, "RemoteCompanionEnabled", RemoteCompanionEnabled.ToString());
@@ -1621,6 +1738,7 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUICustomWorkflowPath", ComfyUICustomWorkflowPath ?? string.Empty);
+                UpdateOrAddSetting(config, "ComfyUIPreferredCheckpoint", ComfyUIPreferredCheckpoint ?? string.Empty);
                 UpdateOrAddSetting(config, "ColorScheme", ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
                 UpdateOrAddSetting(config, "EnableOverlay", EnableOverlay.ToString());
                 UpdateOrAddSetting(config, "OverlayOpacity", OverlayOpacity.ToString());
@@ -1702,6 +1820,7 @@ d_comfyui_models:
                 AnythingLLMEndpoint = defaults.AnythingLLMEndpoint;
                 MCPServerEndpoint = defaults.MCPServerEndpoint;
                 TTSEndpoint = defaults.TTSEndpoint;
+                UseWindowsTTSFallback = defaults.UseWindowsTTSFallback;
                 STTEndpoint = defaults.STTEndpoint ?? string.Empty;
                 UnrealEngineEndpoint = defaults.UnrealEngineEndpoint;
                 RemoteCompanionEnabled = defaults.RemoteCompanionEnabled;
@@ -1714,6 +1833,8 @@ d_comfyui_models:
                 StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
                 ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;
                 ComfyUICustomWorkflowPath = defaults.ComfyUICustomWorkflowPath ?? string.Empty;
+                ComfyUIPreferredCheckpoint = defaults.ComfyUIPreferredCheckpoint;
+                AddComfyUICheckpointIfMissing(ComfyUIPreferredCheckpoint);
                 SelectedThemeIndex = ThemeManager.GetThemeIndexById(defaults.ColorScheme ?? "CyanBlueDark");
                 EnableOverlay = defaults.EnableOverlay;
                 OverlayOpacity = defaults.OverlayOpacity;

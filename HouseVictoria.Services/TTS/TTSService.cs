@@ -49,6 +49,72 @@ namespace HouseVictoria.Services.TTS
             }
         }
 
+        /// <summary>Kokoro (kokoro-fastapi) default URL uses port 8880 — prefer its OpenAI-compatible route before Piper POST /.</summary>
+        private static bool IsLikelyKokoroEndpoint(string endpoint)
+        {
+            if (string.IsNullOrWhiteSpace(endpoint)) return false;
+            if (endpoint.Contains(":8880", StringComparison.OrdinalIgnoreCase)) return true;
+            return Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri) && uri.Port == 8880;
+        }
+
+        private async Task<byte[]?> TryPiperRootJsonAsync(string text, string? voice)
+        {
+            var piperRequestBody = new Dictionary<string, object?>
+            {
+                ["text"] = text
+            };
+            var voiceToUse = !string.IsNullOrWhiteSpace(voice) ? voice : _piperDefaultVoice;
+            if (!string.IsNullOrWhiteSpace(voiceToUse))
+                piperRequestBody["voice"] = voiceToUse;
+            var piperJson = JsonSerializer.Serialize(piperRequestBody);
+            var piperContent = new StringContent(piperJson, Encoding.UTF8, "application/json");
+            var piperResponse = await _httpClient.PostAsync($"{_endpoint}/", piperContent);
+            if (!piperResponse.IsSuccessStatusCode)
+            {
+                var errBody = await piperResponse.Content.ReadAsStringAsync();
+                var snippet = errBody.Length <= 280 ? errBody : errBody[..280].TrimEnd() + "…";
+                snippet = snippet.Replace('\r', ' ').Replace('\n', ' ');
+                LoggingHelper.WriteToStartupLog($"TTS: Piper POST {_endpoint}/ returned {(int)piperResponse.StatusCode}: {snippet}");
+                System.Diagnostics.Debug.WriteLine($"TTS: Piper HTTP {(int)piperResponse.StatusCode}");
+                return null;
+            }
+
+            var audioData = await piperResponse.Content.ReadAsByteArrayAsync();
+            if (audioData.Length == 0) return null;
+            System.Diagnostics.Debug.WriteLine("TTS: Successfully synthesized using Piper format");
+            return audioData;
+        }
+
+        private async Task<byte[]?> TryKokoroOpenAiAsync(string text, string? voice)
+        {
+            var baseUrl = _endpoint.TrimEnd('/');
+            var kokoroUrl = baseUrl.Contains("/v1", StringComparison.OrdinalIgnoreCase) ? $"{baseUrl}/audio/speech" : $"{baseUrl}/v1/audio/speech";
+            var kokoroBody = new Dictionary<string, object?>
+            {
+                ["model"] = "kokoro",
+                ["input"] = text,
+                ["voice"] = !string.IsNullOrWhiteSpace(voice) ? voice : "af_bella",
+                ["response_format"] = "wav"
+            };
+            var kokoroJson = JsonSerializer.Serialize(kokoroBody);
+            var kokoroContent = new StringContent(kokoroJson, Encoding.UTF8, "application/json");
+            var kokoroResponse = await _httpClient.PostAsync(kokoroUrl, kokoroContent);
+            if (!kokoroResponse.IsSuccessStatusCode)
+            {
+                var errBody = await kokoroResponse.Content.ReadAsStringAsync();
+                var snippet = errBody.Length <= 280 ? errBody : errBody[..280].TrimEnd() + "…";
+                snippet = snippet.Replace('\r', ' ').Replace('\n', ' ');
+                LoggingHelper.WriteToStartupLog($"TTS: Kokoro POST {kokoroUrl} returned {(int)kokoroResponse.StatusCode}: {snippet}");
+                System.Diagnostics.Debug.WriteLine($"TTS: Kokoro HTTP {(int)kokoroResponse.StatusCode}");
+                return null;
+            }
+
+            var audioData = await kokoroResponse.Content.ReadAsByteArrayAsync();
+            if (audioData.Length == 0) return null;
+            System.Diagnostics.Debug.WriteLine("TTS: Successfully synthesized using Kokoro/OpenAI format");
+            return audioData;
+        }
+
         public async Task<byte[]?> SynthesizeSpeechAsync(string text, string? voice = null, float speed = 1.0f)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -56,66 +122,35 @@ namespace HouseVictoria.Services.TTS
 
             try
             {
-                // First, try Piper TTS format (POST to root with simple JSON)
+                var kokoroFirst = IsLikelyKokoroEndpoint(_endpoint);
+
+                // Piper (POST /) vs Kokoro (/v1/audio/speech): try Kokoro first on port 8880 so we don't hit the wrong API shape first.
                 try
                 {
-                    var piperRequestBody = new Dictionary<string, object?>
-                    {
-                        ["text"] = text
-                    };
-                    var voiceToUse = !string.IsNullOrWhiteSpace(voice) ? voice : _piperDefaultVoice;
-                    if (!string.IsNullOrWhiteSpace(voiceToUse))
-                        piperRequestBody["voice"] = voiceToUse;
-                    var piperJson = JsonSerializer.Serialize(piperRequestBody);
-                    var piperContent = new StringContent(piperJson, Encoding.UTF8, "application/json");
-
-                    var piperResponse = await _httpClient.PostAsync($"{_endpoint}/", piperContent);
-                    if (piperResponse.IsSuccessStatusCode)
-                    {
-                        var audioData = await piperResponse.Content.ReadAsByteArrayAsync();
-                        if (audioData.Length > 0)
-                        {
-                            System.Diagnostics.Debug.WriteLine("TTS: Successfully synthesized using Piper format");
-                            return audioData;
-                        }
-                    }
+                    byte[]? early = kokoroFirst
+                        ? await TryKokoroOpenAiAsync(text, voice)
+                        : await TryPiperRootJsonAsync(text, voice);
+                    if (early != null) return early;
                 }
-                catch (Exception piperEx)
+                catch (Exception firstEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"TTS: Piper format attempt failed: {piperEx.Message}");
-                    // Continue to try other formats
+                    System.Diagnostics.Debug.WriteLine($"TTS: First-format attempt failed ({(kokoroFirst ? "Kokoro" : "Piper")}): {firstEx.Message}");
+                    if (kokoroFirst)
+                        LoggingHelper.WriteToStartupLog($"TTS: Kokoro/OpenAI attempt failed for {_endpoint}: {firstEx.Message}");
                 }
 
-                // Kokoro / OpenAI-compatible TTS (e.g. kokoro-fastapi on port 8880).
-                // Server chunks by punctuation; very long unpunctuated text can yield partial audio (stops at last punctuation).
                 try
                 {
-                    var baseUrl = _endpoint.TrimEnd('/');
-                    var kokoroUrl = baseUrl.Contains("/v1") ? $"{baseUrl}/audio/speech" : $"{baseUrl}/v1/audio/speech";
-                    var kokoroBody = new Dictionary<string, object?>
-                    {
-                        ["model"] = "kokoro",
-                        ["input"] = text,
-                        ["voice"] = !string.IsNullOrWhiteSpace(voice) ? voice : "af_bella",
-                        ["response_format"] = "wav"
-                    };
-                    var kokoroJson = JsonSerializer.Serialize(kokoroBody);
-                    var kokoroContent = new StringContent(kokoroJson, Encoding.UTF8, "application/json");
-                    var kokoroResponse = await _httpClient.PostAsync(kokoroUrl, kokoroContent);
-                    if (kokoroResponse.IsSuccessStatusCode)
-                    {
-                        var audioData = await kokoroResponse.Content.ReadAsByteArrayAsync();
-                        if (audioData.Length > 0)
-                        {
-                            System.Diagnostics.Debug.WriteLine("TTS: Successfully synthesized using Kokoro/OpenAI format");
-                            return audioData;
-                        }
-                    }
+                    byte[]? second = kokoroFirst
+                        ? await TryPiperRootJsonAsync(text, voice)
+                        : await TryKokoroOpenAiAsync(text, voice);
+                    if (second != null) return second;
                 }
-                catch (Exception kokoroEx)
+                catch (Exception secondEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"TTS: Kokoro format attempt failed: {kokoroEx.Message}");
-                    LoggingHelper.WriteToStartupLog($"TTS: Kokoro/OpenAI attempt failed for {_endpoint}: {kokoroEx.Message}");
+                    System.Diagnostics.Debug.WriteLine($"TTS: Second-format attempt failed ({(kokoroFirst ? "Piper" : "Kokoro")}): {secondEx.Message}");
+                    if (!kokoroFirst)
+                        LoggingHelper.WriteToStartupLog($"TTS: Kokoro/OpenAI attempt failed for {_endpoint}: {secondEx.Message}");
                 }
 
                 // Try common TTS API endpoints
@@ -298,8 +333,10 @@ namespace HouseVictoria.Services.TTS
         {
             try
             {
-                // First check external TTS endpoint
-                var endpoints = new[] { "/health", "/", "/api/health" };
+                // Align probe paths with Settings “Test” TTS (Kokoro: include /v1/voices).
+                var endpoints = IsLikelyKokoroEndpoint(_endpoint)
+                    ? new[] { "/health", "/api/health", "/v1/voices", "/" }
+                    : new[] { "/health", "/api/health", "/" };
 
                 foreach (var path in endpoints)
                 {
