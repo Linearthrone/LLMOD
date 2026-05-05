@@ -1,6 +1,10 @@
 # House Victoria ↔ Unreal Engine WebSocket Protocol
 
-The WPF app uses `UnrealEnvironmentService` ([HouseVictoria.Services/VirtualEnvironment/UnrealEnvironmentService.cs](../HouseVictoria.Services/VirtualEnvironment/UnrealEnvironmentService.cs)) as a **JSON-over-WebSocket** client. Your Unreal project (or a mock server) must accept connections and exchange messages on the configured endpoint (default `ws://localhost:8888`).
+The WPF app uses `UnrealEnvironmentService` ([HouseVictoria.Services/VirtualEnvironment/UnrealEnvironmentService.cs](../HouseVictoria.Services/VirtualEnvironment/UnrealEnvironmentService.cs)) as a **WebSocket client** to your Unreal (or mock) **server** on the configured endpoint (default `ws://localhost:8888`).
+
+**Wire format today:** most virtual-environment controls send **plain text** lines (e.g. `status`, `move_avatar …`). Remote companion notifications send **JSON**. See **[Unreal_ControlScript_Commands.md](./Unreal_ControlScript_Commands.md)** for the authoritative command list and server→client `status` JSON shape.
+
+Unreal-side parser + import steps: **[Unreal/README.md](../Unreal/README.md)** (plugin `HouseVictoriaBridge`).
 
 ## Connection
 

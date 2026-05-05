@@ -22,6 +22,23 @@ async def handler(ws):
     logger.info("Client connected: %s", peer)
     try:
         async for raw in ws:
+            if isinstance(raw, (bytes, bytearray)):
+                raw = raw.decode("utf-8", errors="replace")
+            # House Victoria virtual-environment UI sends plain text (e.g. "status", "get_scene_info").
+            if isinstance(raw, str) and not raw.lstrip().startswith("{"):
+                logger.info("Plain text command: %s", raw[:200])
+                await ws.send(
+                    json.dumps(
+                        {
+                            "type": "status",
+                            "scene": "MockPlain",
+                            "avatar_count": 0,
+                            "fps": 0.0,
+                            "rendering": True,
+                        }
+                    )
+                )
+                continue
             try:
                 msg = json.loads(raw)
             except json.JSONDecodeError:

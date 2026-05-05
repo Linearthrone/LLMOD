@@ -1,0 +1,18 @@
+# Suggested names for animate_avatar <id> <AnimationName>
+# Map these in your Animation Blueprint / Control Rig — House Victoria sends the string verbatim.
+
+Idle
+Walk
+Run
+Jump
+Talk
+Wave
+Sit
+Emote_Think
+Emote_Happy
+Emote_Sad
+LipSync_Idle
+LipSync_Talking
+
+# Remote companion: use companion_remote_exchange JSON args.assistant length
+# as a hint for talk loop duration; drive viseme curves from TTS if you bridge audio separately.

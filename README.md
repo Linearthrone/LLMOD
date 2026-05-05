@@ -203,6 +203,7 @@ The project is designed to be developed module-by-module with testing at each st
 ### Phase 8: Virtual Environment 🚧
 - [x] Unreal Engine WebSocket service (UnrealEnvironmentService.cs – connect, send/receive, reconnect)
 - [x] Document JSON protocol and mock server — [Docs/Unreal_Protocol.md](Docs/Unreal_Protocol.md), [Tools/unreal_mock_ws.py](Tools/unreal_mock_ws.py)
+- [x] Unreal import pack: UE plugin + control command reference — [Unreal/README.md](Unreal/README.md), [Docs/Unreal_ControlScript_Commands.md](Docs/Unreal_ControlScript_Commands.md)
 - [ ] Validate with Unreal Engine build (service code exists; test with real Unreal instance)
 - [ ] Implement avatar spawning
 - [ ] Add pose/movement controls

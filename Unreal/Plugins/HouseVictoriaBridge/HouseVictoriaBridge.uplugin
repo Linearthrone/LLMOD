@@ -1,0 +1,20 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0.0",
+  "FriendlyName": "House Victoria Bridge",
+  "Description": "Blueprint helpers to parse House Victoria WebSocket messages (plain control lines + JSON companion payloads). Pair with your WebSocket server implementation.",
+  "Category": "Integration",
+  "CreatedBy": "House Victoria",
+  "CanContainContent": false,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "HouseVictoriaBridge",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}
