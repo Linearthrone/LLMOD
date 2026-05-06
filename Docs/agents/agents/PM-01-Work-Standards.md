@@ -132,3 +132,4 @@ All temporary scripts produced during debugging, testing, and troubleshooting **
 - While waiting for execution: Proactively patrol, report progress when there are updates
 - After completion: Clearly tell the user "Fixed, ready for acceptance, verification method is XXX"
 - When uncertain: Say "needs further investigation", don't say "it should be XXX"
+   

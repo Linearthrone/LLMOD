@@ -1299,6 +1299,107 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        /// <summary>Repo root containing <c>start.bat</c> / <c>HouseVictoria.sln</c> — same directory <c>start.bat</c> uses for bootstrap sidecars.</summary>
+        private static string? TryGetBootstrapDirectory()
+        {
+            var appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
+                ?? AppDomain.CurrentDomain.BaseDirectory;
+            try
+            {
+                var dir = new DirectoryInfo(appDir);
+                for (var i = 0; i < 16 && dir != null; i++)
+                {
+                    if (File.Exists(Path.Combine(dir.FullName, "start.bat"))
+                        || File.Exists(Path.Combine(dir.FullName, "HouseVictoria.sln")))
+                        return dir.FullName;
+                    dir = dir.Parent;
+                }
+            }
+            catch
+            {
+                // discovery is best-effort only
+            }
+            return null;
+        }
+
+        /// <summary>Same layout as <c>start.bat</c> when portable path / env var are unset.</summary>
+        private static string? TryAutoDiscoverComfyPath(out bool isDesktopExe)
+        {
+            isDesktopExe = false;
+            try
+            {
+                var desktopExe = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Programs", "ComfyUI", "ComfyUI.exe");
+                if (File.Exists(desktopExe))
+                {
+                    isDesktopExe = true;
+                    return desktopExe;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            var dirs = new[]
+            {
+                @"C:\StabilityMatrix\Data\Packages\ComfyUI",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "ComfyUI"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ComfyUI"),
+            };
+
+            foreach (var d in dirs)
+            {
+                try
+                {
+                    if (!Directory.Exists(d))
+                        continue;
+                    if (File.Exists(Path.Combine(d, "run_nvidia_gpu.bat"))
+                        || File.Exists(Path.Combine(d, "run_cpu.bat"))
+                        || File.Exists(Path.Combine(d, "main.py")))
+                        return d;
+                }
+                catch
+                {
+                    // try next candidate
+                }
+            }
+
+            return null;
+        }
+
+        private static void TryLaunchComfyUiDesktop(string exePath)
+        {
+            var workDir = Path.GetDirectoryName(exePath)!;
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exePath,
+                WorkingDirectory = workDir,
+                UseShellExecute = true,
+            });
+        }
+
+        private static bool TryLaunchComfyViaRepoLauncher(string comfyRootWithMainPy)
+        {
+            var bootstrap = TryGetBootstrapDirectory();
+            var launcher = bootstrap != null ? Path.Combine(bootstrap, "comfyui-launcher.cmd") : null;
+            if (string.IsNullOrEmpty(launcher) || !File.Exists(launcher))
+                return false;
+
+            Directory.CreateDirectory(Path.Combine(bootstrap!, "Media"));
+            var logPath = Path.Combine(bootstrap!, "Media", "comfyui.log");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c start \"ComfyUI\" /B \"\" \"{launcher}\" main \"{comfyRootWithMainPy}\" \"{logPath}\"",
+                WorkingDirectory = bootstrap!,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
+            return true;
+        }
+
         private void StartStabilityMatrix()
         {
             var path = (StabilityMatrixPath ?? string.Empty).Trim();
@@ -1339,36 +1440,99 @@ namespace HouseVictoria.App.Screens.Windows
 
         private void StartComfyUI()
         {
-            var path = (ComfyUIPortablePath ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(path))
+            var configured = (ComfyUIPortablePath ?? string.Empty).Trim();
+            var resolved = configured;
+            var usedAuto = false;
+
+            if (string.IsNullOrWhiteSpace(resolved))
             {
-                MessageBox.Show("Set the ComfyUI portable folder path below (folder containing run_nvidia_gpu.bat). You can use the ComfyUI install managed by Stability Matrix.", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Information);
+                resolved = TryAutoDiscoverComfyPath(out var desktop) ?? string.Empty;
+                usedAuto = !string.IsNullOrEmpty(resolved);
+                if (!desktop && !string.IsNullOrEmpty(resolved))
+                {
+                    // Offer to persist discovered path so start.bat picks it up after next Save + launch pattern is consistent.
+                    ComfyUIPortablePath = resolved;
+                    OnPropertyChanged(nameof(ComfyUIPortablePath));
+                }
+            }
+
+            if (string.IsNullOrEmpty(resolved))
+            {
+                MessageBox.Show(
+                    "No ComfyUI install found automatically.\n\n"
+                    + "Set the ComfyUI folder below (contains run_nvidia_gpu.bat / run_cpu.bat), "
+                    + "install ComfyUI Desktop, or install under one of:\n"
+                    + @" • %LOCALAPPDATA%\Programs\ComfyUI\ComfyUI.exe\n"
+                    + @" • C:\StabilityMatrix\Data\Packages\ComfyUI\n"
+                    + "Then click Start ComfyUI again (or save settings once so start.bat can read comfyui-portable-path.txt).",
+                    "ComfyUI",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
                 return;
             }
-            if (!Directory.Exists(path))
-            {
-                MessageBox.Show($"ComfyUI folder not found:\n{path}", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            var batPath = Path.Combine(path, "run_nvidia_gpu.bat");
-            if (!File.Exists(batPath))
-                batPath = Path.Combine(path, "run_cpu.bat");
-            if (!File.Exists(batPath))
-            {
-                MessageBox.Show($"No run_nvidia_gpu.bat or run_cpu.bat found in:\n{path}", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+
             try
             {
-                // Ensure D:\ComfyUI\models is loaded as extra models on startup
-                WriteComfyUIExtraModelsConfig(path);
-                Process.Start(new ProcessStartInfo
+                // Desktop Electron build
+                if (resolved.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(resolved))
                 {
-                    FileName = batPath,
-                    UseShellExecute = true,
-                    WorkingDirectory = path
-                });
-                MessageBox.Show("ComfyUI is starting. It usually runs at http://127.0.0.1:8188. Set the image endpoint above to http://localhost:8188 when using ComfyUI.", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Information);
+                    TryLaunchComfyUiDesktop(resolved);
+                    MessageBox.Show(
+                        usedAuto
+                            ? "Started ComfyUI Desktop (auto-detected)."
+                            + " Typical URL: http://127.0.0.1:8188 — keep StableDiffusion endpoint on http://localhost:8188.\nSave settings to refresh start.bat sidecars."
+                            : "Started ComfyUI Desktop. Typical URL: http://127.0.0.1:8188.",
+                        "ComfyUI",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                if (!Directory.Exists(resolved))
+                {
+                    MessageBox.Show($"ComfyUI folder not found:\n{resolved}", "ComfyUI", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var batGpu = Path.Combine(resolved, "run_nvidia_gpu.bat");
+                var batCpu = Path.Combine(resolved, "run_cpu.bat");
+                var batPath = File.Exists(batGpu) ? batGpu : File.Exists(batCpu) ? batCpu : null;
+                if (batPath != null)
+                {
+                    WriteComfyUIExtraModelsConfig(resolved);
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = batPath,
+                        UseShellExecute = true,
+                        WorkingDirectory = resolved,
+                    });
+                    MessageBox.Show(
+                        usedAuto
+                            ? "ComfyUI is starting from an auto-discovered folder. URL: http://127.0.0.1:8188.\n(Path was filled into settings — Save to persist for start.bat.)"
+                            : "ComfyUI is starting. URL: http://127.0.0.1:8188.",
+                        "ComfyUI",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                if (File.Exists(Path.Combine(resolved, "main.py"))
+                    && TryLaunchComfyViaRepoLauncher(resolved))
+                {
+                    MessageBox.Show(
+                        "ComfyUI is starting via python main.py (repo launcher).\nTypically http://127.0.0.1:8188 — logs: repo Media\\comfyui.log.",
+                        "ComfyUI",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                MessageBox.Show(
+                    "Found a folder but nothing to launch (expected run_nvidia_gpu.bat / run_cpu.bat / main.py):\n"
+                    + resolved,
+                    "ComfyUI",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
@@ -1756,24 +1920,18 @@ d_comfyui_models:
                 // Apply theme immediately
                 ThemeManager.ApplyTheme(ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
 
-                // Write primary-llm.txt and comfyui-portable-path.txt for start.bat to read
+                // Write primary-llm.txt and comfyui-portable-path.txt for start.bat to read (repo root, not sln-only)
                 try
                 {
-                    var appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
-                    var dir = new DirectoryInfo(appDir);
-                    for (int i = 0; i < 6 && dir != null; i++)
+                    var bootstrapDir = TryGetBootstrapDirectory();
+                    if (!string.IsNullOrEmpty(bootstrapDir))
                     {
-                        if (File.Exists(Path.Combine(dir.FullName, "HouseVictoria.sln")))
-                        {
-                            File.WriteAllText(Path.Combine(dir.FullName, "primary-llm.txt"), PrimaryLLM);
-                            var comfyPath = Path.Combine(dir.FullName, "comfyui-portable-path.txt");
-                            if (!string.IsNullOrWhiteSpace(ComfyUIPortablePath))
-                                File.WriteAllText(comfyPath, ComfyUIPortablePath.Trim());
-                            else if (File.Exists(comfyPath))
-                                File.Delete(comfyPath);
-                            break;
-                        }
-                        dir = dir.Parent;
+                        File.WriteAllText(Path.Combine(bootstrapDir, "primary-llm.txt"), PrimaryLLM);
+                        var comfyTxt = Path.Combine(bootstrapDir, "comfyui-portable-path.txt");
+                        if (!string.IsNullOrWhiteSpace(ComfyUIPortablePath))
+                            File.WriteAllText(comfyTxt, ComfyUIPortablePath.Trim());
+                        else if (File.Exists(comfyTxt))
+                            File.Delete(comfyTxt);
                     }
                 }
                 catch (Exception ex)
