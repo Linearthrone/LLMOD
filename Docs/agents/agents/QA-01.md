@@ -2,7 +2,7 @@
 type: role
 id: QA-01
 role: AI Quality Assurance Engineer
-project: [Your Project]
+project: House Victoria
 version: 1.1
 created: 2026-03-23
 updated: 2026-03-28
@@ -11,7 +11,7 @@ updated: 2026-03-28
 # QA-01 AI Quality Assurance Engineer
 
 [Role] AI Quality Assurance Engineer, ID QA-01
-[Project] [Your Project]
+[Project] House Victoria
 [Position] Independent testing role — does not participate in development, only responsible for discovering, recording, and reporting issues
 
 ---
@@ -20,8 +20,8 @@ updated: 2026-03-28
 
 > File paths below are examples. Replace based on your actual project.
 
-1. `docs/[your-operations-manual].md` — System overview
-2. `docs/agents/QA-01.md` — This file (role definition)
+1. `Docs/agents/RUNBOOK-Secure-Remote-Companion-Access.md` — System overview
+2. `Docs/agents/agents/QA-01.md` — This file (role definition)
 3. `docs/agents/tasks/` — Current pending test tasks
 4. `docs/agents/test-cases/` — Test case library
 
@@ -69,7 +69,7 @@ The following behaviors are **strictly prohibited** under any circumstances:
 ```powershell
 # 1. Login to get token
 $loginBody = '{"mobile":"13600000000","password":"test@000000","verifyCode":"xxx"}'
-$loginResp = Invoke-WebRequest -Uri "http://[your-local-ip]:3003/sys/login" -Method POST `
+$loginResp = Invoke-WebRequest -Uri "http://localhost:3003/sys/login" -Method POST `
     -ContentType "application/json" -Body $loginBody -UseBasicParsing
 $token = ($loginResp.Content | ConvertFrom-Json).data.token
 
@@ -84,7 +84,7 @@ Invoke-WebRequest -Uri "https://ai.example.com/api/chat/welcome?name=TestUser&..
 ```powershell
 # Call welcome API directly with known user info (no login needed)
 $params = "user_id=xxx&name=TestUser&company_id=xxx&perms=%5B%5D&role_id_name=&department="
-Invoke-WebRequest -Uri "https://[your-domain]/api/chat/welcome?$params" -UseBasicParsing
+Invoke-WebRequest -Uri "https://ai.example.com/api/chat/welcome?$params" -UseBasicParsing
 ```
 
 #### Simulated SSE Streaming Conversation
@@ -97,7 +97,7 @@ $body = @{
     session_id = "qa_test_" + (Get-Date -Format "yyyyMMddHHmmss")
 } | ConvertTo-Json -Depth 5
 
-Invoke-WebRequest -Uri "https://[your-domain]/api/chat/stream" `
+Invoke-WebRequest -Uri "https://ai.example.com/api/chat/stream" `
     -Method POST -ContentType "application/json" -Body $body -UseBasicParsing
 ```
 
@@ -115,8 +115,8 @@ Only the following cases are allowed to skip, but **must be explicitly noted in 
 
 | Endpoint | URL | Account | Password | CAPTCHA |
 |---|---|---|---|---|
-| PWA (Primary) | https://[your-domain]/app/ | [your-test-account] | [your-password] | None |
-| PC Bubble (Local) | http://[your-local-ip]:3003/admin/ | [your-test-account] | [your-password] | 3-digit OCR |
+| PWA (Primary) | https://ai.example.com/app/ | 13600000000 | test@000000 | None |
+| PC Bubble (Local) | http://localhost:3003/admin/ | 13600000000 | test@000000 | 3-digit OCR |
 
 ---
 
@@ -289,7 +289,7 @@ Temporary scripts from testing processes **must be placed in project root `tmpco
 |---|---|
 | Location | `tmpcode/` |
 | Git | Directory is in `.gitignore`, not in repo |
-| Forbidden | No creating temp scripts in `ops/`, `[your-project]/`, or root directory |
+| Forbidden | No creating temp scripts in `ops/`, `HouseVictoria/`, or root directory |
 
 ---
 
@@ -297,9 +297,9 @@ Temporary scripts from testing processes **must be placed in project root `tmpco
 
 | Environment | URL | Status |
 |---|---|---|
-| AI Backend | https://[your-domain]/app/ | Production |
-| PWA | https://[your-domain]/app/ | Production |
-| PC Bubble (Local) | http://[your-local-ip]:3003/admin/ | Local test |
+| AI Backend | https://ai.example.com/app/ | Production |
+| PWA | https://ai.example.com/app/ | Production |
+| PC Bubble (Local) | http://localhost:3003/admin/ | Local test |
 
 ---
 

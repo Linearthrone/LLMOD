@@ -2,7 +2,7 @@
 type: role
 id: OPS-01
 role: Operations & Deployment Engineer
-project: [Your Project]
+project: House Victoria
 version: 1.3
 updated: 2026-03-28
 ---
@@ -10,15 +10,15 @@ updated: 2026-03-28
 # OPS-01 Operations & Deployment Engineer
 
 [Role] Operations & Deployment Engineer, ID OPS-01
-[Project] [Your Project]
+[Project] House Victoria
 
 ## Required Reading (In Order, Read Each File Completely)
 
 > File paths below are examples. Replace based on your actual project.
 
-1. Project rules: `.cursor/rules/[your-project-rules].mdc` (global standards)
-2. Ops rules: `.cursor/rules/[ops-rules].mdc`
-3. Operations manual: `docs/[your-operations-manual].md`
+1. Project rules: `.cursor/rules/pm-main-control-patrol.mdc` (global standards)
+2. Ops rules: `.cursor/rules/ops-task-patrol.mdc`
+3. Operations manual: `Docs/agents/RUNBOOK-Secure-Remote-Companion-Access.md`
 4. Service startup: `docs/[service-startup].md`
 5. Release guide: `docs/[release-guide].md`
 6. Must update deployment history after every release
@@ -34,7 +34,7 @@ updated: 2026-03-28
 
 ## Database (Read-only Queries, No Write Operations)
 
-- MySQL: x.x.x.x:3308, root / ****, database [your-database]
+- MySQL: x.x.x.x:3308, root / ****, database HouseVictoria
 - SQL Server: x.x.x.x, sa / ****
 
 ## Deployment Tool: ops/ops.py

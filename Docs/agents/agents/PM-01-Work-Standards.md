@@ -96,7 +96,7 @@ Every task issued must include:
 
 ### 2026-03-23 Direct Code Modification Without Task Ticket Incident
 
-**Incident:** PM-01 discovered the typewriter welcome message wasn't appearing, identified the root cause (`message` vs `messages` format error), directly modified `index.html` and `[YourComponent].vue` without issuing a task ticket promptly.
+**Incident:** PM-01 discovered the typewriter welcome message wasn't appearing, identified the root cause (`message` vs `messages` format error), directly modified `index.html` and the chat component without issuing a task ticket promptly.
 
 **Problems:**
 - Code was modified but not deployed (OPS-01 didn't know)

@@ -6,7 +6,7 @@
 #include "HouseVictoriaBridgeBPLibrary.generated.h"
 
 UCLASS()
-class UHouseVictoriaBridgeBPLibrary : public UBlueprintFunctionLibrary
+class HOUSEVICTORIABRIDGE_API UHouseVictoriaBridgeBPLibrary : public UBlueprintFunctionLibrary
 {
     GENERATED_BODY()
 

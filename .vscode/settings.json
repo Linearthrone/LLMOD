@@ -16,5 +16,6 @@
     "dotnet.formatting.organizeImportsOnFormat": true,
     "cursorpyright.analysis.extraPaths": [
         "${workspaceFolder}/MCPServer"
-    ]
+    ],
+    "avdmanager.sdkPath": "c:\\Users\\kurtw\\.cursor\\plugins\\cache\\cursor-public\\superpowers\\b7a8f76985f1e93e75dd2f2a3b424dc731bd9d37\\hooks"
 }

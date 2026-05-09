@@ -5,7 +5,7 @@
 
 /** Result of parsing one WebSocket text frame from House Victoria. */
 USTRUCT(BlueprintType)
-struct FHouseVictoriaParsedMessage
+struct HOUSEVICTORIABRIDGE_API FHouseVictoriaParsedMessage
 {
     GENERATED_BODY()
 

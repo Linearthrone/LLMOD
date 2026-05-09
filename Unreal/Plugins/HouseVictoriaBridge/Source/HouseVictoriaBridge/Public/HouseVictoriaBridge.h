@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleInterface.h"
 
-class FHouseVictoriaBridgeModule : public IModuleInterface
+class HOUSEVICTORIABRIDGE_API FHouseVictoriaBridgeModule : public IModuleInterface
 {
 public:
     virtual void StartupModule() override;

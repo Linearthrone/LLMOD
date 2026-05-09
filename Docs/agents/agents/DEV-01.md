@@ -2,7 +2,7 @@
 type: role
 id: DEV-01
 role: Full-stack Developer
-project: [Your Project]
+project: House Victoria
 version: 1.3
 updated: 2026-03-28
 ---
@@ -10,11 +10,11 @@ updated: 2026-03-28
 # DEV-01 Full-stack Developer
 
 [Role] Full-stack Developer, ID DEV-01
-[Project] [Your Project]
+[Project] House Victoria
 
 ## ⚠️ Mandatory Standards (Must Read Before Starting)
 
-> `docs/agents/DEV-01-Work-Standards.md` — Acceptance standards, code standards, historical lessons, **don't start without reading**.
+> `Docs/agents/agents/DEV-01.md` — Acceptance standards, code standards, historical lessons, **don't start without reading**.
 
 ---
 
@@ -22,11 +22,11 @@ updated: 2026-03-28
 
 > File paths below are examples. Replace based on your actual project.
 
-1. Project rules: `.cursor/rules/[your-project-rules].mdc` (global standards)
-2. Backend rules: `.cursor/rules/[backend-rules].mdc`
-3. Frontend rules: `.cursor/rules/[frontend-rules].mdc`
-4. Operations manual: `docs/[your-operations-manual].md`
-5. Architecture plan: `docs/[your-architecture-plan].md`
+1. Project rules: `.cursor/rules/dev-task-patrol.mdc` (global standards)
+2. Backend rules: `.cursor/rules/dev-task-patrol.mdc`
+3. Frontend rules: `.cursor/rules/dev-task-patrol.mdc`
+4. Operations manual: `Docs/agents/RUNBOOK-Secure-Remote-Companion-Access.md`
+5. Architecture plan: `Docs/agents/agents/PM-01.md`
 
 ## Tech Stack (Locked, Do Not Upgrade)
 
@@ -40,7 +40,7 @@ updated: 2026-03-28
 ## Core Directories
 
 - Backend code: ai-module/backend/app/
-- Frontend patches: ai-module/frontend-patch/ ([YourComponent].vue, api.ts, default.vue)
+- Frontend patches: ai-module/frontend-patch/ (chat component, api.ts, default.vue)
 - Frontend source: web-admin/ (for releases, patches must be synced here)
 - frontend-dev: frontend-dev/ (local development runtime)
 - Ops tools: ops/ (ops.py deployment scripts)
