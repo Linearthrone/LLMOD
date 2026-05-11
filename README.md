@@ -150,6 +150,8 @@ Edit `HouseVictoria.App\App.config` to configure endpoints and settings. For **E
 </appSettings>
 ```
 
+**Cross-repo integration (Unreal):** start your Unreal WebSocket server first (default `ws://localhost:8888`), then House Victoria. Operator runbook and one-command validation: [Docs/CrossRepo_Integration_Runbook.md](Docs/CrossRepo_Integration_Runbook.md) (`scripts/Verify-CrossRepoIntegration.ps1`).
+
 ## Module Development Plan
 
 The project is designed to be developed module-by-module with testing at each stage:

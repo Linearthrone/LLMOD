@@ -162,6 +162,7 @@ In Android app settings, enter the base URL only (no trailing endpoint path). Th
 - API host: `HouseVictoria.App/RemoteCompanion/RemoteCompanionWebHost.cs`
 - Config fields: `HouseVictoria.Core/Models/PersistenceModels.cs` (`RemoteCompanion*`)
 - **QA smoke harness (reads `HouseVictoria.App/App.config`):** `scripts/Verify-HouseVictoriaStack.ps1` — appends evidence to `tmpcode/qa-stack-evidence.txt`
+- **Cross-repo integration runbook (LLMOD + Unreal):** `Docs/CrossRepo_Integration_Runbook.md` (orchestrated validator: `scripts/Verify-CrossRepoIntegration.ps1`)
 
 ---
 

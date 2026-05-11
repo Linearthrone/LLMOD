@@ -1,0 +1,10 @@
+﻿=== Verify-CrossRepoIntegration 2026-05-11T08:02:48.3757787-04:00 ===
+[inputs] RepoRoot=c:\Users\kurtw\LLMOD\LLMOD-max-master UnrealProjectRoot=C:\Users\kurtw\OneDrive\Documents\Unreal Projects\HouseVictoria UnrealWsPort=8888
+[lane-stack] START
+[lane-stack] FAIL critical checks: remote-health, remote-chat-short-token, remote-chat-valid-token
+
+=== Verify-CrossRepoIntegration 2026-05-11T08:04:38.0431444-04:00 ===
+[inputs] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master UnrealProjectRoot=C:\Users\kurtw\OneDrive\Documents\Unreal Projects\HouseVictoria UnrealWsPort=8888
+[lane-stack] START
+[lane-stack] FAIL critical checks: remote-health, remote-chat-short-token, remote-chat-valid-token
+

@@ -19,3 +19,19 @@
 [comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
   Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
 
+=== Verify-HouseVictoriaStack 2026-05-11T08:02:48.5862694-04:00 ===
+[config] RepoRoot=c:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] FAIL Unable to connect to the remote server
+[remote-chat-short-token] UNEXPECTED Unable to connect to the remote server
+[remote-chat-valid-token] FAIL Unable to connect to the remote server
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-05-11T08:04:38.2317854-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] FAIL Unable to connect to the remote server
+[remote-chat-short-token] UNEXPECTED Unable to connect to the remote server
+[remote-chat-valid-token] FAIL Unable to connect to the remote server
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+

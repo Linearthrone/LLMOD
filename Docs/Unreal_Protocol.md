@@ -6,6 +6,8 @@ The WPF app uses `UnrealEnvironmentService` ([HouseVictoria.Services/VirtualEnvi
 
 Unreal-side parser + import steps: **[Unreal/README.md](../Unreal/README.md)** (plugin `HouseVictoriaBridge`).
 
+End-to-end startup order, config contract, and `Verify-CrossRepoIntegration.ps1`: **[CrossRepo_Integration_Runbook.md](./CrossRepo_Integration_Runbook.md)**.
+
 ## Connection
 
 - Client: `System.Net.WebSockets.ClientWebSocket`

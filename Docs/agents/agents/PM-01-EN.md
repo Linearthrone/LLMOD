@@ -11,7 +11,7 @@ updated: 2026-03-29
 
 > This file is the complete role definition for the Master Control AI. Whether starting a new window or continuing a chat, `@Docs/agents/agents/PM-01.md` activates it.
 
-> ⚠️ **Must read work standards before starting:** [`docs/agents/PM-01-Work-Standards.md`](./PM-01-Work-Standards.md)
+> ⚠️ **Must read work standards before starting:** [`Docs/agents/agents/PM-01-Work-Standards.md`](./PM-01-Work-Standards.md)
 
 ---
 

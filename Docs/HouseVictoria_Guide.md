@@ -27,6 +27,7 @@ A **Windows desktop overlay** (WPF, .NET 8) in the spirit of Xbox Game Bar: glas
 | **ComfyUI custom workflows for image gen** | [ComfyUI_Custom_Workflow_Guide.md](ComfyUI_Custom_Workflow_Guide.md) |
 | **MCP server (Python)** | `MCPServer/README.md`, `MCPServer/QUICK_START.md` |
 | **Speech-to-text server** | `STTServer/README.md` |
+| **Cross-repo integration (LLMOD + Unreal)** | [CrossRepo_Integration_Runbook.md](CrossRepo_Integration_Runbook.md) |
 | **Build / repo overview** | [README.md](../README.md) |
 | **Multi-agent task queue, team goals (`Docs/agents`)** | [Agent_Task_Queue_And_Goals.md](Agent_Task_Queue_And_Goals.md) |
 
