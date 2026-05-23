@@ -5,6 +5,8 @@ This runbook defines the canonical way to start and validate integration between
 - LLMOD app repo: `C:\Users\kurtw\LLMOD\LLMOD-max-master`
 - Unreal repo: `C:\Users\kurtw\OneDrive\Documents\Unreal Projects\HouseVictoria`
 
+**UE 5.7.x integration note:** The HouseVictoria Unreal project already implements WebSocket server + message parser in the **game module** (`Source/HouseVictoria/`). Do **not** copy `LLMOD-max-master/Unreal/Plugins/HouseVictoriaBridge` into that project's `Plugins/` folder — it causes version/load failures. See `HouseVictoria/Docs/LEXIE_SETUP.md`.
+
 ## 1) Canonical startup order
 
 Use server-first startup for deterministic behavior:

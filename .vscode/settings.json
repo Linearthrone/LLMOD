@@ -16,5 +16,8 @@
     "dotnet.formatting.organizeImportsOnFormat": true,
     "cursorpyright.analysis.extraPaths": [
         "${workspaceFolder}/MCPServer"
+    ],
+    "java.configuration.runtimes": [
+        
     ]
 }
