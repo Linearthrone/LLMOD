@@ -283,10 +283,27 @@ namespace HouseVictoria.App
                 var appConfig = sp.GetService<AppConfig>();
                 return new LmStudioAIService(appConfig?.LmStudioEndpoint ?? "http://localhost:1234/v1");
             });
+            services.AddSingleton<IHermesGatewayService>(sp =>
+            {
+                var appConfig = sp.GetRequiredService<AppConfig>();
+                var root = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
+                while (!string.IsNullOrEmpty(root) && !Directory.Exists(Path.Combine(root, "MCPServer")))
+                {
+                    var parent = Directory.GetParent(root)?.FullName;
+                    if (parent == null || parent == root) break;
+                    root = parent;
+                }
+                return new HouseVictoria.Services.Hermes.HermesGatewayService(appConfig, root);
+            });
+            services.AddSingleton<HermesAIService>(sp =>
+                new HermesAIService(
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetService<IHermesGatewayService>()));
             services.AddSingleton<IAIService>(sp =>
                 new FallbackAIService(
                     sp.GetRequiredService<LmStudioAIService>(),
                     sp.GetRequiredService<OllamaAIService>(),
+                    sp.GetRequiredService<HermesAIService>(),
                     sp.GetRequiredService<AppConfig>()));
             // Register TTS Service
             services.AddSingleton<HouseVictoria.Core.Interfaces.ITTSService>(sp =>
@@ -336,7 +353,7 @@ namespace HouseVictoria.App
                 var virtualEnvService = sp.GetService<IVirtualEnvironmentService>();
                 var appConfig = sp.GetService<AppConfig>();
                 var covasBridge = sp.GetService<HouseVictoria.Services.CovasBridge.OpenAICompatibleBridge>();
-                return new SystemMonitorService(mcpService, virtualEnvService, appConfig, covasBridge);
+                return new SystemMonitorService(mcpService, virtualEnvService, appConfig, covasBridge, sp.GetService<IHermesGatewayService>());
             });
             services.AddSingleton<ILoggingService>(sp =>
                 new LoggingService(
@@ -380,6 +397,10 @@ namespace HouseVictoria.App
                 LmStudioEndpoint = config["LmStudioEndpoint"] ?? "http://localhost:1234/v1",
                 AnythingLLMEndpoint = config["AnythingLLMEndpoint"] ?? "http://localhost:3001",
                 PrimaryLLM = config["PrimaryLLM"] ?? (bool.TryParse(config["UseLmStudioAsPrimary"], out var useLm) && useLm ? "lmstudio" : "ollama"),
+                HermesEndpoint = config["HermesEndpoint"] ?? "http://127.0.0.1:8642/v1",
+                HermesApiKey = config["HermesApiKey"] ?? string.Empty,
+                HermesModelName = string.IsNullOrWhiteSpace(config["HermesModelName"]) ? "hermes-agent" : (config["HermesModelName"] ?? "hermes-agent"),
+                HermesAutoStart = !bool.TryParse(config["HermesAutoStart"], out var hermesAuto) || hermesAuto,
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
                 TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8880",

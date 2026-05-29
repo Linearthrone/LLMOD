@@ -21,6 +21,7 @@ namespace HouseVictoria.Services.SystemMonitor
         private readonly IVirtualEnvironmentService? _virtualEnvironmentService;
         private readonly AppConfig? _appConfig;
         private readonly CovasBridge.OpenAICompatibleBridge? _covasBridge;
+        private readonly IHermesGatewayService? _hermesGatewayService;
         private readonly string _rootDirectory;
         private LocalTtsHttpHost? _localTtsHost;
         private VirtualEnvironmentStatus _cachedVirtualEnvironmentStatus = new();
@@ -59,12 +60,13 @@ namespace HouseVictoria.Services.SystemMonitor
         public event EventHandler<SystemMetricsUpdatedEventArgs>? MetricsUpdated;
         public event EventHandler<ServerStatusChangedEventArgs>? ServerStatusChanged;
 
-        public SystemMonitorService(IMCPService? mcpService = null, IVirtualEnvironmentService? virtualEnvironmentService = null, AppConfig? appConfig = null, CovasBridge.OpenAICompatibleBridge? covasBridge = null)
+        public SystemMonitorService(IMCPService? mcpService = null, IVirtualEnvironmentService? virtualEnvironmentService = null, AppConfig? appConfig = null, CovasBridge.OpenAICompatibleBridge? covasBridge = null, IHermesGatewayService? hermesGatewayService = null)
         {
             _mcpService = mcpService;
             _virtualEnvironmentService = virtualEnvironmentService;
             _appConfig = appConfig;
             _covasBridge = covasBridge;
+            _hermesGatewayService = hermesGatewayService;
             _rootDirectory = LocateRootDirectory();
             _startTime = DateTime.Now;
             _systemProcess = Process.GetCurrentProcess();
@@ -216,6 +218,11 @@ namespace HouseVictoria.Services.SystemMonitor
                     tasks.Add(CheckAnythingLLMServerAsync(anythingLlmStatus));
                 }
 
+                if (_serverStatuses.TryGetValue("Hermes", out var hermesStatus))
+                {
+                    tasks.Add(CheckHermesServerAsync(hermesStatus));
+                }
+
                 if (_serverStatuses.TryGetValue("MCP", out var mcpStatus) && _mcpService != null)
                 {
                     tasks.Add(CheckMCPServerAsync(mcpStatus));
@@ -325,6 +332,18 @@ namespace HouseVictoria.Services.SystemMonitor
 
             try
             {
+                if (_serverStatuses.TryGetValue("Hermes", out var hermesStatus))
+                {
+                    await StartHermesGatewayIfNeededAsync(hermesStatus).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Auto-start Hermes failed: {ex.Message}");
+            }
+
+            try
+            {
                 if (_appConfig?.CovasBridgeEnabled == true && _covasBridge != null)
                 {
                     await _covasBridge.StartAsync().ConfigureAwait(false);
@@ -415,6 +434,11 @@ namespace HouseVictoria.Services.SystemMonitor
             if (_serverStatuses.TryGetValue("AnythingLLM", out var anythingLlmStatus))
             {
                 anythingLlmStatus.Endpoint = _appConfig.AnythingLLMEndpoint;
+            }
+
+            if (_serverStatuses.TryGetValue("Hermes", out var hermesStatus))
+            {
+                hermesStatus.Endpoint = _appConfig.HermesEndpoint;
             }
 
             if (_serverStatuses.TryGetValue("MCP", out var mcpStatus))
@@ -569,6 +593,14 @@ namespace HouseVictoria.Services.SystemMonitor
                 Name = "Anything LLM",
                 IsRunning = false,
                 Endpoint = "http://localhost:3001",
+                Type = ServerType.LLM
+            };
+
+            _serverStatuses["Hermes"] = new ServerStatus
+            {
+                Name = "Hermes Agent",
+                IsRunning = false,
+                Endpoint = "http://127.0.0.1:8642/v1",
                 Type = ServerType.LLM
             };
 
@@ -877,6 +909,11 @@ namespace HouseVictoria.Services.SystemMonitor
                     {
                         System.Diagnostics.Debug.WriteLine($"Start Anything LLM: {ex.Message}");
                     }
+                }
+                else if (serverName == "Hermes")
+                {
+                    if (_hermesGatewayService != null)
+                        await _hermesGatewayService.EnsureGatewayRunningAsync().ConfigureAwait(false);
                 }
                 else if (serverName == "Kokoro TTS")
                 {
@@ -1593,6 +1630,41 @@ namespace HouseVictoria.Services.SystemMonitor
                 System.Diagnostics.Debug.WriteLine($"Anything LLM health check error: {ex.Message}");
                 UpdateServerStatus(status, false, "AnythingLLM");
             }
+        }
+
+        private async Task CheckHermesServerAsync(ServerStatus status)
+        {
+            try
+            {
+                if (_hermesGatewayService == null)
+                {
+                    UpdateServerStatus(status, false, "Hermes");
+                    return;
+                }
+
+                var isRunning = await _hermesGatewayService.IsAvailableAsync(_cts.Token).ConfigureAwait(false);
+                UpdateServerStatus(status, isRunning, "Hermes");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Hermes health check error: {ex.Message}");
+                UpdateServerStatus(status, false, "Hermes");
+            }
+        }
+
+        private async Task StartHermesGatewayIfNeededAsync(ServerStatus status)
+        {
+            if (_hermesGatewayService == null || _appConfig == null)
+                return;
+
+            var shouldStart = _appConfig.HermesAutoStart ||
+                              string.Equals(_appConfig.PrimaryLLM, "hermes", StringComparison.OrdinalIgnoreCase);
+            if (!shouldStart)
+                return;
+
+            status.Endpoint = _appConfig.HermesEndpoint;
+            var running = await _hermesGatewayService.EnsureGatewayRunningAsync(_cts.Token).ConfigureAwait(false);
+            UpdateServerStatus(status, running, "Hermes");
         }
 
         private bool ShouldSkipCheck(string serverName, string? endpoint)

@@ -87,8 +87,16 @@ namespace HouseVictoria.Core.Models
         public string LmStudioEndpoint { get; set; } = "http://localhost:1234/v1";
         /// <summary>Anything LLM OpenAI-compatible API base URL (e.g. http://localhost:3001).</summary>
         public string AnythingLLMEndpoint { get; set; } = "http://localhost:3001";
-        /// <summary>Primary LLM server: "ollama", "lmstudio", or "anythingllm". Only one can be primary. Non-primary servers can be started manually from System Monitor.</summary>
+        /// <summary>Primary LLM server: "ollama", "lmstudio", "anythingllm", or "hermes". Only one can be primary. Non-primary servers can be started manually from System Monitor.</summary>
         public string PrimaryLLM { get; set; } = "ollama";
+        /// <summary>Hermes Agent OpenAI-compatible API base URL (e.g. http://127.0.0.1:8642/v1).</summary>
+        public string HermesEndpoint { get; set; } = "http://127.0.0.1:8642/v1";
+        /// <summary>Bearer token for Hermes API server (API_SERVER_KEY). Required when API auth is enabled.</summary>
+        public string HermesApiKey { get; set; } = string.Empty;
+        /// <summary>Model id sent to Hermes /v1/chat/completions (cosmetic; Hermes uses its configured provider).</summary>
+        public string HermesModelName { get; set; } = "hermes-agent";
+        /// <summary>Auto-start <c>hermes gateway</c> on app launch when Hermes is primary or this flag is true.</summary>
+        public bool HermesAutoStart { get; set; } = true;
         public string MCPServerEndpoint { get; set; } = "http://localhost:8080";
         public string UnrealEngineEndpoint { get; set; } = "ws://localhost:8888";
         public string TTSEndpoint { get; set; } = "http://localhost:8880";

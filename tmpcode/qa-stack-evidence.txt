@@ -51,3 +51,18 @@
 [comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
   Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
 
+=== Verify-HouseVictoriaStack 2026-05-23T05:08:29.1533355-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true,"service":"house-victoria-remote","version":1}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] FAIL HTTP 400 {"error":"message_required"}
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-05-23T05:09:10.5411532-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true,"service":"house-victoria-remote","version":1}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] FAIL HTTP 400 {"error":"message_required"}
+[comfy-checkpoint-metadata] 200 len=1211
+

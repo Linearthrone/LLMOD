@@ -486,7 +486,7 @@
                         <StackPanel>
                             <TextBlock Text="🧠 LLM Servers" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Configure LM Studio, Ollama, and Anything LLM. Only one can be primary. Non-primary servers are not auto-started with the app; start them manually from the System Monitor drawer." 
+                            <TextBlock Text="Configure LM Studio, Ollama, Anything LLM, and Hermes Agent. Only one can be primary. Hermes provides terminal, browser, and MCP tools. When Hermes is primary, Ollama should still run as the LLM backend for Hermes." 
                                       FontSize="11" Foreground="#80C4D4" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <!-- LM Studio -->
                             <TextBlock Text="LM Studio" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,5,0,2"/>
@@ -604,6 +604,69 @@
                                            Command="{Binding TestAnythingLLMConnectionCommand}" 
                                            Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                                 </StackPanel>
+                            </Grid>
+                            <!-- Hermes Agent -->
+                            <TextBlock Text="Hermes Agent (tools + orchestration)" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="API endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding HermesEndpoint, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding HermesConnectionStatus}" 
+                                          VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
+                                          Visibility="{Binding HermesConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HermesConnectionStatus}" Value="✗ Failed">
+                                                    <Setter Property="Foreground" Value="#FF3366"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HermesConnectionStatus}" Value="Testing...">
+                                                    <Setter Property="Foreground" Value="#FFAA00"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding UseHermesAsPrimary}" 
+                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             ToolTip="Route all chat through Hermes (terminal, browser, MCP tools)."/>
+                                    <Button Content="Test" Style="{StaticResource GlassButton}" 
+                                           Command="{Binding TestHermesConnectionCommand}" 
+                                           Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="API key:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding HermesApiKey, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                            </Grid>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Model id:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding HermesModelName, UpdateSourceTrigger=PropertyChanged}" 
+                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                <CheckBox Grid.Column="2" IsChecked="{Binding HermesAutoStart}" 
+                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                         Content="Auto-start gateway"/>
                             </Grid>
                         </StackPanel>
                     </Border>

@@ -52,20 +52,21 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
         private string _primaryLLM = "ollama";
-        /// <summary>Primary LLM: "ollama", "lmstudio", or "anythingllm". Only one can be primary.</summary>
+        /// <summary>Primary LLM: "ollama", "lmstudio", "anythingllm", or "hermes". Only one can be primary.</summary>
         public string PrimaryLLM
         {
             get => _primaryLLM;
             set
             {
                 var normalized = (value ?? "ollama").ToLowerInvariant();
-                if (normalized != "ollama" && normalized != "lmstudio" && normalized != "anythingllm")
+                if (normalized != "ollama" && normalized != "lmstudio" && normalized != "anythingllm" && normalized != "hermes")
                     normalized = "ollama";
                 if (SetProperty(ref _primaryLLM, normalized))
                 {
                     OnPropertyChanged(nameof(UseLmStudioAsPrimary));
                     OnPropertyChanged(nameof(UseOllamaAsPrimary));
                     OnPropertyChanged(nameof(UseAnythingLLMAsPrimary));
+                    OnPropertyChanged(nameof(UseHermesAsPrimary));
                 }
             }
         }
@@ -88,6 +89,12 @@ namespace HouseVictoria.App.Screens.Windows
             set { if (value) SetPrimaryLLM("anythingllm"); else if (UseAnythingLLMAsPrimary) SetPrimaryLLM("ollama"); }
         }
 
+        public bool UseHermesAsPrimary
+        {
+            get => string.Equals(_primaryLLM, "hermes", StringComparison.OrdinalIgnoreCase);
+            set { if (value) SetPrimaryLLM("hermes"); else if (UseHermesAsPrimary) SetPrimaryLLM("ollama"); }
+        }
+
         private void SetPrimaryLLM(string value)
         {
             var normalized = value.ToLowerInvariant();
@@ -97,6 +104,7 @@ namespace HouseVictoria.App.Screens.Windows
             OnPropertyChanged(nameof(UseLmStudioAsPrimary));
             OnPropertyChanged(nameof(UseOllamaAsPrimary));
             OnPropertyChanged(nameof(UseAnythingLLMAsPrimary));
+            OnPropertyChanged(nameof(UseHermesAsPrimary));
         }
 
         private string? _lmStudioConnectionStatus;
@@ -135,6 +143,45 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _anythingLLMConnectionStatus;
             set => SetProperty(ref _anythingLLMConnectionStatus, value);
+        }
+
+        private string _hermesEndpoint = "http://127.0.0.1:8642/v1";
+        public string HermesEndpoint
+        {
+            get => _hermesEndpoint;
+            set
+            {
+                if (SetProperty(ref _hermesEndpoint, value))
+                    ValidateSettings();
+            }
+        }
+
+        private string _hermesApiKey = string.Empty;
+        public string HermesApiKey
+        {
+            get => _hermesApiKey;
+            set => SetProperty(ref _hermesApiKey, value);
+        }
+
+        private string _hermesModelName = "hermes-agent";
+        public string HermesModelName
+        {
+            get => _hermesModelName;
+            set => SetProperty(ref _hermesModelName, value);
+        }
+
+        private bool _hermesAutoStart = true;
+        public bool HermesAutoStart
+        {
+            get => _hermesAutoStart;
+            set => SetProperty(ref _hermesAutoStart, value);
+        }
+
+        private string? _hermesConnectionStatus;
+        public string? HermesConnectionStatus
+        {
+            get => _hermesConnectionStatus;
+            set => SetProperty(ref _hermesConnectionStatus, value);
         }
 
         // MCP Server Settings
@@ -573,6 +620,7 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand TestOllamaConnectionCommand { get; }
         public ICommand TestLmStudioConnectionCommand { get; }
         public ICommand TestAnythingLLMConnectionCommand { get; }
+        public ICommand TestHermesConnectionCommand { get; }
         public ICommand TestMCPConnectionCommand { get; }
         public ICommand TestTTSConnectionCommand { get; }
         public ICommand TestSTTConnectionCommand { get; }
@@ -609,6 +657,10 @@ namespace HouseVictoria.App.Screens.Windows
             PrimaryLLM = appConfig.PrimaryLLM;
             OllamaEndpoint = appConfig.OllamaEndpoint;
             AnythingLLMEndpoint = appConfig.AnythingLLMEndpoint;
+            HermesEndpoint = appConfig.HermesEndpoint;
+            HermesApiKey = appConfig.HermesApiKey ?? string.Empty;
+            HermesModelName = string.IsNullOrWhiteSpace(appConfig.HermesModelName) ? "hermes-agent" : appConfig.HermesModelName;
+            HermesAutoStart = appConfig.HermesAutoStart;
             MCPServerEndpoint = appConfig.MCPServerEndpoint;
             TTSEndpoint = appConfig.TTSEndpoint;
             UseWindowsTTSFallback = appConfig.UseWindowsTTSFallback;
@@ -657,6 +709,7 @@ namespace HouseVictoria.App.Screens.Windows
             TestOllamaConnectionCommand = new RelayCommand(async () => await TestOllamaConnectionAsync());
             TestLmStudioConnectionCommand = new RelayCommand(async () => await TestLmStudioConnectionAsync());
             TestAnythingLLMConnectionCommand = new RelayCommand(async () => await TestAnythingLLMConnectionAsync());
+            TestHermesConnectionCommand = new RelayCommand(async () => await TestHermesConnectionAsync());
             TestMCPConnectionCommand = new RelayCommand(async () => await TestMCPConnectionAsync());
             TestTTSConnectionCommand = new RelayCommand(async () => await TestTTSConnectionAsync());
             TestSTTConnectionCommand = new RelayCommand(async () => await TestSTTConnectionAsync());
@@ -969,6 +1022,50 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 AnythingLLMConnectionStatus = "✗ Failed";
                 ConnectionTestResult = $"Anything LLM: ✗ Connection failed: {ex.Message}";
+            }
+            finally
+            {
+                IsTestingConnection = false;
+            }
+        }
+
+        private async Task TestHermesConnectionAsync()
+        {
+            if (string.IsNullOrWhiteSpace(HermesEndpoint))
+            {
+                HermesConnectionStatus = "Error: Endpoint is empty";
+                ConnectionTestResult = "Hermes: Error - Endpoint is empty";
+                return;
+            }
+
+            IsTestingConnection = true;
+            HermesConnectionStatus = "Testing...";
+            ConnectionTestResult = "Hermes: Testing connection...";
+
+            try
+            {
+                var gateway = App.ServiceProvider?.GetService<IHermesGatewayService>();
+                if (gateway != null)
+                {
+                    await gateway.EnsureGatewayRunningAsync().ConfigureAwait(false);
+                    var result = await gateway.TestConnectionAsync().ConfigureAwait(false);
+                    HermesConnectionStatus = result ? "✓ Connected" : "✗ Failed";
+                    ConnectionTestResult = result
+                        ? "Hermes: ✓ Gateway reachable (tools enabled when primary)."
+                        : "Hermes: ✗ Gateway not running. Run Tools/setup-hermes-integration.ps1";
+                }
+                else
+                {
+                    var aiService = App.GetService<IAIService>();
+                    var result = aiService != null && await aiService.TestConnectionAsync(HermesEndpoint);
+                    HermesConnectionStatus = result ? "✓ Connected" : "✗ Failed";
+                    ConnectionTestResult = result ? "Hermes: ✓ Connection successful!" : "Hermes: ✗ Connection failed";
+                }
+            }
+            catch (Exception ex)
+            {
+                HermesConnectionStatus = "✗ Failed";
+                ConnectionTestResult = $"Hermes: ✗ Connection failed: {ex.Message}";
             }
             finally
             {
@@ -1703,6 +1800,10 @@ d_comfyui_models:
                         PrimaryLLM = importedConfig.PrimaryLLM;
                         OllamaEndpoint = importedConfig.OllamaEndpoint;
                         AnythingLLMEndpoint = importedConfig.AnythingLLMEndpoint;
+                        HermesEndpoint = importedConfig.HermesEndpoint;
+                        HermesApiKey = importedConfig.HermesApiKey ?? string.Empty;
+                        HermesModelName = importedConfig.HermesModelName ?? "hermes-agent";
+                        HermesAutoStart = importedConfig.HermesAutoStart;
                         MCPServerEndpoint = importedConfig.MCPServerEndpoint;
                         TTSEndpoint = importedConfig.TTSEndpoint;
                         UseWindowsTTSFallback = importedConfig.UseWindowsTTSFallback;
@@ -1774,6 +1875,10 @@ d_comfyui_models:
                         PrimaryLLM = PrimaryLLM,
                         OllamaEndpoint = OllamaEndpoint,
                         AnythingLLMEndpoint = AnythingLLMEndpoint,
+                        HermesEndpoint = HermesEndpoint,
+                        HermesApiKey = HermesApiKey,
+                        HermesModelName = HermesModelName,
+                        HermesAutoStart = HermesAutoStart,
                         MCPServerEndpoint = MCPServerEndpoint,
                         TTSEndpoint = TTSEndpoint,
                         UseWindowsTTSFallback = UseWindowsTTSFallback,
@@ -1841,6 +1946,10 @@ d_comfyui_models:
                 _appConfig.PrimaryLLM = PrimaryLLM;
                 _appConfig.OllamaEndpoint = OllamaEndpoint;
                 _appConfig.AnythingLLMEndpoint = AnythingLLMEndpoint;
+                _appConfig.HermesEndpoint = HermesEndpoint;
+                _appConfig.HermesApiKey = HermesApiKey ?? string.Empty;
+                _appConfig.HermesModelName = HermesModelName ?? "hermes-agent";
+                _appConfig.HermesAutoStart = HermesAutoStart;
                 _appConfig.MCPServerEndpoint = MCPServerEndpoint;
                 _appConfig.TTSEndpoint = TTSEndpoint;
                 _appConfig.UseWindowsTTSFallback = UseWindowsTTSFallback;
@@ -1887,6 +1996,10 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "PrimaryLLM", PrimaryLLM);
                 UpdateOrAddSetting(config, "OllamaEndpoint", OllamaEndpoint);
                 UpdateOrAddSetting(config, "AnythingLLMEndpoint", AnythingLLMEndpoint);
+                UpdateOrAddSetting(config, "HermesEndpoint", HermesEndpoint);
+                UpdateOrAddSetting(config, "HermesApiKey", HermesApiKey ?? string.Empty);
+                UpdateOrAddSetting(config, "HermesModelName", HermesModelName ?? "hermes-agent");
+                UpdateOrAddSetting(config, "HermesAutoStart", HermesAutoStart.ToString());
                 UpdateOrAddSetting(config, "MCPServerEndpoint", MCPServerEndpoint);
                 UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
                 UpdateOrAddSetting(config, "UseWindowsTTSFallback", UseWindowsTTSFallback.ToString());
@@ -1976,6 +2089,10 @@ d_comfyui_models:
                 PrimaryLLM = defaults.PrimaryLLM;
                 OllamaEndpoint = defaults.OllamaEndpoint;
                 AnythingLLMEndpoint = defaults.AnythingLLMEndpoint;
+                HermesEndpoint = defaults.HermesEndpoint;
+                HermesApiKey = defaults.HermesApiKey;
+                HermesModelName = defaults.HermesModelName;
+                HermesAutoStart = defaults.HermesAutoStart;
                 MCPServerEndpoint = defaults.MCPServerEndpoint;
                 TTSEndpoint = defaults.TTSEndpoint;
                 UseWindowsTTSFallback = defaults.UseWindowsTTSFallback;

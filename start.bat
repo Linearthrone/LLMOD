@@ -51,6 +51,30 @@ if /i "%PRIMARY_LLM%"=="ollama" (
     )
 ) else if /i "%PRIMARY_LLM%"=="anythingllm" (
     echo [INFO] Anything LLM: Start manually from System Monitor or launch AnythingLLM desktop app.
+) else if /i "%PRIMARY_LLM%"=="hermes" (
+    echo Starting primary LLM: Hermes Agent ^(Ollama backend + gateway^)...
+    where ollama >nul 2>&1
+    if not errorlevel 1 (
+        start "" /B ollama serve >nul 2>&1
+        timeout /t 2 /nobreak >nul
+        echo [OK] Ollama backend - http://localhost:11434
+    ) else (
+        echo [WARN] Ollama not in PATH. Hermes needs a local LLM backend.
+    )
+    where hermes >nul 2>&1
+    if errorlevel 1 (
+        echo [WARN] Hermes CLI not in PATH. Run Tools\setup-hermes-integration.ps1 first.
+    ) else (
+        netstat -an | findstr /C:":8642" | findstr /C:"LISTENING" >nul 2>&1
+        if not errorlevel 1 (
+            echo [INFO] Hermes gateway already on port 8642. Skipping.
+        ) else (
+            if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+            start "Hermes Gateway" /B /D "%SCRIPT_DIR%" cmd /c "hermes gateway >> Media\hermes-gateway.log 2>&1"
+            timeout /t 3 /nobreak >nul
+            echo [OK] Hermes gateway - http://127.0.0.1:8642/v1
+        )
+    )
 ) else (
     echo [INFO] Unknown primary LLM '%PRIMARY_LLM%'. Defaulting to Ollama.
     where ollama >nul 2>&1
