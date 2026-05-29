@@ -1,5 +1,39 @@
 namespace HouseVictoria.Core.Models
 {
+    /// <summary>ECG-style cognition rhythm — drives pulse rate and waveform shape in the UI.</summary>
+    public enum CognitionVitalRhythm
+    {
+        Resting,
+        Waiting,
+        Reflecting,
+        Research,
+        CreativeCalm,
+        ProjectWork,
+        PriorityUrgent,
+        TradingActive,
+        Environment
+    }
+
+    /// <summary>Live vitals snapshot for telemetry / heart-monitor UI.</summary>
+    public class CognitionVitalsSnapshot
+    {
+        public CognitionVitalRhythm Rhythm { get; set; } = CognitionVitalRhythm.Resting;
+        public string Label { get; set; } = "At rest";
+        public double BeatsPerMinute { get; set; } = 52;
+        /// <summary>0–1 waveform amplitude.</summary>
+        public double Intensity { get; set; } = 0.25;
+        public string WaveColorHex { get; set; } = "#4FC3F7";
+        public AutonomyActivityKind LastActivity { get; set; } = AutonomyActivityKind.None;
+        public string? LastActivitySummary { get; set; }
+        public bool AutonomyRunning { get; set; }
+        public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+    }
+
+    public class CognitionVitalsChangedEventArgs : EventArgs
+    {
+        public CognitionVitalsSnapshot Vitals { get; set; } = new();
+    }
+
     /// <summary>What the agent chose to do on an autonomy tick.</summary>
     public enum AutonomyActivityKind
     {

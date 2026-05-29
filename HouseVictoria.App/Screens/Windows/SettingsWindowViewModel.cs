@@ -285,6 +285,63 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _remoteCompanionNotifyUnreal, value);
         }
 
+        // Autonomy
+        private bool _enableAutonomy = true;
+        public bool EnableAutonomy
+        {
+            get => _enableAutonomy;
+            set => SetProperty(ref _enableAutonomy, value);
+        }
+
+        private int _autonomyTickIntervalSeconds = 90;
+        public int AutonomyTickIntervalSeconds
+        {
+            get => _autonomyTickIntervalSeconds;
+            set => SetProperty(ref _autonomyTickIntervalSeconds, Math.Clamp(value, 30, 600));
+        }
+
+        private int _autonomyMinIdleMinutes = 2;
+        public int AutonomyMinIdleMinutes
+        {
+            get => _autonomyMinIdleMinutes;
+            set => SetProperty(ref _autonomyMinIdleMinutes, Math.Clamp(value, 1, 30));
+        }
+
+        private int _autonomyHighPriorityThreshold = 7;
+        public int AutonomyHighPriorityThreshold
+        {
+            get => _autonomyHighPriorityThreshold;
+            set => SetProperty(ref _autonomyHighPriorityThreshold, Math.Clamp(value, 1, 10));
+        }
+
+        private string _autonomyAiContactId = string.Empty;
+        public string AutonomyAiContactId
+        {
+            get => _autonomyAiContactId;
+            set => SetProperty(ref _autonomyAiContactId, value ?? string.Empty);
+        }
+
+        private bool _autonomyEnableArtGeneration = true;
+        public bool AutonomyEnableArtGeneration
+        {
+            get => _autonomyEnableArtGeneration;
+            set => SetProperty(ref _autonomyEnableArtGeneration, value);
+        }
+
+        private int _autonomyMaxActionsPerHour = 8;
+        public int AutonomyMaxActionsPerHour
+        {
+            get => _autonomyMaxActionsPerHour;
+            set => SetProperty(ref _autonomyMaxActionsPerHour, Math.Clamp(value, 1, 24));
+        }
+
+        private int _autonomyMaxArtPerHour = 2;
+        public int AutonomyMaxArtPerHour
+        {
+            get => _autonomyMaxArtPerHour;
+            set => SetProperty(ref _autonomyMaxArtPerHour, Math.Clamp(value, 0, 6));
+        }
+
         // Image Generation Endpoint (ComfyUI - legacy StableDiffusionEndpoint setting name)
         private string _stableDiffusionEndpoint = string.Empty;
         public string StableDiffusionEndpoint
@@ -672,6 +729,14 @@ namespace HouseVictoria.App.Screens.Windows
             RemoteCompanionAiContactId = appConfig.RemoteCompanionAiContactId ?? string.Empty;
             RemoteCompanionListenOnLan = appConfig.RemoteCompanionListenOnLan;
             RemoteCompanionNotifyUnreal = appConfig.RemoteCompanionNotifyUnreal;
+            EnableAutonomy = appConfig.EnableAutonomy;
+            AutonomyTickIntervalSeconds = appConfig.AutonomyTickIntervalSeconds;
+            AutonomyMinIdleMinutes = appConfig.AutonomyMinIdleMinutes;
+            AutonomyHighPriorityThreshold = appConfig.AutonomyHighPriorityThreshold;
+            AutonomyAiContactId = appConfig.AutonomyAiContactId;
+            AutonomyEnableArtGeneration = appConfig.AutonomyEnableArtGeneration;
+            AutonomyMaxActionsPerHour = appConfig.AutonomyMaxActionsPerHour;
+            AutonomyMaxArtPerHour = appConfig.AutonomyMaxArtPerHour;
             StableDiffusionEndpoint = appConfig.StableDiffusionEndpoint;
             StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
             ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
@@ -1815,6 +1880,14 @@ d_comfyui_models:
                         RemoteCompanionAiContactId = importedConfig.RemoteCompanionAiContactId ?? string.Empty;
                         RemoteCompanionListenOnLan = importedConfig.RemoteCompanionListenOnLan;
                         RemoteCompanionNotifyUnreal = importedConfig.RemoteCompanionNotifyUnreal;
+                        EnableAutonomy = importedConfig.EnableAutonomy;
+                        AutonomyTickIntervalSeconds = importedConfig.AutonomyTickIntervalSeconds;
+                        AutonomyMinIdleMinutes = importedConfig.AutonomyMinIdleMinutes;
+                        AutonomyHighPriorityThreshold = importedConfig.AutonomyHighPriorityThreshold;
+                        AutonomyAiContactId = importedConfig.AutonomyAiContactId ?? string.Empty;
+                        AutonomyEnableArtGeneration = importedConfig.AutonomyEnableArtGeneration;
+                        AutonomyMaxActionsPerHour = importedConfig.AutonomyMaxActionsPerHour;
+                        AutonomyMaxArtPerHour = importedConfig.AutonomyMaxArtPerHour;
                         StableDiffusionEndpoint = importedConfig.StableDiffusionEndpoint;
                         StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
                         ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
@@ -1890,6 +1963,14 @@ d_comfyui_models:
                         RemoteCompanionAiContactId = RemoteCompanionAiContactId,
                         RemoteCompanionListenOnLan = RemoteCompanionListenOnLan,
                         RemoteCompanionNotifyUnreal = RemoteCompanionNotifyUnreal,
+                        EnableAutonomy = EnableAutonomy,
+                        AutonomyTickIntervalSeconds = AutonomyTickIntervalSeconds,
+                        AutonomyMinIdleMinutes = AutonomyMinIdleMinutes,
+                        AutonomyHighPriorityThreshold = AutonomyHighPriorityThreshold,
+                        AutonomyAiContactId = AutonomyAiContactId,
+                        AutonomyEnableArtGeneration = AutonomyEnableArtGeneration,
+                        AutonomyMaxActionsPerHour = AutonomyMaxActionsPerHour,
+                        AutonomyMaxArtPerHour = AutonomyMaxArtPerHour,
                         StableDiffusionEndpoint = StableDiffusionEndpoint,
                         StabilityMatrixPath = StabilityMatrixPath,
                         ComfyUIPortablePath = ComfyUIPortablePath,
@@ -1961,6 +2042,14 @@ d_comfyui_models:
                 _appConfig.RemoteCompanionAiContactId = RemoteCompanionAiContactId;
                 _appConfig.RemoteCompanionListenOnLan = RemoteCompanionListenOnLan;
                 _appConfig.RemoteCompanionNotifyUnreal = RemoteCompanionNotifyUnreal;
+                _appConfig.EnableAutonomy = EnableAutonomy;
+                _appConfig.AutonomyTickIntervalSeconds = AutonomyTickIntervalSeconds;
+                _appConfig.AutonomyMinIdleMinutes = AutonomyMinIdleMinutes;
+                _appConfig.AutonomyHighPriorityThreshold = AutonomyHighPriorityThreshold;
+                _appConfig.AutonomyAiContactId = AutonomyAiContactId;
+                _appConfig.AutonomyEnableArtGeneration = AutonomyEnableArtGeneration;
+                _appConfig.AutonomyMaxActionsPerHour = AutonomyMaxActionsPerHour;
+                _appConfig.AutonomyMaxArtPerHour = AutonomyMaxArtPerHour;
                 _appConfig.StableDiffusionEndpoint = StableDiffusionEndpoint;
                 _appConfig.StabilityMatrixPath = StabilityMatrixPath;
                 _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
@@ -2011,6 +2100,14 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "RemoteCompanionAiContactId", RemoteCompanionAiContactId);
                 UpdateOrAddSetting(config, "RemoteCompanionListenOnLan", RemoteCompanionListenOnLan.ToString());
                 UpdateOrAddSetting(config, "RemoteCompanionNotifyUnreal", RemoteCompanionNotifyUnreal.ToString());
+                UpdateOrAddSetting(config, "EnableAutonomy", EnableAutonomy.ToString());
+                UpdateOrAddSetting(config, "AutonomyTickIntervalSeconds", AutonomyTickIntervalSeconds.ToString());
+                UpdateOrAddSetting(config, "AutonomyMinIdleMinutes", AutonomyMinIdleMinutes.ToString());
+                UpdateOrAddSetting(config, "AutonomyHighPriorityThreshold", AutonomyHighPriorityThreshold.ToString());
+                UpdateOrAddSetting(config, "AutonomyAiContactId", AutonomyAiContactId ?? string.Empty);
+                UpdateOrAddSetting(config, "AutonomyEnableArtGeneration", AutonomyEnableArtGeneration.ToString());
+                UpdateOrAddSetting(config, "AutonomyMaxActionsPerHour", AutonomyMaxActionsPerHour.ToString());
+                UpdateOrAddSetting(config, "AutonomyMaxArtPerHour", AutonomyMaxArtPerHour.ToString());
                 UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
                 UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
@@ -2029,6 +2126,8 @@ d_comfyui_models:
 
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
+
+                _ = RestartAutonomyLoopAsync();
 
                 // Apply theme immediately
                 ThemeManager.ApplyTheme(ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
@@ -2104,6 +2203,14 @@ d_comfyui_models:
                 RemoteCompanionAiContactId = defaults.RemoteCompanionAiContactId;
                 RemoteCompanionListenOnLan = defaults.RemoteCompanionListenOnLan;
                 RemoteCompanionNotifyUnreal = defaults.RemoteCompanionNotifyUnreal;
+                EnableAutonomy = defaults.EnableAutonomy;
+                AutonomyTickIntervalSeconds = defaults.AutonomyTickIntervalSeconds;
+                AutonomyMinIdleMinutes = defaults.AutonomyMinIdleMinutes;
+                AutonomyHighPriorityThreshold = defaults.AutonomyHighPriorityThreshold;
+                AutonomyAiContactId = defaults.AutonomyAiContactId;
+                AutonomyEnableArtGeneration = defaults.AutonomyEnableArtGeneration;
+                AutonomyMaxActionsPerHour = defaults.AutonomyMaxActionsPerHour;
+                AutonomyMaxArtPerHour = defaults.AutonomyMaxArtPerHour;
                 StableDiffusionEndpoint = defaults.StableDiffusionEndpoint;
                 StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
                 ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;
@@ -2145,6 +2252,25 @@ d_comfyui_models:
                 ConnectionTestResult = null;
 
                 MessageBox.Show("Settings have been reset to default values.", "Reset Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private static async Task RestartAutonomyLoopAsync()
+        {
+            try
+            {
+                var autonomy = App.GetService<IAutonomyService>();
+                if (autonomy == null)
+                    return;
+
+                await autonomy.StopAsync().ConfigureAwait(false);
+                var cfg = App.GetService<AppConfig>();
+                if (cfg?.EnableAutonomy == true)
+                    await autonomy.StartAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RestartAutonomyLoop: {ex.Message}");
             }
         }
     }

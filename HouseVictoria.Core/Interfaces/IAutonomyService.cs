@@ -9,8 +9,12 @@ namespace HouseVictoria.Core.Interfaces
     public interface IAutonomyService
     {
         AutonomyRuntimeState GetState();
+        CognitionVitalsSnapshot GetVitals();
         Task StartAsync(CancellationToken cancellationToken = default);
         Task StopAsync();
+        /// <summary>Temporarily override vitals (e.g. active trading).</summary>
+        void PushVitalOverride(CognitionVitalRhythm rhythm, string label, TimeSpan? duration = null);
         event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
+        event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
     }
 }

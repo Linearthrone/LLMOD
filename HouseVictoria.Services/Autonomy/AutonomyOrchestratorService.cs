@@ -28,8 +28,14 @@ namespace HouseVictoria.Services.Autonomy
         private Task? _loopTask;
         private AutonomyRuntimeState _state = new();
         private readonly object _stateLock = new();
+        private CognitionVitalsSnapshot _vitals = CognitionVitalsProfile.ForRhythm(CognitionVitalRhythm.Resting);
+        private DateTime _vitalsHoldUntilUtc = DateTime.MinValue;
+        private CognitionVitalRhythm? _overrideRhythm;
+        private string? _overrideLabel;
+        private DateTime _overrideUntilUtc = DateTime.MinValue;
 
         public event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
+        public event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
 
         public AutonomyOrchestratorService(
             AppConfig config,
@@ -63,6 +69,29 @@ namespace HouseVictoria.Services.Autonomy
                 return CloneState(_state);
         }
 
+        public CognitionVitalsSnapshot GetVitals()
+        {
+            lock (_stateLock)
+            {
+                _vitals.LastActivity = _state.LastActivity;
+                _vitals.LastActivitySummary = _state.LastActivitySummary;
+                _vitals.AutonomyRunning = _state.IsRunning;
+                return _vitals;
+            }
+        }
+
+        public void PushVitalOverride(CognitionVitalRhythm rhythm, string label, TimeSpan? duration = null)
+        {
+            lock (_stateLock)
+            {
+                _overrideRhythm = rhythm;
+                _overrideLabel = label;
+                _overrideUntilUtc = DateTime.UtcNow + (duration ?? TimeSpan.FromSeconds(45));
+            }
+
+            ApplyVitals(CognitionVitalsProfile.ForRhythm(rhythm, label));
+        }
+
         public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             if (!_config.EnableAutonomy)
@@ -79,6 +108,7 @@ namespace HouseVictoria.Services.Autonomy
             _loopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _loopTask = Task.Run(() => RunLoopAsync(_loopCts.Token), CancellationToken.None);
 
+            ApplyVitals(CognitionVitalsProfile.ForRhythm(CognitionVitalRhythm.Resting, "Autonomy online"));
             await _stateStore.AppendActivityLogAsync("Autonomy loop started.").ConfigureAwait(false);
             System.Diagnostics.Debug.WriteLine("[Autonomy] Started");
         }
@@ -152,6 +182,7 @@ namespace HouseVictoria.Services.Autonomy
             }
 
             ResetHourWindowIfNeeded();
+            RefreshVitalsFromState();
 
             var contact = await ResolveContactAsync().ConfigureAwait(false);
             if (contact == null)
@@ -243,6 +274,7 @@ namespace HouseVictoria.Services.Autonomy
                     _state.CurrentFocusProjectId = decision.ProjectId;
                 }
 
+                SetVitalsForActivity(activity, summary, holdSeconds: 90);
                 await CompleteTickAsync(activity, summary).ConfigureAwait(false);
                 ActivityCompleted?.Invoke(this, new AutonomyActivityEventArgs
                 {
@@ -719,5 +751,60 @@ namespace HouseVictoria.Services.Autonomy
 
         private static string Truncate(string s, int max) =>
             s.Length <= max ? s : s[..max] + "…";
+
+        private void SetVitalsForActivity(AutonomyActivityKind activity, string summary, int holdSeconds = 60)
+        {
+            var rhythm = CognitionVitalsProfile.FromActivity(activity);
+            var snap = CognitionVitalsProfile.ForRhythm(rhythm, Truncate(summary, 80));
+            snap.LastActivity = activity;
+            snap.LastActivitySummary = summary;
+            lock (_stateLock)
+                _vitalsHoldUntilUtc = DateTime.UtcNow.AddSeconds(holdSeconds);
+            ApplyVitals(snap);
+        }
+
+        private void RefreshVitalsFromState()
+        {
+            if (DateTime.UtcNow < _vitalsHoldUntilUtc)
+                return;
+
+            lock (_stateLock)
+            {
+                if (_overrideRhythm.HasValue && DateTime.UtcNow < _overrideUntilUtc)
+                {
+                    ApplyVitals(CognitionVitalsProfile.ForRhythm(_overrideRhythm.Value, _overrideLabel));
+                    return;
+                }
+
+                if (_overrideRhythm.HasValue && DateTime.UtcNow >= _overrideUntilUtc)
+                {
+                    _overrideRhythm = null;
+                    _overrideLabel = null;
+                }
+
+                var rhythm = CognitionVitalsProfile.FromActivity(_state.LastActivity);
+                var label = _state.LastActivitySummary;
+                if (_state.LastActivity is AutonomyActivityKind.None or AutonomyActivityKind.WaitingForUserQuiet)
+                {
+                    rhythm = _state.IsRunning ? CognitionVitalRhythm.Waiting : CognitionVitalRhythm.Resting;
+                    label ??= _state.IsRunning ? "Listening…" : "Autonomy paused";
+                }
+
+                ApplyVitals(CognitionVitalsProfile.ForRhythm(rhythm, label));
+            }
+        }
+
+        private void ApplyVitals(CognitionVitalsSnapshot snapshot)
+        {
+            lock (_stateLock)
+            {
+                snapshot.LastActivity = _state.LastActivity;
+                snapshot.LastActivitySummary = _state.LastActivitySummary;
+                snapshot.AutonomyRunning = _state.IsRunning;
+                _vitals = snapshot;
+            }
+
+            VitalsChanged?.Invoke(this, new CognitionVitalsChangedEventArgs { Vitals = snapshot });
+        }
     }
 }

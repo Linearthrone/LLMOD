@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+             xmlns:controls="clr-namespace:HouseVictoria.App.Controls"
              mc:Ignorable="d"
              d:DesignHeight="800" d:DesignWidth="350"
              Unloaded="Control_Unloaded">
@@ -63,14 +64,23 @@
 
                 <Button x:Name="SystemHealthPullButton"
                         Grid.Row="0"
-                        Command="{Binding OpenSystemHealthCommand}"
+                        Command="{Binding OpenCognitionCommand}"
                         Background="Transparent"
                         BorderThickness="0"
-                        Cursor="Hand">
-                    <TextBlock Text="❤️"
-                               FontSize="20"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
+                        Cursor="Hand"
+                        ToolTip="Cognition vitals">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <controls:CognitionVitalsControl CompactMode="True"
+                                                           WaveHeight="22"
+                                                           Width="40"
+                                                           Rhythm="{Binding CognitionRhythm}"
+                                                           BeatsPerMinute="{Binding CognitionBpm}"
+                                                           Intensity="{Binding CognitionIntensity}"
+                                                           WaveColorHex="{Binding CognitionWaveColorHex}"/>
+                        <Ellipse Width="6" Height="6" Margin="0,2,0,0"
+                                 Fill="{Binding CognitionPulseBrush}"
+                                 Visibility="{Binding AutonomyRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </StackPanel>
                 </Button>
 
                 <Separator Grid.Row="1" Margin="6,0" Background="#4000D4FF" />
@@ -114,7 +124,7 @@
                            HorizontalAlignment="Center"
                            Margin="0,0,0,8"/>
 
-                <!-- Tabs: System Health | Components -->
+                <!-- Tabs: System Health | Cognition | Components -->
                 <TabControl Grid.Row="1" Padding="0" Margin="0,0,0,0"
                             Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Stretch"
@@ -230,7 +240,73 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <!-- Tab 2: Components (status indicators) -->
+                    <!-- Tab 2: Cognition vitals (ECG telemetry) -->
+                    <TabItem Header="Cognition">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5">
+                            <StackPanel>
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="{Binding CognitionPulseBrush}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Cognitive vitals" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                         Fill="{Binding CognitionPulseBrush}"/>
+                                                <TextBlock Text="{Binding CognitionStatusLabel}" FontSize="11" Foreground="#E0F7FF"
+                                                           TextWrapping="Wrap" MaxWidth="140" TextAlignment="Right"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <controls:CognitionVitalsControl Margin="0,8,0,4"
+                                                                           WaveHeight="72"
+                                                                           Rhythm="{Binding CognitionRhythm}"
+                                                                           BeatsPerMinute="{Binding CognitionBpm}"
+                                                                           Intensity="{Binding CognitionIntensity}"
+                                                                           WaveColorHex="{Binding CognitionWaveColorHex}"/>
+                                        <TextBlock FontSize="11" Foreground="#80C4D4" TextWrapping="Wrap">
+                                            <Run Text="Rhythm: "/><Run Text="{Binding CognitionRhythm}"/><Run Text=" · "/>
+                                            <Run Text="{Binding CognitionBpm, StringFormat={}{0:F0} bpm}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
+                                        <Grid Margin="0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Loop:" Foreground="#80C4D4" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="1" Foreground="#E0F7FF">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="Running"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding AutonomyRunning}" Value="False">
+                                                                <Setter Property="Text" Value="Stopped"/>
+                                                                <Setter Property="Foreground" Value="#888888"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                        <TextBlock Text="Last activity" FontSize="11" Foreground="#80C4D4" Margin="0,4,0,2"/>
+                                        <TextBlock Text="{Binding AutonomyLastActivityText}" FontSize="12" Foreground="#E0F7FF"
+                                                   TextWrapping="Wrap"/>
+                                        <TextBlock Margin="0,8,0,0" FontSize="10" Foreground="#607080" TextWrapping="Wrap"
+                                                   Text="Pulse patterns: urgent pink (priority/trading), cyan (projects), purple (research), soft pink (art/ComfyUI), blue-grey (rest)."/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Tab 3: Components (status indicators) -->
                     <TabItem Header="Components">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5"
                                       VerticalAlignment="Stretch"
