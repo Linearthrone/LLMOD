@@ -3,6 +3,7 @@ using HouseVictoria.Core.Models;
 using HouseVictoria.Services.AIServices;
 using HouseVictoria.Services.Agent;
 using HouseVictoria.Services.Communication;
+using HouseVictoria.Services.Autonomy;
 using HouseVictoria.Services.Persistence;
 using HouseVictoria.Services.ProjectManagement;
 using HouseVictoria.Services.SystemMonitor;
@@ -124,6 +125,7 @@ namespace HouseVictoria.App
                     System.Diagnostics.Debug.WriteLine("MainWindow created and shown successfully");
 
                     StartRemoteCompanionHost();
+                    StartAutonomyLoop();
                 }
                 catch (Exception ex)
                 {
@@ -145,6 +147,34 @@ namespace HouseVictoria.App
                 LoggingHelper.WriteToStartupLog(errorMsg);
                 MessageBox.Show($"Startup Error: {ex.Message}\n\n{ex.StackTrace}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
+            }
+        }
+
+        private void StartAutonomyLoop()
+        {
+            try
+            {
+                var autonomy = ServiceProvider?.GetService<IAutonomyService>();
+                var appConfig = ServiceProvider?.GetService<AppConfig>();
+                if (autonomy == null || appConfig == null || !appConfig.EnableAutonomy)
+                    return;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await autonomy.StartAsync().ConfigureAwait(false);
+                        LoggingHelper.WriteToStartupLog("Autonomy loop started.");
+                    }
+                    catch (Exception ex)
+                    {
+                        LoggingHelper.WriteToStartupLog($"Autonomy loop failed to start: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.WriteToStartupLog($"Autonomy setup error: {ex.Message}");
             }
         }
 
@@ -339,7 +369,7 @@ namespace HouseVictoria.App
                     sp.GetService<IFileGenerationService>(),
                     sp.GetService<HouseVictoria.Core.Interfaces.ITTSService>()));
             services.AddSingleton<IMCPService, MCPService>();
-            services.AddSingleton<IProjectManagementService, ProjectManagementService>();
+            services.AddSingleton<IProjectManagementService, HouseVictoria.Services.ProjectManagement.PersistentProjectManagementService>();
             services.AddSingleton<IVirtualEnvironmentService, UnrealEnvironmentService>();
             services.AddSingleton<HouseVictoria.Services.CovasBridge.OpenAICompatibleBridge>(sp =>
                 new HouseVictoria.Services.CovasBridge.OpenAICompatibleBridge(
@@ -378,6 +408,7 @@ namespace HouseVictoria.App
 
             // High-level cognitive agent service (composes AI + virtual environment)
             services.AddSingleton<IAgentService, AgentService>();
+            services.AddSingleton<IAutonomyService, AutonomyOrchestratorService>();
             services.AddSingleton(sp => new RemoteCompanionChatService(
                 sp.GetRequiredService<IAIService>(),
                 sp.GetRequiredService<DatabasePersistenceService>(),
@@ -433,7 +464,16 @@ namespace HouseVictoria.App
                 RemoteCompanionApiToken = config["RemoteCompanionApiToken"] ?? string.Empty,
                 RemoteCompanionAiContactId = config["RemoteCompanionAiContactId"] ?? string.Empty,
                 RemoteCompanionListenOnLan = bool.TryParse(config["RemoteCompanionListenOnLan"], out var rclan) && rclan,
-                RemoteCompanionNotifyUnreal = bool.TryParse(config["RemoteCompanionNotifyUnreal"], out var rcnu) && rcnu
+                RemoteCompanionNotifyUnreal = bool.TryParse(config["RemoteCompanionNotifyUnreal"], out var rcnu) && rcnu,
+                EnableAutonomy = !bool.TryParse(config["EnableAutonomy"], out var enableAutonomy) || enableAutonomy,
+                AutonomyTickIntervalSeconds = int.TryParse(config["AutonomyTickIntervalSeconds"], out var ati) && ati >= 30 ? ati : 90,
+                AutonomyMinIdleMinutes = int.TryParse(config["AutonomyMinIdleMinutes"], out var ami) && ami >= 1 ? ami : 2,
+                AutonomyHighPriorityThreshold = int.TryParse(config["AutonomyHighPriorityThreshold"], out var ahp) && ahp >= 1 ? ahp : 7,
+                AutonomyAiContactId = config["AutonomyAiContactId"] ?? string.Empty,
+                AutonomyEnableArtGeneration = !bool.TryParse(config["AutonomyEnableArtGeneration"], out var aag) || aag,
+                AutonomyMaxActionsPerHour = int.TryParse(config["AutonomyMaxActionsPerHour"], out var ama) && ama > 0 ? ama : 8,
+                AutonomyMaxArtPerHour = int.TryParse(config["AutonomyMaxArtPerHour"], out var amArt) && amArt > 0 ? amArt : 2,
+                AutonomyDataPath = config["AutonomyDataPath"] ?? "Data/Autonomy"
             };
 
             // Resolve relative paths to absolute paths
@@ -447,6 +487,9 @@ namespace HouseVictoria.App
             appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath)
                 ? appConfig.MediaPath
                 : System.IO.Path.Combine(appDirectory, appConfig.MediaPath);
+            appConfig.AutonomyDataPath = System.IO.Path.IsPathRooted(appConfig.AutonomyDataPath)
+                ? appConfig.AutonomyDataPath
+                : System.IO.Path.Combine(appDirectory, appConfig.AutonomyDataPath);
             // Piper voices: resolve relative path; prefer Media\PiperVoices next to app or under a parent that contains Media
             var piperDataDirRelative = appConfig.PiperDataDir;
             if (!System.IO.Path.IsPathRooted(appConfig.PiperDataDir))
@@ -626,6 +669,20 @@ namespace HouseVictoria.App
                     }
 
                     _remoteCompanionHost = null;
+                }
+
+                var autonomy = ServiceProvider?.GetService<IAutonomyService>();
+                if (autonomy != null)
+                {
+                    try
+                    {
+                        await autonomy.StopAsync().ConfigureAwait(false);
+                        System.Diagnostics.Debug.WriteLine("Autonomy service stopped");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error stopping autonomy service: {ex.Message}");
+                    }
                 }
 
                 // Stop SystemMonitorService servers (includes LocalTtsHttpHost and COVAS bridge)

@@ -177,5 +177,22 @@ namespace HouseVictoria.Core.Models
 
         /// <summary>After each remote reply, send a JSON command to Unreal (see Docs/Unreal_Protocol.md).</summary>
         public bool RemoteCompanionNotifyUnreal { get; set; }
+
+        // Autonomy (background agent loop)
+        public bool EnableAutonomy { get; set; } = true;
+        /// <summary>Seconds between autonomy ticks (perceive / decide / act).</summary>
+        public int AutonomyTickIntervalSeconds { get; set; } = 90;
+        /// <summary>Minutes without user chat before idle activities run.</summary>
+        public int AutonomyMinIdleMinutes { get; set; } = 2;
+        /// <summary>Project priority at or above this is treated as high-priority work.</summary>
+        public int AutonomyHighPriorityThreshold { get; set; } = 7;
+        /// <summary>Optional AI contact for autonomy; falls back to primary AI.</summary>
+        public string AutonomyAiContactId { get; set; } = string.Empty;
+        public bool AutonomyEnableArtGeneration { get; set; } = true;
+        /// <summary>Cap substantive autonomy actions per rolling hour.</summary>
+        public int AutonomyMaxActionsPerHour { get; set; } = 8;
+        public int AutonomyMaxArtPerHour { get; set; } = 2;
+        /// <summary>Folder for autonomy state, logs, and generated artifacts.</summary>
+        public string AutonomyDataPath { get; set; } = "Data/Autonomy";
     }
 }

@@ -242,12 +242,17 @@ namespace HouseVictoria.Services.AIServices
                 await _ollamaService.UnloadModelAsync(WithEndpoint(contact, OllamaEndpoint));
         }
 
+        private bool IsHermesServerUrl(string url)
+        {
+            return url.Equals(HermesEndpoint, StringComparison.OrdinalIgnoreCase) ||
+                   url.StartsWith("http://127.0.0.1:8642", StringComparison.OrdinalIgnoreCase) ||
+                   url.StartsWith("http://localhost:8642", StringComparison.OrdinalIgnoreCase);
+        }
+
         public async Task<bool> TestConnectionAsync(string serverUrl)
         {
             var url = (serverUrl ?? string.Empty).TrimEnd('/');
-            if (url.Equals(HermesEndpoint, StringComparison.OrdinalIgnoreCase) ||
-                url.StartsWith("http://127.0.0.1:8642", StringComparison.OrdinalIgnoreCase) ||
-                url.StartsWith("http://localhost:8642", StringComparison.OrdinalIgnoreCase))
+            if (IsHermesServerUrl(url))
                 return await _hermesService.TestConnectionAsync(url);
 
             if (url.Equals(LmStudioEndpoint, StringComparison.OrdinalIgnoreCase) || url.StartsWith("http://localhost:1234", StringComparison.OrdinalIgnoreCase))
@@ -260,9 +265,7 @@ namespace HouseVictoria.Services.AIServices
         public async Task<List<string>> GetAvailableModelsAsync(string serverUrl)
         {
             var url = (serverUrl ?? string.Empty).TrimEnd('/');
-            if (url.Equals(HermesEndpoint, StringComparison.OrdinalIgnoreCase) ||
-                url.StartsWith("http://127.0.0.1:8642", StringComparison.OrdinalIgnoreCase) ||
-                url.StartsWith("http://localhost:8642", StringComparison.OrdinalIgnoreCase))
+            if (IsHermesServerUrl(url))
                 return await _hermesService.GetAvailableModelsAsync(url);
 
             if (url.Equals(LmStudioEndpoint, StringComparison.OrdinalIgnoreCase) || url.StartsWith("http://localhost:1234", StringComparison.OrdinalIgnoreCase))
@@ -275,8 +278,7 @@ namespace HouseVictoria.Services.AIServices
         public async Task PullModelAsync(string serverUrl, string modelName)
         {
             var url = (serverUrl ?? string.Empty).TrimEnd('/');
-            if (url.Equals(HermesEndpoint, StringComparison.OrdinalIgnoreCase) ||
-                url.StartsWith("http://127.0.0.1:8642", StringComparison.OrdinalIgnoreCase))
+            if (IsHermesServerUrl(url))
             {
                 await _hermesService.PullModelAsync(url, modelName);
                 return;

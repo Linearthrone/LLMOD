@@ -1,0 +1,58 @@
+namespace HouseVictoria.Core.Models
+{
+    /// <summary>What the agent chose to do on an autonomy tick.</summary>
+    public enum AutonomyActivityKind
+    {
+        None,
+        WaitingForUserQuiet,
+        WorkOnPriorityProject,
+        CreateArt,
+        WriteResearch,
+        AdvancePersonalProject,
+        Reflect,
+        ExploreEnvironment,
+        SkippedCooldown
+    }
+
+    /// <summary>Persisted autonomy runtime state.</summary>
+    public class AutonomyRuntimeState
+    {
+        public DateTime? LastTickUtc { get; set; }
+        public DateTime? LastUserActivityUtc { get; set; }
+        public DateTime? LastActionUtc { get; set; }
+        public AutonomyActivityKind LastActivity { get; set; } = AutonomyActivityKind.None;
+        public string? LastActivitySummary { get; set; }
+        public string? CurrentFocusProjectId { get; set; }
+        public Dictionary<string, double> Drives { get; set; } = new()
+        {
+            ["curiosity"] = 0.5,
+            ["creativity"] = 0.5,
+            ["social"] = 0.3,
+            ["boredom"] = 0.2
+        };
+        public int ActionsThisHour { get; set; }
+        public DateTime HourWindowStartUtc { get; set; } = DateTime.UtcNow;
+        public int ArtGeneratedThisHour { get; set; }
+        public bool IsRunning { get; set; }
+        public long TotalTicks { get; set; }
+        public long TotalActions { get; set; }
+    }
+
+    /// <summary>LLM decision payload for one autonomy tick.</summary>
+    public class AutonomyDecision
+    {
+        public string Mode { get; set; } = "idle"; // "priority" | "idle" | "wait"
+        public string Activity { get; set; } = "reflect";
+        public string Title { get; set; } = string.Empty;
+        public string Detail { get; set; } = string.Empty;
+        public string? ProjectId { get; set; }
+        public string Reason { get; set; } = string.Empty;
+    }
+
+    public class AutonomyActivityEventArgs : EventArgs
+    {
+        public AutonomyActivityKind Activity { get; set; }
+        public string Summary { get; set; } = string.Empty;
+        public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
+    }
+}

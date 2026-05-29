@@ -1,4 +1,4 @@
-# House Victoria — Hermes Agent integration setup (Windows)
+# House Victoria - Hermes Agent integration setup (Windows)
 # Installs Hermes (if missing), writes ~/.hermes/.env + MCP wiring for House Victoria MCP server.
 param(
     [string]$ApiKey = "house-victoria-local-dev",
@@ -22,7 +22,7 @@ function Test-HermesInstalled {
 
 if (-not (Test-HermesInstalled)) {
     Write-Host "Hermes not found. Installing via official Windows installer..." -ForegroundColor Yellow
-    irm https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1 | iex
+    Invoke-RestMethod https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1 | Invoke-Expression
 }
 
 if (-not (Test-HermesInstalled)) {
@@ -111,9 +111,9 @@ if (Test-Path $appConfig) {
 
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Green
-Write-Host "  1. Ensure Ollama is running: ollama serve"
-Write-Host "  2. Ensure House Victoria MCP is running: start.bat (port 8080)"
-Write-Host "  3. Start Hermes gateway: hermes gateway"
-Write-Host "  4. Launch House Victoria — chat routes through Hermes with tools."
+Write-Host '  1. Ensure Ollama is running: ollama serve'
+Write-Host '  2. Ensure House Victoria MCP is running: start.bat (port 8080)'
+Write-Host '  3. Start Hermes gateway: hermes gateway'
+Write-Host '  4. Launch House Victoria - chat routes through Hermes with tools.'
 Write-Host ""
-Write-Host "Per-persona Hermes (without changing primary): set AdditionalServers hermes=true on the AI contact."
+Write-Host 'Per-persona Hermes (without changing primary): set AdditionalServers["hermes"]="true" on the AI contact.'
