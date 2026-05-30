@@ -107,6 +107,7 @@
                                 <TabItem Header="Image"/>
                                 <TabItem Header="Remote"/>
                                 <TabItem Header="Memory"/>
+                                <TabItem Header="Autonomy"/>
                                 <TabItem Header="UI"/>
                                 <TabItem Header="Advanced"/>
                             </TabControl>
@@ -990,7 +991,7 @@
 
                     <!-- Autonomy loop -->
                     <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|4|1'}">
+                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|4|5|1'}">
                         <StackPanel>
                             <TextBlock Text="🫀 Autonomy &amp; cognition vitals" FontSize="16" FontWeight="Bold" Foreground="#F48FB1"/>
                             <Separator Margin="0,5" Background="#1A2332"/>

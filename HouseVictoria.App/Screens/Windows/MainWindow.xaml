@@ -51,6 +51,13 @@
                         VerticalAlignment="Top"
                         Margin="0,20,0,0"/>
 
+        <!-- Cognition vitals / heart monitor (Upper Left) -->
+        <trays:CognitionVitalsDrawer x:Name="CognitionVitalsDrawerElement"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Top"
+                                     Margin="16,16,0,0"
+                                     Panel.ZIndex="1001"/>
+
         <!-- System Monitor Drawer (Left Edge) - Always on top -->
         <trays:SystemMonitorDrawer x:Name="SystemMonitorDrawerElement"
                                     HorizontalAlignment="Left"

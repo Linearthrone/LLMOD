@@ -234,6 +234,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
@@ -337,8 +338,36 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Linked Files -->
+                            <Border Grid.Row="4"
+                                    x:Name="LinkedFilesPanel"
+                                    Style="{StaticResource Card}"
+                                    Padding="10"
+                                    Margin="0,0,0,10"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="Linked Files" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#00D4FF"/>
+                                    <ItemsControl x:Name="LogLinkedFiles">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Content="{Binding DisplayName}"
+                                                        Tag="{Binding Path}"
+                                                        Click="LinkedFileButton_Click"
+                                                        Cursor="Hand"
+                                                        HorizontalContentAlignment="Left"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="0,2"
+                                                        Foreground="#80DEEA"
+                                                        FontSize="12"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Log Content -->
-                            <Border Grid.Row="4" 
+                            <Border Grid.Row="5" 
                                     Style="{StaticResource Card}"
                                     Padding="10" 
                                     Margin="0,0,0,0">

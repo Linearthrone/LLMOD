@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HouseVictoria.Core.Interfaces;
@@ -173,6 +174,10 @@ namespace HouseVictoria.Services.Logging
                 // Load project logs
                 await LoadProjectLogsAsync().ConfigureAwait(false);
                 System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadProjectLogsAsync - {_allEntries.Count} total entries");
+
+                // Load autonomy journal, status lines, and artifact backfill
+                await LoadAutonomyLogsAsync().ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadAutonomyLogsAsync - {_allEntries.Count} total entries");
 
                 // Load server-side / sidecar logs (MCP, LM Studio, TTS, STT, etc.)
                 await LoadSidecarLogsAsync().ConfigureAwait(false);
@@ -474,18 +479,25 @@ namespace HouseVictoria.Services.Logging
                         var projectLogs = await _projectManagementService.GetProjectLogsAsync(project.Id);
                         foreach (var projectLog in projectLogs)
                         {
+                            var body = !string.IsNullOrWhiteSpace(projectLog.Details)
+                                ? projectLog.Details!
+                                : projectLog.Action;
+                            var linkedFiles = await FindLinkedArtifactPathsAsync(project.Id, projectLog.Timestamp)
+                                .ConfigureAwait(false);
+
                             var entry = new LogEntry
                             {
                                 Id = $"project_{project.Id}_{projectLog.Id}",
                                 Category = "Project",
                                 SubCategory = project.Name,
                                 Title = $"{project.Name}: {TruncateTitle(projectLog.Action, 80)}",
-                                Content = projectLog.Action,
-                                Summary = projectLog.Action,
+                                Content = body,
+                                Summary = TruncateTitle(body, 200),
                                 Timestamp = projectLog.Timestamp,
                                 Severity = LogSeverity.Info,
                                 Source = "Project Management",
-                                Tags = new List<string> { "Project", project.Name }
+                                Tags = new List<string> { "Project", project.Name },
+                                LinkedFilePaths = linkedFiles
                             };
                             AddLogEntry(entry);
                             projectLogCount++;
@@ -533,6 +545,346 @@ namespace HouseVictoria.Services.Logging
             subCategory.Entries.Add(entry);
         }
 
+        private async Task<List<string>> FindLinkedArtifactPathsAsync(string projectId, DateTime logTimestamp)
+        {
+            var paths = new List<string>();
+            if (_projectManagementService == null)
+                return paths;
+
+            try
+            {
+                var artifacts = await _projectManagementService.GetArtifactsAsync(projectId).ConfigureAwait(false);
+                foreach (var artifact in artifacts)
+                {
+                    if (string.IsNullOrWhiteSpace(artifact.FilePath))
+                        continue;
+
+                    if (Math.Abs((artifact.CreatedAt - logTimestamp).TotalMinutes) <= 3 &&
+                        File.Exists(artifact.FilePath))
+                    {
+                        paths.Add(artifact.FilePath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: artifact link lookup failed: {ex.Message}");
+            }
+
+            return paths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private async Task LoadAutonomyLogsAsync()
+        {
+            var autonomyDir = _appConfig.AutonomyDataPath;
+            if (string.IsNullOrWhiteSpace(autonomyDir) || !Directory.Exists(autonomyDir))
+                return;
+
+            await LoadAutonomyJournalAsync(autonomyDir).ConfigureAwait(false);
+            await LoadAutonomyArtifactBackfillAsync().ConfigureAwait(false);
+            await LoadAutonomyArtFolderAsync(autonomyDir).ConfigureAwait(false);
+            await LoadAutonomyGeneratedFilesAsync().ConfigureAwait(false);
+            await LoadAutonomyActivityStatusAsync(autonomyDir).ConfigureAwait(false);
+        }
+
+        private async Task LoadAutonomyJournalAsync(string autonomyDir)
+        {
+            var journalPath = Path.Combine(autonomyDir, "journal.jsonl");
+            if (!File.Exists(journalPath))
+                return;
+
+            try
+            {
+                var lines = await File.ReadAllLinesAsync(journalPath).ConfigureAwait(false);
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    AutonomyJournalEntry? journal;
+                    try
+                    {
+                        journal = JsonSerializer.Deserialize<AutonomyJournalEntry>(line, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (journal == null)
+                        continue;
+
+                    var body = journal.Body ?? journal.Summary;
+                    var linked = journal.LinkedFilePaths
+                        .Where(p => !string.IsNullOrWhiteSpace(p))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    var entry = new LogEntry
+                    {
+                        Id = $"autonomy_journal_{journal.Id}",
+                        Category = "Autonomy",
+                        SubCategory = journal.Activity.ToString(),
+                        Title = $"{journal.Activity}: {TruncateTitle(journal.Summary, 80)}",
+                        Content = body,
+                        Summary = TruncateTitle(body, 200),
+                        Timestamp = journal.Timestamp,
+                        Severity = LogSeverity.Info,
+                        Source = "Autonomy Journal",
+                        Tags = BuildAutonomyTags(journal),
+                        LinkedFilePaths = linked,
+                        FilePath = journalPath
+                    };
+                    AddLogEntry(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading autonomy journal: {ex.Message}");
+            }
+        }
+
+        private async Task LoadAutonomyArtifactBackfillAsync()
+        {
+            if (_projectManagementService == null)
+                return;
+
+            try
+            {
+                var projects = await _projectManagementService.GetAllProjectsAsync().ConfigureAwait(false);
+                foreach (var project in projects)
+                {
+                    var artifacts = await _projectManagementService.GetArtifactsAsync(project.Id).ConfigureAwait(false);
+                    foreach (var artifact in artifacts)
+                    {
+                        if (string.IsNullOrWhiteSpace(artifact.FilePath) || !File.Exists(artifact.FilePath))
+                            continue;
+
+                        var isAutonomyArtifact =
+                            artifact.FilePath.Contains("Autonomy", StringComparison.OrdinalIgnoreCase) ||
+                            artifact.FilePath.Contains("GeneratedFiles", StringComparison.OrdinalIgnoreCase);
+
+                        if (!isAutonomyArtifact)
+                            continue;
+
+                        var id = AutonomyFileEntryId(artifact.FilePath);
+                        if (_allEntries.ContainsKey(id))
+                            continue;
+
+                        var entry = new LogEntry
+                        {
+                            Id = id,
+                            Category = "Autonomy",
+                            SubCategory = "Artifacts",
+                            Title = $"{artifact.Name} ({artifact.Type})",
+                            Content = artifact.Description ?? artifact.Name,
+                            Summary = TruncateTitle(artifact.Description ?? artifact.Name, 200),
+                            Timestamp = artifact.CreatedAt,
+                            Severity = LogSeverity.Info,
+                            Source = "Autonomy Artifacts",
+                            Tags = new List<string> { "Autonomy", "Artifact", project.Name },
+                            LinkedFilePaths = new List<string> { artifact.FilePath }
+                        };
+                        AddLogEntry(entry);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading autonomy artifacts: {ex.Message}");
+            }
+        }
+
+        private Task LoadAutonomyArtFolderAsync(string autonomyDir)
+        {
+            var artDir = Path.Combine(autonomyDir, "Art");
+            if (!Directory.Exists(artDir))
+                return Task.CompletedTask;
+
+            try
+            {
+                foreach (var filePath in Directory.GetFiles(artDir, "*.*", SearchOption.TopDirectoryOnly))
+                {
+                    var ext = Path.GetExtension(filePath).ToLowerInvariant();
+                    if (ext is not (".png" or ".jpg" or ".jpeg" or ".webp" or ".gif"))
+                        continue;
+
+                    var fileInfo = new FileInfo(filePath);
+                    var id = AutonomyFileEntryId(filePath);
+                    if (_allEntries.ContainsKey(id))
+                        continue;
+
+                    var entry = new LogEntry
+                    {
+                        Id = id,
+                        Category = "Autonomy",
+                        SubCategory = "Artifacts",
+                        Title = $"Art: {fileInfo.Name}",
+                        Content = filePath,
+                        Summary = fileInfo.Name,
+                        Timestamp = fileInfo.CreationTime,
+                        Severity = LogSeverity.Info,
+                        Source = "Autonomy Art Folder",
+                        Tags = new List<string> { "Autonomy", "Artifact", "Art" },
+                        LinkedFilePaths = new List<string> { filePath }
+                    };
+                    AddLogEntry(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading autonomy art folder: {ex.Message}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task LoadAutonomyGeneratedFilesAsync()
+        {
+            var generatedRoot = Path.Combine(_appConfig.MediaPath, "GeneratedFiles", "Autonomy");
+            if (!Directory.Exists(generatedRoot))
+                return Task.CompletedTask;
+
+            try
+            {
+                foreach (var filePath in Directory.GetFiles(generatedRoot, "*.*", SearchOption.AllDirectories))
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    var id = AutonomyFileEntryId(filePath);
+                    if (_allEntries.ContainsKey(id))
+                        continue;
+
+                    string content;
+                    try
+                    {
+                        content = fileInfo.Length <= 256_000
+                            ? File.ReadAllText(filePath)
+                            : File.ReadAllText(filePath)[..2000] + "\n… (truncated)";
+                    }
+                    catch
+                    {
+                        content = filePath;
+                    }
+
+                    var subfolder = Path.GetFileName(Path.GetDirectoryName(filePath)) ?? "General";
+                    var entry = new LogEntry
+                    {
+                        Id = id,
+                        Category = "Autonomy",
+                        SubCategory = subfolder,
+                        Title = Path.GetFileName(filePath),
+                        Content = content,
+                        Summary = TruncateTitle(content, 200),
+                        Timestamp = fileInfo.CreationTime,
+                        Severity = LogSeverity.Info,
+                        Source = "Autonomy Generated Files",
+                        Tags = new List<string> { "Autonomy", subfolder },
+                        LinkedFilePaths = new List<string> { filePath }
+                    };
+                    AddLogEntry(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading generated autonomy files: {ex.Message}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private async Task LoadAutonomyActivityStatusAsync(string autonomyDir)
+        {
+            var activityPath = Path.Combine(autonomyDir, "activity.log");
+            if (!File.Exists(activityPath))
+                return;
+
+            try
+            {
+                var lines = await File.ReadAllLinesAsync(activityPath).ConfigureAwait(false);
+                var lineNumber = 0;
+                foreach (var line in lines)
+                {
+                    lineNumber++;
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    var match = Regex.Match(line, @"^\[(?<ts>[^\]]+)\]\s*(?<msg>.+)$");
+                    if (!match.Success)
+                        continue;
+
+                    if (!DateTime.TryParse(match.Groups["ts"].Value, out var timestamp))
+                        timestamp = File.GetLastWriteTime(activityPath);
+
+                    var message = match.Groups["msg"].Value.Trim();
+                    if (!IsAutonomyStatusMessage(message))
+                        continue;
+
+                    var entry = new LogEntry
+                    {
+                        Id = $"autonomy_status_{lineNumber}_{ComputeStableHash(line)}",
+                        Category = "Autonomy",
+                        SubCategory = "Status",
+                        Title = TruncateTitle(message, 80),
+                        Content = message,
+                        Summary = TruncateTitle(message, 200),
+                        Timestamp = timestamp,
+                        Severity = message.Contains("error", StringComparison.OrdinalIgnoreCase)
+                            ? LogSeverity.Warning
+                            : LogSeverity.Debug,
+                        Source = "Autonomy Activity Log",
+                        Tags = new List<string> { "Autonomy", "Status" },
+                        FilePath = activityPath,
+                        LineNumber = lineNumber
+                    };
+                    AddLogEntry(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading activity.log: {ex.Message}");
+            }
+        }
+
+        private static bool IsAutonomyStatusMessage(string message)
+        {
+            if (message.StartsWith("Autonomy loop", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (message.StartsWith("Tick error", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (message.StartsWith("WaitingForUserQuiet", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (message.StartsWith("SkippedCooldown", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (message.StartsWith("None:", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+
+        private static List<string> BuildAutonomyTags(AutonomyJournalEntry journal)
+        {
+            var tags = new List<string> { "Autonomy", journal.Activity.ToString() };
+            if (!string.IsNullOrWhiteSpace(journal.ProjectName))
+                tags.Add(journal.ProjectName);
+            return tags;
+        }
+
+        private static string AutonomyFileEntryId(string filePath) =>
+            $"autonomy_file_{ComputeStableHash(Path.GetFullPath(filePath).ToLowerInvariant())}";
+
+        private static string ComputeStableHash(string input)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes)[..12];
+        }
+
         private string GetCategoryDisplayName(string category)
         {
             return category switch
@@ -540,6 +892,7 @@ namespace HouseVictoria.Services.Logging
                 "System" => "System Logs",
                 "AI" => "AI Logs",
                 "Project" => "Project Logs",
+                "Autonomy" => "Autonomy (Victoria)",
                 "Sidecar" => "Sidecar Logs",
                 _ => category
             };

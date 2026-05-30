@@ -317,10 +317,18 @@ namespace HouseVictoria.Services.Autonomy
             project.LastModifiedAt = DateTime.Now;
             await _projects.UpdateProjectAsync(project).ConfigureAwait(false);
 
-            await _files.CreateTextFileAsync(
+            var filePath = await _files.CreateTextFileAsync(
                 $"project-{project.Id}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.md",
                 note,
                 "Autonomy/Projects").ConfigureAwait(false);
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.WorkOnPriorityProject,
+                $"{decision.Title} — {decision.Reason}",
+                note.Trim(),
+                project.Id,
+                project.Name,
+                filePath).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Project work on '{project.Name}': {note}").ConfigureAwait(false);
         }
@@ -389,6 +397,14 @@ namespace HouseVictoria.Services.Autonomy
             lock (_stateLock)
                 _state.ArtGeneratedThisHour++;
 
+            await RecordJournalAsync(
+                AutonomyActivityKind.CreateArt,
+                $"{decision.Title} — {decision.Reason}",
+                $"Prompt: {enhanced}",
+                artProject.Id,
+                artProject.Name,
+                fullPath).ConfigureAwait(false);
+
             await AppendAutonomyMemoryAsync(contact, $"Created art '{decision.Title}': {enhanced}").ConfigureAwait(false);
         }
 
@@ -426,8 +442,16 @@ namespace HouseVictoria.Services.Autonomy
                 ProjectId = researchProject.Id,
                 PerformedBy = contact.Id,
                 Action = "Autonomy: research note",
-                Details = decision.Title
+                Details = body.Trim()
             }).ConfigureAwait(false);
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.WriteResearch,
+                $"{decision.Title} — {decision.Reason}",
+                body.Trim(),
+                researchProject.Id,
+                researchProject.Name,
+                path).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Research on '{decision.Title}': {Truncate(body, 500)}").ConfigureAwait(false);
         }
@@ -441,11 +465,18 @@ namespace HouseVictoria.Services.Autonomy
                 """;
 
             var reflection = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
-            await AppendAutonomyMemoryAsync(contact, $"Reflection: {reflection.Trim()}").ConfigureAwait(false);
-            await _files.CreateTextFileAsync(
+            var reflectionPath = await _files.CreateTextFileAsync(
                 $"reflection-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt",
                 reflection,
                 "Autonomy/Reflection").ConfigureAwait(false);
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.Reflect,
+                $"{decision.Title} — {decision.Reason}",
+                reflection.Trim(),
+                linkedFilePaths: reflectionPath).ConfigureAwait(false);
+
+            await AppendAutonomyMemoryAsync(contact, $"Reflection: {reflection.Trim()}").ConfigureAwait(false);
         }
 
         private async Task ExecuteEnvironmentAsync(CancellationToken cancellationToken)
@@ -461,8 +492,12 @@ namespace HouseVictoria.Services.Autonomy
             }
 
             var result = await _agent.StepAsync(null, cancellationToken).ConfigureAwait(false);
-            await _stateStore.AppendActivityLogAsync(
-                $"Environment step: goal={result.Goal}, action={result.ActionDescription}").ConfigureAwait(false);
+            var envSummary = $"Environment step: goal={result.Goal}, action={result.ActionDescription}";
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.ExploreEnvironment,
+                envSummary,
+                result.ActionDescription).ConfigureAwait(false);
         }
 
         private async Task<AutonomyDecision?> DecideAsync(
@@ -652,7 +687,12 @@ namespace HouseVictoria.Services.Autonomy
             }
 
             await _stateStore.SaveStateAsync(_state).ConfigureAwait(false);
-            if (kind != AutonomyActivityKind.WaitingForUserQuiet || _state.TotalTicks % 5 == 0)
+
+            var substantiveKind = kind is AutonomyActivityKind.CreateArt or AutonomyActivityKind.WriteResearch
+                or AutonomyActivityKind.WorkOnPriorityProject or AutonomyActivityKind.AdvancePersonalProject
+                or AutonomyActivityKind.Reflect or AutonomyActivityKind.ExploreEnvironment;
+
+            if (!substantiveKind && (kind != AutonomyActivityKind.WaitingForUserQuiet || _state.TotalTicks % 5 == 0))
                 await _stateStore.AppendActivityLogAsync($"{kind}: {summary}").ConfigureAwait(false);
         }
 
@@ -669,6 +709,36 @@ namespace HouseVictoria.Services.Autonomy
             {
                 System.Diagnostics.Debug.WriteLine($"[Autonomy] memory append failed: {ex.Message}");
             }
+        }
+
+        private async Task RecordJournalAsync(
+            AutonomyActivityKind activity,
+            string summary,
+            string? body = null,
+            string? projectId = null,
+            string? projectName = null,
+            params string[] linkedFilePaths)
+        {
+            var entry = new AutonomyJournalEntry
+            {
+                Timestamp = DateTime.Now,
+                Activity = activity,
+                Summary = summary,
+                Body = body,
+                ProjectId = projectId,
+                ProjectName = projectName,
+                LinkedFilePaths = linkedFilePaths
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+            };
+
+            await _stateStore.AppendJournalEntryAsync(entry).ConfigureAwait(false);
+
+            var logLine = linkedFilePaths.Length > 0 && !string.IsNullOrWhiteSpace(linkedFilePaths[0])
+                ? $"{activity}: {summary} → {linkedFilePaths[0]}"
+                : $"{activity}: {summary}";
+            await _stateStore.AppendActivityLogAsync(logLine).ConfigureAwait(false);
         }
 
         private static AutonomyDecision? ParseDecision(string raw)

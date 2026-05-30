@@ -22,6 +22,8 @@ namespace HouseVictoria.Core.Models
         public bool IsRead { get; set; } = false;
         public string? FilePath { get; set; } // Path to log file if from file system
         public int? LineNumber { get; set; } // Line number in log file if applicable
+        /// <summary>Artifact or output files produced by this log entry (openable from GLD).</summary>
+        public List<string> LinkedFilePaths { get; set; } = new();
     }
 
     /// <summary>

@@ -13,6 +13,7 @@ namespace HouseVictoria.Services.Autonomy
 
         private readonly string _statePath;
         private readonly string _activityLogPath;
+        private readonly string _journalPath;
         private readonly SemaphoreSlim _lock = new(1, 1);
 
         public AutonomyStateStore(string autonomyDataPath)
@@ -20,6 +21,7 @@ namespace HouseVictoria.Services.Autonomy
             Directory.CreateDirectory(autonomyDataPath);
             _statePath = Path.Combine(autonomyDataPath, "runtime-state.json");
             _activityLogPath = Path.Combine(autonomyDataPath, "activity.log");
+            _journalPath = Path.Combine(autonomyDataPath, "journal.jsonl");
         }
 
         public async Task<AutonomyRuntimeState> LoadStateAsync()
@@ -71,5 +73,22 @@ namespace HouseVictoria.Services.Autonomy
                 _lock.Release();
             }
         }
+
+        public async Task AppendJournalEntryAsync(AutonomyJournalEntry entry)
+        {
+            await _lock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                var json = JsonSerializer.Serialize(entry, JsonOptions);
+                await File.AppendAllTextAsync(_journalPath, json + Environment.NewLine).ConfigureAwait(false);
+            }
+            finally
+            {
+                _lock.Release();
+            }
+        }
+
+        public string JournalPath => _journalPath;
+        public string ActivityLogPath => _activityLogPath;
     }
 }

@@ -89,4 +89,17 @@ namespace HouseVictoria.Core.Models
         public string Summary { get; set; } = string.Empty;
         public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
     }
+
+    /// <summary>Rich autonomy journal record written to disk for GLD and audit.</summary>
+    public class AutonomyJournalEntry
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public AutonomyActivityKind Activity { get; set; }
+        public string Summary { get; set; } = string.Empty;
+        public string? Body { get; set; }
+        public List<string> LinkedFilePaths { get; set; } = new();
+        public string? ProjectId { get; set; }
+        public string? ProjectName { get; set; }
+    }
 }

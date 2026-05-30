@@ -28,8 +28,8 @@ namespace HouseVictoria.Services.FileGeneration
         {
             try
             {
-                // Ensure .txt extension if not present
-                if (!fileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                // Default to .txt only when no extension was provided
+                if (string.IsNullOrEmpty(System.IO.Path.GetExtension(fileName)))
                 {
                     fileName += ".txt";
                 }

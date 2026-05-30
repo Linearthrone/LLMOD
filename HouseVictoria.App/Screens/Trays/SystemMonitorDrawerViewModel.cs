@@ -217,71 +217,9 @@ namespace HouseVictoria.App.Screens.Trays
         // Server Statuses
         public ObservableCollection<ServerStatusViewModel> ServerStatuses { get; } = new();
 
-        // Cognition / autonomy vitals
-        private CognitionVitalRhythm _cognitionRhythm = CognitionVitalRhythm.Resting;
-        public CognitionVitalRhythm CognitionRhythm
-        {
-            get => _cognitionRhythm;
-            set => SetProperty(ref _cognitionRhythm, value);
-        }
-
-        private double _cognitionBpm = 52;
-        public double CognitionBpm
-        {
-            get => _cognitionBpm;
-            set => SetProperty(ref _cognitionBpm, value);
-        }
-
-        private double _cognitionIntensity = 0.25;
-        public double CognitionIntensity
-        {
-            get => _cognitionIntensity;
-            set => SetProperty(ref _cognitionIntensity, value);
-        }
-
-        private string _cognitionWaveColorHex = "#4FC3F7";
-        public string CognitionWaveColorHex
-        {
-            get => _cognitionWaveColorHex;
-            set => SetProperty(ref _cognitionWaveColorHex, value);
-        }
-
-        private string _cognitionStatusLabel = "At rest";
-        public string CognitionStatusLabel
-        {
-            get => _cognitionStatusLabel;
-            set => SetProperty(ref _cognitionStatusLabel, value);
-        }
-
-        private string _autonomyLastActivityText = "No autonomy activity yet";
-        public string AutonomyLastActivityText
-        {
-            get => _autonomyLastActivityText;
-            set => SetProperty(ref _autonomyLastActivityText, value);
-        }
-
-        private bool _autonomyRunning;
-        public bool AutonomyRunning
-        {
-            get => _autonomyRunning;
-            set => SetProperty(ref _autonomyRunning, value);
-        }
-
-        private Brush _cognitionPulseBrush = Brushes.Cyan;
-        public Brush CognitionPulseBrush
-        {
-            get => _cognitionPulseBrush;
-            set => SetProperty(ref _cognitionPulseBrush, value);
-        }
-
-        private readonly IAutonomyService? _autonomyService;
-        private readonly ITradingService? _tradingService;
-        private DateTime _lastTradingVitalsPollUtc = DateTime.MinValue;
-
         // Commands
         public ICommand ToggleDrawerCommand { get; }
         public ICommand OpenSystemHealthCommand { get; }
-        public ICommand OpenCognitionCommand { get; }
         public ICommand OpenComponentsCommand { get; }
         public ICommand ShutdownAllCommand { get; }
         public ICommand VirtualEnvironmentConnectCommand { get; }
@@ -299,20 +237,9 @@ namespace HouseVictoria.App.Screens.Trays
             {
                 _virtualEnvironmentService = App.GetService<IVirtualEnvironmentService>();
                 _appConfig = App.GetService<AppConfig>();
-                _autonomyService = App.GetService<IAutonomyService>();
-                _tradingService = App.GetService<ITradingService>();
 
                 if (_virtualEnvironmentService != null)
-                {
                     _virtualEnvironmentService.StatusChanged += OnVirtualEnvironmentStatusChanged;
-                }
-
-                if (_autonomyService != null)
-                {
-                    _autonomyService.VitalsChanged += OnAutonomyVitalsChanged;
-                    _autonomyService.ActivityCompleted += OnAutonomyActivityCompleted;
-                    ApplyVitals(_autonomyService.GetVitals());
-                }
             }
             catch (Exception ex)
             {
@@ -331,7 +258,7 @@ namespace HouseVictoria.App.Screens.Trays
                 SelectedTabIndex = 0;
                 IsDrawerOpen = true;
             });
-            OpenCognitionCommand = new RelayCommand(() =>
+            OpenComponentsCommand = new RelayCommand(() =>
             {
                 if (IsDrawerOpen && SelectedTabIndex == 1)
                 {
@@ -340,17 +267,6 @@ namespace HouseVictoria.App.Screens.Trays
                 }
 
                 SelectedTabIndex = 1;
-                IsDrawerOpen = true;
-            });
-            OpenComponentsCommand = new RelayCommand(() =>
-            {
-                if (IsDrawerOpen && SelectedTabIndex == 2)
-                {
-                    IsDrawerOpen = false;
-                    return;
-                }
-
-                SelectedTabIndex = 2;
                 IsDrawerOpen = true;
             });
             ShutdownAllCommand = new RelayCommand(async () => await ShutdownAllServersAsync());
@@ -369,68 +285,12 @@ namespace HouseVictoria.App.Screens.Trays
             _systemMonitorService.ServerStatusChanged += OnServerStatusChanged;
         }
 
-        private void OnAutonomyVitalsChanged(object? sender, CognitionVitalsChangedEventArgs e) =>
-            _dispatcher.InvokeAsync(() => ApplyVitals(e.Vitals));
-
-        private void OnAutonomyActivityCompleted(object? sender, AutonomyActivityEventArgs e) =>
-            _dispatcher.InvokeAsync(() =>
-            {
-                AutonomyLastActivityText = $"{e.Activity}: {e.Summary}";
-            });
-
-        private void ApplyVitals(CognitionVitalsSnapshot vitals)
+        private void RunOnUiThread(Action action)
         {
-            CognitionRhythm = vitals.Rhythm;
-            CognitionBpm = vitals.BeatsPerMinute;
-            CognitionIntensity = vitals.Intensity;
-            CognitionWaveColorHex = vitals.WaveColorHex;
-            CognitionStatusLabel = vitals.Label;
-            AutonomyRunning = vitals.AutonomyRunning;
-            if (!string.IsNullOrWhiteSpace(vitals.LastActivitySummary))
-                AutonomyLastActivityText = vitals.LastActivitySummary;
-
-            try
-            {
-                if (new BrushConverter().ConvertFromString(vitals.WaveColorHex) is Brush brush)
-                    CognitionPulseBrush = brush;
-                else
-                    CognitionPulseBrush = Brushes.Cyan;
-            }
-            catch
-            {
-                CognitionPulseBrush = Brushes.Cyan;
-            }
-        }
-
-        private async Task PollTradingVitalsAsync()
-        {
-            if (_tradingService == null || _autonomyService == null)
-                return;
-
-            if (DateTime.UtcNow - _lastTradingVitalsPollUtc < TimeSpan.FromSeconds(5))
-                return;
-
-            _lastTradingVitalsPollUtc = DateTime.UtcNow;
-
-            try
-            {
-                var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
-                if (!status.IsConnected)
-                    return;
-
-                var positions = await _tradingService.GetOpenPositionsAsync().ConfigureAwait(false);
-                if (positions.Count > 0)
-                {
-                    _autonomyService.PushVitalOverride(
-                        CognitionVitalRhythm.TradingActive,
-                        $"Trading · {positions.Count} open position(s)",
-                        TimeSpan.FromSeconds(30));
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Trading vitals poll: {ex.Message}");
-            }
+            if (_dispatcher.CheckAccess())
+                action();
+            else
+                _dispatcher.Invoke(action);
         }
 
         private void OnVirtualEnvironmentStatusChanged(object? sender, VirtualEnvironmentEventArgs e)
@@ -578,90 +438,68 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 var metrics = _systemMonitorService.GetCurrentMetrics();
-
-                // CPU
-                CPUUsage = $"{metrics.CPUUsage:F1}%";
-                CPUUsageValue = metrics.CPUUsage;
-                CPUTemperature = $"{metrics.CPUTemperature:F1}°C";
-                CPUFanSpeed = $"{metrics.CPUFanSpeed:F0} RPM";
-
-                // GPU
-                GPUUsage = $"{metrics.GPUUsage:F1}%";
-                GPUUsageValue = metrics.GPUUsage;
-
-                // Detect GPU vendor and availability
-                GPUMetricsAvailable = metrics.GPUUsage > 0 || metrics.GPUTemperature > 0 || metrics.GPUFanSpeed > 0;
-
-                // Try to detect vendor from system monitor service
-                // For now, if metrics are available, assume NVIDIA (NVML) or set to Unknown
-                if (GPUMetricsAvailable)
-                {
-                    // If we have valid GPU metrics, likely NVIDIA (NVML) or could be other vendor
-                    // In a full implementation, we'd query the service for vendor info
-                    GPUVendor = metrics.GPUTemperature > 0 ? "NVIDIA" : "Unknown";
-                }
-                else
-                {
-                    GPUVendor = "Not Supported";
-                }
-
-                if (GPUMetricsAvailable)
-                {
-                    GPUTemperature = $"{metrics.GPUTemperature:F1}°C";
-                    GPUFanSpeed = $"{metrics.GPUFanSpeed:F0} RPM";
-                }
-                else
-                {
-                    GPUTemperature = "N/A";
-                    GPUFanSpeed = "N/A";
-                }
-
-                // RAM
-                RAMUsage = $"{metrics.RAMUsed} MB / {metrics.RAMTotal} MB";
-                RAMUsagePercentage = metrics.RAMUsagePercentage;
-
-                // System Uptime
+                var gpuAvailable = metrics.GPUUsage > 0 || metrics.GPUTemperature > 0 || metrics.GPUFanSpeed > 0;
                 var uptime = _systemMonitorService.GetSystemUptime();
-                SystemUptime = $"{uptime.Days}d {uptime.Hours:D2}:{uptime.Minutes:D2}:{uptime.Seconds:D2}";
-
-                // AI Status
                 var primaryAI = _systemMonitorService.GetPrimaryAIStatus();
-                PrimaryAIStatusText = primaryAI.IsActive ? $"Active - {primaryAI.CurrentTask}" : "Inactive";
-                PrimaryAIStatusColor = primaryAI.IsActive ? Brushes.Green : Brushes.Red;
-
                 var currentAI = _systemMonitorService.GetCurrentAIContactStatus();
-                CurrentAIStatusText = currentAI.IsActive ? currentAI.Name : "No Contact";
-                CurrentAIStatusColor = currentAI.IsActive ? Brushes.Green : Brushes.Gray;
-
-                // Virtual Environment Status
                 var veStatus = _systemMonitorService.GetVirtualEnvironmentStatus();
-                VirtualEnvironmentIsConnected = veStatus.IsConnected;
-                VirtualEnvironmentStatusText = veStatus.IsConnected ? "Connected" : "Disconnected";
-                VirtualEnvironmentStatusColor = veStatus.IsConnected ? Brushes.Green : Brushes.Red;
-                VirtualEnvironmentDetails = veStatus.IsConnected
-                    ? $"Avatars: {veStatus.AvatarCount}, FPS: {veStatus.FrameRate:F1}, Uptime: {FormatTimeSpan(veStatus.Uptime)}"
-                    : "Not connected";
-                VirtualEnvironmentConnectButtonText = veStatus.IsConnected ? "Reconnect" : "Connect";
 
-                // Update scene information
-                if (veStatus.IsConnected)
+                RunOnUiThread(() =>
                 {
-                    VirtualEnvironmentSceneName = veStatus.CurrentScene ?? "Unknown Scene";
-                    VirtualEnvironmentSceneDetails = $"Avatars: {veStatus.AvatarCount} | FPS: {veStatus.FrameRate:F1} | Rendering: {(veStatus.IsRendering ? "Yes" : "No")}";
-                }
-                else
-                {
-                    VirtualEnvironmentSceneName = "No scene";
-                    VirtualEnvironmentSceneDetails = "";
-                }
+                    CPUUsage = $"{metrics.CPUUsage:F1}%";
+                    CPUUsageValue = metrics.CPUUsage;
+                    CPUTemperature = $"{metrics.CPUTemperature:F1}°C";
+                    CPUFanSpeed = $"{metrics.CPUFanSpeed:F0} RPM";
 
-                // Update server statuses periodically
+                    GPUUsage = $"{metrics.GPUUsage:F1}%";
+                    GPUUsageValue = metrics.GPUUsage;
+                    GPUMetricsAvailable = gpuAvailable;
+                    GPUVendor = gpuAvailable
+                        ? (metrics.GPUTemperature > 0 ? "NVIDIA" : "Unknown")
+                        : "Not Supported";
+                    if (gpuAvailable)
+                    {
+                        GPUTemperature = $"{metrics.GPUTemperature:F1}°C";
+                        GPUFanSpeed = $"{metrics.GPUFanSpeed:F0} RPM";
+                    }
+                    else
+                    {
+                        GPUTemperature = "N/A";
+                        GPUFanSpeed = "N/A";
+                    }
+
+                    RAMUsage = $"{metrics.RAMUsed} MB / {metrics.RAMTotal} MB";
+                    RAMUsagePercentage = metrics.RAMUsagePercentage;
+                    SystemUptime = $"{uptime.Days}d {uptime.Hours:D2}:{uptime.Minutes:D2}:{uptime.Seconds:D2}";
+
+                    PrimaryAIStatusText = primaryAI.IsActive ? $"Active - {primaryAI.CurrentTask}" : "Inactive";
+                    PrimaryAIStatusColor = primaryAI.IsActive ? Brushes.Green : Brushes.Red;
+                    CurrentAIStatusText = currentAI.IsActive ? currentAI.Name : "No Contact";
+                    CurrentAIStatusColor = currentAI.IsActive ? Brushes.Green : Brushes.Gray;
+
+                    VirtualEnvironmentIsConnected = veStatus.IsConnected;
+                    VirtualEnvironmentStatusText = veStatus.IsConnected ? "Connected" : "Disconnected";
+                    VirtualEnvironmentStatusColor = veStatus.IsConnected ? Brushes.Green : Brushes.Red;
+                    VirtualEnvironmentDetails = veStatus.IsConnected
+                        ? $"Avatars: {veStatus.AvatarCount}, FPS: {veStatus.FrameRate:F1}, Uptime: {FormatTimeSpan(veStatus.Uptime)}"
+                        : "Not connected";
+                    VirtualEnvironmentConnectButtonText = veStatus.IsConnected ? "Reconnect" : "Connect";
+
+                    if (veStatus.IsConnected)
+                    {
+                        VirtualEnvironmentSceneName = veStatus.CurrentScene ?? "Unknown Scene";
+                        VirtualEnvironmentSceneDetails =
+                            $"Avatars: {veStatus.AvatarCount} | FPS: {veStatus.FrameRate:F1} | Rendering: {(veStatus.IsRendering ? "Yes" : "No")}";
+                    }
+                    else
+                    {
+                        VirtualEnvironmentSceneName = "No scene";
+                        VirtualEnvironmentSceneDetails = "";
+                    }
+
+                });
+
                 _ = LoadServerStatusesAsync();
-
-                if (_autonomyService != null)
-                    ApplyVitals(_autonomyService.GetVitals());
-
-                _ = PollTradingVitalsAsync();
             }
             catch (Exception ex)
             {
@@ -671,12 +509,6 @@ namespace HouseVictoria.App.Screens.Trays
 
         public void Dispose()
         {
-            if (_autonomyService != null)
-            {
-                _autonomyService.VitalsChanged -= OnAutonomyVitalsChanged;
-                _autonomyService.ActivityCompleted -= OnAutonomyActivityCompleted;
-            }
-
             if (_virtualEnvironmentService != null)
                 _virtualEnvironmentService.StatusChanged -= OnVirtualEnvironmentStatusChanged;
 

@@ -1,0 +1,132 @@
+<UserControl x:Class="HouseVictoria.App.Screens.Trays.CognitionVitalsDrawer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+             xmlns:controls="clr-namespace:HouseVictoria.App.Controls"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="320"
+             Unloaded="Control_Unloaded">
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
+    </UserControl.Resources>
+
+    <Grid x:Name="RootGrid"
+          Background="Transparent"
+          MouseDown="RootGrid_MouseDown">
+        <!-- Compact heart monitor chip (upper-left anchor) -->
+        <Border x:Name="CompactHandle"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Background="#2000D4FF"
+                BorderBrush="#4000D4FF"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="6,4"
+                Cursor="Hand">
+            <Button Command="{Binding ToggleDrawerCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0"
+                    ToolTip="Cognitive vitals">
+                <StackPanel>
+                    <controls:CognitionVitalsControl CompactMode="True"
+                                                       WaveHeight="28"
+                                                       Width="48"
+                                                       Rhythm="{Binding CognitionRhythm}"
+                                                       BeatsPerMinute="{Binding CognitionBpm}"
+                                                       Intensity="{Binding CognitionIntensity}"
+                                                       WaveColorHex="{Binding CognitionWaveColorHex}"/>
+                    <Ellipse Width="6" Height="6" Margin="0,2,0,0" HorizontalAlignment="Center"
+                             Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"
+                             Visibility="{Binding AutonomyRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Button>
+        </Border>
+
+        <!-- Expanded drawer panel (drops below chip) -->
+        <Border x:Name="DrawerPanel"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="0,58,0,0"
+                Width="300"
+                Background="#CC0A0E27"
+                CornerRadius="6"
+                Padding="10"
+                BorderBrush="#4000D4FF"
+                BorderThickness="1"
+                Visibility="Collapsed">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="420">
+                <StackPanel>
+                    <TextBlock Text="Cognitive vitals"
+                               Style="{StaticResource CalligraphyText}"
+                               FontSize="22"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,5"
+                            BorderBrush="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Pulse" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                             Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
+                                    <TextBlock Text="{Binding CognitionStatusLabel}" FontSize="11" Foreground="#E0F7FF"
+                                               TextWrapping="Wrap" MaxWidth="140" TextAlignment="Right"/>
+                                </StackPanel>
+                            </Grid>
+                            <controls:CognitionVitalsControl Margin="0,8,0,4"
+                                                               WaveHeight="72"
+                                                               Rhythm="{Binding CognitionRhythm}"
+                                                               BeatsPerMinute="{Binding CognitionBpm}"
+                                                               Intensity="{Binding CognitionIntensity}"
+                                                               WaveColorHex="{Binding CognitionWaveColorHex}"/>
+                            <TextBlock FontSize="11" Foreground="#80C4D4" TextWrapping="Wrap">
+                                <Run Text="Rhythm: "/><Run Text="{Binding CognitionRhythm}"/><Run Text=" · "/>
+                                <Run Text="{Binding CognitionBpm, StringFormat={}{0:F0} bpm}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                        <StackPanel>
+                            <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
+                            <Grid Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Loop:" Foreground="#80C4D4" Margin="0,0,8,0"/>
+                                <TextBlock Grid.Column="1" Foreground="#E0F7FF">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Running"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AutonomyRunning}" Value="False">
+                                                    <Setter Property="Text" Value="Stopped"/>
+                                                    <Setter Property="Foreground" Value="#888888"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <TextBlock Text="Last activity" FontSize="11" Foreground="#80C4D4" Margin="0,4,0,2"/>
+                            <TextBlock Text="{Binding AutonomyLastActivityText}" FontSize="12" Foreground="#E0F7FF"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,8,0,0" FontSize="10" Foreground="#607080" TextWrapping="Wrap"
+                                       Text="Pulse patterns: urgent pink (priority/trading), cyan (projects), purple (research), soft pink (art/ComfyUI), blue-grey (rest)."/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

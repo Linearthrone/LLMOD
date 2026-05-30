@@ -1,14 +1,24 @@
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
+using HouseVictoria.Core.Models;
 
 namespace HouseVictoria.App.Screens.Windows
 {
     public partial class GlobalLogDirectoryWindow : Window
     {
         public GlobalLogDirectoryWindowViewModel ViewModel { get; }
+
+        private sealed class LinkedFileItem
+        {
+            public string Path { get; init; } = string.Empty;
+            public string DisplayName { get; init; } = string.Empty;
+        }
 
         private bool _isMinimized = false;
         private bool _isClosed = false;
@@ -83,6 +93,8 @@ namespace HouseVictoria.App.Screens.Windows
             var logSummary = FindName("LogSummary") as System.Windows.Controls.TextBlock;
             var logContent = FindName("LogContent") as System.Windows.Controls.TextBlock;
             var logTags = FindName("LogTags") as System.Windows.Controls.ItemsControl;
+            var linkedFilesPanel = FindName("LinkedFilesPanel") as System.Windows.Controls.Border;
+            var logLinkedFiles = FindName("LogLinkedFiles") as System.Windows.Controls.ItemsControl;
 
             if (e.NewValue is LogCategoryViewModel selectedItem)
             {
@@ -102,6 +114,22 @@ namespace HouseVictoria.App.Screens.Windows
                     if (logSummary != null) logSummary.Text = entry.Summary;
                     if (logContent != null) logContent.Text = entry.Content;
 
+                    var linkedItems = entry.LinkedFilePaths
+                        .Where(p => !string.IsNullOrWhiteSpace(p))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Select(p => new LinkedFileItem
+                        {
+                            Path = p,
+                            DisplayName = Path.GetFileName(p) + "  (" + p + ")"
+                        })
+                        .ToList();
+
+                    if (linkedFilesPanel != null)
+                        linkedFilesPanel.Visibility = linkedItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+                    if (logLinkedFiles != null)
+                        logLinkedFiles.ItemsSource = linkedItems;
+
                     // Set tags
                     if (logTags != null)
                     {
@@ -117,6 +145,7 @@ namespace HouseVictoria.App.Screens.Windows
                     // This is a folder/parent node
                     if (noSelectionHint != null) noSelectionHint.Visibility = Visibility.Visible;
                     if (logDetailsPanel != null) logDetailsPanel.Visibility = Visibility.Collapsed;
+                    if (linkedFilesPanel != null) linkedFilesPanel.Visibility = Visibility.Collapsed;
                 }
             }
             else
@@ -124,6 +153,35 @@ namespace HouseVictoria.App.Screens.Windows
                 // Nothing selected
                 if (noSelectionHint != null) noSelectionHint.Visibility = Visibility.Visible;
                 if (logDetailsPanel != null) logDetailsPanel.Visibility = Visibility.Collapsed;
+                if (linkedFilesPanel != null) linkedFilesPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void LinkedFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.Tag is not string path || string.IsNullOrWhiteSpace(path))
+                return;
+
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    MessageBox.Show($"File not found:\n{path}", "Linked File", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open file:\n{path}\n\n{ex.Message}",
+                    "Linked File",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
