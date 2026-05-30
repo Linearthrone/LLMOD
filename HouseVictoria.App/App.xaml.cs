@@ -408,6 +408,7 @@ namespace HouseVictoria.App
 
             // High-level cognitive agent service (composes AI + virtual environment)
             services.AddSingleton<IAgentService, AgentService>();
+            services.AddSingleton<IJournalService, HouseVictoria.Services.Journals.JournalService>();
             services.AddSingleton<IAutonomyService, AutonomyOrchestratorService>();
             services.AddSingleton(sp => new RemoteCompanionChatService(
                 sp.GetRequiredService<IAIService>(),

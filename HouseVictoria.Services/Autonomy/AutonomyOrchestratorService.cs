@@ -21,6 +21,7 @@ namespace HouseVictoria.Services.Autonomy
         private readonly IMemoryService? _memory;
         private readonly IAgentService? _agent;
         private readonly IVirtualEnvironmentService? _virtualEnvironment;
+        private readonly IJournalService? _journals;
         private readonly AutonomyStateStore _stateStore;
         private readonly string _autonomyRoot;
 
@@ -45,7 +46,8 @@ namespace HouseVictoria.Services.Autonomy
             IFileGenerationService files,
             IMemoryService? memory = null,
             IAgentService? agent = null,
-            IVirtualEnvironmentService? virtualEnvironment = null)
+            IVirtualEnvironmentService? virtualEnvironment = null,
+            IJournalService? journals = null)
         {
             _config = config;
             _aiService = aiService;
@@ -55,6 +57,7 @@ namespace HouseVictoria.Services.Autonomy
             _memory = memory;
             _agent = agent;
             _virtualEnvironment = virtualEnvironment;
+            _journals = journals;
 
             _autonomyRoot = ResolveAutonomyPath(config);
             Directory.CreateDirectory(_autonomyRoot);
@@ -735,10 +738,36 @@ namespace HouseVictoria.Services.Autonomy
 
             await _stateStore.AppendJournalEntryAsync(entry).ConfigureAwait(false);
 
+            if (_journals != null)
+            {
+                try
+                {
+                    var (topicTitle, prefaceReason) = ParseSummaryParts(summary);
+                    await _journals.RecordAutonomyActivityAsync(entry, topicTitle, prefaceReason).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Autonomy] journal sync failed: {ex.Message}");
+                }
+            }
+
             var logLine = linkedFilePaths.Length > 0 && !string.IsNullOrWhiteSpace(linkedFilePaths[0])
                 ? $"{activity}: {summary} → {linkedFilePaths[0]}"
                 : $"{activity}: {summary}";
             await _stateStore.AppendActivityLogAsync(logLine).ConfigureAwait(false);
+        }
+
+        private static (string? topicTitle, string? prefaceReason) ParseSummaryParts(string summary)
+        {
+            if (string.IsNullOrWhiteSpace(summary))
+                return (null, null);
+
+            var parts = summary.Split('—', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length == 2)
+                return (parts[0], parts[1]);
+
+            parts = summary.Split('-', 2, StringSplitOptions.TrimEntries);
+            return parts.Length == 2 ? (parts[0], parts[1]) : (summary, null);
         }
 
         private static AutonomyDecision? ParseDecision(string raw)

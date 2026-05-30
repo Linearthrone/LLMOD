@@ -38,29 +38,34 @@ namespace HouseVictoria.Services.Trading
                     throw new ArgumentException("MT4 data path cannot be empty", nameof(mt4DataPath));
                 }
 
-                if (!Directory.Exists(mt4DataPath))
+                var resolvedPath = Mt4PathResolver.Resolve(mt4DataPath);
+                if (!Mt4PathResolver.IsWritableTerminalDataPath(resolvedPath))
                 {
-                    throw new DirectoryNotFoundException($"MT4 data directory not found: {mt4DataPath}");
+                    throw new UnauthorizedAccessException(
+                        $"MT4 terminal data path is not writable: {resolvedPath}");
                 }
 
-                _mt4DataPath = mt4DataPath;
+                _mt4DataPath = resolvedPath;
+                Mt4BridgeInstaller.EnsureExpertAdvisor(resolvedPath);
 
                 // Create communication folders
-                var commandPath = Path.Combine(mt4DataPath, "MQL4", "Files", _commandFolder);
+                var commandPath = Path.Combine(resolvedPath, "MQL4", "Files", _commandFolder);
                 Directory.CreateDirectory(commandPath);
 
-                var responsePath = Path.Combine(mt4DataPath, "MQL4", "Files", _commandFolder, "Responses");
+                var responsePath = Path.Combine(resolvedPath, "MQL4", "Files", _commandFolder, "Responses");
                 Directory.CreateDirectory(responsePath);
 
                 // Verify MT4 structure
-                var expertsPath = Path.Combine(mt4DataPath, "MQL4", _strategyFolder);
+                var expertsPath = Path.Combine(resolvedPath, "MQL4", _strategyFolder);
                 if (!Directory.Exists(expertsPath))
                 {
                     Directory.CreateDirectory(expertsPath);
                 }
 
+                RefreshBridgeActivityStatus();
+
                 _status.IsConnected = true;
-                _status.MT4DataPath = mt4DataPath;
+                _status.MT4DataPath = resolvedPath;
                 _status.ConnectedAt = DateTime.Now;
                 _status.LastError = null;
 
@@ -69,7 +74,13 @@ namespace HouseVictoria.Services.Trading
                 // Start market data updates
                 _marketDataTimer?.Change(0, 5000);
 
-                System.Diagnostics.Debug.WriteLine($"Connected to MT4 at: {mt4DataPath}");
+                if (!string.Equals(resolvedPath, mt4DataPath.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"MT4 path resolved: {mt4DataPath} -> {resolvedPath}");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Connected to MT4 at: {resolvedPath}");
                 return await Task.FromResult(true);
             }
             catch (Exception ex)
@@ -873,8 +884,93 @@ namespace HouseVictoria.Services.Trading
             if (!_status.IsConnected || _mt4DataPath == null)
                 return;
 
-            // This would be called periodically to update market data
-            // The actual data would come from MT4 EA files
+            try
+            {
+                var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
+                if (!Directory.Exists(commandPath))
+                    return;
+
+                foreach (var file in Directory.EnumerateFiles(commandPath, "MarketData_*.txt"))
+                {
+                    var symbol = Path.GetFileName(file).Replace("MarketData_", "", StringComparison.Ordinal)
+                        .Replace(".txt", "", StringComparison.Ordinal);
+                    if (string.IsNullOrWhiteSpace(symbol))
+                        continue;
+
+                    try
+                    {
+                        var content = File.ReadAllText(file);
+                        var parts = content.Split(',');
+                        if (parts.Length < 3 ||
+                            !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var bid) ||
+                            !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var ask))
+                        {
+                            continue;
+                        }
+
+                        var marketData = new MarketData
+                        {
+                            Symbol = symbol,
+                            Bid = bid,
+                            Ask = ask,
+                            Spread = ask - bid,
+                            LastUpdate = File.GetLastWriteTime(file)
+                        };
+
+                        lock (_lockObject)
+                        {
+                            _marketDataCache[symbol] = marketData;
+                        }
+
+                        MarketDataUpdated?.Invoke(this, new MarketDataEventArgs
+                        {
+                            Symbol = symbol,
+                            MarketData = marketData
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error reading {file}: {ex.Message}");
+                    }
+                }
+
+                RefreshBridgeActivityStatus();
+                StatusChanged?.Invoke(this, new TradingServiceEventArgs { Status = _status });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating market data: {ex.Message}");
+            }
+        }
+
+        private void RefreshBridgeActivityStatus()
+        {
+            if (_mt4DataPath == null)
+            {
+                _status.IsBridgeActive = false;
+                _status.BridgeLastActivityUtc = null;
+                return;
+            }
+
+            var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
+            if (!Directory.Exists(commandPath))
+            {
+                _status.IsBridgeActive = false;
+                _status.BridgeLastActivityUtc = null;
+                return;
+            }
+
+            DateTime? latest = null;
+            foreach (var file in Directory.EnumerateFiles(commandPath, "*", SearchOption.AllDirectories))
+            {
+                var writeUtc = File.GetLastWriteTimeUtc(file);
+                if (latest == null || writeUtc > latest)
+                    latest = writeUtc;
+            }
+
+            _status.BridgeLastActivityUtc = latest;
+            _status.IsBridgeActive = latest.HasValue &&
+                                     DateTime.UtcNow - latest.Value <= TimeSpan.FromSeconds(30);
         }
 
         private string GetTimeFrameCode(TimeFrame timeFrame)

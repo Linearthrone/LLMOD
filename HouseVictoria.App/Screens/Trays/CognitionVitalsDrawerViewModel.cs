@@ -121,6 +121,15 @@ namespace HouseVictoria.App.Screens.Trays
                 if (!status.IsConnected)
                     return;
 
+                if (!status.IsBridgeActive)
+                {
+                    _autonomyService.PushVitalOverride(
+                        CognitionVitalRhythm.TradingActive,
+                        "MT4 connected · start HouseVictoriaBridge EA on a chart",
+                        TimeSpan.FromSeconds(30));
+                    return;
+                }
+
                 var positions = await _tradingService.GetOpenPositionsAsync().ConfigureAwait(false);
                 if (positions.Count > 0)
                 {

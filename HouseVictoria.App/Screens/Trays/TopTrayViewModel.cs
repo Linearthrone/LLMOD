@@ -12,12 +12,14 @@ namespace HouseVictoria.App.Screens.Trays
 
         public ICommand OpenProjectsCommand { get; }
         public ICommand OpenDataBankManagementCommand { get; }
+        public ICommand OpenJournalsCommand { get; }
 
         public TopTrayViewModel(IEventAggregator eventAggregator)
         {
             _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
             OpenProjectsCommand = new RelayCommand(() => ShowWindow("Projects"));
             OpenDataBankManagementCommand = new RelayCommand(() => ShowWindow("DataBankManagement"));
+            OpenJournalsCommand = new RelayCommand(() => ShowWindow("Journals"));
         }
 
         private void ShowWindow(string windowType)

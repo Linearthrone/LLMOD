@@ -2,8 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
@@ -36,6 +39,11 @@ namespace HouseVictoria.App.Screens.Windows
             DataContext = ViewModel;
 
             Loaded += GlobalLogDirectoryWindow_Loaded;
+            SourceInitialized += (_, _) =>
+            {
+                if (PresentationSource.FromVisual(this) is HwndSource source)
+                    source.AddHook(WndProc);
+            };
 
             Closed += (s, e) => { _isClosed = true; };
         }
@@ -91,7 +99,7 @@ namespace HouseVictoria.App.Screens.Windows
             var logSeverity = FindName("LogSeverity") as System.Windows.Controls.TextBlock;
             var logSource = FindName("LogSource") as System.Windows.Controls.TextBlock;
             var logSummary = FindName("LogSummary") as System.Windows.Controls.TextBlock;
-            var logContent = FindName("LogContent") as System.Windows.Controls.TextBlock;
+            var logContent = FindName("LogContent") as System.Windows.Controls.TextBox;
             var logTags = FindName("LogTags") as System.Windows.Controls.ItemsControl;
             var linkedFilesPanel = FindName("LinkedFilesPanel") as System.Windows.Controls.Border;
             var logLinkedFiles = FindName("LogLinkedFiles") as System.Windows.Controls.ItemsControl;
@@ -112,7 +120,7 @@ namespace HouseVictoria.App.Screens.Windows
                     if (logSeverity != null) logSeverity.Text = entry.Severity.ToString();
                     if (logSource != null) logSource.Text = entry.Source;
                     if (logSummary != null) logSummary.Text = entry.Summary;
-                    if (logContent != null) logContent.Text = entry.Content;
+                    if (logContent != null) logContent.Text = WrapLongLines(entry.Content);
 
                     var linkedItems = entry.LinkedFilePaths
                         .Where(p => !string.IsNullOrWhiteSpace(p))
@@ -204,6 +212,106 @@ namespace HouseVictoria.App.Screens.Windows
                     System.Diagnostics.Debug.WriteLine($"Error fitting GlobalLogDirectoryWindow on screen: {ex.Message}");
                 }
             }));
+        }
+
+        private const int WM_NCHITTEST = 0x0084;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg != WM_NCHITTEST || _isMinimized || !IsLoaded)
+                return IntPtr.Zero;
+
+            const int borderThickness = 8;
+            var x = (int)(lParam.ToInt64() & 0xFFFF);
+            var y = (int)((lParam.ToInt64() >> 16) & 0xFFFF);
+            var point = PointFromScreen(new Point(x, y));
+            var width = ActualWidth;
+            var height = ActualHeight;
+
+            if (width <= 0 || height <= 0 || double.IsNaN(width) || double.IsNaN(height))
+                return IntPtr.Zero;
+
+            if (point.X < borderThickness && point.Y < borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTTOPLEFT);
+            }
+
+            if (point.X >= width - borderThickness && point.Y < borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTTOPRIGHT);
+            }
+
+            if (point.X < borderThickness && point.Y >= height - borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTBOTTOMLEFT);
+            }
+
+            if (point.X >= width - borderThickness && point.Y >= height - borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTBOTTOMRIGHT);
+            }
+
+            if (point.Y < borderThickness && point.X >= borderThickness && point.X <= width - borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTTOP);
+            }
+
+            if (point.Y >= height - borderThickness && point.X >= borderThickness && point.X <= width - borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTBOTTOM);
+            }
+
+            if (point.X < borderThickness && point.Y >= borderThickness && point.Y <= height - borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTLEFT);
+            }
+
+            if (point.X >= width - borderThickness && point.Y >= borderThickness && point.Y <= height - borderThickness)
+            {
+                handled = true;
+                return new IntPtr(HTRIGHT);
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private static string WrapLongLines(string text, int maxLineLength = 120)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            var result = new StringBuilder(text.Length + text.Length / maxLineLength);
+            foreach (var line in text.Split('\n'))
+            {
+                if (line.Length <= maxLineLength)
+                {
+                    result.AppendLine(line);
+                    continue;
+                }
+
+                for (var i = 0; i < line.Length; i += maxLineLength)
+                {
+                    var length = Math.Min(maxLineLength, line.Length - i);
+                    result.AppendLine(line.Substring(i, length));
+                }
+            }
+
+            return result.ToString().TrimEnd('\r', '\n');
         }
     }
 }

@@ -1,0 +1,143 @@
+<Window x:Class="HouseVictoria.App.Screens.Windows.JournalsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+        mc:Ignorable="d"
+        Title="Journals" Height="850" Width="1100"
+        Style="{StaticResource OverlayWindow}"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Window.Resources>
+
+    <Border Style="{StaticResource GlassPanel}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📓" FontSize="22" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Journals" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Content="−" Width="30" Height="30" Background="#4000D4FF" BorderThickness="0"
+                                FontSize="18" FontWeight="Bold" Foreground="#E0F7FF" Cursor="Hand"
+                                Margin="0,0,5,0" Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
+                        <Button Content="✕" Width="30" Height="30" Background="#40FF3366" BorderThickness="0"
+                                FontSize="16" FontWeight="Bold" Foreground="#E0F7FF" Cursor="Hand"
+                                Click="CloseButton_Click" ToolTip="Close"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Toolbar -->
+            <Border Grid.Row="1" Background="#300A0E27" Padding="12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="280" Height="32" Margin="0,0,10,0"
+                                 Background="#252F3F" Foreground="#E0F7FF" BorderBrush="#4000D4FF"
+                                 Padding="8,4" VerticalContentAlignment="Center">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Background">
+                                                <Setter.Value>
+                                                    <VisualBrush Stretch="None" AlignmentX="Left">
+                                                        <VisualBrush.Visual>
+                                                            <TextBlock Text="Search journals…" Foreground="#668899" Margin="8,0,0,0"/>
+                                                        </VisualBrush.Visual>
+                                                    </VisualBrush>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                        <Button Content="🔄 Refresh" Style="{StaticResource GlassButton}"
+                                Command="{Binding RefreshCommand}" Width="100"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Journals.Count, StringFormat='{}{0} journal(s)'}"
+                               Foreground="#8899AA" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Journal list -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="12">
+                <ItemsControl ItemsSource="{Binding Journals}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,10" CornerRadius="8" Cursor="Hand"
+                                    Tag="{Binding Id}"
+                                    MouseLeftButtonDown="JournalCard_MouseLeftButtonDown">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#403A2A1A" Offset="0"/>
+                                        <GradientStop Color="#35281810" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.BorderBrush>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#806B4420" Offset="0"/>
+                                        <GradientStop Color="#50403020" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.BorderBrush>
+                                <Border.BorderThickness>1</Border.BorderThickness>
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.4"/>
+                                </Border.Effect>
+                                <Grid Margin="16,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Width="48" Height="48" CornerRadius="4" Margin="0,0,14,0"
+                                            Background="#5C4033" VerticalAlignment="Top">
+                                        <TextBlock Text="📖" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold"
+                                                   Foreground="#F5E6D3" FontFamily="Georgia"/>
+                                        <TextBlock Text="{Binding PrefacePreview}" FontSize="12" Foreground="#C4B5A0"
+                                                   FontStyle="Italic" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                   FontFamily="Georgia"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                            <TextBlock Text="{Binding EntryCount, StringFormat='{}{0} entries'}"
+                                                       FontSize="11" Foreground="#A89070" Margin="0,0,12,0"/>
+                                            <TextBlock Text="{Binding UpdatedLabel}" FontSize="11" Foreground="#887766" Margin="0,0,12,0"/>
+                                            <TextBlock Text="{Binding ProjectName}" FontSize="11" Foreground="#00D4FF"
+                                                       Visibility="{Binding HasProject, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Border Grid.Column="2" Padding="10,4" CornerRadius="12" VerticalAlignment="Top"
+                                            Background="#30FFFFFF">
+                                        <TextBlock Text="{Binding StatusLabel}" FontSize="11" Foreground="#E8DCC8"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>

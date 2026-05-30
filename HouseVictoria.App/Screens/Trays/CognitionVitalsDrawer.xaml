@@ -24,7 +24,7 @@
                 BorderBrush="#4000D4FF"
                 BorderThickness="1"
                 CornerRadius="8"
-                Padding="6,4"
+                Padding="15,10"
                 Cursor="Hand">
             <Button Command="{Binding ToggleDrawerCommand}"
                     Background="Transparent"
@@ -33,13 +33,13 @@
                     ToolTip="Cognitive vitals">
                 <StackPanel>
                     <controls:CognitionVitalsControl CompactMode="True"
-                                                       WaveHeight="28"
-                                                       Width="48"
+                                                       WaveHeight="70"
+                                                       Width="120"
                                                        Rhythm="{Binding CognitionRhythm}"
                                                        BeatsPerMinute="{Binding CognitionBpm}"
                                                        Intensity="{Binding CognitionIntensity}"
                                                        WaveColorHex="{Binding CognitionWaveColorHex}"/>
-                    <Ellipse Width="6" Height="6" Margin="0,2,0,0" HorizontalAlignment="Center"
+                    <Ellipse Width="15" Height="15" Margin="0,5,0,0" HorizontalAlignment="Center"
                              Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"
                              Visibility="{Binding AutonomyRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 </StackPanel>
@@ -50,7 +50,7 @@
         <Border x:Name="DrawerPanel"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
-                Margin="0,58,0,0"
+                Margin="0,145,0,0"
                 Width="300"
                 Background="#CC0A0E27"
                 CornerRadius="6"

@@ -57,6 +57,9 @@
     <Resource Include="Resources\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
+    <None Include="..\MT4Bridge\HouseVictoriaBridge.mq4" Link="MT4Bridge\HouseVictoriaBridge.mq4">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

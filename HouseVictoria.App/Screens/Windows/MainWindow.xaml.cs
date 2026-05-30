@@ -27,6 +27,7 @@ namespace HouseVictoria.App.Screens.Windows
         private AIModelsWindow? _aiModelsWindow;
         private SettingsWindow? _settingsWindow;
         private ProjectsWindow? _projectsWindow;
+        private JournalsWindow? _journalsWindow;
         private GlobalLogDirectoryWindow? _gldWindow;
         private DataBankManagementWindow? _dataBankManagementWindow;
         private VirtualEnvironmentControlsWindow? _virtualEnvironmentControlsWindow;
@@ -660,6 +661,25 @@ namespace HouseVictoria.App.Screens.Windows
                         _projectsWindow = new ProjectsWindow();
                         windowToOpen = _projectsWindow;
                         _projectsWindow.Closed += (s, e) => { _projectsWindow = null; };
+                    }
+                }
+                else if (evt.WindowType == "Journals")
+                {
+                    if (_journalsWindow != null && !_journalsWindow.IsClosed())
+                    {
+                        if (_journalsWindow.IsMinimized())
+                        {
+                            _journalsWindow.RestoreFromMinimized();
+                        }
+                        _journalsWindow.Activate();
+                        _journalsWindow.Focus();
+                        return;
+                    }
+                    else
+                    {
+                        _journalsWindow = new JournalsWindow();
+                        windowToOpen = _journalsWindow;
+                        _journalsWindow.Closed += (s, e) => { _journalsWindow = null; };
                     }
                 }
                 else if (evt.WindowType == "GLD")

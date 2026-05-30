@@ -9,6 +9,9 @@ namespace HouseVictoria.Core.Models
         public string? MT4DataPath { get; set; }
         public DateTime? ConnectedAt { get; set; }
         public string? LastError { get; set; }
+        /// <summary>True when the MT4 EA has written bridge files recently.</summary>
+        public bool IsBridgeActive { get; set; }
+        public DateTime? BridgeLastActivityUtc { get; set; }
     }
 
     /// <summary>

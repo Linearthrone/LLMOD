@@ -268,6 +268,23 @@ namespace HouseVictoria.App.Screens.Windows
                 };
 
                 var createdProject = await _projectManagementService.CreateProjectAsync(project);
+
+                try
+                {
+                    var journalService = App.GetService<IJournalService>();
+                    var preface = string.IsNullOrWhiteSpace(_description)
+                        ? $"I chose to pursue \"{createdProject.Name}\" because it aligns with my current goals."
+                        : _description.Trim();
+                    await journalService.FindOrCreateForProjectAsync(
+                        createdProject.Id,
+                        createdProject.Name,
+                        preface);
+                }
+                catch (Exception journalEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Journal creation for project failed: {journalEx.Message}");
+                }
+
                 return createdProject;
             }
             catch (Exception ex)

@@ -80,7 +80,7 @@ namespace HouseVictoria.App.Controls
             InitializeComponent();
             _polyline = new Polyline
             {
-                StrokeThickness = CompactMode ? 1.2 : 2.0,
+                StrokeThickness = CompactMode ? 3.0 : 2.0,
                 StrokeLineJoin = PenLineJoin.Round,
                 StrokeStartLineCap = PenLineCap.Round,
                 StrokeEndLineCap = PenLineCap.Round
@@ -129,7 +129,7 @@ namespace HouseVictoria.App.Controls
                 _polyline.Stroke = Brushes.Cyan;
             }
 
-            _polyline.StrokeThickness = CompactMode ? 1.2 : 2.0;
+            _polyline.StrokeThickness = CompactMode ? 3.0 : 2.0;
             BpmLabel.Visibility = CompactMode ? Visibility.Collapsed : Visibility.Visible;
             UpdateBpmLabel();
         }
@@ -192,7 +192,7 @@ namespace HouseVictoria.App.Controls
 
         private void Redraw()
         {
-            var w = ActualWidth > 4 ? ActualWidth : (CompactMode ? 44 : 280);
+            var w = ActualWidth > 4 ? ActualWidth : (CompactMode ? 110 : 280);
             var h = WaveHeight;
             if (w <= 0 || h <= 0)
                 return;
