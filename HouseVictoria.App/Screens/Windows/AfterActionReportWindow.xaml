@@ -1,0 +1,193 @@
+<Window x:Class="HouseVictoria.App.Screens.Windows.AfterActionReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+        mc:Ignorable="d"
+        Title="After Action Reports" Height="850" Width="1100"
+        Style="{StaticResource OverlayWindow}"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
+    </Window.Resources>
+
+    <Border Style="{StaticResource GlassPanel}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🎖️" FontSize="22" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="After Action Reports" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Content="−" Width="30" Height="30" Background="#4000D4FF" BorderThickness="0"
+                                FontSize="18" FontWeight="Bold" Foreground="#E0F7FF" Cursor="Hand"
+                                Margin="0,0,5,0" Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
+                        <Button Content="✕" Width="30" Height="30" Background="#40FF3366" BorderThickness="0"
+                                FontSize="16" FontWeight="Bold" Foreground="#E0F7FF" Cursor="Hand"
+                                Click="CloseButton_Click" ToolTip="Close"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Toolbar -->
+            <Border Grid.Row="1" Background="#300A0E27" Padding="12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="🔄 Refresh" Style="{StaticResource GlassButton}"
+                                Command="{Binding RefreshCommand}" Width="100"/>
+                        <TextBlock Text="Review completed projects — accept to reward her, or reject to send it back with notes."
+                                   Foreground="#8899AA" VerticalAlignment="Center" Margin="14,0,0,0"
+                                   FontStyle="Italic"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Reports.Count, StringFormat='{}{0} awaiting review'}"
+                               Foreground="#8899AA" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Reports list -->
+            <Grid Grid.Row="2">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <ItemsControl ItemsSource="{Binding Reports}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,12" CornerRadius="8" Padding="18,16">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#40102030" Offset="0"/>
+                                            <GradientStop Color="#350A1622" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Border.BorderBrush>
+                                        <SolidColorBrush Color="#5000D4FF"/>
+                                    </Border.BorderBrush>
+                                    <Border.BorderThickness>1</Border.BorderThickness>
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.4"/>
+                                    </Border.Effect>
+
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Title row -->
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding ProjectName}" FontSize="19" FontWeight="SemiBold"
+                                                           Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding ProjectTypeLabel}" FontSize="11" Foreground="#7FA8C0" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Padding="12,5" CornerRadius="12" VerticalAlignment="Top"
+                                                    Background="{Binding CompletionLevelColor, Converter={StaticResource HexToBrushConverter}}">
+                                                <TextBlock Text="{Binding CompletionLevelLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#0A0E14"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Summary / goal / outcome -->
+                                        <StackPanel Grid.Row="1" Margin="0,12,0,0">
+                                            <TextBlock Text="Summary" FontSize="11" Foreground="#00D4FF" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Summary}" FontSize="13" Foreground="#D5E6F0" TextWrapping="Wrap" Margin="0,2,0,8"/>
+                                            <TextBlock Text="Goal" FontSize="11" Foreground="#00D4FF" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Goal}" FontSize="13" Foreground="#D5E6F0" TextWrapping="Wrap" Margin="0,2,0,8"/>
+                                            <TextBlock Text="Outcome" FontSize="11" Foreground="#00D4FF" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding Outcome}" FontSize="13" Foreground="#D5E6F0" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Metrics -->
+                                        <Border Grid.Row="2" Margin="0,14,0,0" Padding="14,10" CornerRadius="6" Background="#25000000">
+                                            <WrapPanel>
+                                                <StackPanel Margin="0,0,28,4">
+                                                    <TextBlock Text="Completion" FontSize="10" Foreground="#7FA8C0"/>
+                                                    <TextBlock Text="{Binding CompletionPercentageLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="0,0,28,4">
+                                                    <TextBlock Text="Time invested" FontSize="10" Foreground="#7FA8C0"/>
+                                                    <TextBlock Text="{Binding TimeInvestedLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="0,0,28,4">
+                                                    <TextBlock Text="Started" FontSize="10" Foreground="#7FA8C0"/>
+                                                    <TextBlock Text="{Binding StartLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="0,0,28,4">
+                                                    <TextBlock Text="Deadline" FontSize="10" Foreground="#7FA8C0"/>
+                                                    <TextBlock Text="{Binding DeadlineLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="0,0,28,4">
+                                                    <TextBlock Text="Completed" FontSize="10" Foreground="#7FA8C0"/>
+                                                    <TextBlock Text="{Binding CompletedLabel}" FontSize="13" Foreground="{Binding OnTimeColor, Converter={StaticResource HexToBrushConverter}}"/>
+                                                </StackPanel>
+                                                <StackPanel Margin="0,0,28,4">
+                                                    <TextBlock Text="Effort" FontSize="10" Foreground="#7FA8C0"/>
+                                                    <TextBlock Text="{Binding WorkSessionLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                </StackPanel>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- Deliverable -->
+                                        <Button Grid.Row="3" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                                Style="{StaticResource GlassButton}"
+                                                Visibility="{Binding HasDeliverable, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                Command="{Binding DataContext.OpenDeliverableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding DeliverablePath}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📎 " FontSize="13"/>
+                                                <TextBlock Text="{Binding DeliverableName}" FontSize="13"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Accept / Reject -->
+                                        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                                            <Button Content="👍 Accept &amp; Reward" Width="170" Height="36" Margin="0,0,10,0"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="#0A0E14" FontWeight="SemiBold"
+                                                    Background="#4DD0A0"
+                                                    Command="{Binding DataContext.AcceptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding Id}"/>
+                                            <Button Content="✋ Reject &amp; Revise" Width="160" Height="36"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="#E0F7FF" FontWeight="SemiBold"
+                                                    Background="#80FF5277"
+                                                    Command="{Binding DataContext.RejectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding Id}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Empty state -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding HasReports, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                    <TextBlock Text="🎖️" FontSize="48" HorizontalAlignment="Center" Opacity="0.5"/>
+                    <TextBlock Text="No reports awaiting review" FontSize="16" Foreground="#7FA8C0"
+                               HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                    <TextBlock Text="Completed projects will appear here for you to accept or reject."
+                               FontSize="12" Foreground="#5F7A8C" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

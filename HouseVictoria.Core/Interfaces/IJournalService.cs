@@ -46,5 +46,9 @@ namespace HouseVictoria.Core.Interfaces
         Task<ResearchJournal?> GenerateConclusionAsync(string journalId, AIContact contact);
 
         Task SyncFromAutonomyLogAsync();
+
+        Task ConsolidateSimilarJournalsAsync();
+
+        Task<string?> GetPriorWorkContextAsync(string topic, string? projectId = null, int maxEntries = 6);
     }
 }

@@ -13,6 +13,7 @@ namespace HouseVictoria.App.Screens.Trays
         public ICommand OpenProjectsCommand { get; }
         public ICommand OpenDataBankManagementCommand { get; }
         public ICommand OpenJournalsCommand { get; }
+        public ICommand OpenAfterActionReportsCommand { get; }
 
         public TopTrayViewModel(IEventAggregator eventAggregator)
         {
@@ -20,6 +21,7 @@ namespace HouseVictoria.App.Screens.Trays
             OpenProjectsCommand = new RelayCommand(() => ShowWindow("Projects"));
             OpenDataBankManagementCommand = new RelayCommand(() => ShowWindow("DataBankManagement"));
             OpenJournalsCommand = new RelayCommand(() => ShowWindow("Journals"));
+            OpenAfterActionReportsCommand = new RelayCommand(() => ShowWindow("AAR"));
         }
 
         private void ShowWindow(string windowType)

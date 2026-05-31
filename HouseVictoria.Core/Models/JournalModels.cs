@@ -19,16 +19,34 @@ namespace HouseVictoria.Core.Models
         Conclusion
     }
 
+    /// <summary>External publications/URLs vs our own generated artifacts.</summary>
+    public enum ReferenceKind
+    {
+        External,
+        Technology,
+        InternalArtifact
+    }
+
     /// <summary>A cited source or reference material attached to research or journal entries.</summary>
     public class ReferencedMaterial
     {
         public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public ReferenceKind Kind { get; set; } = ReferenceKind.External;
         public string Title { get; set; } = string.Empty;
         public string? Source { get; set; }
         public string? Url { get; set; }
         public string? FilePath { get; set; }
         public string? Notes { get; set; }
         public DateTime CitedAt { get; set; } = DateTime.Now;
+    }
+
+    /// <summary>Generated research output file tracked in the journal appendix.</summary>
+    public class GeneratedResearchFile
+    {
+        public string FilePath { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public string? EntryTitle { get; set; }
     }
 
     /// <summary>One page-worth of content within a research journal.</summary>

@@ -80,6 +80,16 @@ namespace HouseVictoria.Core.Models
     /// <summary>
     /// Application settings
     /// </summary>
+    /// <summary>
+    /// Persisted primary/secondary persona selections. Stored under the key
+    /// <c>PersonaContextState</c> and managed by IPersonaContext.
+    /// </summary>
+    public class PersonaContextState
+    {
+        public string PrimaryId { get; set; } = string.Empty;
+        public string SecondaryId { get; set; } = string.Empty;
+    }
+
     public class AppConfig
     {
         public string OllamaEndpoint { get; set; } = "http://localhost:11434";
@@ -97,6 +107,18 @@ namespace HouseVictoria.Core.Models
         public string HermesModelName { get; set; } = "hermes-agent";
         /// <summary>Auto-start <c>hermes gateway</c> on app launch when Hermes is primary or this flag is true.</summary>
         public bool HermesAutoStart { get; set; } = true;
+        /// <summary>
+        /// Id of the always-active "primary" persona (the house brain). Managed by IPersonaContext.
+        /// At most one persona is primary at a time.
+        /// </summary>
+        public string PrimaryAiContactId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Id of the persona last activated in a chat conversation ("secondary"/current focus).
+        /// Managed by IPersonaContext.
+        /// </summary>
+        public string SecondaryAiContactId { get; set; } = string.Empty;
+
         public string MCPServerEndpoint { get; set; } = "http://localhost:8080";
         public string UnrealEngineEndpoint { get; set; } = "ws://localhost:8888";
         public string TTSEndpoint { get; set; } = "http://localhost:8880";

@@ -6,9 +6,9 @@ using HouseVictoria.Core.Interfaces;
 
 namespace HouseVictoria.App.Screens.Windows
 {
-    public partial class JournalsWindow : Window
+    public partial class AfterActionReportWindow : Window
     {
-        public JournalsWindowViewModel ViewModel { get; }
+        public AfterActionReportWindowViewModel ViewModel { get; }
 
         private bool _isMinimized;
         private bool _isClosed;
@@ -17,17 +17,18 @@ namespace HouseVictoria.App.Screens.Windows
         private double _savedLeft;
         private double _savedTop;
 
-        public JournalsWindow()
+        public AfterActionReportWindow()
         {
             InitializeComponent();
             Resources["BoolToVisibilityConverter"] = new BoolToVisibilityConverter();
+            Resources["HexToBrushConverter"] = new HexToBrushConverter();
 
-            var journalService = App.GetService<IJournalService>();
-            ViewModel = new JournalsWindowViewModel(journalService);
+            var aarService = App.GetService<IAarService>();
+            ViewModel = new AfterActionReportWindowViewModel(aarService);
             DataContext = ViewModel;
 
-            Loaded += JournalsWindow_Loaded;
-            Closed += (_, _) => { _isClosed = true; };
+            Loaded += AfterActionReportWindow_Loaded;
+            Closed += (_, _) => { _isClosed = true; ViewModel.Cleanup(); };
         }
 
         public bool IsClosed() => _isClosed;
@@ -38,7 +39,7 @@ namespace HouseVictoria.App.Screens.Windows
             WindowHelper.RestoreFromTray(this, ref _isMinimized, _savedWidth, _savedHeight, _savedLeft, _savedTop);
         }
 
-        private async void JournalsWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void AfterActionReportWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _savedWidth = Width;
             _savedHeight = Height;
@@ -46,20 +47,11 @@ namespace HouseVictoria.App.Screens.Windows
             _savedTop = Top;
             try
             {
-                await ViewModel.LoadJournalsAsync();
+                await ViewModel.LoadReportsAsync();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"JournalsWindow load failed: {ex.Message}");
-                MessageBox.Show($"Could not load journals: {ex.Message}", "Journals", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        private void JournalCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is FrameworkElement element && element.Tag is string journalId)
-            {
-                ViewModel.OpenJournalCommand.Execute(journalId);
+                System.Diagnostics.Debug.WriteLine($"AfterActionReportWindow load failed: {ex.Message}");
             }
         }
 

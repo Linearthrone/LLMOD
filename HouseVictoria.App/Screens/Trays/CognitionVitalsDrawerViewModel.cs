@@ -118,25 +118,23 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
-                if (!status.IsConnected)
-                    return;
 
-                if (!status.IsBridgeActive)
-                {
-                    _autonomyService.PushVitalOverride(
-                        CognitionVitalRhythm.TradingActive,
-                        "MT4 connected · start HouseVictoriaBridge EA on a chart",
-                        TimeSpan.FromSeconds(30));
+                // Only treat this as "active trading" when MT4 is genuinely live AND actually holding
+                // positions. A merely-connected (or idle) MT4 must NOT hijack her cognition rhythm,
+                // otherwise the heart monitor gets pinned to "Active trading" forever.
+                if (!status.IsConnected || !status.IsBridgeActive)
                     return;
-                }
 
                 var positions = await _tradingService.GetOpenPositionsAsync().ConfigureAwait(false);
                 if (positions.Count > 0)
                 {
+                    // Short override (~8s) so it lapses quickly once trading stops and her real
+                    // autonomy rhythm can show through again. Poll runs every 5s, so it stays lit
+                    // only while positions are genuinely open.
                     _autonomyService.PushVitalOverride(
                         CognitionVitalRhythm.TradingActive,
                         $"Trading · {positions.Count} open position(s)",
-                        TimeSpan.FromSeconds(30));
+                        TimeSpan.FromSeconds(8));
                 }
             }
             catch (Exception ex)

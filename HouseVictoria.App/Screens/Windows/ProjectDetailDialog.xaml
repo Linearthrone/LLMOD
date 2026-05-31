@@ -29,8 +29,8 @@
             <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
                 <Grid>
                     <StackPanel>
-                        <TextBlock Text="{Binding ProjectName, StringFormat='📋 {0}'}" FontSize="20" FontWeight="Bold" Foreground="White"/>
-                        <TextBlock Text="{Binding ProjectTypePhase, FallbackValue=''}" FontSize="12" Foreground="#FFE0E0" Margin="0,5,0,0"/>
+                        <TextBlock Text="{Binding ProjectName, StringFormat='📋 {0}'}" FontSize="20" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ProjectTypePhase, FallbackValue=''}" FontSize="12" Foreground="#FFE0E0" Margin="0,5,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -319,11 +319,11 @@
                                                               FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="1">
                                                         <TextBlock Text="{Binding Name, FallbackValue='Unnamed'}" 
-                                                                  FontWeight="Bold" Foreground="White"/>
+                                                                  FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
                                                         <TextBlock Text="{Binding Description, FallbackValue=''}" 
-                                                                  Foreground="#CCCCCC" FontSize="11" Margin="0,3,0,0"/>
+                                                                  Foreground="#CCCCCC" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                                         <TextBlock Text="{Binding FileSizeFormatted, StringFormat='{}{0} • {1}', FallbackValue=''}" 
-                                                                  Foreground="#888888" FontSize="10" Margin="0,3,0,0"/>
+                                                                  Foreground="#888888" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                     <Button Grid.Column="2" Content="Preview" Style="{StaticResource GlassButton}" 
                                                            Command="{Binding DataContext.PreviewArtifactCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -406,12 +406,12 @@
                                                     </Grid.RowDefinitions>
                                                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,5">
                                                         <TextBlock Text="{Binding PerformedBy, FallbackValue='System'}" 
-                                                                  FontWeight="Bold" Foreground="#FFE0E0" Margin="0,0,10,0"/>
+                                                                  FontWeight="Bold" Foreground="#FFE0E0" Margin="0,0,10,0" TextWrapping="Wrap"/>
                                                         <TextBlock Text="{Binding Timestamp}" 
                                                                   Foreground="#CCCCCC" FontSize="11"/>
                                                     </StackPanel>
                                                     <TextBlock Grid.Row="1" Text="{Binding Action, FallbackValue='Action'}" 
-                                                              FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5"/>
+                                                              FontSize="14" FontWeight="Bold" Foreground="White" Margin="0,0,0,5" TextWrapping="Wrap"/>
                                                     <TextBlock Grid.Row="2" Text="{Binding Details, FallbackValue=''}" 
                                                               Foreground="#CCCCCC" TextWrapping="Wrap"/>
                                                 </Grid>

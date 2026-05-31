@@ -22,6 +22,7 @@ namespace HouseVictoria.Services.Autonomy
         private readonly IAgentService? _agent;
         private readonly IVirtualEnvironmentService? _virtualEnvironment;
         private readonly IJournalService? _journals;
+        private readonly IPersonaContext? _personaContext;
         private readonly AutonomyStateStore _stateStore;
         private readonly string _autonomyRoot;
 
@@ -35,6 +36,13 @@ namespace HouseVictoria.Services.Autonomy
         private string? _overrideLabel;
         private DateTime _overrideUntilUtc = DateTime.MinValue;
 
+        // Anti-fixation: stop her grinding the same project tick after tick.
+        private const int MaxConsecutiveSameProject = 3;
+        private static readonly TimeSpan ProjectCooldown = TimeSpan.FromMinutes(20);
+        private string? _lastFocusProjectId;
+        private int _sameFocusStreak;
+        private readonly Dictionary<string, DateTime> _projectCooldownUntil = new();
+
         public event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
         public event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
 
@@ -47,7 +55,8 @@ namespace HouseVictoria.Services.Autonomy
             IMemoryService? memory = null,
             IAgentService? agent = null,
             IVirtualEnvironmentService? virtualEnvironment = null,
-            IJournalService? journals = null)
+            IJournalService? journals = null,
+            IPersonaContext? personaContext = null)
         {
             _config = config;
             _aiService = aiService;
@@ -58,6 +67,7 @@ namespace HouseVictoria.Services.Autonomy
             _agent = agent;
             _virtualEnvironment = virtualEnvironment;
             _journals = journals;
+            _personaContext = personaContext;
 
             _autonomyRoot = ResolveAutonomyPath(config);
             Directory.CreateDirectory(_autonomyRoot);
@@ -196,7 +206,9 @@ namespace HouseVictoria.Services.Autonomy
 
             var userQuiet = await IsUserQuietAsync(contact.Id).ConfigureAwait(false);
             var highPriority = (await _projects.GetProjectsByPriorityAsync(
-                _config.AutonomyHighPriorityThreshold, 10).ConfigureAwait(false)).Take(3).ToList();
+                _config.AutonomyHighPriorityThreshold, 10).ConfigureAwait(false))
+                .Where(p => !IsProjectOnCooldown(p.Id))
+                .Take(3).ToList();
 
             var canAct = CanPerformSubstantiveAction();
             AutonomyDecision? decision = null;
@@ -215,7 +227,9 @@ namespace HouseVictoria.Services.Autonomy
             if (userQuiet && canAct)
             {
                 var allProjects = await _projects.GetAllProjectsAsync().ConfigureAwait(false);
-                decision = await DecideAsync(contact, allProjects.Where(p => p.Phase != ProjectPhase.Completed).Take(8).ToList(),
+                decision = await DecideAsync(contact, allProjects
+                    .Where(p => p.Phase != ProjectPhase.Completed && !IsProjectOnCooldown(p.Id))
+                    .Take(8).ToList(),
                     userQuiet, preferPriority: false, cancellationToken).ConfigureAwait(false);
                 if (decision != null)
                 {
@@ -297,14 +311,49 @@ namespace HouseVictoria.Services.Autonomy
             if (project == null)
                 throw new InvalidOperationException("No project found for work item.");
 
+            RecordProjectFocus(project.Id);
+
+            var priorWork = _journals != null
+                ? await _journals.GetPriorWorkContextAsync(project.Name, project.Id).ConfigureAwait(false)
+                : null;
+
+            var priorSection = string.IsNullOrWhiteSpace(priorWork)
+                ? ""
+                : $"""
+
+                Prior work on this topic (build on this — do not repeat empty status updates):
+                {priorWork}
+                """;
+
+            var isTradingProject = ContainsTradingKeywords(project.Name, project.Description, decision.Title, decision.Detail);
+
+            var deliverableRules = isTradingProject
+                ? """
+
+                This is a trading/strategy project. Your output MUST include concrete sections:
+                - **Strategy Overview**: rules, instruments, timeframes
+                - **Setups / Plays**: entry, exit, stop, position sizing
+                - **Backtesting / Statistics**: results, sample size, win rate, drawdown, expectancy (use real numbers if available; otherwise state assumptions explicitly and provide a structured template with placeholder columns — never skip the section)
+                - **External Sources**: cite actual documentation, papers, or platforms (MetaTrader docs, academic sources, etc.). Do NOT cite your own prior journal files as primary sources.
+                """
+                : """
+
+                Deliver substantive content, not a status update. Include concrete findings, specs, or artifacts.
+                If building on existing technology or published research, cite external sources (URLs, papers, docs).
+                Do NOT cite your own prior journal entries or generated markdown files as primary sources.
+                """;
+
             var prompt = $"""
                 You are {contact.Name}, working autonomously on the project "{project.Name}".
                 Project description: {project.Description}
                 Phase: {project.Phase}, completion: {project.CompletionPercentage}%
 
                 Task for this session: {decision.Detail}
+                {priorSection}
+                {deliverableRules}
 
-                Write a concise progress note (3-8 sentences) with concrete next steps. No preamble.
+                Write a detailed markdown deliverable (400-900 words) with the sections above as applicable.
+                Never respond with only "I have completed the research" or "I created the strategy" without the actual substance requested.
                 """;
 
             var note = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
@@ -316,9 +365,19 @@ namespace HouseVictoria.Services.Autonomy
                 Details = note.Trim()
             }).ConfigureAwait(false);
 
-            project.CompletionPercentage = Math.Min(99, project.CompletionPercentage + 2);
+            // Allow projects to actually reach 100% (was capped at 99%, which made them
+            // immortal and kept them permanently top-priority — the root of the fixation loop).
+            project.CompletionPercentage = Math.Min(100, project.CompletionPercentage + 2);
             project.LastModifiedAt = DateTime.Now;
             await _projects.UpdateProjectAsync(project).ConfigureAwait(false);
+
+            // When it crosses the finish line, mark it Completed via the phase update so the
+            // milestone event fires (this is what triggers the After Action Report).
+            if (project.CompletionPercentage >= 100 && project.Phase != ProjectPhase.Completed)
+            {
+                await _projects.UpdateProjectPhaseAsync(project.Id, ProjectPhase.Completed).ConfigureAwait(false);
+                ClearProjectFocusTracking(project.Id);
+            }
 
             var filePath = await _files.CreateTextFileAsync(
                 $"project-{project.Id}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.md",
@@ -413,12 +472,48 @@ namespace HouseVictoria.Services.Autonomy
 
         private async Task ExecuteResearchAsync(AIContact contact, AutonomyDecision decision, CancellationToken cancellationToken)
         {
+            var canonicalTopic = decision.Title;
+            var priorWork = _journals != null
+                ? await _journals.GetPriorWorkContextAsync(canonicalTopic, decision.ProjectId).ConfigureAwait(false)
+                : null;
+
+            var priorSection = string.IsNullOrWhiteSpace(priorWork)
+                ? ""
+                : $"""
+
+                Prior work in this journal thread (continue and extend — do not restart from scratch):
+                {priorWork}
+                """;
+
+            var isTradingTopic = ContainsTradingKeywords(decision.Title, decision.Detail, null, null);
+
+            var tradingSections = isTradingTopic
+                ? """
+
+                Required sections for trading/strategy research:
+                - **Strategy Definition**: what the strategy is, instruments, timeframe
+                - **Setups / Plays**: specific entry/exit rules
+                - **Backtesting & Statistics**: performance metrics, sample period, win rate, drawdown, R-multiple (real data if available; otherwise explicit assumptions + table template)
+                """
+                : "";
+
             var prompt = $"""
                 You are {contact.Name}, pursuing autonomous research.
                 Topic: {decision.Title}
                 Focus: {decision.Detail}
+                {priorSection}
 
-                Write a short research journal entry (150-400 words): hypotheses, questions, and one experiment or next read.
+                Write a substantive research journal entry in markdown (400-800 words).
+
+                Required structure:
+                1. **Objective** — what this entry adds beyond prior work
+                2. **Findings / Deliverables** — concrete substance (NOT "I completed the research")
+                3. **Methodology** — how you investigated
+                4. **External Sources** — cite real publications, documentation, technologies (with URLs or formal citations where possible). If building on existing tech or theory, name the actual source. Do NOT cite your own prior journal entries or generated files as primary sources.
+                5. **Open Questions** — what remains
+                {tradingSections}
+
+                Never submit a hollow completion notice. If data is missing, state what is missing and provide the best partial deliverable you can with explicit gaps.
                 """;
 
             var body = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
@@ -541,6 +636,55 @@ namespace HouseVictoria.Services.Autonomy
             return ParseDecision(raw);
         }
 
+        private bool IsProjectOnCooldown(string projectId)
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                return false;
+            lock (_stateLock)
+            {
+                return _projectCooldownUntil.TryGetValue(projectId, out var until) && DateTime.UtcNow < until;
+            }
+        }
+
+        private void RecordProjectFocus(string projectId)
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                return;
+
+            lock (_stateLock)
+            {
+                if (projectId == _lastFocusProjectId)
+                    _sameFocusStreak++;
+                else
+                {
+                    _lastFocusProjectId = projectId;
+                    _sameFocusStreak = 1;
+                }
+
+                // Worked the same project too many ticks in a row → force a break so she
+                // rotates to other projects / research / reflection instead of looping.
+                if (_sameFocusStreak >= MaxConsecutiveSameProject)
+                {
+                    _projectCooldownUntil[projectId] = DateTime.UtcNow + ProjectCooldown;
+                    _sameFocusStreak = 0;
+                    _lastFocusProjectId = null;
+                }
+            }
+        }
+
+        private void ClearProjectFocusTracking(string projectId)
+        {
+            lock (_stateLock)
+            {
+                _projectCooldownUntil.Remove(projectId);
+                if (_lastFocusProjectId == projectId)
+                {
+                    _lastFocusProjectId = null;
+                    _sameFocusStreak = 0;
+                }
+            }
+        }
+
         private async Task<Project?> ResolveProjectForDecisionAsync(AutonomyDecision decision)
         {
             if (!string.IsNullOrWhiteSpace(decision.ProjectId))
@@ -605,6 +749,14 @@ namespace HouseVictoria.Services.Autonomy
 
         private async Task<AIContact?> ResolveContactAsync()
         {
+            var preferredId = !string.IsNullOrWhiteSpace(_config.AutonomyAiContactId)
+                ? _config.AutonomyAiContactId
+                : _config.RemoteCompanionAiContactId;
+
+            if (_personaContext != null)
+                return await _personaContext.ResolveAsync(preferredId).ConfigureAwait(false);
+
+            // Fallback if the persona context was not supplied.
             Dictionary<string, AIContact> contacts;
             try
             {
@@ -618,13 +770,12 @@ namespace HouseVictoria.Services.Autonomy
             if (contacts.Count == 0)
                 return null;
 
-            if (!string.IsNullOrWhiteSpace(_config.AutonomyAiContactId) &&
-                contacts.TryGetValue(_config.AutonomyAiContactId, out var byConfig))
-                return byConfig;
-
-            if (!string.IsNullOrWhiteSpace(_config.RemoteCompanionAiContactId) &&
-                contacts.TryGetValue(_config.RemoteCompanionAiContactId, out var remote))
-                return remote;
+            if (!string.IsNullOrWhiteSpace(preferredId))
+            {
+                var preferred = contacts.Values.FirstOrDefault(c => string.Equals(c.Id, preferredId, StringComparison.Ordinal));
+                if (preferred != null)
+                    return preferred;
+            }
 
             return contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
         }
@@ -840,6 +991,13 @@ namespace HouseVictoria.Services.Autonomy
                 TotalTicks = source.TotalTicks,
                 TotalActions = source.TotalActions
             };
+
+        private static bool ContainsTradingKeywords(params string?[] parts)
+        {
+            var keywords = new[] { "forex", "fx", "mt4", "metatrader", "trading", "strategy", "backtest", "eurusd", "pip", "bridge" };
+            var text = string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p))).ToLowerInvariant();
+            return keywords.Any(k => text.Contains(k, StringComparison.OrdinalIgnoreCase));
+        }
 
         private static string SanitizeFileName(string name)
         {

@@ -14,6 +14,7 @@ using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 using System.Collections.Generic;
 
 namespace HouseVictoria.App.Screens.Windows
@@ -25,6 +26,7 @@ namespace HouseVictoria.App.Screens.Windows
         private readonly IMemoryService _memoryService;
         private readonly IMCPService? _mcpService;
         private readonly AppConfig _appConfig;
+        private readonly IPersonaContext? _personaContext;
         private string _currentView = "ContactBook"; // ContactBook, LoadModel, CreatePersona
         private AIContact? _selectedContact;
         private string _selectedModel = string.Empty;
@@ -41,7 +43,15 @@ namespace HouseVictoria.App.Screens.Windows
         private string _newPersonaDescription = string.Empty;
         private string _newPersonaMCPServer = string.Empty;
         private string _newPersonaPiperVoice = string.Empty;
+        private string _newPersonaAvatarUrl = string.Empty;
+        private PersonaRole _newPersonaRole = PersonaRole.Companion;
+        private string _selectedPersonaPreset = "Custom";
+        private string _nameValidationMessage = string.Empty;
         private ObservableCollection<string> _availablePiperVoices = new();
+        private ObservableCollection<string> _availablePersonaPresets = new()
+        {
+            "Custom", "Assistant", "Companion", "Coder", "Researcher"
+        };
 
         // LLM Parameters
         private double _newPersonaTemperature = 0.7;
@@ -90,6 +100,8 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand DeletePersonaCommand { get; }
         public ICommand LoadPersonaCommand { get; }
         public ICommand EditPersonaCommand { get; }
+        public ICommand SetPrimaryPersonaCommand { get; }
+        public ICommand BrowsePortraitCommand { get; }
         public ICommand PullModelCommand { get; }
         public ICommand PullModelForPersonaCommand { get; }
         public ICommand RunOllamaCommand { get; }
@@ -141,11 +153,101 @@ namespace HouseVictoria.App.Screens.Windows
             {
                 if (SetProperty(ref _newPersonaName, value))
                 {
+                    ValidatePersonaName();
+                    OnPropertyChanged(nameof(PreviewName));
+                    OnPropertyChanged(nameof(PreviewInitial));
                     // Trigger command re-evaluation
                     System.Windows.Input.CommandManager.InvalidateRequerySuggested();
                 }
             }
         }
+
+        public ObservableCollection<string> AvailablePersonaPresets => _availablePersonaPresets;
+
+        /// <summary>Selected starter template; applying it seeds the system prompt + sampling params.</summary>
+        public string SelectedPersonaPreset
+        {
+            get => _selectedPersonaPreset;
+            set
+            {
+                if (SetProperty(ref _selectedPersonaPreset, value))
+                {
+                    ApplyPersonaPreset(value);
+                }
+            }
+        }
+
+        /// <summary>The role the new persona will take. Mirrors the radio group in the create view.</summary>
+        public PersonaRole NewPersonaRole
+        {
+            get => _newPersonaRole;
+            set
+            {
+                if (SetProperty(ref _newPersonaRole, value))
+                {
+                    OnPropertyChanged(nameof(IsRolePrimary));
+                    OnPropertyChanged(nameof(IsRoleCompanion));
+                    OnPropertyChanged(nameof(IsRoleNone));
+                    OnPropertyChanged(nameof(PreviewRoleLabel));
+                }
+            }
+        }
+
+        public bool IsRolePrimary
+        {
+            get => _newPersonaRole == PersonaRole.Primary;
+            set { if (value) NewPersonaRole = PersonaRole.Primary; }
+        }
+
+        public bool IsRoleCompanion
+        {
+            get => _newPersonaRole == PersonaRole.Companion;
+            set { if (value) NewPersonaRole = PersonaRole.Companion; }
+        }
+
+        public bool IsRoleNone
+        {
+            get => _newPersonaRole == PersonaRole.None;
+            set { if (value) NewPersonaRole = PersonaRole.None; }
+        }
+
+        public string NewPersonaAvatarUrl
+        {
+            get => _newPersonaAvatarUrl;
+            set
+            {
+                if (SetProperty(ref _newPersonaAvatarUrl, value ?? string.Empty))
+                {
+                    OnPropertyChanged(nameof(HasPreviewPortrait));
+                    OnPropertyChanged(nameof(PreviewPortrait));
+                }
+            }
+        }
+
+        /// <summary>Inline name-validation message shown under the Name field (empty when valid).</summary>
+        public string NameValidationMessage
+        {
+            get => _nameValidationMessage;
+            set
+            {
+                if (SetProperty(ref _nameValidationMessage, value))
+                    OnPropertyChanged(nameof(HasNameValidationMessage));
+            }
+        }
+
+        public bool HasNameValidationMessage => !string.IsNullOrWhiteSpace(_nameValidationMessage);
+
+        // Live preview bindings for the create-persona card
+        public string PreviewName => string.IsNullOrWhiteSpace(_newPersonaName) ? "New persona" : _newPersonaName.Trim();
+        public string PreviewInitial => string.IsNullOrWhiteSpace(_newPersonaName) ? "?" : _newPersonaName.Trim().Substring(0, 1).ToUpperInvariant();
+        public string PreviewRoleLabel => _newPersonaRole switch
+        {
+            PersonaRole.Primary => "PRIMARY · always active",
+            PersonaRole.Companion => "Companion",
+            _ => "Persona"
+        };
+        public bool HasPreviewPortrait => !string.IsNullOrWhiteSpace(_newPersonaAvatarUrl) && System.IO.File.Exists(_newPersonaAvatarUrl);
+        public string? PreviewPortrait => HasPreviewPortrait ? _newPersonaAvatarUrl : null;
 
         public string NewPersonaModel
         {
@@ -366,6 +468,7 @@ namespace HouseVictoria.App.Screens.Windows
             _memoryService = memoryService ?? throw new ArgumentNullException(nameof(memoryService));
             _appConfig = appConfig ?? throw new ArgumentNullException(nameof(appConfig));
             _mcpService = mcpService;
+            try { _personaContext = App.GetService<IPersonaContext>(); } catch { _personaContext = null; }
 
             LoadModelCommand = new RelayCommand(() => CurrentView = "LoadModel");
             CreatePersonaCommand = new RelayCommand(async () =>
@@ -383,6 +486,8 @@ namespace HouseVictoria.App.Screens.Windows
             DeletePersonaCommand = new RelayCommand(async (param) => await DeletePersonaAsync(param as AIContact), (param) => param is AIContact);
             LoadPersonaCommand = new RelayCommand(async (param) => await LoadPersonaAsync(param as AIContact), (param) => param is AIContact);
             EditPersonaCommand = new RelayCommand(async (param) => await EditPersonaAsync(param as AIContact), (param) => param is AIContact);
+            SetPrimaryPersonaCommand = new RelayCommand(async (param) => await SetPrimaryPersonaAsync(param as AIContact), (param) => param is AIContact);
+            BrowsePortraitCommand = new RelayCommand(() => BrowsePortrait());
             ShowImageGenerationCommand = new RelayCommand(() => CurrentView = "ImageGeneration");
             GenerateImageCommand = new RelayCommand(async () => await GenerateImageAsync(), () => !string.IsNullOrWhiteSpace(ImageGenerationPrompt) && !IsGeneratingImage);
             SaveGeneratedImageCommand = new RelayCommand(async () => await SaveGeneratedImageAsync(), () => !string.IsNullOrWhiteSpace(GeneratedImagePath));
@@ -691,9 +796,12 @@ namespace HouseVictoria.App.Screens.Windows
                     PiperVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim(),
                     SystemPrompt = NewPersonaSystemPrompt?.Trim(),
                     Description = NewPersonaDescription?.Trim(),
+                    AvatarUrl = string.IsNullOrWhiteSpace(NewPersonaAvatarUrl) ? null : NewPersonaAvatarUrl.Trim(),
                     ServerEndpoint = AvailableModelsEndpoint,
                     MCPServerEndpoint = mcpEndpoint,
                     DataPath = dataPath,
+                    Role = NewPersonaRole,
+                    IsPrimaryAI = NewPersonaRole == PersonaRole.Primary,
                     CreatedAt = DateTime.Now,
                     LastUsedAt = DateTime.Now,
                     // LLM Parameters
@@ -712,6 +820,14 @@ namespace HouseVictoria.App.Screens.Windows
 
                 // Save to persistence
                 await _persistenceService.SetAsync($"AIContact_{newContact.Id}", newContact);
+
+                // If created as Primary, promote it through the persona context (atomically
+                // demotes any prior primary and persists the selection).
+                if (NewPersonaRole == PersonaRole.Primary && _personaContext != null)
+                {
+                    try { await _personaContext.SetPrimaryAsync(newContact.Id); }
+                    catch (Exception primEx) { System.Diagnostics.Debug.WriteLine($"Could not set primary persona: {primEx.Message}"); }
+                }
 
                 System.Diagnostics.Debug.WriteLine("Initializing MCP server for persona");
 
@@ -750,6 +866,10 @@ namespace HouseVictoria.App.Screens.Windows
                 NewPersonaAvatarModelPath = string.Empty;
                 NewPersonaAvatarVoiceSpeed = 1.0;
                 NewPersonaAvatarVoicePitch = 1.0;
+                NewPersonaAvatarUrl = string.Empty;
+                NewPersonaRole = PersonaRole.Companion;
+                SelectedPersonaPreset = "Custom";
+                NameValidationMessage = string.Empty;
 
                 // Switch to contact book
                 CurrentView = "ContactBook";
@@ -850,12 +970,105 @@ namespace HouseVictoria.App.Screens.Windows
 
             try
             {
+                var wasPrimary = _personaContext != null &&
+                                 string.Equals(_personaContext.PrimaryId, contact.Id, StringComparison.Ordinal);
+
                 await _persistenceService.DeleteAsync($"AIContact_{contact.Id}");
                 _aiContacts.Remove(contact);
+
+                // If we deleted the primary, promote the first remaining persona so the household
+                // always has a primary to fall back on.
+                if (wasPrimary && _personaContext != null)
+                {
+                    var next = _aiContacts.FirstOrDefault();
+                    if (next != null)
+                    {
+                        try { await _personaContext.SetPrimaryAsync(next.Id); }
+                        catch (Exception primEx) { System.Diagnostics.Debug.WriteLine($"Could not reassign primary: {primEx.Message}"); }
+                        await LoadAIContactsAsync();
+                    }
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error deleting persona: {ex.Message}");
+            }
+        }
+
+        private async Task SetPrimaryPersonaAsync(AIContact? contact)
+        {
+            if (contact == null || _personaContext == null) return;
+
+            try
+            {
+                await _personaContext.SetPrimaryAsync(contact.Id);
+                // Reload so the PRIMARY badge / IsPrimaryAI flags refresh in the contact book.
+                await LoadAIContactsAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting primary persona: {ex.Message}");
+            }
+        }
+
+        private void BrowsePortrait()
+        {
+            try
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Title = "Select a portrait image",
+                    Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp)|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|All files (*.*)|*.*"
+                };
+                if (dialog.ShowDialog() == true)
+                {
+                    NewPersonaAvatarUrl = dialog.FileName;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error browsing for portrait: {ex.Message}");
+            }
+        }
+
+        private void ValidatePersonaName()
+        {
+            var trimmed = (_newPersonaName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                NameValidationMessage = string.Empty; // don't nag on empty; Save is disabled anyway
+                return;
+            }
+
+            NameValidationMessage = _aiContacts.Any(c => c.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
+                ? $"A persona named '{trimmed}' already exists."
+                : string.Empty;
+        }
+
+        private void ApplyPersonaPreset(string preset)
+        {
+            switch (preset)
+            {
+                case "Assistant":
+                    NewPersonaSystemPrompt = "You are a helpful, concise assistant. Answer clearly and get to the point.";
+                    NewPersonaTemperature = 0.7; NewPersonaTopP = 0.9; NewPersonaTopK = 40; NewPersonaRepeatPenalty = 1.1;
+                    break;
+                case "Companion":
+                    NewPersonaSystemPrompt = "You are a warm, attentive companion. Be friendly and personable, remember context, and show genuine interest in the conversation.";
+                    NewPersonaTemperature = 0.9; NewPersonaTopP = 0.95; NewPersonaTopK = 50; NewPersonaRepeatPenalty = 1.05;
+                    break;
+                case "Coder":
+                    NewPersonaSystemPrompt = "You are an expert programming assistant. Provide correct, idiomatic code with brief explanations. Prefer clarity over cleverness.";
+                    NewPersonaTemperature = 0.3; NewPersonaTopP = 0.8; NewPersonaTopK = 40; NewPersonaRepeatPenalty = 1.1;
+                    break;
+                case "Researcher":
+                    NewPersonaSystemPrompt = "You are a rigorous research analyst. Reason step by step, cite assumptions, and distinguish facts from inferences.";
+                    NewPersonaTemperature = 0.5; NewPersonaTopP = 0.9; NewPersonaTopK = 40; NewPersonaRepeatPenalty = 1.15;
+                    break;
+                case "Custom":
+                default:
+                    // Leave the user's current values untouched.
+                    break;
             }
         }
 

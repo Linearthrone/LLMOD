@@ -17,6 +17,7 @@ namespace HouseVictoria.Services.Agent
         private readonly IAIService _aiService;
         private readonly IVirtualEnvironmentService _virtualEnvironmentService;
         private readonly IPersistenceService? _persistenceService;
+        private readonly IPersonaContext? _personaContext;
 
         private readonly AgentState _state = new();
         private readonly Dictionary<string, double> _drives = new()
@@ -28,11 +29,12 @@ namespace HouseVictoria.Services.Agent
 
         public string Name => _state.Name;
 
-        public AgentService(IAIService aiService, IVirtualEnvironmentService virtualEnvironmentService, IPersistenceService? persistenceService = null)
+        public AgentService(IAIService aiService, IVirtualEnvironmentService virtualEnvironmentService, IPersistenceService? persistenceService = null, IPersonaContext? personaContext = null)
         {
             _aiService = aiService;
             _virtualEnvironmentService = virtualEnvironmentService;
             _persistenceService = persistenceService;
+            _personaContext = personaContext;
         }
 
         public async Task InitializeAsync(string? virtualEnvironmentEndpoint = null, CancellationToken cancellationToken = default)
@@ -99,12 +101,20 @@ namespace HouseVictoria.Services.Agent
                 var modelPath = "DefaultAvatar";
                 var avatarName = "Ava";
                 var aiContactId = (string?)null;
-                if (_persistenceService != null)
+                if (_personaContext != null || _persistenceService != null)
                 {
                     try
                     {
-                        var contacts = await _persistenceService.GetAllAsync<AIContact>();
-                        var primary = contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
+                        AIContact? primary;
+                        if (_personaContext != null)
+                        {
+                            primary = await _personaContext.GetPrimaryAsync();
+                        }
+                        else
+                        {
+                            var contacts = await _persistenceService!.GetAllAsync<AIContact>();
+                            primary = contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
+                        }
                         if (primary != null)
                         {
                             if (!string.IsNullOrWhiteSpace(primary.AvatarModelPath))

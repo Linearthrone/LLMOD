@@ -25,18 +25,21 @@ namespace HouseVictoria.Services.Communication
         private readonly IMemoryService? _memoryService;
         private readonly IFileGenerationService? _fileGenerationService;
         private readonly ITTSService? _ttsService;
+        private readonly IJournalService? _journalService;
         private readonly Dictionary<string, CallState> _activeCalls = new(); // Track active calls by conversation ID
+        private readonly HashSet<string> _pendingFollowUps = new(); // Conversations with a scheduled auto follow-up
 
         public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
         public event EventHandler<CallStateChangedEventArgs>? CallStateChanged;
 
-        public SMSMMSCommunicationService(IAIService? aiService = null, IPersistenceService? persistenceService = null, IMemoryService? memoryService = null, IFileGenerationService? fileGenerationService = null, ITTSService? ttsService = null)
+        public SMSMMSCommunicationService(IAIService? aiService = null, IPersistenceService? persistenceService = null, IMemoryService? memoryService = null, IFileGenerationService? fileGenerationService = null, ITTSService? ttsService = null, IJournalService? journalService = null)
         {
             _aiService = aiService;
             _persistenceService = persistenceService;
             _memoryService = memoryService;
             _fileGenerationService = fileGenerationService;
             _ttsService = ttsService;
+            _journalService = journalService;
 
             // Subscribe to AI service events if available
             if (_aiService != null)
@@ -612,8 +615,21 @@ namespace HouseVictoria.Services.Communication
                             return;
                         }
 
+                        // Retrieve relevant journals + memories and inject them so the AI is aware of
+                        // its own prior work (research, strategies, projects) when replying.
+                        var retrieval = await BuildRetrievalContextAsync(aiContact, message.Content);
+                        List<ChatMessage> contextForAi = context;
+                        if (!string.IsNullOrWhiteSpace(retrieval))
+                        {
+                            contextForAi = new List<ChatMessage>(context.Count + 1)
+                            {
+                                new ChatMessage { Role = "system", Content = retrieval, Timestamp = DateTime.Now }
+                            };
+                            contextForAi.AddRange(context);
+                        }
+
                         // Send to AI service
-                        var aiResponse = await _aiService.SendMessageAsync(aiContact, message.Content, context);
+                        var aiResponse = await _aiService.SendMessageAsync(aiContact, message.Content, contextForAi);
 
                         // Check if user requested file creation or AI wants to create a file
                         var userRequestedFile = message.Content.Contains("file", StringComparison.OrdinalIgnoreCase) &&
@@ -687,6 +703,10 @@ namespace HouseVictoria.Services.Communication
                         {
                             context.RemoveRange(0, context.Count - 20);
                         }
+
+                        // If she promised to "give a moment" / "be right back" / follow up,
+                        // schedule a delayed follow-up so she actually delivers instead of going silent.
+                        TryScheduleFollowUp(aiContact, message.ConversationId, responseMessage);
                     }
                     catch (TaskCanceledException ex)
                     {
@@ -1422,5 +1442,318 @@ namespace HouseVictoria.Services.Communication
 
             System.Diagnostics.Debug.WriteLine($"Archived conversation {conversationId} ({messages.Count} messages) to AI long-term memory.");
         }
+
+        #region Memory & journal retrieval (RAG-lite)
+
+        private static readonly HashSet<string> RetrievalStopWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "the","and","for","that","with","this","you","your","yours","what","when","where","which",
+            "about","have","has","had","are","was","were","will","would","could","should","can","cant",
+            "did","does","from","into","they","them","then","than","there","here","just","like","want",
+            "wanted","need","needs","know","knew","told","tell","made","make","making","thing","things",
+            "really","said","says","she","her","hers","him","his","our","ours","not","but","all","any",
+            "how","why","who","get","got","its","i'm","i've","dont","don't","doesn't","didn't","ok","okay",
+            "yeah","yes","one","also","because","been","being","over","only","some","still","look","looks"
+        };
+
+        private static List<string> ExtractKeywords(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return new List<string>();
+
+            return System.Text.RegularExpressions.Regex.Matches(text.ToLowerInvariant(), @"[a-z0-9][a-z0-9'\-]{2,}")
+                .Select(m => m.Value.Trim('\''))
+                .Where(t => t.Length >= 3 && !RetrievalStopWords.Contains(t))
+                .Distinct()
+                .ToList();
+        }
+
+        private static int ScoreText(string? text, List<string> keywords)
+        {
+            if (string.IsNullOrWhiteSpace(text) || keywords.Count == 0)
+                return 0;
+
+            var lower = text.ToLowerInvariant();
+            var score = 0;
+            foreach (var keyword in keywords)
+            {
+                var idx = 0;
+                while ((idx = lower.IndexOf(keyword, idx, StringComparison.Ordinal)) >= 0)
+                {
+                    score++;
+                    idx += keyword.Length;
+                }
+            }
+            return score;
+        }
+
+        private static string TruncateText(string? s, int max)
+        {
+            if (string.IsNullOrEmpty(s))
+                return string.Empty;
+            return s.Length <= max ? s : s.Substring(0, max).TrimEnd() + "…";
+        }
+
+        /// <summary>
+        /// Builds a context block from the AI's own journals and stored memories that are relevant to
+        /// the user's message. Returns null when nothing relevant is found. Never throws.
+        /// </summary>
+        private async Task<string?> BuildRetrievalContextAsync(AIContact contact, string userMessage)
+        {
+            try
+            {
+                var keywords = ExtractKeywords(userMessage);
+                if (keywords.Count == 0)
+                    return null;
+
+                var sections = new List<(double score, string text)>();
+
+                // 1) Journals (research, project work, reflections, conclusions)
+                if (_journalService != null)
+                {
+                    try
+                    {
+                        var journals = await _journalService.GetAllJournalsAsync().ConfigureAwait(false);
+                        foreach (var journal in journals)
+                        {
+                            var headerScore = ScoreText(journal.Title, keywords) * 2
+                                              + ScoreText(journal.Topic, keywords) * 2
+                                              + ScoreText(journal.Preface, keywords);
+
+                            if (!string.IsNullOrWhiteSpace(journal.ConclusionSummary))
+                            {
+                                var concScore = ScoreText(journal.ConclusionSummary, keywords)
+                                                + ScoreText(journal.ConclusionImplications, keywords)
+                                                + headerScore;
+                                if (concScore > 0)
+                                {
+                                    sections.Add((concScore + 0.5,
+                                        $"From your concluded journal \"{journal.Title}\" ({journal.ConcludedAt:yyyy-MM-dd}):\n" +
+                                        TruncateText(journal.ConclusionSummary, 600)));
+                                }
+                            }
+
+                            foreach (var entry in journal.Entries)
+                            {
+                                if (entry.Kind == JournalEntryKind.Conclusion)
+                                    continue;
+                                var entryScore = ScoreText(entry.Title, keywords) * 2
+                                                 + ScoreText(entry.Body, keywords)
+                                                 + headerScore;
+                                if (entryScore > 0)
+                                {
+                                    sections.Add((entryScore,
+                                        $"From your journal \"{journal.Title}\" — {entry.Title} ({entry.Timestamp:yyyy-MM-dd}):\n" +
+                                        TruncateText(entry.Body, 600)));
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Journal retrieval failed: {ex.Message}");
+                    }
+                }
+
+                // 2) Per-contact long-term memories (chat archives, autonomy notes)
+                if (_memoryService != null)
+                {
+                    try
+                    {
+                        var memories = await _memoryService.GetMemoriesAsync(contact.Id).ConfigureAwait(false);
+                        var scoredMemories = memories
+                            .Select(m => (score: (double)ScoreText(m, keywords), text: m))
+                            .Where(x => x.score > 0)
+                            .OrderByDescending(x => x.score)
+                            .Take(3);
+                        foreach (var memory in scoredMemories)
+                            sections.Add((memory.score, $"Relevant memory:\n{TruncateText(memory.text, 400)}"));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Memory retrieval failed: {ex.Message}");
+                    }
+                }
+
+                if (sections.Count == 0)
+                    return null;
+
+                var builder = new System.Text.StringBuilder();
+                builder.AppendLine(
+                    "[Context from your own journals and memories relevant to the user's message. " +
+                    "These are things YOU have already written, researched, planned, or done — treat them as your own " +
+                    "knowledge and history, not as new information from the user. If the user refers to a plan, strategy, " +
+                    "or work, check here before claiming you have not done it.]");
+                builder.AppendLine();
+
+                var budget = 2000;
+                foreach (var section in sections.OrderByDescending(s => s.score).Take(6))
+                {
+                    if (budget <= 0)
+                        break;
+                    var piece = section.text.Length > budget ? section.text.Substring(0, budget) + "…" : section.text;
+                    builder.AppendLine(piece);
+                    builder.AppendLine();
+                    budget -= piece.Length;
+                }
+
+                return builder.ToString().TrimEnd();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"BuildRetrievalContextAsync failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        #endregion
+
+        #region Conversational follow-up ("give me a moment" fulfilment)
+
+        private static readonly string[] FollowUpCues =
+        {
+            "give me a moment", "give me a sec", "give me a second", "give me a minute", "give me some time",
+            "one moment", "just a moment", "just a sec", "just a second", "hold on", "bear with me",
+            "i'll be back", "i will be back", "be right back", "back in a", "brb",
+            "let me think", "let me get back", "get back to you", "i'll get back",
+            "i'll let you know", "i will let you know", "i'll find out", "i'll check", "let me check",
+            "let me look", "let me research", "let me work on", "i'll work on", "working on it",
+            "i'll put together", "i'll get that", "i'll come back", "let me dig", "let me pull"
+        };
+
+        private static bool DetectsFollowUpPromise(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+            var lower = text.ToLowerInvariant();
+            return FollowUpCues.Any(cue => lower.Contains(cue));
+        }
+
+        private void TryScheduleFollowUp(AIContact aiContact, string conversationId, string promiseText)
+        {
+            if (_aiService == null || string.IsNullOrWhiteSpace(conversationId))
+                return;
+            if (!DetectsFollowUpPromise(promiseText))
+                return;
+
+            lock (_pendingFollowUps)
+            {
+                if (_pendingFollowUps.Contains(conversationId))
+                    return;
+                _pendingFollowUps.Add(conversationId);
+            }
+
+            var promiseTime = DateTime.Now;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await DeliverFollowUpAsync(aiContact, conversationId, promiseText, promiseTime).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Follow-up delivery failed: {ex.Message}");
+                }
+                finally
+                {
+                    lock (_pendingFollowUps)
+                        _pendingFollowUps.Remove(conversationId);
+                }
+            });
+        }
+
+        private async Task DeliverFollowUpAsync(AIContact aiContact, string conversationId, string promiseText, DateTime promiseTime)
+        {
+            if (_aiService == null)
+                return;
+
+            // Wait a natural beat so the follow-up actually feels like "a moment later".
+            await Task.Delay(TimeSpan.FromSeconds(45)).ConfigureAwait(false);
+
+            // If the user already spoke again after the promise, they're engaged — don't barge in;
+            // their new message will be answered through the normal path.
+            if (_messages.TryGetValue(conversationId, out var existing) &&
+                existing.Any(m => m.Direction == MessageDirection.Outgoing && m.Timestamp > promiseTime))
+            {
+                return;
+            }
+
+            var baseContext = _chatContexts.TryGetValue(conversationId, out var liveCtx)
+                ? new List<ChatMessage>(liveCtx)
+                : new List<ChatMessage>();
+
+            var retrieval = await BuildRetrievalContextAsync(aiContact, promiseText).ConfigureAwait(false);
+            var contextForAi = new List<ChatMessage>();
+            if (!string.IsNullOrWhiteSpace(retrieval))
+                contextForAi.Add(new ChatMessage { Role = "system", Content = retrieval, Timestamp = DateTime.Now });
+            contextForAi.AddRange(baseContext);
+
+            var followUpPrompt =
+                "A moment ago you told the user you needed a moment, that you'd be right back, or that you'd follow up " +
+                $"(you said something like: \"{TruncateText(promiseText, 200)}\"). " +
+                "Time has now passed and you are back. Deliver on that promise directly and proactively: " +
+                "present the answer, result, or next step you said you'd return with. " +
+                "Do NOT ask the user to wait again, do NOT say you're still working on it, and do NOT dwell on apologising for the delay. " +
+                "Continue naturally, as the next thing you say in the conversation.";
+
+            var followUp = await _aiService.SendMessageAsync(aiContact, followUpPrompt, contextForAi).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(followUp))
+                return;
+
+            // Re-check after generation in case the user spoke while the model was thinking.
+            if (_messages.TryGetValue(conversationId, out var existing2) &&
+                existing2.Any(m => m.Direction == MessageDirection.Outgoing && m.Timestamp > promiseTime))
+            {
+                return;
+            }
+
+            if (_chatContexts.TryGetValue(conversationId, out var ctxToUpdate))
+            {
+                ctxToUpdate.Add(new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = followUp,
+                    Timestamp = DateTime.Now,
+                    ModelUsed = aiContact.ModelName
+                });
+                if (ctxToUpdate.Count > 20)
+                    ctxToUpdate.RemoveRange(0, ctxToUpdate.Count - 20);
+            }
+
+            var followUpMsg = new ConversationMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                ConversationId = conversationId,
+                Content = followUp,
+                Direction = MessageDirection.Incoming,
+                Type = MessageType.Text,
+                Timestamp = DateTime.Now
+            };
+
+            if (!_messages.ContainsKey(conversationId))
+                _messages[conversationId] = new List<ConversationMessage>();
+            if (!_messages[conversationId].Any(m => m.Id == followUpMsg.Id))
+                _messages[conversationId].Add(followUpMsg);
+
+            if (_persistenceService is DatabasePersistenceService dbFollow)
+            {
+                try { await dbFollow.SaveMessageAsync(followUpMsg).ConfigureAwait(false); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error saving follow-up message: {ex.Message}"); }
+            }
+
+            var conv = _conversations.FirstOrDefault(c => c.Id == conversationId);
+            if (conv != null)
+                conv.LastMessageAt = followUpMsg.Timestamp;
+
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs
+            {
+                Message = followUpMsg,
+                ConversationId = conversationId
+            });
+
+            System.Diagnostics.Debug.WriteLine($"Delivered auto follow-up for conversation {conversationId}");
+        }
+
+        #endregion
     }
 }

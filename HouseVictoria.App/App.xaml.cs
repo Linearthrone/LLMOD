@@ -71,6 +71,17 @@ namespace HouseVictoria.App
                     {
                         ThemeManager.ApplyTheme(appConfig.ColorScheme);
                     }
+
+                    // Load persisted primary/secondary persona selections and migrate the legacy
+                    // IsPrimaryAI flag before any background service resolves the active persona.
+                    try
+                    {
+                        ServiceProvider?.GetService<IPersonaContext>()?.InitializeAsync().GetAwaiter().GetResult();
+                    }
+                    catch (Exception personaEx)
+                    {
+                        LoggingHelper.WriteToStartupLog($"PersonaContext init error: {personaEx.Message}");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -125,6 +136,7 @@ namespace HouseVictoria.App
                     System.Diagnostics.Debug.WriteLine("MainWindow created and shown successfully");
 
                     StartRemoteCompanionHost();
+                    StartAarService();
                     StartAutonomyLoop();
                 }
                 catch (Exception ex)
@@ -147,6 +159,20 @@ namespace HouseVictoria.App
                 LoggingHelper.WriteToStartupLog(errorMsg);
                 MessageBox.Show($"Startup Error: {ex.Message}\n\n{ex.StackTrace}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
+            }
+        }
+
+        private void StartAarService()
+        {
+            try
+            {
+                // Resolve the singleton so it subscribes to project-completion events and can
+                // generate After Action Reports even before the AAR tray is opened.
+                _ = ServiceProvider?.GetService<IAarService>();
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.WriteToStartupLog($"AAR service setup error: {ex.Message}");
             }
         }
 
@@ -297,6 +323,12 @@ namespace HouseVictoria.App
                 new DatabasePersistenceService(sp.GetService<AppConfig>()));
             services.AddSingleton<IPersistenceService>(sp => sp.GetRequiredService<DatabasePersistenceService>());
             services.AddSingleton<IMemoryService>(sp => sp.GetRequiredService<DatabasePersistenceService>());
+            // Single source of truth for primary (always-active) vs secondary (last activated in chat) persona.
+            services.AddSingleton<IPersonaContext>(sp =>
+                new HouseVictoria.Services.Persona.PersonaContextService(
+                    sp.GetRequiredService<IPersistenceService>(),
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetService<IEventAggregator>()));
             services.AddSingleton<IFileGenerationService>(sp =>
             {
                 var appConfig = sp.GetService<AppConfig>();
@@ -367,7 +399,8 @@ namespace HouseVictoria.App
                     sp.GetService<IPersistenceService>(),
                     sp.GetService<IMemoryService>(),
                     sp.GetService<IFileGenerationService>(),
-                    sp.GetService<HouseVictoria.Core.Interfaces.ITTSService>()));
+                    sp.GetService<HouseVictoria.Core.Interfaces.ITTSService>(),
+                    sp.GetService<IJournalService>()));
             services.AddSingleton<IMCPService, MCPService>();
             services.AddSingleton<IProjectManagementService, HouseVictoria.Services.ProjectManagement.PersistentProjectManagementService>();
             services.AddSingleton<IVirtualEnvironmentService, UnrealEnvironmentService>();
@@ -375,7 +408,8 @@ namespace HouseVictoria.App
                 new HouseVictoria.Services.CovasBridge.OpenAICompatibleBridge(
                     sp.GetRequiredService<IAIService>(),
                     sp.GetRequiredService<IPersistenceService>(),
-                    sp.GetRequiredService<AppConfig>()));
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetService<IPersonaContext>()));
             // SystemMonitorService needs IVirtualEnvironmentService and optional COVAS bridge, so register it after
             services.AddSingleton<ISystemMonitorService>(sp =>
             {
@@ -409,13 +443,22 @@ namespace HouseVictoria.App
             // High-level cognitive agent service (composes AI + virtual environment)
             services.AddSingleton<IAgentService, AgentService>();
             services.AddSingleton<IJournalService, HouseVictoria.Services.Journals.JournalService>();
+            services.AddSingleton<IAarService>(sp =>
+                new HouseVictoria.Services.Aar.AarService(
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetRequiredService<IProjectManagementService>(),
+                    sp.GetService<IAIService>(),
+                    sp.GetService<IMemoryService>(),
+                    sp.GetService<DatabasePersistenceService>(),
+                    sp.GetService<IPersonaContext>()));
             services.AddSingleton<IAutonomyService, AutonomyOrchestratorService>();
             services.AddSingleton(sp => new RemoteCompanionChatService(
                 sp.GetRequiredService<IAIService>(),
                 sp.GetRequiredService<DatabasePersistenceService>(),
                 sp.GetService<IMemoryService>(),
                 sp.GetService<IVirtualEnvironmentService>(),
-                sp.GetRequiredService<AppConfig>()));
+                sp.GetRequiredService<AppConfig>(),
+                sp.GetService<IPersonaContext>()));
 
             ServiceProvider = services.BuildServiceProvider();
         }

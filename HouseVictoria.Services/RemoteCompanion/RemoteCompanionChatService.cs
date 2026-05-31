@@ -16,19 +16,22 @@ namespace HouseVictoria.Services.RemoteCompanion
         private readonly IMemoryService? _memoryService;
         private readonly IVirtualEnvironmentService? _virtualEnvironment;
         private readonly AppConfig _appConfig;
+        private readonly IPersonaContext? _personaContext;
 
         public RemoteCompanionChatService(
             IAIService aiService,
             DatabasePersistenceService database,
             IMemoryService? memoryService,
             IVirtualEnvironmentService? virtualEnvironment,
-            AppConfig appConfig)
+            AppConfig appConfig,
+            IPersonaContext? personaContext = null)
         {
             _aiService = aiService;
             _database = database;
             _memoryService = memoryService;
             _virtualEnvironment = virtualEnvironment;
             _appConfig = appConfig;
+            _personaContext = personaContext;
         }
 
         public async Task<RemoteCompanionChatResult> ChatAsync(string userMessage, string? contactIdOverride, CancellationToken cancellationToken = default)
@@ -129,6 +132,13 @@ namespace HouseVictoria.Services.RemoteCompanion
 
         private async Task<AIContact?> ResolveContactAsync(string? contactIdOverride)
         {
+            var preferredId = !string.IsNullOrWhiteSpace(contactIdOverride)
+                ? contactIdOverride
+                : _appConfig.RemoteCompanionAiContactId;
+
+            if (_personaContext != null)
+                return await _personaContext.ResolveAsync(preferredId).ConfigureAwait(false);
+
             Dictionary<string, AIContact> contacts;
             try
             {
@@ -142,12 +152,12 @@ namespace HouseVictoria.Services.RemoteCompanion
             if (contacts.Count == 0)
                 return null;
 
-            if (!string.IsNullOrWhiteSpace(contactIdOverride) && contacts.TryGetValue(contactIdOverride, out var byOverride))
-                return byOverride;
-
-            if (!string.IsNullOrWhiteSpace(_appConfig.RemoteCompanionAiContactId) &&
-                contacts.TryGetValue(_appConfig.RemoteCompanionAiContactId, out var configured))
-                return configured;
+            if (!string.IsNullOrWhiteSpace(preferredId))
+            {
+                var preferred = contacts.Values.FirstOrDefault(c => string.Equals(c.Id, preferredId, StringComparison.Ordinal));
+                if (preferred != null)
+                    return preferred;
+            }
 
             return contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
         }

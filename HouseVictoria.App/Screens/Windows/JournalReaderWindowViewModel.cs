@@ -19,6 +19,7 @@ namespace HouseVictoria.App.Screens.Windows
         private bool _isConcluding;
 
         public ObservableCollection<JournalPageViewModel> Pages { get; } = new();
+        public ObservableCollection<GeneratedFileViewModel> GeneratedFiles { get; } = new();
 
         public ICommand RefreshCommand { get; }
         public ICommand ConcludeCommand { get; }
@@ -32,6 +33,7 @@ namespace HouseVictoria.App.Screens.Windows
         public string? ConclusionSummary => _journal?.ConclusionSummary;
         public string? ConclusionImplications => _journal?.ConclusionImplications;
         public bool HasConclusion => IsConcluded && !string.IsNullOrWhiteSpace(ConclusionSummary);
+        public bool HasGeneratedFiles => GeneratedFiles.Count > 0;
 
         public bool IsLoading
         {
@@ -60,11 +62,15 @@ namespace HouseVictoria.App.Screens.Windows
 
         public async Task LoadAsync()
         {
+            if (IsLoading)
+                return;
+
             IsLoading = true;
             try
             {
-                _journal = await _journalService.GetJournalAsync(_journalId);
+                _journal = await _journalService.GetJournalAsync(_journalId).ConfigureAwait(true);
                 Pages.Clear();
+                GeneratedFiles.Clear();
 
                 if (_journal == null)
                     return;
@@ -76,6 +82,11 @@ namespace HouseVictoria.App.Screens.Windows
                     Pages.Add(new JournalPageViewModel(entry));
                 }
 
+                foreach (var file in HouseVictoria.Services.Journals.JournalService.CollectGeneratedFiles(_journal))
+                {
+                    GeneratedFiles.Add(new GeneratedFileViewModel(file));
+                }
+
                 OnPropertyChanged(nameof(Title));
                 OnPropertyChanged(nameof(Preface));
                 OnPropertyChanged(nameof(StatusLabel));
@@ -84,6 +95,11 @@ namespace HouseVictoria.App.Screens.Windows
                 OnPropertyChanged(nameof(ConclusionSummary));
                 OnPropertyChanged(nameof(ConclusionImplications));
                 OnPropertyChanged(nameof(HasConclusion));
+                OnPropertyChanged(nameof(HasGeneratedFiles));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Journal reader load failed: {ex.Message}");
             }
             finally
             {
@@ -99,8 +115,14 @@ namespace HouseVictoria.App.Screens.Windows
             IsConcluding = true;
             try
             {
-                var contacts = await _persistence.GetAllAsync<AIContact>();
-                var contact = contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
+                AIContact? contact = null;
+                try { contact = await (App.GetService<IPersonaContext>()?.GetPrimaryAsync() ?? Task.FromResult<AIContact?>(null)); }
+                catch { /* fall back below */ }
+                if (contact == null)
+                {
+                    var contacts = await _persistence.GetAllAsync<AIContact>();
+                    contact = contacts.Values.FirstOrDefault(c => c.IsPrimaryAI) ?? contacts.Values.FirstOrDefault();
+                }
                 if (contact == null)
                     return;
 
@@ -138,11 +160,11 @@ namespace HouseVictoria.App.Screens.Windows
             DateLabel = entry.Timestamp.ToString("MMMM dd, yyyy · h:mm tt");
             KindLabel = FormatKind(entry.Kind);
             References = entry.References
+                .Where(r => r.Kind == ReferenceKind.External || r.Kind == ReferenceKind.Technology)
+                .Where(r => string.IsNullOrWhiteSpace(r.FilePath))
                 .Select(r => new ReferenceViewModel(r))
                 .ToList();
-            LinkedFiles = entry.LinkedFilePaths.ToList();
             HasReferences = References.Count > 0;
-            HasLinkedFiles = LinkedFiles.Count > 0;
         }
 
         public string Title { get; }
@@ -150,9 +172,7 @@ namespace HouseVictoria.App.Screens.Windows
         public string DateLabel { get; }
         public string KindLabel { get; }
         public List<ReferenceViewModel> References { get; }
-        public List<string> LinkedFiles { get; }
         public bool HasReferences { get; }
-        public bool HasLinkedFiles { get; }
 
         private static string FormatKind(JournalEntryKind kind) => kind switch
         {
@@ -172,9 +192,29 @@ namespace HouseVictoria.App.Screens.Windows
         {
             Title = material.Title;
             Detail = material.Url ?? material.FilePath ?? material.Source ?? material.Notes ?? string.Empty;
+            DisplayLine = string.IsNullOrWhiteSpace(Detail)
+                ? $"• {Title}"
+                : $"• {Title} — {Detail}";
         }
 
         public string Title { get; }
         public string Detail { get; }
+        public string DisplayLine { get; }
+    }
+
+    public class GeneratedFileViewModel
+    {
+        public GeneratedFileViewModel(GeneratedResearchFile file)
+        {
+            FilePath = file.FilePath;
+            DisplayName = file.DisplayName;
+            Subtitle = string.IsNullOrWhiteSpace(file.EntryTitle)
+                ? file.CreatedAt.ToString("MMM dd, yyyy")
+                : $"{file.EntryTitle} · {file.CreatedAt:MMM dd, yyyy}";
+        }
+
+        public string FilePath { get; }
+        public string DisplayName { get; }
+        public string Subtitle { get; }
     }
 }

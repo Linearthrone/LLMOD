@@ -938,6 +938,18 @@ namespace HouseVictoria.App.Screens.Windows
                     // Save updated contact
                     await persistenceService.SetAsync($"AIContact_{aiContact.Id}", aiContact);
 
+                    // Record this persona as the "secondary" (last activated in chat) selection.
+                    try
+                    {
+                        var personaContext = App.GetService<IPersonaContext>();
+                        if (personaContext != null)
+                            await personaContext.SetSecondaryAsync(aiContact.Id);
+                    }
+                    catch (Exception pcEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Could not set secondary persona: {pcEx.Message}");
+                    }
+
                     System.Diagnostics.Debug.WriteLine($"Persona loaded: {aiContact.Name} with model {aiContact.ModelName}");
                 }
             }

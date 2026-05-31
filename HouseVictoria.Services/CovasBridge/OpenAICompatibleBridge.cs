@@ -18,6 +18,7 @@ namespace HouseVictoria.Services.CovasBridge
         private readonly IAIService _aiService;
         private readonly IPersistenceService _persistenceService;
         private readonly AppConfig _appConfig;
+        private readonly IPersonaContext? _personaContext;
         private HttpListener? _listener;
         private CancellationTokenSource? _cts;
         private Task? _listenerTask;
@@ -25,11 +26,12 @@ namespace HouseVictoria.Services.CovasBridge
 
         public bool IsRunning => _listener?.IsListening ?? false;
 
-        public OpenAICompatibleBridge(IAIService aiService, IPersistenceService persistenceService, AppConfig appConfig)
+        public OpenAICompatibleBridge(IAIService aiService, IPersistenceService persistenceService, AppConfig appConfig, IPersonaContext? personaContext = null)
         {
             _aiService = aiService;
             _persistenceService = persistenceService;
             _appConfig = appConfig;
+            _personaContext = personaContext;
         }
 
         public Task StartAsync()
@@ -258,6 +260,9 @@ namespace HouseVictoria.Services.CovasBridge
 
         private async Task<AIContact?> GetShipComputerContactAsync()
         {
+            if (_personaContext != null)
+                return await _personaContext.ResolveAsync(_appConfig.CovasContactId).ConfigureAwait(false);
+
             var all = await _persistenceService.GetAllAsync<AIContact>().ConfigureAwait(false);
             if (all == null || all.Count == 0)
                 return null;

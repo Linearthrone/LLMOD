@@ -28,6 +28,7 @@ namespace HouseVictoria.App.Screens.Windows
         private SettingsWindow? _settingsWindow;
         private ProjectsWindow? _projectsWindow;
         private JournalsWindow? _journalsWindow;
+        private AfterActionReportWindow? _aarWindow;
         private GlobalLogDirectoryWindow? _gldWindow;
         private DataBankManagementWindow? _dataBankManagementWindow;
         private VirtualEnvironmentControlsWindow? _virtualEnvironmentControlsWindow;
@@ -680,6 +681,25 @@ namespace HouseVictoria.App.Screens.Windows
                         _journalsWindow = new JournalsWindow();
                         windowToOpen = _journalsWindow;
                         _journalsWindow.Closed += (s, e) => { _journalsWindow = null; };
+                    }
+                }
+                else if (evt.WindowType == "AAR")
+                {
+                    if (_aarWindow != null && !_aarWindow.IsClosed())
+                    {
+                        if (_aarWindow.IsMinimized())
+                        {
+                            _aarWindow.RestoreFromMinimized();
+                        }
+                        _aarWindow.Activate();
+                        _aarWindow.Focus();
+                        return;
+                    }
+                    else
+                    {
+                        _aarWindow = new AfterActionReportWindow();
+                        windowToOpen = _aarWindow;
+                        _aarWindow.Closed += (s, e) => { _aarWindow = null; };
                     }
                 }
                 else if (evt.WindowType == "GLD")

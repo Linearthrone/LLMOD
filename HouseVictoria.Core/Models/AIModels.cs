@@ -1,6 +1,21 @@
 namespace HouseVictoria.Core.Models
 {
     /// <summary>
+    /// The role a persona plays in the household.
+    /// <para><see cref="Primary"/> is the always-active "house brain" used by autonomy,
+    /// journals, remote companion, etc. There is at most one primary at a time.</para>
+    /// </summary>
+    public enum PersonaRole
+    {
+        /// <summary>A regular persona with no special standing.</summary>
+        None = 0,
+        /// <summary>The always-active house persona. At most one persona is Primary.</summary>
+        Primary = 1,
+        /// <summary>A conversational companion (no autonomy/background duties).</summary>
+        Companion = 2
+    }
+
+    /// <summary>
     /// Represents an AI Contact (persona) that can be used for conversations
     /// </summary>
     public class AIContact
@@ -18,7 +33,16 @@ namespace HouseVictoria.Core.Models
         public bool IsLoaded { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime LastUsedAt { get; set; } = DateTime.Now;
+        /// <summary>
+        /// Legacy flag kept in sync with <see cref="HouseVictoria.Core.Interfaces.IPersonaContext"/>.
+        /// The authoritative "who is primary" lives in app config + the persona context service;
+        /// prefer that over reading this directly.
+        /// </summary>
         public bool IsPrimaryAI { get; set; }
+
+        /// <summary>The role this persona plays. <see cref="PersonaRole.Primary"/> mirrors <see cref="IsPrimaryAI"/>.</summary>
+        public PersonaRole Role { get; set; } = PersonaRole.None;
+
         public string? DataPath { get; set; } // Path to store this persona's data
 
         /// <summary>

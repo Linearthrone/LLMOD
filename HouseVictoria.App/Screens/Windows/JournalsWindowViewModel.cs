@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
@@ -9,8 +11,10 @@ namespace HouseVictoria.App.Screens.Windows
     public class JournalsWindowViewModel : ObservableObject
     {
         private readonly IJournalService _journalService;
+        private readonly Dispatcher _dispatcher;
         private bool _isLoading;
         private string _searchText = string.Empty;
+        private bool _reloadScheduled;
 
         public ObservableCollection<JournalListItemViewModel> Journals { get; } = new();
         public ICommand RefreshCommand { get; }
@@ -28,36 +32,57 @@ namespace HouseVictoria.App.Screens.Windows
             set
             {
                 if (SetProperty(ref _searchText, value))
-                    _ = LoadJournalsAsync();
+                    ApplyFilterToLoadedJournals();
             }
         }
+
+        private List<ResearchJournal> _cachedJournals = new();
 
         public JournalsWindowViewModel(IJournalService journalService)
         {
             _journalService = journalService ?? throw new ArgumentNullException(nameof(journalService));
+            _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
             RefreshCommand = new RelayCommand(async () => await LoadJournalsAsync());
             OpenJournalCommand = new RelayCommand<string?>(OpenJournal);
-            _journalService.JournalUpdated += (_, _) => _ = LoadJournalsAsync();
+            _journalService.JournalUpdated += OnJournalUpdated;
+        }
+
+        private void OnJournalUpdated(object? sender, JournalUpdatedEventArgs e)
+        {
+            if (_reloadScheduled)
+                return;
+
+            _reloadScheduled = true;
+            _dispatcher.BeginInvoke(DispatcherPriority.Background, () => _ = ReloadFromEventAsync());
+        }
+
+        private async Task ReloadFromEventAsync()
+        {
+            try
+            {
+                await LoadJournalsAsync().ConfigureAwait(true);
+            }
+            finally
+            {
+                _reloadScheduled = false;
+            }
         }
 
         public async Task LoadJournalsAsync()
         {
+            if (IsLoading)
+                return;
+
             IsLoading = true;
             try
             {
-                var all = await _journalService.GetAllJournalsAsync();
-                var filtered = string.IsNullOrWhiteSpace(SearchText)
-                    ? all
-                    : all.Where(j =>
-                        j.Title.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                        j.Topic.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                        j.Preface.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
-
-                Journals.Clear();
-                foreach (var journal in filtered)
-                {
-                    Journals.Add(new JournalListItemViewModel(journal));
-                }
+                var all = await _journalService.GetAllJournalsAsync().ConfigureAwait(true);
+                _cachedJournals = all.ToList();
+                ApplyFilterToLoadedJournals();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Journals load failed: {ex.Message}");
             }
             finally
             {
@@ -65,17 +90,39 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private void ApplyFilterToLoadedJournals()
+        {
+            var filtered = string.IsNullOrWhiteSpace(SearchText)
+                ? _cachedJournals
+                : _cachedJournals.Where(j =>
+                    j.Title.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                    j.Topic.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                    j.Preface.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+            Journals.Clear();
+            foreach (var journal in filtered)
+                Journals.Add(new JournalListItemViewModel(journal));
+        }
+
         private void OpenJournal(string? journalId)
         {
             if (string.IsNullOrWhiteSpace(journalId))
                 return;
 
-            var reader = new JournalReaderWindow(journalId);
-            reader.Owner = System.Windows.Application.Current.Windows
-                .OfType<System.Windows.Window>()
-                .FirstOrDefault(w => w.IsActive) ?? reader.Owner;
-            reader.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
-            reader.Show();
+            try
+            {
+                var reader = new JournalReaderWindow(journalId);
+                reader.Owner = Application.Current.Windows
+                    .OfType<Window>()
+                    .FirstOrDefault(w => w.IsActive) ?? reader.Owner;
+                reader.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                reader.Show();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Open journal failed: {ex.Message}");
+                MessageBox.Show($"Could not open journal: {ex.Message}", "Journals", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
     }
 

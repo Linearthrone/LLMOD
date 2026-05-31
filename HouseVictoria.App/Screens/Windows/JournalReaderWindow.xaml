@@ -93,45 +93,53 @@
                                         <TextBlock Text="{Binding Body}" FontFamily="Georgia" FontSize="14"
                                                    Foreground="#3A3020" TextWrapping="Wrap" LineHeight="22"/>
 
-                                        <!-- References -->
+                                        <!-- External sources only (not our generated files) -->
                                         <StackPanel Margin="0,14,0,0"
                                                     Visibility="{Binding HasReferences, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <TextBlock Text="Referenced materials" FontFamily="Georgia" FontSize="11"
+                                            <TextBlock Text="External sources" FontFamily="Georgia" FontSize="11"
                                                        Foreground="#6B5344" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                             <ItemsControl ItemsSource="{Binding References}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <TextBlock FontFamily="Georgia" FontSize="12"
-                                                                   Foreground="#5C4838" TextWrapping="Wrap" Margin="0,0,0,4">
-                                                            <Run Text="• "/>
-                                                            <Run Text="{Binding Title}" FontWeight="SemiBold"/>
-                                                            <Run Text=" — "/>
-                                                            <Run Text="{Binding Detail}" FontStyle="Italic"/>
-                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding DisplayLine}" FontFamily="Georgia" FontSize="12"
+                                                                   Foreground="#5C4838" TextWrapping="Wrap" Margin="0,0,0,4"/>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </StackPanel>
-
-                                        <!-- Linked files -->
-                                        <ItemsControl ItemsSource="{Binding LinkedFiles}" Margin="0,8,0,0"
-                                                      Visibility="{Binding HasLinkedFiles, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Button Content="{Binding}" HorizontalContentAlignment="Left"
-                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                                            FontFamily="Georgia" FontSize="11" Foreground="#0066AA"
-                                                            Padding="0,2" Command="{Binding DataContext.OpenLinkedFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}"/>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
 
                                         <Border Height="1" Background="#F0EBE0" Margin="0,20,0,0"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- Generated research files appendix -->
+                        <StackPanel Visibility="{Binding HasGeneratedFiles, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Margin="0,8,0,28">
+                            <Border Height="2" Background="#5C4033" Margin="0,0,0,16" Opacity="0.25"/>
+                            <TextBlock Text="Generated Research Files" FontFamily="Georgia" FontSize="16" FontWeight="Bold"
+                                       Foreground="#5C4033" Margin="0,0,0,6"/>
+                            <TextBlock Text="All files produced during this journal thread" FontFamily="Georgia" FontSize="11"
+                                       Foreground="#887766" FontStyle="Italic" Margin="0,0,0,12"/>
+                            <ItemsControl ItemsSource="{Binding GeneratedFiles}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <Button HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" FontFamily="Georgia" FontSize="13" Foreground="#0066AA"
+                                                    Padding="0,2"
+                                                    Command="{Binding DataContext.OpenLinkedFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding FilePath}">
+                                                <TextBlock Text="{Binding DisplayName}" TextDecorations="Underline"/>
+                                            </Button>
+                                            <TextBlock Text="{Binding Subtitle}" FontFamily="Georgia" FontSize="10"
+                                                       Foreground="#998877" FontStyle="Italic" Margin="0,0,0,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
 
                         <!-- Conclusion -->
                         <StackPanel Visibility="{Binding HasConclusion, Converter={StaticResource BoolToVisibilityConverter}}"
