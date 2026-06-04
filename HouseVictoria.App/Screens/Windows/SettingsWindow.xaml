@@ -266,9 +266,48 @@
                     <Border Style="{StaticResource Card}" Margin="0,5"
                             Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|2'}">
                         <StackPanel>
-                            <TextBlock Text="🎨 Image Generation (ComfyUI)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🎨 Image Generation" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Configure the image generation endpoint (typically a local ComfyUI server)." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
+                            <TextBlock Text="Default: A2E cloud (text-to-image). Choose ComfyUI only when you want local Stability Matrix / ComfyUI." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Provider:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding ImageGenerationProviderOptions}"
+                                          SelectedItem="{Binding ImageGenerationProvider, UpdateSourceTrigger=PropertyChanged}"
+                                          Background="#252F3F"
+                                          BorderBrush="#4000D4FF"
+                                          Foreground="#E0F7FF"
+                                          Padding="8"
+                                          Margin="5,0"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="A2E API token:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding A2eApiToken, UpdateSourceTrigger=PropertyChanged}"
+                                        Background="#252F3F" BorderBrush="#4000D4FF"
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                            </Grid>
+                            <TextBlock Text="Bearer token from video.a2e.ai → API Token. Or set env A2E_API_TOKEN. Restart app after saving."
+                                      FontSize="11" Foreground="#5A6A7A" Margin="0,3,0,8" FontStyle="Italic" TextWrapping="Wrap"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="A2E API URL:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding A2eApiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                        Background="#252F3F" BorderBrush="#4000D4FF"
+                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                            </Grid>
+                            <TextBlock Text="Local ComfyUI (fallback or when provider = comfyui)" FontSize="13" FontWeight="SemiBold" Foreground="#00D4FF" Margin="0,4,0,4"/>
+                            <TextBlock Text="Configure the local image endpoint (typically ComfyUI on port 8188)." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>

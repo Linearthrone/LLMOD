@@ -342,6 +342,31 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _autonomyMaxArtPerHour, Math.Clamp(value, 0, 6));
         }
 
+        // Image generation provider (A2E cloud default, or local ComfyUI)
+        private string _imageGenerationProvider = "a2e";
+        public string ImageGenerationProvider
+        {
+            get => _imageGenerationProvider;
+            set => SetProperty(ref _imageGenerationProvider, value ?? "a2e");
+        }
+
+        public IReadOnlyList<string> ImageGenerationProviderOptions { get; } =
+            new[] { "a2e", "comfyui" };
+
+        private string _a2eApiToken = string.Empty;
+        public string A2eApiToken
+        {
+            get => _a2eApiToken;
+            set => SetProperty(ref _a2eApiToken, value ?? string.Empty);
+        }
+
+        private string _a2eApiBaseUrl = "https://video.a2e.ai";
+        public string A2eApiBaseUrl
+        {
+            get => _a2eApiBaseUrl;
+            set => SetProperty(ref _a2eApiBaseUrl, value ?? "https://video.a2e.ai");
+        }
+
         // Image Generation Endpoint (ComfyUI - legacy StableDiffusionEndpoint setting name)
         private string _stableDiffusionEndpoint = string.Empty;
         public string StableDiffusionEndpoint
@@ -737,6 +762,9 @@ namespace HouseVictoria.App.Screens.Windows
             AutonomyEnableArtGeneration = appConfig.AutonomyEnableArtGeneration;
             AutonomyMaxActionsPerHour = appConfig.AutonomyMaxActionsPerHour;
             AutonomyMaxArtPerHour = appConfig.AutonomyMaxArtPerHour;
+            ImageGenerationProvider = string.IsNullOrWhiteSpace(appConfig.ImageGenerationProvider) ? "a2e" : appConfig.ImageGenerationProvider;
+            A2eApiToken = appConfig.A2eApiToken ?? string.Empty;
+            A2eApiBaseUrl = string.IsNullOrWhiteSpace(appConfig.A2eApiBaseUrl) ? "https://video.a2e.ai" : appConfig.A2eApiBaseUrl;
             StableDiffusionEndpoint = appConfig.StableDiffusionEndpoint;
             StabilityMatrixPath = appConfig.StabilityMatrixPath ?? string.Empty;
             ComfyUIPortablePath = appConfig.ComfyUIPortablePath ?? string.Empty;
@@ -1888,6 +1916,9 @@ d_comfyui_models:
                         AutonomyEnableArtGeneration = importedConfig.AutonomyEnableArtGeneration;
                         AutonomyMaxActionsPerHour = importedConfig.AutonomyMaxActionsPerHour;
                         AutonomyMaxArtPerHour = importedConfig.AutonomyMaxArtPerHour;
+                        ImageGenerationProvider = string.IsNullOrWhiteSpace(importedConfig.ImageGenerationProvider) ? "a2e" : importedConfig.ImageGenerationProvider;
+                        A2eApiToken = importedConfig.A2eApiToken ?? string.Empty;
+                        A2eApiBaseUrl = string.IsNullOrWhiteSpace(importedConfig.A2eApiBaseUrl) ? "https://video.a2e.ai" : importedConfig.A2eApiBaseUrl;
                         StableDiffusionEndpoint = importedConfig.StableDiffusionEndpoint;
                         StabilityMatrixPath = importedConfig.StabilityMatrixPath ?? string.Empty;
                         ComfyUIPortablePath = importedConfig.ComfyUIPortablePath ?? string.Empty;
@@ -1971,6 +2002,9 @@ d_comfyui_models:
                         AutonomyEnableArtGeneration = AutonomyEnableArtGeneration,
                         AutonomyMaxActionsPerHour = AutonomyMaxActionsPerHour,
                         AutonomyMaxArtPerHour = AutonomyMaxArtPerHour,
+                        ImageGenerationProvider = ImageGenerationProvider,
+                        A2eApiToken = A2eApiToken,
+                        A2eApiBaseUrl = A2eApiBaseUrl,
                         StableDiffusionEndpoint = StableDiffusionEndpoint,
                         StabilityMatrixPath = StabilityMatrixPath,
                         ComfyUIPortablePath = ComfyUIPortablePath,
@@ -2050,6 +2084,9 @@ d_comfyui_models:
                 _appConfig.AutonomyEnableArtGeneration = AutonomyEnableArtGeneration;
                 _appConfig.AutonomyMaxActionsPerHour = AutonomyMaxActionsPerHour;
                 _appConfig.AutonomyMaxArtPerHour = AutonomyMaxArtPerHour;
+                _appConfig.ImageGenerationProvider = ImageGenerationProvider;
+                _appConfig.A2eApiToken = A2eApiToken;
+                _appConfig.A2eApiBaseUrl = A2eApiBaseUrl;
                 _appConfig.StableDiffusionEndpoint = StableDiffusionEndpoint;
                 _appConfig.StabilityMatrixPath = StabilityMatrixPath;
                 _appConfig.ComfyUIPortablePath = ComfyUIPortablePath;
@@ -2108,6 +2145,9 @@ d_comfyui_models:
                 UpdateOrAddSetting(config, "AutonomyEnableArtGeneration", AutonomyEnableArtGeneration.ToString());
                 UpdateOrAddSetting(config, "AutonomyMaxActionsPerHour", AutonomyMaxActionsPerHour.ToString());
                 UpdateOrAddSetting(config, "AutonomyMaxArtPerHour", AutonomyMaxArtPerHour.ToString());
+                UpdateOrAddSetting(config, "ImageGenerationProvider", ImageGenerationProvider);
+                UpdateOrAddSetting(config, "A2eApiToken", A2eApiToken ?? string.Empty);
+                UpdateOrAddSetting(config, "A2eApiBaseUrl", A2eApiBaseUrl ?? "https://video.a2e.ai");
                 UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
                 UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
                 UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
@@ -2211,6 +2251,9 @@ d_comfyui_models:
                 AutonomyEnableArtGeneration = defaults.AutonomyEnableArtGeneration;
                 AutonomyMaxActionsPerHour = defaults.AutonomyMaxActionsPerHour;
                 AutonomyMaxArtPerHour = defaults.AutonomyMaxArtPerHour;
+                ImageGenerationProvider = defaults.ImageGenerationProvider;
+                A2eApiToken = defaults.A2eApiToken;
+                A2eApiBaseUrl = defaults.A2eApiBaseUrl;
                 StableDiffusionEndpoint = defaults.StableDiffusionEndpoint;
                 StabilityMatrixPath = defaults.StabilityMatrixPath ?? string.Empty;
                 ComfyUIPortablePath = defaults.ComfyUIPortablePath ?? string.Empty;

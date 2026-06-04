@@ -204,14 +204,39 @@ namespace HouseVictoria.Services.AIServices
         {
             try
             {
-                // Get image generation endpoint from AppConfig (preferred) or environment variable.
-                // This is typically a local ComfyUI instance (e.g. http://localhost:8188) and may still
-                // reuse the legacy "StableDiffusionEndpoint" setting name for compatibility.
+                var provider = _appConfig?.ImageGenerationProvider ?? "a2e";
+                var a2eToken = A2eImageGenerationClient.ResolveApiToken(_appConfig?.A2eApiToken);
+
+                if (A2eImageGenerationClient.ShouldUseA2e(provider, a2eToken))
+                {
+                    try
+                    {
+                        var a2e = new A2eImageGenerationClient(
+                            _httpClient,
+                            a2eToken!,
+                            _appConfig?.A2eApiBaseUrl);
+                        return await a2e.GenerateImageAsync(prompt);
+                    }
+                    catch (Exception a2eEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[A2E] Image generation failed, falling back to local: {a2eEx.Message}");
+                        if (string.Equals(provider.Trim(), "a2e", StringComparison.OrdinalIgnoreCase)
+                            && string.IsNullOrWhiteSpace(_appConfig?.StableDiffusionEndpoint)
+                            && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("STABLE_DIFFUSION_ENDPOINT")))
+                        {
+                            throw new Exception(
+                                $"A2E image generation failed: {a2eEx.Message}. " +
+                                "Set Image Generation provider to ComfyUI in Settings, or configure a local ComfyUI endpoint.",
+                                a2eEx);
+                        }
+                    }
+                }
+
+                // Local ComfyUI / Automatic1111 (legacy StableDiffusionEndpoint setting name).
                 var imageEndpoint = _appConfig?.StableDiffusionEndpoint
                     ?? Environment.GetEnvironmentVariable("STABLE_DIFFUSION_ENDPOINT")
-                    ?? "http://localhost:8188"; // Default to ComfyUI
+                    ?? "http://localhost:8188";
 
-                // Automatic1111 WebUI exposes /sdapi/v1/txt2img; ComfyUI (default :8188) uses /prompt instead — try both.
                 return await GenerateImageWithComfyUIAsync(imageEndpoint, prompt);
             }
             catch (Exception ex)

@@ -127,6 +127,12 @@ namespace HouseVictoria.Core.Models
         public string PiperDefaultModel { get; set; } = "en_US-amy-medium";
         /// <summary>When Kokoro/Piper HTTP synthesis fails, use System.Speech (Microsoft voices). Set false to avoid wrong-voice fallback; requires app restart.</summary>
         public bool UseWindowsTTSFallback { get; set; } = true;
+        /// <summary>Image provider: <c>a2e</c> (cloud, default when token set) or <c>comfyui</c> (local Stability Matrix / ComfyUI only).</summary>
+        public string ImageGenerationProvider { get; set; } = "a2e";
+        /// <summary>Bearer token from https://video.a2e.ai (API Token). Falls back to env <c>A2E_API_TOKEN</c>.</summary>
+        public string A2eApiToken { get; set; } = string.Empty;
+        /// <summary>A2E API base URL (global: https://video.a2e.ai, China: https://video.a2e.com.cn).</summary>
+        public string A2eApiBaseUrl { get; set; } = "https://video.a2e.ai";
         public string StableDiffusionEndpoint { get; set; } = "http://localhost:8188"; // Legacy name: image endpoint (ComfyUI default)
         /// <summary>Full path to Stability Matrix executable (e.g. C:\...\Stability Matrix.exe). Used to launch the manager and ComfyUI.</summary>
         public string StabilityMatrixPath { get; set; } = string.Empty;
