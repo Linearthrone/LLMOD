@@ -25,6 +25,10 @@ namespace HouseVictoria.Core.Models
         public string WaveColorHex { get; set; } = "#4FC3F7";
         public AutonomyActivityKind LastActivity { get; set; } = AutonomyActivityKind.None;
         public string? LastActivitySummary { get; set; }
+        public DateTime? CurrentActivityStartedUtc { get; set; }
+        public string? PreviousActivitySummary { get; set; }
+        public DateTime? PreviousActivityStartedUtc { get; set; }
+        public DateTime? PreviousActivityEndedUtc { get; set; }
         public bool AutonomyRunning { get; set; }
         public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
     }
@@ -59,6 +63,12 @@ namespace HouseVictoria.Core.Models
         public DateTime? LastActionUtc { get; set; }
         public AutonomyActivityKind LastActivity { get; set; } = AutonomyActivityKind.None;
         public string? LastActivitySummary { get; set; }
+        /// <summary>When <see cref="LastActivity"/> / summary last changed.</summary>
+        public DateTime? CurrentActivityStartedUtc { get; set; }
+        public AutonomyActivityKind PreviousActivity { get; set; } = AutonomyActivityKind.None;
+        public string? PreviousActivitySummary { get; set; }
+        public DateTime? PreviousActivityStartedUtc { get; set; }
+        public DateTime? PreviousActivityEndedUtc { get; set; }
         public string? CurrentFocusProjectId { get; set; }
         public Dictionary<string, double> Drives { get; set; } = new()
         {

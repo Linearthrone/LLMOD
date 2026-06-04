@@ -57,7 +57,7 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 var source = e.OriginalSource as DependencyObject;
-                if (source != null && (IsDescendantOf(source, CompactHandle) || IsDescendantOf(source, DrawerPanel)))
+                if (source != null && (IsDescendantOf(source, CollapsedTab) || IsDescendantOf(source, DrawerPanel)))
                     return;
 
                 _viewModel.IsDrawerOpen = false;

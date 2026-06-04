@@ -16,41 +16,36 @@
     <Grid x:Name="RootGrid"
           Background="Transparent"
           MouseDown="RootGrid_MouseDown">
-        <!-- Compact heart monitor chip (upper-left anchor) -->
-        <Border x:Name="CompactHandle"
+        <!-- Collapsed tab: active AI name only -->
+        <Border x:Name="CollapsedTab"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Background="#2000D4FF"
                 BorderBrush="#4000D4FF"
                 BorderThickness="1"
-                CornerRadius="8"
-                Padding="15,10"
-                Cursor="Hand">
+                CornerRadius="0,8,8,0"
+                Padding="10,8"
+                Cursor="Hand"
+                Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
             <Button Command="{Binding ToggleDrawerCommand}"
                     Background="Transparent"
                     BorderThickness="0"
                     Padding="0"
                     ToolTip="Cognitive vitals">
-                <StackPanel>
-                    <controls:CognitionVitalsControl CompactMode="True"
-                                                       WaveHeight="70"
-                                                       Width="120"
-                                                       Rhythm="{Binding CognitionRhythm}"
-                                                       BeatsPerMinute="{Binding CognitionBpm}"
-                                                       Intensity="{Binding CognitionIntensity}"
-                                                       WaveColorHex="{Binding CognitionWaveColorHex}"/>
-                    <Ellipse Width="15" Height="15" Margin="0,5,0,0" HorizontalAlignment="Center"
-                             Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"
-                             Visibility="{Binding AutonomyRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
+                <TextBlock Text="{Binding ActiveAiName}"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="#E0F7FF"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="160"/>
             </Button>
         </Border>
 
-        <!-- Expanded drawer panel (drops below chip) -->
+        <!-- Expanded drawer panel -->
         <Border x:Name="DrawerPanel"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
-                Margin="0,145,0,0"
+                Margin="0,40,0,0"
                 Width="300"
                 Background="#CC0A0E27"
                 CornerRadius="6"
@@ -58,71 +53,65 @@
                 BorderBrush="#4000D4FF"
                 BorderThickness="1"
                 Visibility="Collapsed">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="420">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="460">
                 <StackPanel>
-                    <TextBlock Text="Cognitive vitals"
-                               Style="{StaticResource CalligraphyText}"
-                               FontSize="22"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,8"/>
+                    <Button Command="{Binding ToggleDrawerCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0,0,0,8"
+                            HorizontalContentAlignment="Center"
+                            Cursor="Hand"
+                            ToolTip="Collapse vitals">
+                        <TextBlock Text="{Binding ActiveAiName}"
+                                   Style="{StaticResource CalligraphyText}"
+                                   FontSize="22"
+                                   Foreground="#E0F7FF"/>
+                    </Button>
 
                     <Border Style="{StaticResource Card}" Margin="0,0,0,5"
                             BorderBrush="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}">
                         <StackPanel>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Pulse" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
-                                             Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
-                                    <TextBlock Text="{Binding CognitionStatusLabel}" FontSize="11" Foreground="#E0F7FF"
-                                               TextWrapping="Wrap" MaxWidth="140" TextAlignment="Right"/>
-                                </StackPanel>
-                            </Grid>
+                            <TextBlock Text="Pulse" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
                             <controls:CognitionVitalsControl Margin="0,8,0,4"
                                                                WaveHeight="72"
                                                                Rhythm="{Binding CognitionRhythm}"
                                                                BeatsPerMinute="{Binding CognitionBpm}"
                                                                Intensity="{Binding CognitionIntensity}"
                                                                WaveColorHex="{Binding CognitionWaveColorHex}"/>
-                            <TextBlock FontSize="11" Foreground="#80C4D4" TextWrapping="Wrap">
-                                <Run Text="Rhythm: "/><Run Text="{Binding CognitionRhythm}"/><Run Text=" · "/>
-                                <Run Text="{Binding CognitionBpm, StringFormat={}{0:F0} bpm}"/>
-                            </TextBlock>
+                            <TextBlock Text="{Binding CognitionRhythmDescription}"
+                                       FontSize="11"
+                                       Foreground="#80C4D4"
+                                       TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource Card}" Margin="0,0,0,5">
                         <StackPanel>
-                            <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
-                            <Grid Margin="0,6">
+                            <Grid Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Loop:" Foreground="#80C4D4" Margin="0,0,8,0"/>
-                                <TextBlock Grid.Column="1" Foreground="#E0F7FF">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Running"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding AutonomyRunning}" Value="False">
-                                                    <Setter Property="Text" Value="Stopped"/>
-                                                    <Setter Property="Foreground" Value="#888888"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                             Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
+                                    <TextBlock Text="{Binding AutonomyStatusText}" FontSize="11" Foreground="#E0F7FF"/>
+                                </StackPanel>
                             </Grid>
-                            <TextBlock Text="Last activity" FontSize="11" Foreground="#80C4D4" Margin="0,4,0,2"/>
-                            <TextBlock Text="{Binding AutonomyLastActivityText}" FontSize="12" Foreground="#E0F7FF"
+
+                            <TextBlock Text="Current activity" FontSize="11" Foreground="#80C4D4" Margin="0,4,0,2"/>
+                            <TextBlock Text="{Binding CurrentActivityElapsed}" FontSize="12" Foreground="#00D4FF" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding CurrentActivityDescription}" FontSize="12" Foreground="#E0F7FF"
                                        TextWrapping="Wrap"/>
-                            <TextBlock Margin="0,8,0,0" FontSize="10" Foreground="#607080" TextWrapping="Wrap"
-                                       Text="Pulse patterns: urgent pink (priority/trading), cyan (projects), purple (research), soft pink (art/ComfyUI), blue-grey (rest)."/>
+
+                            <TextBlock Text="Last activity" FontSize="11" Foreground="#80C4D4" Margin="0,10,0,2"/>
+                            <TextBlock Text="{Binding PreviousActivityDescription}" FontSize="12" Foreground="#E0F7FF"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="#607080">
+                                <Run Text="Duration: "/>
+                                <Run Text="{Binding PreviousActivityDuration}"/>
+                            </TextBlock>
                         </StackPanel>
                     </Border>
                 </StackPanel>

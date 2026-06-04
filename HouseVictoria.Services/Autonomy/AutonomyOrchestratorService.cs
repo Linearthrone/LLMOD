@@ -95,6 +95,10 @@ namespace HouseVictoria.Services.Autonomy
             {
                 _vitals.LastActivity = _state.LastActivity;
                 _vitals.LastActivitySummary = _state.LastActivitySummary;
+                _vitals.CurrentActivityStartedUtc = _state.CurrentActivityStartedUtc;
+                _vitals.PreviousActivitySummary = _state.PreviousActivitySummary;
+                _vitals.PreviousActivityStartedUtc = _state.PreviousActivityStartedUtc;
+                _vitals.PreviousActivityEndedUtc = _state.PreviousActivityEndedUtc;
                 _vitals.AutonomyRunning = _state.IsRunning;
                 return _vitals;
             }
@@ -277,6 +281,9 @@ namespace HouseVictoria.Services.Autonomy
             if (!string.IsNullOrWhiteSpace(decision.Reason))
                 summary += $" — {decision.Reason}";
 
+            RecordActivityTransition(activity, summary);
+            SetVitalsForActivity(activity, summary, holdSeconds: 45);
+
             try
             {
                 switch (activity)
@@ -313,14 +320,9 @@ namespace HouseVictoria.Services.Autonomy
 
                 RecordSubstantiveAction();
                 lock (_stateLock)
-                {
-                    _state.LastActivity = activity;
-                    _state.LastActivitySummary = summary;
                     _state.CurrentFocusProjectId = decision.ProjectId;
-                }
 
-                SetVitalsForActivity(activity, summary, holdSeconds: 90);
-                await CompleteTickAsync(activity, summary).ConfigureAwait(false);
+                await CompleteTickAsync(activity, summary, skipTransition: true).ConfigureAwait(false);
                 ActivityCompleted?.Invoke(this, new AutonomyActivityEventArgs
                 {
                     Activity = activity,
@@ -851,12 +853,13 @@ namespace HouseVictoria.Services.Autonomy
             }
         }
 
-        private async Task CompleteTickAsync(AutonomyActivityKind kind, string summary)
+        private async Task CompleteTickAsync(AutonomyActivityKind kind, string summary, bool skipTransition = false)
         {
+            if (!skipTransition)
+                RecordActivityTransition(kind, summary);
+
             lock (_stateLock)
             {
-                _state.LastActivity = kind;
-                _state.LastActivitySummary = summary;
                 if (kind is AutonomyActivityKind.CreateArt or AutonomyActivityKind.WriteResearch
                     or AutonomyActivityKind.WorkOnPriorityProject or AutonomyActivityKind.AdvancePersonalProject
                     or AutonomyActivityKind.Reflect or AutonomyActivityKind.ExploreEnvironment)
@@ -1000,6 +1003,29 @@ namespace HouseVictoria.Services.Autonomy
             return path;
         }
 
+        private void RecordActivityTransition(AutonomyActivityKind kind, string summary)
+        {
+            lock (_stateLock)
+            {
+                var same = _state.LastActivity == kind
+                           && string.Equals(_state.LastActivitySummary, summary, StringComparison.Ordinal);
+                if (same)
+                    return;
+
+                if (_state.CurrentActivityStartedUtc.HasValue)
+                {
+                    _state.PreviousActivity = _state.LastActivity;
+                    _state.PreviousActivitySummary = _state.LastActivitySummary;
+                    _state.PreviousActivityStartedUtc = _state.CurrentActivityStartedUtc;
+                    _state.PreviousActivityEndedUtc = DateTime.UtcNow;
+                }
+
+                _state.LastActivity = kind;
+                _state.LastActivitySummary = summary;
+                _state.CurrentActivityStartedUtc = DateTime.UtcNow;
+            }
+        }
+
         private static AutonomyRuntimeState CloneState(AutonomyRuntimeState source) =>
             new()
             {
@@ -1008,6 +1034,11 @@ namespace HouseVictoria.Services.Autonomy
                 LastActionUtc = source.LastActionUtc,
                 LastActivity = source.LastActivity,
                 LastActivitySummary = source.LastActivitySummary,
+                CurrentActivityStartedUtc = source.CurrentActivityStartedUtc,
+                PreviousActivity = source.PreviousActivity,
+                PreviousActivitySummary = source.PreviousActivitySummary,
+                PreviousActivityStartedUtc = source.PreviousActivityStartedUtc,
+                PreviousActivityEndedUtc = source.PreviousActivityEndedUtc,
                 CurrentFocusProjectId = source.CurrentFocusProjectId,
                 Drives = new Dictionary<string, double>(source.Drives),
                 ActionsThisHour = source.ActionsThisHour,
@@ -1383,7 +1414,7 @@ namespace HouseVictoria.Services.Autonomy
         private static string Truncate(string s, int max) =>
             s.Length <= max ? s : s[..max] + "…";
 
-        private void SetVitalsForActivity(AutonomyActivityKind activity, string summary, int holdSeconds = 60)
+        private void SetVitalsForActivity(AutonomyActivityKind activity, string summary, int holdSeconds = 30)
         {
             var rhythm = CognitionVitalsProfile.FromActivity(activity);
             var snap = CognitionVitalsProfile.ForRhythm(rhythm, Truncate(summary, 80));
@@ -1431,7 +1462,12 @@ namespace HouseVictoria.Services.Autonomy
             {
                 snapshot.LastActivity = _state.LastActivity;
                 snapshot.LastActivitySummary = _state.LastActivitySummary;
+                snapshot.CurrentActivityStartedUtc = _state.CurrentActivityStartedUtc;
+                snapshot.PreviousActivitySummary = _state.PreviousActivitySummary;
+                snapshot.PreviousActivityStartedUtc = _state.PreviousActivityStartedUtc;
+                snapshot.PreviousActivityEndedUtc = _state.PreviousActivityEndedUtc;
                 snapshot.AutonomyRunning = _state.IsRunning;
+                snapshot.UpdatedUtc = DateTime.UtcNow;
                 _vitals = snapshot;
             }
 
