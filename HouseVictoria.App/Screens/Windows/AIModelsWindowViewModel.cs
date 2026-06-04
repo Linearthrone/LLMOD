@@ -66,6 +66,15 @@ namespace HouseVictoria.App.Screens.Windows
         private double _newPersonaAvatarVoiceSpeed = 1.0;
         private double _newPersonaAvatarVoicePitch = 1.0;
 
+        // Knowledge sharing (what this persona may see in chat)
+        private bool _shareUserBasics = true;
+        private bool _shareOwnMemories = true;
+        private bool _shareOwnDataBank = true;
+        private bool _shareHouseJournals;
+        private bool _shareOtherPersonaMemories;
+        private bool _shareSharedDataBanks;
+        private bool _knowledgeSharingTouched;
+
         // Pull Model fields
         private string _pullModelName = string.Empty;
         private string _pullModelEndpoint = "http://localhost:11434";
@@ -189,6 +198,8 @@ namespace HouseVictoria.App.Screens.Windows
                     OnPropertyChanged(nameof(IsRoleCompanion));
                     OnPropertyChanged(nameof(IsRoleNone));
                     OnPropertyChanged(nameof(PreviewRoleLabel));
+                    if (!_knowledgeSharingTouched)
+                        ApplyDefaultKnowledgeSharingForRole(value);
                 }
             }
         }
@@ -209,6 +220,42 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _newPersonaRole == PersonaRole.None;
             set { if (value) NewPersonaRole = PersonaRole.None; }
+        }
+
+        public bool ShareUserBasics
+        {
+            get => _shareUserBasics;
+            set { if (SetProperty(ref _shareUserBasics, value)) { _knowledgeSharingTouched = true; } }
+        }
+
+        public bool ShareOwnMemories
+        {
+            get => _shareOwnMemories;
+            set { if (SetProperty(ref _shareOwnMemories, value)) { _knowledgeSharingTouched = true; } }
+        }
+
+        public bool ShareOwnDataBank
+        {
+            get => _shareOwnDataBank;
+            set { if (SetProperty(ref _shareOwnDataBank, value)) { _knowledgeSharingTouched = true; } }
+        }
+
+        public bool ShareHouseJournals
+        {
+            get => _shareHouseJournals;
+            set { if (SetProperty(ref _shareHouseJournals, value)) { _knowledgeSharingTouched = true; } }
+        }
+
+        public bool ShareOtherPersonaMemories
+        {
+            get => _shareOtherPersonaMemories;
+            set { if (SetProperty(ref _shareOtherPersonaMemories, value)) { _knowledgeSharingTouched = true; } }
+        }
+
+        public bool ShareSharedDataBanks
+        {
+            get => _shareSharedDataBanks;
+            set { if (SetProperty(ref _shareSharedDataBanks, value)) { _knowledgeSharingTouched = true; } }
         }
 
         public string NewPersonaAvatarUrl
@@ -474,6 +521,8 @@ namespace HouseVictoria.App.Screens.Windows
             CreatePersonaCommand = new RelayCommand(async () =>
             {
                 CurrentView = "CreatePersona";
+                _knowledgeSharingTouched = false;
+                ApplyDefaultKnowledgeSharingForRole(NewPersonaRole);
                 // Load available models when switching to Create Persona view
                 if (_availableModels.Count == 0)
                     await LoadAvailableModelsAsync();
@@ -787,14 +836,20 @@ namespace HouseVictoria.App.Screens.Windows
                     return;
                 }
 
+                var personaName = NewPersonaName.Trim();
+                var systemPrompt = string.IsNullOrWhiteSpace(NewPersonaSystemPrompt)
+                    ? $"You are {personaName}. You are a distinct persona in House Victoria — not Victoria and not any other persona unless the user explicitly asks you to roleplay. Stay in character as {personaName}."
+                    : NewPersonaSystemPrompt.Trim();
+
                 // Create new AI contact
                 var newContact = new AIContact
                 {
                     Id = personaId,
-                    Name = NewPersonaName.Trim(),
+                    Name = personaName,
                     ModelName = NewPersonaModel.Trim(),
                     PiperVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim(),
-                    SystemPrompt = NewPersonaSystemPrompt?.Trim(),
+                    SystemPrompt = systemPrompt,
+                    KnowledgeSharing = BuildNewPersonaKnowledgeSharing(),
                     Description = NewPersonaDescription?.Trim(),
                     AvatarUrl = string.IsNullOrWhiteSpace(NewPersonaAvatarUrl) ? null : NewPersonaAvatarUrl.Trim(),
                     ServerEndpoint = AvailableModelsEndpoint,
@@ -870,6 +925,8 @@ namespace HouseVictoria.App.Screens.Windows
                 NewPersonaRole = PersonaRole.Companion;
                 SelectedPersonaPreset = "Custom";
                 NameValidationMessage = string.Empty;
+                _knowledgeSharingTouched = false;
+                ApplyDefaultKnowledgeSharingForRole(PersonaRole.Companion);
 
                 // Switch to contact book
                 CurrentView = "ContactBook";
@@ -1045,6 +1102,39 @@ namespace HouseVictoria.App.Screens.Windows
                 : string.Empty;
         }
 
+        private void ApplyDefaultKnowledgeSharingForRole(PersonaRole role)
+        {
+            var defaults = role == PersonaRole.Primary
+                ? PersonaKnowledgeSharing.CreatePrimaryDefaults()
+                : PersonaKnowledgeSharing.CreateCompanionDefaults();
+            _shareUserBasics = defaults.ShareUserBasics;
+            _shareOwnMemories = defaults.ShareOwnMemories;
+            _shareOwnDataBank = defaults.ShareOwnDataBank;
+            _shareHouseJournals = defaults.ShareHouseJournals;
+            _shareOtherPersonaMemories = defaults.ShareOtherPersonaMemories;
+            _shareSharedDataBanks = defaults.ShareSharedDataBanks;
+            OnPropertyChanged(nameof(ShareUserBasics));
+            OnPropertyChanged(nameof(ShareOwnMemories));
+            OnPropertyChanged(nameof(ShareOwnDataBank));
+            OnPropertyChanged(nameof(ShareHouseJournals));
+            OnPropertyChanged(nameof(ShareOtherPersonaMemories));
+            OnPropertyChanged(nameof(ShareSharedDataBanks));
+        }
+
+        private PersonaKnowledgeSharing BuildNewPersonaKnowledgeSharing()
+        {
+            return new PersonaKnowledgeSharing
+            {
+                ShareUserBasics = ShareUserBasics,
+                ShareOwnMemories = ShareOwnMemories,
+                ShareOwnDataBank = ShareOwnDataBank,
+                ShareHouseJournals = ShareHouseJournals,
+                ShareOtherPersonaMemories = ShareOtherPersonaMemories,
+                ShareSharedDataBanks = ShareSharedDataBanks,
+                IsConfigured = true
+            };
+        }
+
         private void ApplyPersonaPreset(string preset)
         {
             switch (preset)
@@ -1165,6 +1255,7 @@ namespace HouseVictoria.App.Screens.Windows
                     contact.AvatarModelPath = string.IsNullOrWhiteSpace(dialog.AvatarModelPath) ? null : dialog.AvatarModelPath.Trim();
                     contact.AvatarVoiceSpeed = dialog.AvatarVoiceSpeed;
                     contact.AvatarVoicePitch = dialog.AvatarVoicePitch;
+                    contact.KnowledgeSharing = dialog.KnowledgeSharing.Clone();
 
                     // Save updated contact to persistence
                     await _persistenceService.SetAsync($"AIContact_{contact.Id}", contact);

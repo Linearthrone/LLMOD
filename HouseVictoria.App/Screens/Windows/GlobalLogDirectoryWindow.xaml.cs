@@ -113,7 +113,8 @@ namespace HouseVictoria.App.Screens.Windows
                     if (logDetailsPanel != null) logDetailsPanel.Visibility = Visibility.Visible;
 
                     var entry = selectedItem.LogEntry;
-                    ViewModel.SelectLogEntryAsync(entry.Id).ConfigureAwait(false);
+                    ViewModel.NotifyLogEntrySelected(entry.Id);
+                    ViewModel.SelectLogEntryAsync(entry).ConfigureAwait(false);
 
                     if (logTitle != null) logTitle.Text = entry.Title;
                     if (logDateTime != null) logDateTime.Text = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");

@@ -29,12 +29,16 @@
                 <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
             </Border.Effect>
             <Grid>
-                <TextBlock Text="📋 Global Log Directory (GLD)"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Center"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           Foreground="#E0F7FF"/>
+                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <TextBlock Text="📋 Global Log Directory (GLD)"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="#E0F7FF"/>
+                    <TextBlock Text="Review inbox — select an item, then Archive when done"
+                               FontSize="11"
+                               Foreground="#80C4D4"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
 
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                     <Button Content="Refresh"
@@ -43,11 +47,19 @@
                             Margin="0,0,5,0"
                             Click="RefreshButton_Click"/>
 
-                    <Button Content="Mark Read"
+                    <Button Content="Archive All"
                             Style="{StaticResource GlassButton}"
-                            MinWidth="80" Height="28"
+                            MinWidth="85" Height="28"
                             Margin="5,0,5,0"
-                            Click="MarkAllReadButton_Click"/>
+                            Click="MarkAllReadButton_Click"
+                            ToolTip="Acknowledge and archive every item in the inbox"/>
+
+                    <Button Content="Archive"
+                            Style="{StaticResource GlassButton}"
+                            MinWidth="70" Height="28"
+                            Margin="5,0,5,0"
+                            Command="{Binding ArchiveSelectedCommand}"
+                            ToolTip="Archive the selected item without opening it"/>
 
                     <Button Content="Export"
                             Style="{StaticResource GlassButton}"

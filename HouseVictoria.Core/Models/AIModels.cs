@@ -88,6 +88,11 @@ namespace HouseVictoria.Core.Models
         /// Context Length / Num Ctx: Size of the context window. Default: 4096
         /// </summary>
         public int ContextLength { get; set; } = 4096;
+
+        /// <summary>
+        /// What this persona may see in chat beyond its own thread (user basics, house journals, etc.).
+        /// </summary>
+        public PersonaKnowledgeSharing KnowledgeSharing { get; set; } = new();
     }
 
     /// <summary>

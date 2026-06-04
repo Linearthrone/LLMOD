@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
+using HouseVictoria.Services.Persona;
 using NAudio.Wave;
 using System.IO;
 
@@ -26,6 +27,7 @@ namespace HouseVictoria.Services.Communication
         private readonly IFileGenerationService? _fileGenerationService;
         private readonly ITTSService? _ttsService;
         private readonly IJournalService? _journalService;
+        private readonly PersonaChatContextBuilder _personaContextBuilder;
         private readonly Dictionary<string, CallState> _activeCalls = new(); // Track active calls by conversation ID
         private readonly HashSet<string> _pendingFollowUps = new(); // Conversations with a scheduled auto follow-up
 
@@ -40,6 +42,7 @@ namespace HouseVictoria.Services.Communication
             _fileGenerationService = fileGenerationService;
             _ttsService = ttsService;
             _journalService = journalService;
+            _personaContextBuilder = new PersonaChatContextBuilder(memoryService, journalService);
 
             // Subscribe to AI service events if available
             if (_aiService != null)
@@ -1494,116 +1497,10 @@ namespace HouseVictoria.Services.Communication
             return s.Length <= max ? s : s.Substring(0, max).TrimEnd() + "…";
         }
 
-        /// <summary>
-        /// Builds a context block from the AI's own journals and stored memories that are relevant to
-        /// the user's message. Returns null when nothing relevant is found. Never throws.
-        /// </summary>
-        private async Task<string?> BuildRetrievalContextAsync(AIContact contact, string userMessage)
+        private Task<string?> BuildRetrievalContextAsync(AIContact contact, string userMessage)
         {
-            try
-            {
-                var keywords = ExtractKeywords(userMessage);
-                if (keywords.Count == 0)
-                    return null;
-
-                var sections = new List<(double score, string text)>();
-
-                // 1) Journals (research, project work, reflections, conclusions)
-                if (_journalService != null)
-                {
-                    try
-                    {
-                        var journals = await _journalService.GetAllJournalsAsync().ConfigureAwait(false);
-                        foreach (var journal in journals)
-                        {
-                            var headerScore = ScoreText(journal.Title, keywords) * 2
-                                              + ScoreText(journal.Topic, keywords) * 2
-                                              + ScoreText(journal.Preface, keywords);
-
-                            if (!string.IsNullOrWhiteSpace(journal.ConclusionSummary))
-                            {
-                                var concScore = ScoreText(journal.ConclusionSummary, keywords)
-                                                + ScoreText(journal.ConclusionImplications, keywords)
-                                                + headerScore;
-                                if (concScore > 0)
-                                {
-                                    sections.Add((concScore + 0.5,
-                                        $"From your concluded journal \"{journal.Title}\" ({journal.ConcludedAt:yyyy-MM-dd}):\n" +
-                                        TruncateText(journal.ConclusionSummary, 600)));
-                                }
-                            }
-
-                            foreach (var entry in journal.Entries)
-                            {
-                                if (entry.Kind == JournalEntryKind.Conclusion)
-                                    continue;
-                                var entryScore = ScoreText(entry.Title, keywords) * 2
-                                                 + ScoreText(entry.Body, keywords)
-                                                 + headerScore;
-                                if (entryScore > 0)
-                                {
-                                    sections.Add((entryScore,
-                                        $"From your journal \"{journal.Title}\" — {entry.Title} ({entry.Timestamp:yyyy-MM-dd}):\n" +
-                                        TruncateText(entry.Body, 600)));
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Journal retrieval failed: {ex.Message}");
-                    }
-                }
-
-                // 2) Per-contact long-term memories (chat archives, autonomy notes)
-                if (_memoryService != null)
-                {
-                    try
-                    {
-                        var memories = await _memoryService.GetMemoriesAsync(contact.Id).ConfigureAwait(false);
-                        var scoredMemories = memories
-                            .Select(m => (score: (double)ScoreText(m, keywords), text: m))
-                            .Where(x => x.score > 0)
-                            .OrderByDescending(x => x.score)
-                            .Take(3);
-                        foreach (var memory in scoredMemories)
-                            sections.Add((memory.score, $"Relevant memory:\n{TruncateText(memory.text, 400)}"));
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Memory retrieval failed: {ex.Message}");
-                    }
-                }
-
-                if (sections.Count == 0)
-                    return null;
-
-                var builder = new System.Text.StringBuilder();
-                builder.AppendLine(
-                    "[Context from your own journals and memories relevant to the user's message. " +
-                    "These are things YOU have already written, researched, planned, or done — treat them as your own " +
-                    "knowledge and history, not as new information from the user. If the user refers to a plan, strategy, " +
-                    "or work, check here before claiming you have not done it.]");
-                builder.AppendLine();
-
-                var budget = 2000;
-                foreach (var section in sections.OrderByDescending(s => s.score).Take(6))
-                {
-                    if (budget <= 0)
-                        break;
-                    var piece = section.text.Length > budget ? section.text.Substring(0, budget) + "…" : section.text;
-                    builder.AppendLine(piece);
-                    builder.AppendLine();
-                    budget -= piece.Length;
-                }
-
-                return builder.ToString().TrimEnd();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"BuildRetrievalContextAsync failed: {ex.Message}");
-                return null;
-            }
+            var otherIds = _aiContacts.Keys.ToList();
+            return _personaContextBuilder.BuildAsync(contact, userMessage, otherIds);
         }
 
         #endregion

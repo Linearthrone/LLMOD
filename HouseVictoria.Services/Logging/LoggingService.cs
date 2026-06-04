@@ -23,6 +23,7 @@ namespace HouseVictoria.Services.Logging
         private readonly Dictionary<string, LogCategory> _categories = new();
         private readonly Dictionary<string, LogEntry> _allEntries = new();
         private readonly HashSet<string> _readLogIds = new();
+        private readonly HashSet<string> _archivedLogIds = new();
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly object _refreshLock = new object();
         private bool _isRefreshing = false;
@@ -90,21 +91,28 @@ namespace HouseVictoria.Services.Logging
             return new List<LogEntry>();
         }
 
-        public async Task<LogEntry?> GetLogEntryAsync(string logId)
+        public Task<LogEntry?> GetLogEntryAsync(string logId)
         {
-            await RefreshLogsAsync();
             _allEntries.TryGetValue(logId, out var entry);
-            return entry;
+            return Task.FromResult(entry);
         }
 
         public async Task MarkAsReadAsync(string logId)
         {
+            await ArchiveAsync(logId).ConfigureAwait(false);
+        }
+
+        public async Task ArchiveAsync(string logId)
+        {
             _readLogIds.Add(logId);
+            _archivedLogIds.Add(logId);
             if (_allEntries.TryGetValue(logId, out var entry))
             {
                 entry.IsRead = true;
+                entry.IsArchived = true;
             }
-            await SaveReadStatusAsync();
+            await SaveInboxStatusAsync().ConfigureAwait(false);
+            RebuildInboxCategories();
         }
 
         public async Task MarkMultipleAsReadAsync(IEnumerable<string> logIds)
@@ -112,12 +120,15 @@ namespace HouseVictoria.Services.Logging
             foreach (var logId in logIds)
             {
                 _readLogIds.Add(logId);
+                _archivedLogIds.Add(logId);
                 if (_allEntries.TryGetValue(logId, out var entry))
                 {
                     entry.IsRead = true;
+                    entry.IsArchived = true;
                 }
             }
-            await SaveReadStatusAsync();
+            await SaveInboxStatusAsync().ConfigureAwait(false);
+            RebuildInboxCategories();
         }
 
         public async Task MarkAllAsReadAsync()
@@ -125,9 +136,12 @@ namespace HouseVictoria.Services.Logging
             foreach (var entry in _allEntries.Values)
             {
                 entry.IsRead = true;
+                entry.IsArchived = true;
                 _readLogIds.Add(entry.Id);
+                _archivedLogIds.Add(entry.Id);
             }
-            await SaveReadStatusAsync();
+            await SaveInboxStatusAsync().ConfigureAwait(false);
+            RebuildInboxCategories();
         }
 
         public async Task ExportLogsAsync(string filePath, LogExportOptions? options = null)
@@ -167,30 +181,20 @@ namespace HouseVictoria.Services.Logging
                 _categories.Clear();
                 _allEntries.Clear();
 
-                // Load Serilog files
-                await LoadSerilogFilesAsync().ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadSerilogFilesAsync - {_allEntries.Count} entries loaded");
+                // GLD is a review inbox — not a dump of Serilog/sidecar/activity logs.
+                await LoadAutonomyReviewInboxAsync().ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadAutonomyReviewInboxAsync - {_allEntries.Count} entries");
 
-                // Load project logs
-                await LoadProjectLogsAsync().ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadProjectLogsAsync - {_allEntries.Count} total entries");
+                await LoadUserRequestedGeneratedFilesAsync().ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadUserRequestedGeneratedFilesAsync - {_allEntries.Count} entries");
 
-                // Load autonomy journal, status lines, and artifact backfill
-                await LoadAutonomyLogsAsync().ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadAutonomyLogsAsync - {_allEntries.Count} total entries");
-
-                // Load server-side / sidecar logs (MCP, LM Studio, TTS, STT, etc.)
-                await LoadSidecarLogsAsync().ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadSidecarLogsAsync - {_allEntries.Count} total entries");
-
-                // Apply read status
                 foreach (var entry in _allEntries.Values)
                 {
                     entry.IsRead = _readLogIds.Contains(entry.Id);
+                    entry.IsArchived = _archivedLogIds.Contains(entry.Id);
                 }
 
-                // Update category unread counts
-                UpdateCategoryCounts();
+                RebuildInboxCategories();
 
                 _lastRefresh = DateTime.Now;
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Refresh complete - {_categories.Count} categories, {_allEntries.Count} entries");
@@ -206,7 +210,7 @@ namespace HouseVictoria.Services.Logging
         public async Task<int> GetUnreadCountAsync()
         {
             await RefreshLogsAsync();
-            return _allEntries.Values.Count(e => !e.IsRead);
+            return _allEntries.Values.Count(e => !e.IsArchived && !e.IsRead);
         }
 
         private async Task LoadSerilogFilesAsync()
@@ -517,10 +521,29 @@ namespace HouseVictoria.Services.Logging
             }
         }
 
-        private void AddLogEntry(LogEntry entry)
+        private void StoreLogEntry(LogEntry entry)
         {
             _allEntries[entry.Id] = entry;
+        }
 
+        private void RebuildInboxCategories()
+        {
+            _categories.Clear();
+            foreach (var entry in _allEntries.Values.Where(e => !e.IsArchived))
+                AddLogEntryToCategories(entry);
+
+            UpdateCategoryCounts();
+        }
+
+        private void AddLogEntry(LogEntry entry)
+        {
+            StoreLogEntry(entry);
+            if (!entry.IsArchived)
+                AddLogEntryToCategories(entry);
+        }
+
+        private void AddLogEntryToCategories(LogEntry entry)
+        {
             if (!_categories.TryGetValue(entry.Category, out var category))
             {
                 category = new LogCategory
@@ -574,17 +597,73 @@ namespace HouseVictoria.Services.Logging
             return paths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        private async Task LoadAutonomyLogsAsync()
+        private async Task LoadAutonomyReviewInboxAsync()
         {
             var autonomyDir = _appConfig.AutonomyDataPath;
             if (string.IsNullOrWhiteSpace(autonomyDir) || !Directory.Exists(autonomyDir))
                 return;
 
             await LoadAutonomyJournalAsync(autonomyDir).ConfigureAwait(false);
-            await LoadAutonomyArtifactBackfillAsync().ConfigureAwait(false);
-            await LoadAutonomyArtFolderAsync(autonomyDir).ConfigureAwait(false);
-            await LoadAutonomyGeneratedFilesAsync().ConfigureAwait(false);
-            await LoadAutonomyActivityStatusAsync(autonomyDir).ConfigureAwait(false);
+            await LoadAutonomyArtInboxAsync(autonomyDir).ConfigureAwait(false);
+        }
+
+        private async Task LoadUserRequestedGeneratedFilesAsync()
+        {
+            var generatedRoot = Path.Combine(_appConfig.MediaPath, "GeneratedFiles");
+            if (!Directory.Exists(generatedRoot))
+                return;
+
+            try
+            {
+                foreach (var filePath in Directory.GetFiles(generatedRoot, "*.*", SearchOption.AllDirectories))
+                {
+                    if (filePath.Contains($"{Path.DirectorySeparatorChar}Autonomy{Path.DirectorySeparatorChar}",
+                            StringComparison.OrdinalIgnoreCase) ||
+                        filePath.Contains("/Autonomy/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (!IsUserRequestedGeneratedFile(filePath))
+                        continue;
+
+                    var fileInfo = new FileInfo(filePath);
+                    var id = AutonomyFileEntryId(filePath);
+                    if (_allEntries.ContainsKey(id))
+                        continue;
+
+                    var entry = new LogEntry
+                    {
+                        Id = id,
+                        Category = "Generated",
+                        SubCategory = Path.GetFileName(Path.GetDirectoryName(filePath)) ?? "Files",
+                        Title = Path.GetFileName(filePath),
+                        Content = $"Generated file: {filePath}",
+                        Summary = Path.GetFileName(filePath),
+                        Timestamp = fileInfo.CreationTime,
+                        Severity = LogSeverity.Info,
+                        Source = "File Generation",
+                        Tags = new List<string> { "Generated", "Artifact" },
+                        LinkedFilePaths = new List<string> { filePath }
+                    };
+                    StoreLogEntry(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading user-generated files: {ex.Message}");
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private static bool IsUserRequestedGeneratedFile(string filePath)
+        {
+            var ext = Path.GetExtension(filePath).ToLowerInvariant();
+            return ext is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" or ".bmp" or ".mp4" or ".webm" or ".wav" or ".mp3"
+                or ".pdf"
+                or ".py" or ".cs" or ".js" or ".ts" or ".tsx" or ".jsx" or ".mq4" or ".mq5" or ".cpp" or ".h" or ".java" or ".go" or ".rs"
+                or ".md" or ".txt" or ".json" or ".yaml" or ".yml" or ".xml" or ".csv";
         }
 
         private async Task LoadAutonomyJournalAsync(string autonomyDir)
@@ -638,7 +717,7 @@ namespace HouseVictoria.Services.Logging
                         LinkedFilePaths = linked,
                         FilePath = journalPath
                     };
-                    AddLogEntry(entry);
+                    StoreLogEntry(entry);
                 }
             }
             catch (Exception ex)
@@ -698,7 +777,7 @@ namespace HouseVictoria.Services.Logging
             }
         }
 
-        private Task LoadAutonomyArtFolderAsync(string autonomyDir)
+        private Task LoadAutonomyArtInboxAsync(string autonomyDir)
         {
             var artDir = Path.Combine(autonomyDir, "Art");
             if (!Directory.Exists(artDir))
@@ -712,6 +791,13 @@ namespace HouseVictoria.Services.Logging
                     if (ext is not (".png" or ".jpg" or ".jpeg" or ".webp" or ".gif"))
                         continue;
 
+                    var journalId = $"autonomy_journal_art_{ComputeStableHash(filePath)}";
+                    if (_allEntries.ContainsKey(journalId) ||
+                        _allEntries.Values.Any(e => e.LinkedFilePaths.Contains(filePath, StringComparer.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
                     var fileInfo = new FileInfo(filePath);
                     var id = AutonomyFileEntryId(filePath);
                     if (_allEntries.ContainsKey(id))
@@ -721,151 +807,25 @@ namespace HouseVictoria.Services.Logging
                     {
                         Id = id,
                         Category = "Autonomy",
-                        SubCategory = "Artifacts",
+                        SubCategory = "Art",
                         Title = $"Art: {fileInfo.Name}",
-                        Content = filePath,
+                        Content = $"Autonomous art output: {filePath}",
                         Summary = fileInfo.Name,
                         Timestamp = fileInfo.CreationTime,
                         Severity = LogSeverity.Info,
-                        Source = "Autonomy Art Folder",
-                        Tags = new List<string> { "Autonomy", "Artifact", "Art" },
+                        Source = "Autonomy Art",
+                        Tags = new List<string> { "Autonomy", "Art" },
                         LinkedFilePaths = new List<string> { filePath }
                     };
-                    AddLogEntry(entry);
+                    StoreLogEntry(entry);
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading autonomy art folder: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading autonomy art inbox: {ex.Message}");
             }
 
             return Task.CompletedTask;
-        }
-
-        private Task LoadAutonomyGeneratedFilesAsync()
-        {
-            var generatedRoot = Path.Combine(_appConfig.MediaPath, "GeneratedFiles", "Autonomy");
-            if (!Directory.Exists(generatedRoot))
-                return Task.CompletedTask;
-
-            try
-            {
-                foreach (var filePath in Directory.GetFiles(generatedRoot, "*.*", SearchOption.AllDirectories))
-                {
-                    var fileInfo = new FileInfo(filePath);
-                    var id = AutonomyFileEntryId(filePath);
-                    if (_allEntries.ContainsKey(id))
-                        continue;
-
-                    string content;
-                    try
-                    {
-                        content = fileInfo.Length <= 256_000
-                            ? File.ReadAllText(filePath)
-                            : File.ReadAllText(filePath)[..2000] + "\n… (truncated)";
-                    }
-                    catch
-                    {
-                        content = filePath;
-                    }
-
-                    var subfolder = Path.GetFileName(Path.GetDirectoryName(filePath)) ?? "General";
-                    var entry = new LogEntry
-                    {
-                        Id = id,
-                        Category = "Autonomy",
-                        SubCategory = subfolder,
-                        Title = Path.GetFileName(filePath),
-                        Content = content,
-                        Summary = TruncateTitle(content, 200),
-                        Timestamp = fileInfo.CreationTime,
-                        Severity = LogSeverity.Info,
-                        Source = "Autonomy Generated Files",
-                        Tags = new List<string> { "Autonomy", subfolder },
-                        LinkedFilePaths = new List<string> { filePath }
-                    };
-                    AddLogEntry(entry);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading generated autonomy files: {ex.Message}");
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private async Task LoadAutonomyActivityStatusAsync(string autonomyDir)
-        {
-            var activityPath = Path.Combine(autonomyDir, "activity.log");
-            if (!File.Exists(activityPath))
-                return;
-
-            try
-            {
-                var lines = await File.ReadAllLinesAsync(activityPath).ConfigureAwait(false);
-                var lineNumber = 0;
-                foreach (var line in lines)
-                {
-                    lineNumber++;
-                    if (string.IsNullOrWhiteSpace(line))
-                        continue;
-
-                    var match = Regex.Match(line, @"^\[(?<ts>[^\]]+)\]\s*(?<msg>.+)$");
-                    if (!match.Success)
-                        continue;
-
-                    if (!DateTime.TryParse(match.Groups["ts"].Value, out var timestamp))
-                        timestamp = File.GetLastWriteTime(activityPath);
-
-                    var message = match.Groups["msg"].Value.Trim();
-                    if (!IsAutonomyStatusMessage(message))
-                        continue;
-
-                    var entry = new LogEntry
-                    {
-                        Id = $"autonomy_status_{lineNumber}_{ComputeStableHash(line)}",
-                        Category = "Autonomy",
-                        SubCategory = "Status",
-                        Title = TruncateTitle(message, 80),
-                        Content = message,
-                        Summary = TruncateTitle(message, 200),
-                        Timestamp = timestamp,
-                        Severity = message.Contains("error", StringComparison.OrdinalIgnoreCase)
-                            ? LogSeverity.Warning
-                            : LogSeverity.Debug,
-                        Source = "Autonomy Activity Log",
-                        Tags = new List<string> { "Autonomy", "Status" },
-                        FilePath = activityPath,
-                        LineNumber = lineNumber
-                    };
-                    AddLogEntry(entry);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading activity.log: {ex.Message}");
-            }
-        }
-
-        private static bool IsAutonomyStatusMessage(string message)
-        {
-            if (message.StartsWith("Autonomy loop", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (message.StartsWith("Tick error", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (message.StartsWith("WaitingForUserQuiet", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (message.StartsWith("SkippedCooldown", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (message.StartsWith("None:", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            return false;
         }
 
         private static List<string> BuildAutonomyTags(AutonomyJournalEntry journal)
@@ -893,6 +853,7 @@ namespace HouseVictoria.Services.Logging
                 "AI" => "AI Logs",
                 "Project" => "Project Logs",
                 "Autonomy" => "Autonomy (Victoria)",
+                "Generated" => "Generated Files",
                 "Sidecar" => "Sidecar Logs",
                 _ => category
             };
@@ -1126,10 +1087,20 @@ namespace HouseVictoria.Services.Logging
                 {
                     _readLogIds.Clear();
                     foreach (var id in readStatus)
-                    {
                         _readLogIds.Add(id);
-                    }
                 }
+
+                var archived = await _persistenceService.GetAsync<HashSet<string>>("ArchivedLogIds").ConfigureAwait(false);
+                if (archived != null)
+                {
+                    _archivedLogIds.Clear();
+                    foreach (var id in archived)
+                        _archivedLogIds.Add(id);
+                }
+
+                // Legacy: treat previously-read items as archived in the review inbox.
+                foreach (var id in _readLogIds)
+                    _archivedLogIds.Add(id);
             }
             catch (Exception ex)
             {
@@ -1137,15 +1108,16 @@ namespace HouseVictoria.Services.Logging
             }
         }
 
-        private async Task SaveReadStatusAsync()
+        private async Task SaveInboxStatusAsync()
         {
             try
             {
                 await _persistenceService.SetAsync("ReadLogIds", _readLogIds).ConfigureAwait(false);
+                await _persistenceService.SetAsync("ArchivedLogIds", _archivedLogIds).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error saving read status: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error saving inbox status: {ex.Message}");
             }
         }
 

@@ -84,6 +84,7 @@ namespace HouseVictoria.App
                     }
 
                     _ = SyncPersonaMcpEndpointsAsync();
+                    _ = SyncPersonaKnowledgeSharingAsync();
                 }
                 catch (Exception ex)
                 {
@@ -817,6 +818,35 @@ namespace HouseVictoria.App
         }
 
         /// <summary>
+        /// <summary>
+        /// One-time migration: persist role-appropriate knowledge-sharing defaults for personas
+        /// created before per-persona sharing existed.
+        /// </summary>
+        private async Task SyncPersonaKnowledgeSharingAsync()
+        {
+            try
+            {
+                var persistence = ServiceProvider?.GetService<IPersistenceService>();
+                if (persistence == null)
+                    return;
+
+                var contacts = await persistence.GetAllAsync<AIContact>().ConfigureAwait(false);
+                foreach (var contact in contacts.Values)
+                {
+                    if (contact.KnowledgeSharing?.IsConfigured == true)
+                        continue;
+
+                    contact.KnowledgeSharing = PersonaKnowledgeSharing.Resolve(contact);
+                    contact.KnowledgeSharing.IsConfigured = true;
+                    await persistence.SetAsync($"AIContact_{contact.Id}", contact).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.WriteToStartupLog($"SyncPersonaKnowledgeSharing error: {ex.Message}");
+            }
+        }
+
         /// Ensures every persisted persona points at the app MCP endpoint (memory + MT4 bridge tools).
         /// </summary>
         private async Task SyncPersonaMcpEndpointsAsync()

@@ -20,6 +20,8 @@ namespace HouseVictoria.Core.Models
         public string Source { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = new();
         public bool IsRead { get; set; } = false;
+        /// <summary>Removed from the GLD review inbox after acknowledgment.</summary>
+        public bool IsArchived { get; set; } = false;
         public string? FilePath { get; set; } // Path to log file if from file system
         public int? LineNumber { get; set; } // Line number in log file if applicable
         /// <summary>Artifact or output files produced by this log entry (openable from GLD).</summary>

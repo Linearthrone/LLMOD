@@ -109,6 +109,9 @@ namespace HouseVictoria.Services.FileGeneration
 
                 foreach (var filePath in filePaths)
                 {
+                    if (IsAutonomyJournalDuplicate(filePath))
+                        continue;
+
                     var fileInfo = new System.IO.FileInfo(filePath);
                     files.Add(new GeneratedFile
                     {
@@ -174,6 +177,19 @@ namespace HouseVictoria.Services.FileGeneration
                 System.Diagnostics.Debug.WriteLine($"Error deleting file '{fileName}': {ex.Message}");
                 return await Task.FromResult(false);
             }
+        }
+
+        private static bool IsAutonomyJournalDuplicate(string filePath)
+        {
+            if (!filePath.Contains($"{System.IO.Path.DirectorySeparatorChar}Autonomy{System.IO.Path.DirectorySeparatorChar}",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !filePath.Contains("/Autonomy/", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
+            return ext is ".md" or ".txt";
         }
 
         private string SanitizeFileName(string fileName)

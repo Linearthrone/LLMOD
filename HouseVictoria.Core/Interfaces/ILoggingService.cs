@@ -23,19 +23,24 @@ namespace HouseVictoria.Core.Interfaces
         Task<LogEntry?> GetLogEntryAsync(string logId);
 
         /// <summary>
-        /// Mark a log entry as read
+        /// Mark a log entry as read and move it out of the review inbox (archive).
         /// </summary>
         Task MarkAsReadAsync(string logId);
 
         /// <summary>
-        /// Mark multiple log entries as read
+        /// Mark multiple log entries as read and archive them.
         /// </summary>
         Task MarkMultipleAsReadAsync(IEnumerable<string> logIds);
 
         /// <summary>
-        /// Mark all logs as read
+        /// Mark all inbox entries as read and archive them.
         /// </summary>
         Task MarkAllAsReadAsync();
+
+        /// <summary>
+        /// Archive a log entry without requiring it to be opened first.
+        /// </summary>
+        Task ArchiveAsync(string logId);
 
         /// <summary>
         /// Export logs to a file

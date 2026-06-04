@@ -5,6 +5,7 @@ This guide explains how to set up and use the MetaTrader 4 integration with Hous
 ## Overview
 
 The MT4 integration allows House Victoria's AI to:
+
 - Access historical market data
 - Create and test trading strategies
 - Run backtests against historical data
@@ -16,6 +17,7 @@ The MT4 integration allows House Victoria's AI to:
 ### 1. Install MetaTrader 4
 
 If you haven't already, install MetaTrader 4 on your Windows machine. The default installation path is:
+
 ```
 C:\Program Files\MetaTrader 4
 ```
@@ -29,6 +31,7 @@ Edit `HouseVictoria.App\App.config` and set the `MT4DataPath` to your MT4 instal
 ```
 
 **Note:** If you have multiple MT4 installations (different brokers), you can point to a specific data folder:
+
 ```
 C:\Users\<YourUsername>\AppData\Roaming\MetaQuotes\Terminal\<BrokerID>
 ```
@@ -36,6 +39,7 @@ C:\Users\<YourUsername>\AppData\Roaming\MetaQuotes\Terminal\<BrokerID>
 ### 3. Install the Bridge Expert Advisor
 
 1. Copy `HouseVictoriaBridge.mq4` to your MT4's `Experts` folder:
+
    ```
    <MT4DataPath>\MQL4\Experts\HouseVictoriaBridge.mq4
    ```
@@ -62,6 +66,7 @@ C:\Users\<YourUsername>\AppData\Roaming\MetaQuotes\Terminal\<BrokerID>
 ### 4. Verify Connection
 
 The House Victoria application will automatically connect to MT4 on startup if the path is configured. You can verify the connection by checking:
+
 - The application logs for "Connected to MT4 at: ..."
 - The `HouseVictoria` folder exists in `<MT4DataPath>\MQL4\Files\`
 
@@ -160,6 +165,7 @@ Here's how the AI can interact with MT4:
 **User:** "Test a moving average crossover strategy on EURUSD for the last 6 months"
 
 **AI Response:**
+
 1. Retrieves historical EURUSD data (H1 timeframe)
 2. Creates a moving average crossover strategy
 3. Runs a backtest
@@ -168,27 +174,32 @@ Here's how the AI can interact with MT4:
 **User:** "What's the current EURUSD price?"
 
 **AI Response:**
+
 1. Queries market data for EURUSD
 2. Returns current bid/ask prices and spread
 
 ## Troubleshooting
 
 ### EA Not Running
+
 - Check that the EA is attached to a chart
 - Verify "Allow automated trading" is enabled in MT4 (Tools → Options → Expert Advisors)
 - Check MT4's Experts tab for error messages
 
 ### Connection Issues
+
 - Verify the MT4DataPath in App.config points to the correct directory
 - Ensure MT4 is running
 - Check that the `HouseVictoria` folder exists in `MQL4\Files\`
 
 ### No Historical Data
+
 - Historical data requires MT4 to have downloaded data for the symbol
 - Use MT4's "Download Historical Data" feature (Tools → History Center)
 - Ensure the symbol is available in your broker's terminal
 
 ### Trade Execution Fails
+
 - Verify `EnableTradeExecution` is true in the EA settings
 - Check that "Allow automated trading" is enabled in MT4
 - Ensure you have sufficient margin

@@ -982,17 +982,35 @@ namespace HouseVictoria.Services.Journals
         public static List<GeneratedResearchFile> CollectGeneratedFiles(ResearchJournal journal)
         {
             return journal.Entries
-                .SelectMany(e => e.LinkedFilePaths.Select(p => new GeneratedResearchFile
-                {
-                    FilePath = p,
-                    DisplayName = Path.GetFileName(p),
-                    CreatedAt = e.Timestamp,
-                    EntryTitle = e.Title
-                }))
+                .SelectMany(e => e.LinkedFilePaths
+                    .Where(IsReviewableLinkedFile)
+                    .Select(p => new GeneratedResearchFile
+                    {
+                        FilePath = p,
+                        DisplayName = Path.GetFileName(p),
+                        CreatedAt = e.Timestamp,
+                        EntryTitle = e.Title
+                    }))
                 .GroupBy(f => f.FilePath, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.OrderByDescending(x => x.CreatedAt).First())
                 .OrderBy(f => f.CreatedAt)
                 .ToList();
+        }
+
+        /// <summary>Media, scripts, and explicitly requested outputs — not journal text duplicates.</summary>
+        private static bool IsReviewableLinkedFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                return false;
+
+            if (IsInternalPath(path))
+                return false;
+
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            return ext is ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" or ".bmp"
+                or ".mp4" or ".webm" or ".wav" or ".mp3" or ".pdf"
+                or ".py" or ".cs" or ".js" or ".ts" or ".tsx" or ".jsx" or ".mq4" or ".mq5"
+                or ".cpp" or ".h" or ".java" or ".go" or ".rs" or ".shader" or ".hlsl";
         }
 
         private static List<ReferencedMaterial> CollectExternalReferences(ResearchJournal journal) =>
