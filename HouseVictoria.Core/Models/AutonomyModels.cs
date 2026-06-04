@@ -45,6 +45,9 @@ namespace HouseVictoria.Core.Models
         AdvancePersonalProject,
         Reflect,
         ExploreEnvironment,
+        ExecuteTrade,
+        RunBacktest,
+        ScanMarkets,
         SkippedCooldown
     }
 

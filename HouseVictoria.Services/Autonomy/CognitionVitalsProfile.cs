@@ -39,6 +39,9 @@ namespace HouseVictoria.Services.Autonomy
             AutonomyActivityKind.WriteResearch => CognitionVitalRhythm.Research,
             AutonomyActivityKind.Reflect => CognitionVitalRhythm.Reflecting,
             AutonomyActivityKind.ExploreEnvironment => CognitionVitalRhythm.Environment,
+            AutonomyActivityKind.ExecuteTrade => CognitionVitalRhythm.TradingActive,
+            AutonomyActivityKind.RunBacktest => CognitionVitalRhythm.Research,
+            AutonomyActivityKind.ScanMarkets => CognitionVitalRhythm.TradingActive,
             AutonomyActivityKind.WaitingForUserQuiet => CognitionVitalRhythm.Waiting,
             AutonomyActivityKind.SkippedCooldown => CognitionVitalRhythm.Resting,
             _ => CognitionVitalRhythm.Resting

@@ -10,6 +10,54 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def _pick_newest_existing(candidates: list[Path], fallback: Path) -> str:
+    existing = [p for p in candidates if p.is_file()]
+    if existing:
+        return str(max(existing, key=lambda p: p.stat().st_mtime))
+    return str(fallback)
+
+
+def resolve_app_database_path() -> str:
+    """Locate the live WPF SQLite database (Release build preferred)."""
+    configured = os.getenv("APP_DATABASE_PATH", "").strip()
+    if configured:
+        return configured
+
+    root = _repo_root()
+    fallback = root / "Data" / "Memory" / "HouseVictoria.db"
+    candidates = [
+        root / "HouseVictoria.App" / "bin" / "Release" / "net8.0-windows" / "Data" / "Memory" / "HouseVictoria.db",
+        root / "HouseVictoria.App" / "bin" / "Debug" / "net8.0-windows" / "Data" / "Memory" / "HouseVictoria.db",
+        root / "Data" / "Memory" / "HouseVictoria.db",
+        root / "Data" / "HouseVictoria.db",
+        root / "HouseVictoria.App" / "Data" / "HouseVictoria.db",
+    ]
+    return _pick_newest_existing(candidates, fallback)
+
+
+def resolve_data_banks_path() -> str:
+    configured = os.getenv("DATA_BANKS_PATH", "").strip()
+    if configured:
+        return configured
+
+    root = _repo_root()
+    fallback = root / "HouseVictoria.App" / "Data" / "Databanks"
+    candidates = [
+        root / "HouseVictoria.App" / "bin" / "Release" / "net8.0-windows" / "Data" / "Databanks",
+        root / "HouseVictoria.App" / "bin" / "Debug" / "net8.0-windows" / "Data" / "Databanks",
+        root / "HouseVictoria.App" / "Data" / "Databanks",
+        root / "Data" / "Databanks",
+    ]
+    for path in candidates:
+        if path.is_dir():
+            return str(path)
+    return str(fallback)
+
+
 @dataclass
 class ServerConfig:
     """Server configuration settings."""
@@ -24,18 +72,10 @@ class ServerConfig:
         )
     )
     # Optional bridge to the WPF app database (Data/HouseVictoria.db)
-    app_database_path: str = field(
-        default_factory=lambda: os.getenv(
-            "APP_DATABASE_PATH", str(Path(__file__).parent.parent.parent / "Data" / "HouseVictoria.db")
-        )
-    )
+    app_database_path: str = field(default_factory=resolve_app_database_path)
 
     # Data banks settings
-    data_banks_path: str = field(
-        default_factory=lambda: os.getenv(
-            "DATA_BANKS_PATH", str(Path(__file__).parent.parent / "data" / "banks")
-        )
-    )
+    data_banks_path: str = field(default_factory=resolve_data_banks_path)
     projects_path: str = field(
         default_factory=lambda: os.getenv(
             "PROJECTS_PATH", str(Path(__file__).parent.parent / "data" / "projects")
@@ -63,6 +103,9 @@ class ServerConfig:
     workflow_max_concurrent: int = field(
         default_factory=lambda: int(os.getenv("WORKFLOW_MAX_CONCURRENT", "10"))
     )
+
+    # MetaTrader 4 bridge (optional override; otherwise read from App.config)
+    mt4_data_path: str = field(default_factory=lambda: os.getenv("MT4_DATA_PATH", ""))
 
     def __post_init__(self):
         """Ensure directories exist after initialization."""

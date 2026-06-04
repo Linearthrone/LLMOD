@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
         mc:Ignorable="d"
-        Title="AI Models &amp; Personas" Height="900" Width="1200"
+        Title="AI Models &amp; Personas" Height="960" Width="1200" MinHeight="680" MinWidth="900"
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -148,7 +148,7 @@
             </StackPanel>
 
             <!-- Content Area -->
-            <Border Grid.Row="2" Padding="10">
+            <Border Grid.Row="2" Padding="10" ClipToBounds="True">
                 <Grid>
                     <!-- Load Model View -->
                     <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=LoadModel}">
@@ -279,9 +279,16 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Create Persona View -->
-                    <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=CreatePersona}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5">
+                    <!-- Create Persona View (Grid fills content area so ScrollViewer gets a bounded height) -->
+                    <Grid Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=CreatePersona}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <ScrollViewer Grid.Row="0"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="0,5,0,8">
                             <Border Style="{StaticResource Card}" Margin="0,5">
                                 <StackPanel>
                                 <TextBlock Text="👤 Create New AI Persona" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
@@ -660,26 +667,29 @@
                                         </StackPanel>
                                     </Border>
                                 </Expander>
-                                
-                                <Button Content="💾 Create Persona" 
-                                       Margin="0,15,0,5" HorizontalAlignment="Right" Width="200"
-                                       Command="{Binding SavePersonaCommand}"
-                                       ToolTip="Create a new AI persona with the specified name and model">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource GlassButton}">
-                                            <Style.Triggers>
-                                                <Trigger Property="IsEnabled" Value="False">
-                                                    <Setter Property="Opacity" Value="0.5"/>
-                                                    <Setter Property="ToolTip" Value="Please enter a name and select/type a model name"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
                             </StackPanel>
                         </Border>
                         </ScrollViewer>
-                    </StackPanel>
+
+                        <!-- Sticky footer: always visible without scrolling -->
+                        <Border Grid.Row="1" Background="#200A0E27" BorderBrush="#3000D4FF" BorderThickness="0,1,0,0" Padding="10,8,10,4" Margin="0,0,0,2">
+                            <Button Content="💾 Create Persona"
+                                   HorizontalAlignment="Right" Width="200"
+                                   Command="{Binding SavePersonaCommand}"
+                                   ToolTip="Create a new AI persona with the specified name and model">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GlassButton}">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.5"/>
+                                                <Setter Property="ToolTip" Value="Please enter a name and select/type a model name"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Border>
+                    </Grid>
 
                     <!-- AI Contact Book View -->
                     <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=ContactBook}">

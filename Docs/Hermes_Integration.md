@@ -29,8 +29,34 @@ This script:
 
 1. Installs Hermes (native Windows) if missing
 2. Writes `%USERPROFILE%\.hermes\.env` with `API_SERVER_ENABLED=true` and matching API key
-3. Registers House Victoria MCP as `mcp_servers.house_victoria` in `config.yaml`
-4. Sets `PrimaryLLM=hermes` in `App.config`
+3. Registers House Victoria MCP as `mcp_servers.house_victoria` in `config.yaml` (stdio; includes **MT4 tools**)
+4. Sets `PrimaryLLM=hermes` and `MCPServerEndpoint=http://127.0.0.1:8080` in `App.config`
+
+For persona MCP + MetaTrader wiring only (no Hermes reinstall):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\setup-persona-mcp.ps1
+```
+
+## Persona MCP + MetaTrader
+
+Each AI persona stores **`MCPServerEndpoint`** (default `http://localhost:8080`). That HTTP server exposes memory tools and MT4 bridge tools:
+
+| Tool | Purpose |
+|------|---------|
+| `mt4_status` | Bridge connection + account snapshot |
+| `mt4_list_symbols` | Broker symbol list + base→broker map (e.g. EURUSD → EURUSD.pro) |
+| `mt4_get_market_data` | Bid/ask for a symbol |
+| `mt4_get_open_positions` | Open positions (HouseVictoria magic) |
+| `mt4_execute_trade` | Place a trade; **success only when ticket verified in OpenPositions.json** |
+| `mt4_close_position` | Close by ticket from `mt4_get_open_positions`; verified when ticket leaves OpenPositions.json |
+| `mt4_verify_ticket` | Confirm a ticket exists in OpenPositions.json |
+
+**In the app:** Settings → MCP Server = `http://localhost:8080`. New personas inherit this automatically.
+
+**With Hermes (PrimaryLLM=hermes):** Chat tool loops use Hermes MCP, not the persona HTTP field. Ensure `mcp_servers.house_victoria` is in `~/.hermes/config.yaml` (added by the setup scripts above). Restart `hermes gateway` after changes.
+
+**MT4 prerequisites:** `MT4DataPath` in `App.config`, `HouseVictoriaBridge.mq4` attached with AutoTrading on. See `Docs/MT4_INTEGRATION_SUMMARY.md`.
 
 ## Start stack
 

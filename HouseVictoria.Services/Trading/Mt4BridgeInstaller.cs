@@ -14,7 +14,17 @@ namespace HouseVictoria.Services.Trading
 
             var targetPath = Path.Combine(expertsDir, ExpertFileName);
             if (File.Exists(targetPath))
+            {
+                var updatedSourcePath = FindSourceExpertPath(additionalSourceRoot);
+                if (updatedSourcePath != null &&
+                    File.GetLastWriteTimeUtc(updatedSourcePath) > File.GetLastWriteTimeUtc(targetPath))
+                {
+                    File.Copy(updatedSourcePath, targetPath, overwrite: true);
+                    System.Diagnostics.Debug.WriteLine($"Updated MT4 bridge EA at: {targetPath}");
+                }
+
                 return true;
+            }
 
             var sourcePath = FindSourceExpertPath(additionalSourceRoot);
             if (sourcePath == null)

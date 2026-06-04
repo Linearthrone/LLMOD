@@ -97,8 +97,13 @@ if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
     ) else (
         if not exist "%MCP_PATH%\logs" mkdir "%MCP_PATH%\logs"
         start "MCP Server" /B /D "%MCP_PATH%" cmd /c ".venv\Scripts\python.exe http_server.py >> logs\http_server.log 2>&1"
-        timeout /t 2 /nobreak >nul
-        echo [OK] MCP Server - http://localhost:8080
+        timeout /t 3 /nobreak >nul
+        powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:8080/health' -UseBasicParsing -TimeoutSec 5).StatusCode } catch { exit 1 }" >nul 2>&1
+        if errorlevel 1 (
+            echo [WARN] MCP Server failed health check on port 8080. See MCPServer\logs\http_server.log
+        ) else (
+            echo [OK] MCP Server - http://localhost:8080
+        )
     )
 )
 echo.

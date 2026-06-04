@@ -45,12 +45,29 @@ $repoData = Join-Path $RepoRoot "HouseVictoria.App\Data"
 if (-not (Test-Path $repoData)) { $repoData = Join-Path $RepoRoot "Data" }
 $repoDataEscaped = $repoData -replace '\\', '/'
 
+$mcpPython = Join-Path $RepoRoot "MCPServer\.venv\Scripts\python.exe"
+$mcpPythonEscaped = $mcpPython -replace '\\', '/'
+$mt4Path = "C:\Program Files (x86)\MetaTrader 4 FOREX.com US"
+$appConfigPath = Join-Path $RepoRoot "HouseVictoria.App\App.config"
+if (Test-Path $appConfigPath) {
+    [xml]$appXml = Get-Content $appConfigPath
+    $mt4Node = $appXml.configuration.appSettings.add | Where-Object { $_.key -eq "MT4DataPath" }
+    if ($mt4Node -and $mt4Node.value) { $mt4Path = $mt4Node.value }
+}
+$mt4PathEscaped = $mt4Path -replace '\\', '/'
+
 $mcpFragment = @"
 
 # --- House Victoria (auto-merged by setup-hermes-integration.ps1) ---
-# Hermes speaks standard MCP (stdio/HTTP). House Victoria's :8080 server is REST-only;
-# use filesystem MCP for project data and add computer-use-mcp separately for desktop control.
+# HTTP :8080 is used by WPF personas (MCPServerEndpoint). Hermes needs stdio MCP for tool loops.
 mcp_servers:
+  house_victoria:
+    command: $mcpPythonEscaped
+    args: ["-m", "house_victoria_mcp"]
+    env:
+      MT4_DATA_PATH: "$mt4PathEscaped"
+    timeout: 300
+    enabled: true
   house_victoria_data:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-filesystem", "$repoDataEscaped"]
@@ -60,12 +77,41 @@ mcp_servers:
 
 if (Test-Path $ConfigFile) {
     $existing = Get-Content $ConfigFile -Raw
+    $updated = $false
+    if ($existing -notmatch 'house_victoria:') {
+        if ($existing -notmatch 'mcp_servers:') {
+            Add-Content -Path $ConfigFile -Value "`nmcp_servers:"
+        }
+        Add-Content -Path $ConfigFile -Value @"
+
+  house_victoria:
+    command: $mcpPythonEscaped
+    args: ["-m", "house_victoria_mcp"]
+    env:
+      MT4_DATA_PATH: "$mt4PathEscaped"
+    timeout: 300
+    enabled: true
+"@
+        Write-Host "[OK] Appended house_victoria MCP (MT4 tools) to config.yaml"
+        $updated = $true
+    } else {
+        Write-Host "[INFO] house_victoria MCP already in config.yaml"
+    }
     if ($existing -notmatch "house_victoria_data:") {
-        Add-Content -Path $ConfigFile -Value $mcpFragment
+        Add-Content -Path $ConfigFile -Value @"
+
+  house_victoria_data:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "$repoDataEscaped"]
+    timeout: 120
+    enabled: true
+"@
         Write-Host "[OK] Appended house_victoria_data MCP to config.yaml"
+        $updated = $true
     } else {
         Write-Host "[INFO] house_victoria_data MCP already in config.yaml"
     }
+    if (-not $updated) { }
 } else {
     $initial = @"
 # Hermes config for House Victoria
@@ -105,8 +151,9 @@ if (Test-Path $appConfig) {
     Set-AppSetting "HermesApiKey" $ApiKey
     Set-AppSetting "HermesModelName" "hermes-agent"
     Set-AppSetting "HermesAutoStart" "true"
+    Set-AppSetting "MCPServerEndpoint" $McpEndpoint
     $xml.Save($appConfig)
-    Write-Host "[OK] Updated HouseVictoria.App\App.config (PrimaryLLM=hermes)"
+    Write-Host "[OK] Updated HouseVictoria.App\App.config (PrimaryLLM=hermes, MCPServerEndpoint=$McpEndpoint)"
 }
 
 Write-Host ""
@@ -115,5 +162,6 @@ Write-Host '  1. Ensure Ollama is running: ollama serve'
 Write-Host '  2. Ensure House Victoria MCP is running: start.bat (port 8080)'
 Write-Host '  3. Start Hermes gateway: hermes gateway'
 Write-Host '  4. Launch House Victoria - chat routes through Hermes with tools.'
+Write-Host '  5. Persona MCP + MT4: run Tools\setup-persona-mcp.ps1 if you add personas later.'
 Write-Host ""
 Write-Host 'Per-persona Hermes (without changing primary): set AdditionalServers["hermes"]="true" on the AI contact.'

@@ -216,5 +216,33 @@ namespace HouseVictoria.Core.Models
         public int AutonomyMaxArtPerHour { get; set; } = 2;
         /// <summary>Folder for autonomy state, logs, and generated artifacts.</summary>
         public string AutonomyDataPath { get; set; } = "Data/Autonomy";
+
+        /// <summary>When true, background service polls MT4 quotes across <see cref="TradingWatchSymbols"/>.</summary>
+        public bool TradingWatchEnabled { get; set; } = true;
+
+        /// <summary>Comma-separated base symbols (must be in MT4 Market Watch). EA reads Watchlist.json.</summary>
+        public string TradingWatchSymbols { get; set; } =
+            "EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,USDCHF,NZDUSD,EURGBP,EURJPY,GBPJPY,XAUUSD,XAGUSD,US30,US500,NAS100";
+
+        /// <summary>Seconds between multi-pair quote scans.</summary>
+        public int TradingWatchIntervalSeconds { get; set; } = 30;
+
+        /// <summary>Alert when mid price moves at least this many pips vs last scan.</summary>
+        public double TradingWatchPipMoveThreshold { get; set; } = 8;
+
+        /// <summary>Alert when spread exceeds this many pips.</summary>
+        public double TradingWatchMaxSpreadPips { get; set; } = 25;
+
+        /// <summary>Run RSI/MACD/MA technical scan on H1 bars (no LLM).</summary>
+        public bool TradingWatchTechnicalEnabled { get; set; } = true;
+
+        /// <summary>Seconds between technical scans across the watchlist.</summary>
+        public int TradingWatchTechnicalIntervalSeconds { get; set; } = 300;
+
+        /// <summary>H1 bars to load per symbol for technical signals.</summary>
+        public int TradingWatchTechnicalBarCount { get; set; } = 120;
+
+        /// <summary>Priority for the dedicated MT4 Market Watch project (should be ≥ AutonomyHighPriorityThreshold).</summary>
+        public int TradingWatchProjectPriority { get; set; } = 9;
     }
 }

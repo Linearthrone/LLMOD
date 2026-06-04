@@ -28,7 +28,7 @@ namespace HouseVictoria.Core.Models
         public string? AvatarUrl { get; set; }
         public Dictionary<string, string> PersonalityTraits { get; set; } = new();
         public string ServerEndpoint { get; set; } = "http://localhost:11434";
-        public string MCPServerEndpoint { get; set; } = string.Empty; // Individual MCP server for this persona
+        public string MCPServerEndpoint { get; set; } = "http://localhost:8080"; // House Victoria MCP (memory + MT4 bridge tools)
         public Dictionary<string, string> AdditionalServers { get; set; } = new(); // Additional server endpoints (TTS, etc.)
         public bool IsLoaded { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;

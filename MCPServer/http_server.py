@@ -108,7 +108,17 @@ async def server_info():
                 "workflow_execute",
                 "workflow_get",
                 "progress_get",
-                "progress_update"
+                "progress_update",
+                "mt4_status",
+                "mt4_list_symbols",
+                "mt4_get_market_data",
+                "mt4_get_open_positions",
+                "mt4_execute_trade",
+                "mt4_verify_ticket",
+                "mt4_market_watch_status",
+                "mt4_export_history",
+                "mt4_get_historical_bars",
+                "mt4_run_backtest"
             ]
         
         return {

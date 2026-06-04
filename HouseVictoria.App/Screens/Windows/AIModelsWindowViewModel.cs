@@ -761,7 +761,7 @@ namespace HouseVictoria.App.Screens.Windows
                 // Generate unique MCP server endpoint for this persona
                 var personaId = Guid.NewGuid().ToString();
                 var mcpEndpoint = string.IsNullOrWhiteSpace(NewPersonaMCPServer)
-                    ? $"http://localhost:{8080 + _aiContacts.Count}"
+                    ? _appConfig.MCPServerEndpoint
                     : NewPersonaMCPServer;
 
                 // Create data path for this persona

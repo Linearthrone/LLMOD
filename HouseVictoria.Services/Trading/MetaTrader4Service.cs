@@ -1,5 +1,6 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Services.Trading.Backtest;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -122,20 +123,20 @@ namespace HouseVictoria.Services.Trading
                 throw new InvalidOperationException("Not connected to MT4");
             }
 
+            var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
+            var fromBridge = Mt4TradeBridgeHelper.LoadAvailableSymbols(commandPath);
+            if (fromBridge.Count > 0)
+                return await Task.FromResult(fromBridge);
+
+            var symbolMap = Mt4TradeBridgeHelper.LoadSymbolMap(commandPath);
+            if (symbolMap.Count > 0)
+                return await Task.FromResult(symbolMap.Keys.ToList());
+
             var symbols = new List<string>();
 
             try
             {
-                // Try to read symbols from MT4's symbol list
-                // MT4 stores symbols in the terminal's common folder
-                var commonPath = Path.Combine(_mt4DataPath, "..", "..", "common", "symbols.sel");
-                if (File.Exists(commonPath))
-                {
-                    // This is a binary file, so we'll use an alternative approach
-                    // Read from history files instead
-                }
-
-                // Alternative: Get symbols from history folder
+                // Fallback: read broker-specific names from history folders
                 var historyPath = Path.Combine(_mt4DataPath, "history");
                 if (Directory.Exists(historyPath))
                 {
@@ -154,7 +155,6 @@ namespace HouseVictoria.Services.Trading
                     }
                 }
 
-                // If no symbols found, add common ones
                 if (symbols.Count == 0)
                 {
                     symbols.AddRange(new[] { "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD" });
@@ -175,146 +175,111 @@ namespace HouseVictoria.Services.Trading
                 throw new InvalidOperationException("Not connected to MT4");
             }
 
-            var bars = new List<HistoricalBar>();
-
-            try
-            {
-                // MT4 stores historical data in .hst files
-                // Format: <symbol><timeframe>.hst (e.g., EURUSD60.hst for H1)
-                var timeframeCode = GetTimeFrameCode(timeFrame);
-                var fileName = $"{symbol}{timeframeCode}.hst";
-
-                // Try to find the history file
-                var historyPath = Path.Combine(_mt4DataPath, "history");
-                var brokerFolders = Directory.GetDirectories(historyPath);
-
-                foreach (var brokerFolder in brokerFolders)
-                {
-                    var symbolFolder = Path.Combine(brokerFolder, symbol);
-                    if (Directory.Exists(symbolFolder))
-                    {
-                        var hstFile = Path.Combine(symbolFolder, fileName);
-                        if (File.Exists(hstFile))
-                        {
-                            bars = ReadHstFile(hstFile, symbol, timeFrame, startDate, endDate);
-                            break;
-                        }
-                    }
-                }
-
-                // If .hst file not found, try CSV export
-                if (bars.Count == 0)
-                {
-                    bars = await ReadCsvHistoricalDataAsync(symbol, timeFrame, startDate, endDate);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error getting historical data: {ex.Message}");
-            }
-
-            return bars;
+            return await Mt4HistoricalDataReader.LoadBarsAsync(
+                _mt4DataPath,
+                symbol,
+                timeFrame,
+                startDate,
+                endDate,
+                _commandFolder).ConfigureAwait(false);
         }
 
-        private List<HistoricalBar> ReadHstFile(string filePath, string symbol, TimeFrame timeFrame, DateTime startDate, DateTime endDate)
+        public async Task<HistoricalExportResult> ExportHistoricalDataAsync(
+            string symbol,
+            TimeFrame timeFrame,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken cancellationToken = default)
         {
-            var bars = new List<HistoricalBar>();
+            if (!_status.IsConnected || _mt4DataPath == null)
+            {
+                return new HistoricalExportResult
+                {
+                    Success = false,
+                    Message = "Not connected to MT4",
+                    Symbol = symbol
+                };
+            }
+
+            if (!_status.IsBridgeActive)
+            {
+                return new HistoricalExportResult
+                {
+                    Success = false,
+                    Message = "MT4 bridge EA is not active. Attach HouseVictoriaBridge with AutoTrading enabled.",
+                    Symbol = symbol
+                };
+            }
 
             try
             {
-                using var file = File.OpenRead(filePath);
-                using var reader = new BinaryReader(file);
+                var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
+                Directory.CreateDirectory(Path.Combine(commandPath, "Responses"));
 
-                // Skip header (148 bytes)
-                file.Seek(148, SeekOrigin.Begin);
+                var commandId = $"History_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+                var commandFile = Path.Combine(commandPath, $"{commandId}.json");
+                var responseFile = Path.Combine(commandPath, "Responses", $"Response_{commandId}.txt");
+                var tfMinutes = int.Parse(Mt4HistoricalDataReader.GetTimeFrameCode(timeFrame), CultureInfo.InvariantCulture);
 
-                while (file.Position < file.Length)
+                var payload = new Dictionary<string, object>
                 {
-                    var time = DateTime.FromBinary(reader.ReadInt64());
-                    var open = reader.ReadDouble();
-                    var low = reader.ReadDouble();
-                    var high = reader.ReadDouble();
-                    var close = reader.ReadDouble();
-                    var volume = reader.ReadInt64();
-                    reader.ReadInt32(); // Skip spread
-                    reader.ReadInt32(); // Skip real volume
+                    ["Symbol"] = symbol.ToUpperInvariant(),
+                    ["TimeFrame"] = tfMinutes,
+                    ["StartDate"] = startDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+                    ["EndDate"] = endDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+                };
 
-                    if (time >= startDate && time <= endDate)
+                await File.WriteAllTextAsync(
+                    commandFile,
+                    JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }),
+                    cancellationToken).ConfigureAwait(false);
+
+                var deadline = DateTime.UtcNow.AddSeconds(60);
+                while (DateTime.UtcNow < deadline)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (File.Exists(responseFile))
                     {
-                        bars.Add(new HistoricalBar
-                        {
-                            Time = time,
-                            Open = open,
-                            High = high,
-                            Low = low,
-                            Close = close,
-                            Volume = volume,
-                            Symbol = symbol,
-                            TimeFrame = timeFrame
-                        });
+                        var responseText = await File.ReadAllTextAsync(responseFile, cancellationToken).ConfigureAwait(false);
+                        var parsed = Mt4TradeBridgeHelper.ParseHistoryExportResponse(commandId, symbol, responseText);
+                        return parsed;
                     }
 
-                    if (time > endDate)
-                        break;
+                    if (!File.Exists(commandFile))
+                    {
+                        var fallback = Mt4TradeBridgeHelper.FindLatestResponseSince(
+                            Path.Combine(commandPath, "Responses"),
+                            commandId,
+                            DateTime.UtcNow.AddSeconds(-65));
+                        if (fallback != null)
+                            return Mt4TradeBridgeHelper.ParseHistoryExportResponse(commandId, symbol, fallback);
+                    }
+
+                    await Task.Delay(500, cancellationToken).ConfigureAwait(false);
                 }
+
+                return new HistoricalExportResult
+                {
+                    Success = false,
+                    CommandId = commandId,
+                    Symbol = symbol,
+                    Message = "Timed out waiting for MT4 history export response."
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error reading .hst file: {ex.Message}");
-            }
-
-            return bars.OrderBy(b => b.Time).ToList();
-        }
-
-        private async Task<List<HistoricalBar>> ReadCsvHistoricalDataAsync(string symbol, TimeFrame timeFrame, DateTime startDate, DateTime endDate)
-        {
-            var bars = new List<HistoricalBar>();
-
-            try
-            {
-                // Check for CSV files in the command folder (exported by EA)
-                var csvPath = Path.Combine(_mt4DataPath!, "MQL4", "Files", _commandFolder, $"{symbol}_{GetTimeFrameCode(timeFrame)}.csv");
-
-                if (File.Exists(csvPath))
+                return new HistoricalExportResult
                 {
-                    var lines = await File.ReadAllLinesAsync(csvPath);
-                    foreach (var line in lines.Skip(1)) // Skip header
-                    {
-                        var parts = line.Split(',');
-                        if (parts.Length >= 6)
-                        {
-                            if (DateTime.TryParse(parts[0], out var time) &&
-                                double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var open) &&
-                                double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var high) &&
-                                double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var low) &&
-                                double.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var close) &&
-                                long.TryParse(parts[5], out var volume))
-                            {
-                                if (time >= startDate && time <= endDate)
-                                {
-                                    bars.Add(new HistoricalBar
-                                    {
-                                        Time = time,
-                                        Open = open,
-                                        High = high,
-                                        Low = low,
-                                        Close = close,
-                                        Volume = volume,
-                                        Symbol = symbol,
-                                        TimeFrame = timeFrame
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
+                    Success = false,
+                    Symbol = symbol,
+                    Message = $"History export failed: {ex.Message}"
+                };
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error reading CSV historical data: {ex.Message}");
-            }
-
-            return bars.OrderBy(b => b.Time).ToList();
         }
 
         public async Task<MarketData?> GetMarketDataAsync(string symbol)
@@ -335,24 +300,13 @@ namespace HouseVictoria.Services.Trading
             // Try to read from file (updated by EA)
             try
             {
-                var marketDataFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder, $"MarketData_{symbol}.txt");
-                if (File.Exists(marketDataFile))
+                var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
+                var marketDataFile = Mt4TradeBridgeHelper.ResolveMarketDataFile(commandPath, symbol);
+                if (marketDataFile != null)
                 {
-                    var content = await File.ReadAllTextAsync(marketDataFile);
-                    var parts = content.Split(',');
-                    if (parts.Length >= 3 &&
-                        double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var bid) &&
-                        double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var ask))
+                    var marketData = Mt4TradeBridgeHelper.ParseMarketDataFile(marketDataFile, symbol);
+                    if (marketData != null)
                     {
-                        var marketData = new MarketData
-                        {
-                            Symbol = symbol,
-                            Bid = bid,
-                            Ask = ask,
-                            Spread = ask - bid,
-                            LastUpdate = DateTime.Now
-                        };
-
                         lock (_lockObject)
                         {
                             _marketDataCache[symbol] = marketData;
@@ -371,7 +325,7 @@ namespace HouseVictoria.Services.Trading
             return null;
         }
 
-        public async Task<BacktestResult> RunBacktestAsync(BacktestRequest request)
+        public async Task<BacktestResult> RunBacktestAsync(BacktestRequest request, CancellationToken cancellationToken = default)
         {
             if (!_status.IsConnected || _mt4DataPath == null)
             {
@@ -392,12 +346,16 @@ namespace HouseVictoria.Services.Trading
                     return new BacktestResult
                     {
                         Success = false,
-                        ErrorMessage = $"No historical data found for {request.Symbol}"
+                        ErrorMessage =
+                            $"No historical data found for {request.Symbol}. " +
+                            "Use ExportHistoricalDataAsync or download history in MT4 History Center."
                     };
                 }
 
-                // Create a simple backtest engine
-                var result = PerformBacktest(bars, request);
+                var config = BacktestStrategyConfig.FromParameters(request.StrategyParameters);
+                var result = BacktestEngine.Run(bars, request);
+                result.StrategyTypeUsed = config.StrategyType;
+                result.BarsProcessed = bars.Count;
 
                 // Save backtest result
                 var resultFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder,
@@ -415,186 +373,6 @@ namespace HouseVictoria.Services.Trading
                     ErrorMessage = ex.Message
                 };
             }
-        }
-
-        private BacktestResult PerformBacktest(List<HistoricalBar> bars, BacktestRequest request)
-        {
-            var result = new BacktestResult
-            {
-                InitialDeposit = request.InitialDeposit,
-                StartDate = request.StartDate,
-                EndDate = request.EndDate,
-                Trades = new List<Trade>(),
-                EquityCurve = new List<EquityPoint>()
-            };
-
-            double balance = request.InitialDeposit;
-            double equity = balance;
-            double maxEquity = balance;
-            double maxDrawdown = 0;
-            double totalProfit = 0;
-            double totalLoss = 0;
-            var trades = new List<Trade>();
-
-            // Simple moving average crossover strategy (example)
-            // This is a placeholder - actual strategy logic should be in the EA code
-            var fastMA = new List<double>();
-            var slowMA = new List<double>();
-            const int fastPeriod = 10;
-            const int slowPeriod = 30;
-
-            foreach (var bar in bars)
-            {
-                // Calculate moving averages
-                fastMA.Add(bar.Close);
-                slowMA.Add(bar.Close);
-
-                if (fastMA.Count > fastPeriod)
-                    fastMA.RemoveAt(0);
-                if (slowMA.Count > slowPeriod)
-                    slowMA.RemoveAt(0);
-
-                if (fastMA.Count == fastPeriod && slowMA.Count == slowPeriod)
-                {
-                    var fastAvg = fastMA.Average();
-                    var slowAvg = slowMA.Average();
-                    var prevFastAvg = fastMA.Take(fastPeriod - 1).Average();
-                    var prevSlowAvg = slowMA.Take(slowPeriod - 1).Average();
-
-                    // Buy signal: fast MA crosses above slow MA
-                    if (prevFastAvg <= prevSlowAvg && fastAvg > slowAvg)
-                    {
-                        // Close any open sell positions
-                        var openSells = trades.Where(t => t.Type == TradeType.Sell && t.CloseTime == null).ToList();
-                        foreach (var trade in openSells)
-                        {
-                            trade.ClosePrice = bar.Close;
-                            trade.CloseTime = bar.Time;
-                            var profit = (trade.OpenPrice - trade.ClosePrice.Value) * request.LotSize * 100000; // Simplified
-                            trade.Profit = profit;
-                            balance += profit;
-                            totalProfit += Math.Max(0, profit);
-                            totalLoss += Math.Min(0, profit);
-                        }
-
-                        // Open buy position
-                        var buyTrade = new Trade
-                        {
-                            Ticket = trades.Count + 1,
-                            Symbol = request.Symbol,
-                            Type = TradeType.Buy,
-                            Volume = request.LotSize,
-                            OpenPrice = bar.Close,
-                            OpenTime = bar.Time
-                        };
-                        trades.Add(buyTrade);
-                    }
-                    // Sell signal: fast MA crosses below slow MA
-                    else if (prevFastAvg >= prevSlowAvg && fastAvg < slowAvg)
-                    {
-                        // Close any open buy positions
-                        var openBuys = trades.Where(t => t.Type == TradeType.Buy && t.CloseTime == null).ToList();
-                        foreach (var trade in openBuys)
-                        {
-                            trade.ClosePrice = bar.Close;
-                            trade.CloseTime = bar.Time;
-                            var profit = (trade.ClosePrice.Value - trade.OpenPrice) * request.LotSize * 100000; // Simplified
-                            trade.Profit = profit;
-                            balance += profit;
-                            totalProfit += Math.Max(0, profit);
-                            totalLoss += Math.Min(0, profit);
-                        }
-
-                        // Open sell position
-                        var sellTrade = new Trade
-                        {
-                            Ticket = trades.Count + 1,
-                            Symbol = request.Symbol,
-                            Type = TradeType.Sell,
-                            Volume = request.LotSize,
-                            OpenPrice = bar.Close,
-                            OpenTime = bar.Time
-                        };
-                        trades.Add(sellTrade);
-                    }
-                }
-
-                // Update equity curve
-                equity = balance;
-                foreach (var openTrade in trades.Where(t => t.CloseTime == null))
-                {
-                    if (openTrade.Type == TradeType.Buy)
-                        equity += (bar.Close - openTrade.OpenPrice) * openTrade.Volume * 100000;
-                    else
-                        equity += (openTrade.OpenPrice - bar.Close) * openTrade.Volume * 100000;
-                }
-
-                if (equity > maxEquity)
-                    maxEquity = equity;
-
-                var drawdown = maxEquity - equity;
-                if (drawdown > maxDrawdown)
-                    maxDrawdown = drawdown;
-
-                result.EquityCurve.Add(new EquityPoint
-                {
-                    Time = bar.Time,
-                    Equity = equity,
-                    Balance = balance
-                });
-            }
-
-            // Close any remaining open positions
-            foreach (var openTrade in trades.Where(t => t.CloseTime == null))
-            {
-                var lastBar = bars.Last();
-                openTrade.ClosePrice = lastBar.Close;
-                openTrade.CloseTime = lastBar.Time;
-                double profit;
-                if (openTrade.Type == TradeType.Buy)
-                    profit = (openTrade.ClosePrice.Value - openTrade.OpenPrice) * openTrade.Volume * 100000;
-                else
-                    profit = (openTrade.OpenPrice - openTrade.ClosePrice.Value) * openTrade.Volume * 100000;
-                openTrade.Profit = profit;
-                balance += profit;
-                totalProfit += Math.Max(0, profit);
-                totalLoss += Math.Min(0, profit);
-            }
-
-            result.FinalBalance = balance;
-            result.NetProfit = balance - request.InitialDeposit;
-            result.ProfitPercent = (result.NetProfit / request.InitialDeposit) * 100;
-            result.TotalTrades = trades.Count;
-            result.WinningTrades = trades.Count(t => t.Profit > 0);
-            result.LosingTrades = trades.Count(t => t.Profit < 0);
-            result.WinRate = result.TotalTrades > 0 ? (double)result.WinningTrades / result.TotalTrades * 100 : 0;
-            result.MaxDrawdown = maxDrawdown;
-            result.MaxDrawdownPercent = maxEquity > 0 ? (maxDrawdown / maxEquity) * 100 : 0;
-            result.ProfitFactor = Math.Abs(totalLoss) > 0 ? totalProfit / Math.Abs(totalLoss) : 0;
-            result.Trades = trades;
-            result.Success = true;
-
-            // Calculate Sharpe Ratio (simplified)
-            if (result.EquityCurve.Count > 1)
-            {
-                var returns = new List<double>();
-                for (int i = 1; i < result.EquityCurve.Count; i++)
-                {
-                    var prevEquity = result.EquityCurve[i - 1].Equity;
-                    if (prevEquity > 0)
-                    {
-                        returns.Add((result.EquityCurve[i].Equity - prevEquity) / prevEquity);
-                    }
-                }
-                if (returns.Count > 0)
-                {
-                    var avgReturn = returns.Average();
-                    var stdDev = Math.Sqrt(returns.Select(r => Math.Pow(r - avgReturn, 2)).Sum() / returns.Count);
-                    result.SharpeRatio = stdDev > 0 ? avgReturn / stdDev * Math.Sqrt(252) : 0; // Annualized
-                }
-            }
-
-            return result;
         }
 
         public async Task<bool> CreateStrategyAsync(TradingStrategy strategy)
@@ -802,28 +580,135 @@ namespace HouseVictoria.Services.Trading
             return strategies;
         }
 
-        public async Task<bool> ExecuteTradeAsync(TradeRequest request)
+        public async Task<TradeExecutionResult> ExecuteTradeAsync(
+            TradeRequest request,
+            CancellationToken cancellationToken = default)
         {
             if (!_status.IsConnected || _mt4DataPath == null)
             {
-                return false;
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Message = "Not connected to MT4"
+                };
+            }
+
+            if (!_status.IsBridgeActive)
+            {
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Message = "MT4 bridge EA is not active (no recent file updates). Attach HouseVictoriaBridge to a chart with AutoTrading enabled."
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Symbol) || request.Volume <= 0)
+            {
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Message = "Invalid trade request: Symbol and positive Volume are required."
+                };
             }
 
             try
             {
-                var commandFile = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder,
-                    $"Trade_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}.json");
+                var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
+                var symbolMap = Mt4TradeBridgeHelper.LoadSymbolMap(commandPath);
+                var baseSymbol = request.Symbol.ToUpperInvariant();
+                if (!symbolMap.ContainsKey(baseSymbol) &&
+                    !File.Exists(Path.Combine(commandPath, "SymbolsAvailable.json")))
+                {
+                    return new TradeExecutionResult
+                    {
+                        Success = false,
+                        Message =
+                            $"Cannot resolve {baseSymbol}: symbol map unavailable. " +
+                            "List symbols from MT4 first or add the pair to Market Watch."
+                    };
+                }
+
+                var commandId = $"Trade_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+                var commandFile = Path.Combine(commandPath, $"{commandId}.json");
+                var responseFile = Path.Combine(commandPath, "Responses", $"Response_{commandId}.txt");
+
+                Directory.CreateDirectory(Path.Combine(commandPath, "Responses"));
 
                 var json = JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(commandFile, json);
+                await File.WriteAllTextAsync(commandFile, json, cancellationToken).ConfigureAwait(false);
 
                 System.Diagnostics.Debug.WriteLine($"Trade command written: {commandFile}");
-                return true;
+
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                var responsesDir = Path.Combine(commandPath, "Responses");
+                TradeExecutionResult? parsed = null;
+                while (DateTime.UtcNow < deadline)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (File.Exists(responseFile))
+                    {
+                        var responseText = await File.ReadAllTextAsync(responseFile, cancellationToken).ConfigureAwait(false);
+                        parsed = Mt4TradeBridgeHelper.ParseExecutionResponse(commandId, responseText);
+                        break;
+                    }
+
+                    var fallback = Mt4TradeBridgeHelper.FindLatestResponseSince(responsesDir, commandId, DateTime.UtcNow.AddSeconds(-35));
+                    if (fallback != null)
+                    {
+                        parsed = Mt4TradeBridgeHelper.ParseExecutionResponse(commandId, fallback);
+                        break;
+                    }
+
+                    await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (parsed != null)
+                {
+                    if (symbolMap.TryGetValue(baseSymbol, out var brokerHint) &&
+                        string.IsNullOrWhiteSpace(parsed.BrokerSymbol))
+                    {
+                        parsed.BrokerSymbol = brokerHint;
+                    }
+
+                    return await Mt4TradeBridgeHelper.VerifyTicketAsync(
+                        parsed,
+                        () => GetOpenPositionsAsync(),
+                        Mt4TradeBridgeHelper.DefaultVerifyTimeoutSeconds,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                if (!File.Exists(commandFile))
+                {
+                    return new TradeExecutionResult
+                    {
+                        Success = false,
+                        Verified = false,
+                        CommandId = commandId,
+                        Message = "Trade command was consumed by MT4 but no response file appeared within 30 seconds."
+                    };
+                }
+
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Verified = false,
+                    CommandId = commandId,
+                    Message = "Timed out waiting for MT4 EA response. Ensure HouseVictoriaBridge is attached to a ticking chart and AutoTrading is enabled."
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error executing trade: {ex.Message}");
-                return false;
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Message = $"Error executing trade: {ex.Message}"
+                };
             }
         }
 

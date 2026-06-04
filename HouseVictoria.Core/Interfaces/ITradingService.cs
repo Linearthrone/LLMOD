@@ -33,6 +33,16 @@ namespace HouseVictoria.Core.Interfaces
         Task<List<HistoricalBar>> GetHistoricalDataAsync(string symbol, TimeFrame timeFrame, DateTime startDate, DateTime endDate);
 
         /// <summary>
+        /// Asks the MT4 EA to export OHLCV bars to a bridge CSV file (then readable via GetHistoricalDataAsync).
+        /// </summary>
+        Task<HistoricalExportResult> ExportHistoricalDataAsync(
+            string symbol,
+            TimeFrame timeFrame,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets current market data for a symbol
         /// </summary>
         Task<MarketData?> GetMarketDataAsync(string symbol);
@@ -40,7 +50,7 @@ namespace HouseVictoria.Core.Interfaces
         /// <summary>
         /// Runs a backtest with a strategy
         /// </summary>
-        Task<BacktestResult> RunBacktestAsync(BacktestRequest request);
+        Task<BacktestResult> RunBacktestAsync(BacktestRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Creates or updates a trading strategy EA file
@@ -53,9 +63,9 @@ namespace HouseVictoria.Core.Interfaces
         Task<List<TradingStrategy>> GetStrategiesAsync();
 
         /// <summary>
-        /// Executes a trade (requires MT4 EA to be running)
+        /// Executes a trade via the MT4 EA file bridge and waits for the EA response.
         /// </summary>
-        Task<bool> ExecuteTradeAsync(TradeRequest request);
+        Task<TradeExecutionResult> ExecuteTradeAsync(TradeRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets account information

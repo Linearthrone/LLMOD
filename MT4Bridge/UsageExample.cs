@@ -227,14 +227,14 @@ namespace HouseVictoria.Examples
                 Comment = "House Victoria AI Trade"
             };
 
-            bool executed = await tradingService.ExecuteTradeAsync(tradeRequest);
-            if (executed)
+            var result = await tradingService.ExecuteTradeAsync(tradeRequest);
+            if (result.Success)
             {
-                Console.WriteLine("Trade command sent to MT4. Check MT4 for execution status.");
+                Console.WriteLine($"Trade executed. Ticket={result.Ticket}. {result.Message}");
             }
             else
             {
-                Console.WriteLine("Failed to send trade command.");
+                Console.WriteLine($"Trade failed: {result.Message}");
             }
         }
     }

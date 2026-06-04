@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
+using HouseVictoria.Services.Trading;
 
 namespace HouseVictoria.Services.Autonomy
 {
@@ -22,6 +23,8 @@ namespace HouseVictoria.Services.Autonomy
         private readonly IAgentService? _agent;
         private readonly IVirtualEnvironmentService? _virtualEnvironment;
         private readonly IJournalService? _journals;
+        private readonly ITradingService? _tradingService;
+        private readonly IMarketWatchScanner? _marketWatch;
         private readonly IPersonaContext? _personaContext;
         private readonly AutonomyStateStore _stateStore;
         private readonly string _autonomyRoot;
@@ -56,6 +59,8 @@ namespace HouseVictoria.Services.Autonomy
             IAgentService? agent = null,
             IVirtualEnvironmentService? virtualEnvironment = null,
             IJournalService? journals = null,
+            ITradingService? tradingService = null,
+            IMarketWatchScanner? marketWatch = null,
             IPersonaContext? personaContext = null)
         {
             _config = config;
@@ -67,6 +72,8 @@ namespace HouseVictoria.Services.Autonomy
             _agent = agent;
             _virtualEnvironment = virtualEnvironment;
             _journals = journals;
+            _tradingService = tradingService;
+            _marketWatch = marketWatch;
             _personaContext = personaContext;
 
             _autonomyRoot = ResolveAutonomyPath(config);
@@ -123,6 +130,8 @@ namespace HouseVictoria.Services.Autonomy
 
             ApplyVitals(CognitionVitalsProfile.ForRhythm(CognitionVitalRhythm.Resting, "Autonomy online"));
             await _stateStore.AppendActivityLogAsync("Autonomy loop started.").ConfigureAwait(false);
+            if (_marketWatch != null && _config.TradingWatchEnabled)
+                _ = _marketWatch.StartAsync(cancellationToken);
             System.Diagnostics.Debug.WriteLine("[Autonomy] Started");
         }
 
@@ -213,6 +222,16 @@ namespace HouseVictoria.Services.Autonomy
             var canAct = CanPerformSubstantiveAction();
             AutonomyDecision? decision = null;
 
+            if (userQuiet && canAct && _marketWatch != null && _config.TradingWatchEnabled)
+            {
+                var pending = _marketWatch.PeekPendingAlerts();
+                if (pending.Count > 0)
+                {
+                    await ExecuteMarketScanAsync(contact, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+            }
+
             if (highPriority.Count > 0 && canAct)
             {
                 decision = await DecideAsync(contact, highPriority, userQuiet, preferPriority: true, cancellationToken)
@@ -278,6 +297,15 @@ namespace HouseVictoria.Services.Autonomy
                     case AutonomyActivityKind.ExploreEnvironment:
                         await ExecuteEnvironmentAsync(cancellationToken).ConfigureAwait(false);
                         break;
+                    case AutonomyActivityKind.ExecuteTrade:
+                        await ExecuteTradeDecisionAsync(contact, decision, cancellationToken).ConfigureAwait(false);
+                        break;
+                    case AutonomyActivityKind.RunBacktest:
+                        await ExecuteBacktestDecisionAsync(contact, decision, cancellationToken).ConfigureAwait(false);
+                        break;
+                    case AutonomyActivityKind.ScanMarkets:
+                        await ExecuteMarketScanAsync(contact, cancellationToken).ConfigureAwait(false);
+                        break;
                     default:
                         await ExecuteReflectAsync(contact, decision).ConfigureAwait(false);
                         break;
@@ -333,8 +361,17 @@ namespace HouseVictoria.Services.Autonomy
                 This is a trading/strategy project. Your output MUST include concrete sections:
                 - **Strategy Overview**: rules, instruments, timeframes
                 - **Setups / Plays**: entry, exit, stop, position sizing
-                - **Backtesting / Statistics**: results, sample size, win rate, drawdown, expectancy (use real numbers if available; otherwise state assumptions explicitly and provide a structured template with placeholder columns — never skip the section)
+                - **Backtesting / Statistics**: use REAL numbers from the bridge backtest log below when present. To request a specific backtest, include:
+                  ```backtest
+                  {"strategy_name":"MyPlay","symbol":"EURUSD","time_frame":"H1","start_date":"2025-01-01","end_date":"2026-01-01","strategy_type":"ma_crossover","fast_period":10,"slow_period":30,"stop_loss_pips":20,"take_profit_pips":40}
+                  ```
+                  strategy_type: ma_crossover | rsi | breakout. If no block, a default MA crossover backtest still runs on available MT4 history.
                 - **External Sources**: cite actual documentation, papers, or platforms (MetaTrader docs, academic sources, etc.). Do NOT cite your own prior journal files as primary sources.
+                - **Live Execution (optional)**: to request a real demo trade through the MT4 bridge, include a fenced block exactly like:
+                  ```trade
+                  {"Symbol":"EURUSD","Type":0,"Volume":0.01}
+                  ```
+                  Type 0 = buy, 1 = sell. Use small volume (0.01). Do NOT claim a trade executed unless this block is present and the bridge confirms it.
                 """
                 : """
 
@@ -379,20 +416,21 @@ namespace HouseVictoria.Services.Autonomy
                 ClearProjectFocusTracking(project.Id);
             }
 
-            var filePath = await _files.CreateTextFileAsync(
-                $"project-{project.Id}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.md",
-                note,
-                "Autonomy/Projects").ConfigureAwait(false);
-
             await RecordJournalAsync(
                 AutonomyActivityKind.WorkOnPriorityProject,
                 $"{decision.Title} — {decision.Reason}",
                 note.Trim(),
                 project.Id,
-                project.Name,
-                filePath).ConfigureAwait(false);
+                project.Name).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Project work on '{project.Name}': {note}").ConfigureAwait(false);
+
+            if (isTradingProject)
+            {
+                await AppendTradingBridgeStatusAsync(project, contact).ConfigureAwait(false);
+                await RunTradingBacktestsAsync(contact, project, note, cancellationToken).ConfigureAwait(false);
+                await TryExecuteTradeBlockAsync(contact, project, note, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         private async Task ExecuteArtAsync(AIContact contact, AutonomyDecision decision, CancellationToken cancellationToken)
@@ -517,23 +555,11 @@ namespace HouseVictoria.Services.Autonomy
                 """;
 
             var body = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
-            var fileName = $"research-{SanitizeFileName(decision.Title)}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.md";
-            var path = await _files.CreateTextFileAsync(fileName, body, "Autonomy/Research").ConfigureAwait(false);
 
             var researchProject = await GetOrCreateProjectAsync(
                 "Research & curiosity backlog",
                 ProjectType.Research,
                 "Topics to investigate and personal R&D notes.").ConfigureAwait(false);
-
-            await _projects.AddArtifactAsync(researchProject.Id, new ProjectArtifact
-            {
-                ProjectId = researchProject.Id,
-                Name = decision.Title,
-                FilePath = path,
-                Type = ArtifactType.Document,
-                Description = decision.Detail,
-                CreatedBy = contact.Id
-            }).ConfigureAwait(false);
 
             await _projects.AddLogEntryAsync(researchProject.Id, new ProjectLog
             {
@@ -548,8 +574,7 @@ namespace HouseVictoria.Services.Autonomy
                 $"{decision.Title} — {decision.Reason}",
                 body.Trim(),
                 researchProject.Id,
-                researchProject.Name,
-                path).ConfigureAwait(false);
+                researchProject.Name).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Research on '{decision.Title}': {Truncate(body, 500)}").ConfigureAwait(false);
         }
@@ -563,16 +588,11 @@ namespace HouseVictoria.Services.Autonomy
                 """;
 
             var reflection = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
-            var reflectionPath = await _files.CreateTextFileAsync(
-                $"reflection-{DateTime.UtcNow:yyyyMMdd-HHmmss}.txt",
-                reflection,
-                "Autonomy/Reflection").ConfigureAwait(false);
 
             await RecordJournalAsync(
                 AutonomyActivityKind.Reflect,
                 $"{decision.Title} — {decision.Reason}",
-                reflection.Trim(),
-                linkedFilePaths: reflectionPath).ConfigureAwait(false);
+                reflection.Trim()).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Reflection: {reflection.Trim()}").ConfigureAwait(false);
         }
@@ -629,7 +649,10 @@ namespace HouseVictoria.Services.Autonomy
                 {{projectLines}}
 
                 Reply with ONLY a JSON object (no markdown):
-                {"mode":"priority|idle|wait","activity":"project|art|research|reflect|environment","title":"short title","detail":"concrete prompt or notes","projectId":"id or empty","reason":"why this choice"}
+                {"mode":"priority|idle|wait","activity":"project|art|research|reflect|environment|trade","title":"short title","detail":"concrete prompt or notes","projectId":"id or empty","reason":"why this choice"}
+
+                For activity "trade", put a JSON trade request in detail, e.g. {"Symbol":"EURUSD","Type":0,"Volume":0.01}. Only choose "trade" when the MT4 bridge should place a real demo order now.
+                For activity "backtest", put a JSON backtest request in detail (same shape as the ```backtest block).
                 """;
 
             var raw = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
@@ -956,6 +979,9 @@ namespace HouseVictoria.Services.Autonomy
                 "art" or "image" or "creative" => AutonomyActivityKind.CreateArt,
                 "research" or "study" or "rd" => AutonomyActivityKind.WriteResearch,
                 "environment" or "unreal" or "explore" => AutonomyActivityKind.ExploreEnvironment,
+                "trade" or "execute_trade" or "order" => AutonomyActivityKind.ExecuteTrade,
+                "backtest" or "back_test" => AutonomyActivityKind.RunBacktest,
+                "scan_markets" or "market_scan" or "watch_markets" => AutonomyActivityKind.ScanMarkets,
                 "personal" => AutonomyActivityKind.AdvancePersonalProject,
                 _ => AutonomyActivityKind.Reflect
             };
@@ -991,6 +1017,354 @@ namespace HouseVictoria.Services.Autonomy
                 TotalTicks = source.TotalTicks,
                 TotalActions = source.TotalActions
             };
+
+        private async Task AppendTradingBridgeStatusAsync(Project project, AIContact contact)
+        {
+            if (_tradingService == null)
+                return;
+
+            var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
+            var account = await _tradingService.GetAccountInfoAsync().ConfigureAwait(false);
+            var summary = Mt4TradeBridgeHelper.FormatBridgeStatus(status, account);
+
+            await _projects.AddLogEntryAsync(project.Id, new ProjectLog
+            {
+                ProjectId = project.Id,
+                PerformedBy = contact.Id,
+                Action = "Autonomy: MT4 bridge status",
+                Details = summary
+            }).ConfigureAwait(false);
+        }
+
+        private async Task TryExecuteTradeBlockAsync(
+            AIContact contact,
+            Project project,
+            string note,
+            CancellationToken cancellationToken)
+        {
+            if (_tradingService == null)
+                return;
+
+            var request = Mt4TradeBridgeHelper.TryParseTradeRequest(note);
+            if (request == null)
+                return;
+
+            var result = await _tradingService.ExecuteTradeAsync(request, cancellationToken).ConfigureAwait(false);
+            var details = result.Success
+                ? $"Trade executed. Ticket={result.Ticket}. {result.Message}"
+                : $"Trade failed. {result.Message}";
+
+            await _projects.AddLogEntryAsync(project.Id, new ProjectLog
+            {
+                ProjectId = project.Id,
+                PerformedBy = contact.Id,
+                Action = result.Success ? "Autonomy: trade executed" : "Autonomy: trade failed",
+                Details = details
+            }).ConfigureAwait(false);
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.ExecuteTrade,
+                result.Success ? "Live trade executed" : "Live trade failed",
+                details,
+                project.Id,
+                project.Name).ConfigureAwait(false);
+        }
+
+        private async Task ExecuteTradeDecisionAsync(
+            AIContact contact,
+            AutonomyDecision decision,
+            CancellationToken cancellationToken)
+        {
+            if (_tradingService == null)
+                throw new InvalidOperationException("Trading service is not configured.");
+
+            var request = Mt4TradeBridgeHelper.TryParseTradeRequest(decision.Detail)
+                ?? throw new InvalidOperationException(
+                    "Trade decision detail must contain JSON, e.g. {\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01}");
+
+            var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
+            if (!status.IsConnected || !status.IsBridgeActive)
+            {
+                throw new InvalidOperationException(
+                    $"MT4 bridge not ready. Connected={status.IsConnected}, BridgeActive={status.IsBridgeActive}");
+            }
+
+            var result = await _tradingService.ExecuteTradeAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!result.Success)
+                throw new InvalidOperationException(result.Message);
+
+            var project = await ResolveProjectForDecisionAsync(decision).ConfigureAwait(false);
+            if (project != null)
+            {
+                await _projects.AddLogEntryAsync(project.Id, new ProjectLog
+                {
+                    ProjectId = project.Id,
+                    PerformedBy = contact.Id,
+                    Action = "Autonomy: trade executed",
+                    Details = $"Ticket={result.Ticket}. {result.Message}"
+                }).ConfigureAwait(false);
+            }
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.ExecuteTrade,
+                decision.Title,
+                $"Ticket={result.Ticket}. {result.Message}",
+                project?.Id,
+                project?.Name).ConfigureAwait(false);
+
+            await AppendAutonomyMemoryAsync(
+                contact,
+                $"Executed trade {request.Symbol} {request.Type} {request.Volume}: {result.Message}").ConfigureAwait(false);
+        }
+
+        private async Task ExecuteMarketScanAsync(
+            AIContact contact,
+            CancellationToken cancellationToken)
+        {
+            if (_tradingService == null || _marketWatch == null)
+                return;
+
+            var toProcess = _marketWatch.ConsumePendingAlerts();
+            if (toProcess.Count == 0)
+            {
+                await CompleteTickAsync(AutonomyActivityKind.ScanMarkets, "Market watch: no pending alerts.").ConfigureAwait(false);
+                return;
+            }
+
+            var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
+            if (!status.IsConnected || !status.IsBridgeActive)
+            {
+                await CompleteTickAsync(AutonomyActivityKind.ScanMarkets, "Market watch: MT4 bridge not active.").ConfigureAwait(false);
+                return;
+            }
+
+            var alertLines = string.Join(Environment.NewLine,
+                toProcess.Select(a => $"- [{a.AlertType}] {a.Message}"));
+
+            var quotes = new List<string>();
+            foreach (var symbol in _marketWatch.WatchSymbols.Take(20))
+            {
+                var q = await _tradingService.GetMarketDataAsync(symbol).ConfigureAwait(false);
+                if (q != null)
+                    quotes.Add($"{symbol}: bid={q.Bid:F5} ask={q.Ask:F5} spread={(q.Ask - q.Bid):F5}");
+            }
+
+            var allProjects = await _projects.GetAllProjectsAsync().ConfigureAwait(false);
+            var project = allProjects.FirstOrDefault(p =>
+                              p.Phase != ProjectPhase.Completed &&
+                              p.Name.Equals(MarketWatchProjectBootstrap.ProjectName, StringComparison.OrdinalIgnoreCase))
+                          ?? allProjects.FirstOrDefault(p =>
+                              p.Phase != ProjectPhase.Completed &&
+                              ContainsTradingKeywords(p.Name, p.Description, null, null));
+
+            var technicalAlerts = toProcess.Where(a => a.AlertType.StartsWith("technical_", StringComparison.Ordinal)).ToList();
+            var technicalHint = technicalAlerts.Count > 0
+                ? $"\n\n**Technical signals** ({technicalAlerts.Count}): prioritize backtest with suggested strategy_type from alerts."
+                : string.Empty;
+
+            var prompt = $"""
+                You are {contact.Name}, monitoring FX/CFD markets via the House Victoria MT4 bridge.
+
+                **Alerts this scan** ({toProcess.Count}):
+                {alertLines}{technicalHint}
+
+                **Current quotes** (watchlist sample):
+                {string.Join(Environment.NewLine, quotes)}
+
+                Review these moves across pairs. For each alert worth acting on:
+                1. State the setup (trend, mean-reversion, breakout) and timeframe.
+                2. If validation is needed, include a ```backtest``` JSON block for that symbol.
+                3. Only include a ```trade``` block if you want a small demo execution (0.01 lot).
+
+                Do not claim trades ran without a trade block. Be concise (300-500 words).
+                """;
+
+            var note = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
+
+            if (project != null)
+            {
+                await _projects.AddLogEntryAsync(project.Id, new ProjectLog
+                {
+                    ProjectId = project.Id,
+                    PerformedBy = contact.Id,
+                    Action = "Autonomy: market scan",
+                    Details = note.Trim()
+                }).ConfigureAwait(false);
+
+                await RunTradingBacktestsAsync(contact, project, note, cancellationToken).ConfigureAwait(false);
+                await TryExecuteTradeBlockAsync(contact, project, note, cancellationToken).ConfigureAwait(false);
+            }
+
+            var summary = $"Market scan: {toProcess.Count} alert(s) — {string.Join("; ", toProcess.Take(3).Select(a => a.Symbol))}";
+            await RecordJournalAsync(
+                AutonomyActivityKind.ScanMarkets,
+                "Multi-pair market scan",
+                note.Trim(),
+                project?.Id,
+                project?.Name).ConfigureAwait(false);
+
+            await AppendAutonomyMemoryAsync(contact, $"{summary}\n{note}").ConfigureAwait(false);
+
+            RecordSubstantiveAction();
+            SetVitalsForActivity(AutonomyActivityKind.ScanMarkets, summary, holdSeconds: 60);
+            await CompleteTickAsync(AutonomyActivityKind.ScanMarkets, summary).ConfigureAwait(false);
+            ActivityCompleted?.Invoke(this, new AutonomyActivityEventArgs
+            {
+                Activity = AutonomyActivityKind.ScanMarkets,
+                Summary = summary
+            });
+        }
+
+        private async Task RunTradingBacktestsAsync(
+            AIContact contact,
+            Project project,
+            string note,
+            CancellationToken cancellationToken)
+        {
+            if (_tradingService == null)
+                return;
+
+            var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
+            if (!status.IsConnected)
+                return;
+
+            var request = Mt4TradeBridgeHelper.TryParseBacktestRequest(note)
+                ?? BuildDefaultBacktestRequest(project, note);
+
+            var result = await RunBacktestWithExportFallbackAsync(request, cancellationToken).ConfigureAwait(false);
+            var summary = Mt4TradeBridgeHelper.FormatBacktestSummary(result);
+            var details = result.Success
+                ? summary
+                : $"{summary} — ensure {request.Symbol} {request.TimeFrame} history is in MT4 (EA export or History Center).";
+
+            await _projects.AddLogEntryAsync(project.Id, new ProjectLog
+            {
+                ProjectId = project.Id,
+                PerformedBy = contact.Id,
+                Action = result.Success ? "Autonomy: backtest completed" : "Autonomy: backtest failed",
+                Details = details
+            }).ConfigureAwait(false);
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.RunBacktest,
+                result.Success ? $"Backtest {request.StrategyName}" : "Backtest failed",
+                details,
+                project.Id,
+                project.Name).ConfigureAwait(false);
+
+            if (result.Success)
+                await AppendAutonomyMemoryAsync(contact, summary).ConfigureAwait(false);
+        }
+
+        private async Task<BacktestResult> RunBacktestWithExportFallbackAsync(
+            BacktestRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _tradingService!.RunBacktestAsync(request, cancellationToken).ConfigureAwait(false);
+            if (result.Success ||
+                result.ErrorMessage == null ||
+                !result.ErrorMessage.Contains("No historical data", StringComparison.OrdinalIgnoreCase))
+            {
+                return result;
+            }
+
+            var export = await _tradingService.ExportHistoricalDataAsync(
+                request.Symbol,
+                request.TimeFrame,
+                request.StartDate,
+                request.EndDate,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!export.Success || export.BarsExported <= 0)
+                return result;
+
+            return await _tradingService.RunBacktestAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        private static BacktestRequest BuildDefaultBacktestRequest(Project project, string note)
+        {
+            var symbol = InferSymbolFromText(project.Name, project.Description, note) ?? "EURUSD";
+            var strategyType = InferStrategyTypeFromText(note);
+
+            return new BacktestRequest
+            {
+                StrategyName = $"Auto-{SanitizeFileName(project.Name)}",
+                Symbol = symbol,
+                TimeFrame = TimeFrame.H1,
+                StartDate = DateTime.UtcNow.AddMonths(-6),
+                EndDate = DateTime.UtcNow,
+                InitialDeposit = 10000,
+                LotSize = 0.01,
+                StrategyParameters = new Dictionary<string, object>
+                {
+                    ["strategy_type"] = strategyType,
+                    ["fast_period"] = 10,
+                    ["slow_period"] = 30
+                }
+            };
+        }
+
+        private async Task ExecuteBacktestDecisionAsync(
+            AIContact contact,
+            AutonomyDecision decision,
+            CancellationToken cancellationToken)
+        {
+            if (_tradingService == null)
+                throw new InvalidOperationException("Trading service is not configured.");
+
+            var request = Mt4TradeBridgeHelper.TryParseBacktestRequest(decision.Detail)
+                ?? throw new InvalidOperationException(
+                    "Backtest decision detail must contain JSON with symbol, time_frame, dates, and strategy_type.");
+
+            var result = await RunBacktestWithExportFallbackAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!result.Success)
+                throw new InvalidOperationException(result.ErrorMessage ?? "Backtest failed");
+
+            var project = await ResolveProjectForDecisionAsync(decision).ConfigureAwait(false);
+            var summary = Mt4TradeBridgeHelper.FormatBacktestSummary(result);
+
+            if (project != null)
+            {
+                await _projects.AddLogEntryAsync(project.Id, new ProjectLog
+                {
+                    ProjectId = project.Id,
+                    PerformedBy = contact.Id,
+                    Action = "Autonomy: backtest completed",
+                    Details = summary
+                }).ConfigureAwait(false);
+            }
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.RunBacktest,
+                decision.Title,
+                summary,
+                project?.Id,
+                project?.Name).ConfigureAwait(false);
+
+            await AppendAutonomyMemoryAsync(contact, summary).ConfigureAwait(false);
+        }
+
+        private static string? InferSymbolFromText(params string?[] parts)
+        {
+            var text = string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p))).ToUpperInvariant();
+            foreach (var sym in new[] { "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "XAUUSD" })
+            {
+                if (text.Contains(sym, StringComparison.Ordinal))
+                    return sym;
+            }
+
+            return null;
+        }
+
+        private static string InferStrategyTypeFromText(string text)
+        {
+            var lower = text.ToLowerInvariant();
+            if (lower.Contains("rsi", StringComparison.Ordinal))
+                return "rsi";
+            if (lower.Contains("breakout", StringComparison.Ordinal) || lower.Contains("donchian", StringComparison.Ordinal))
+                return "breakout";
+            return "ma_crossover";
+        }
 
         private static bool ContainsTradingKeywords(params string?[] parts)
         {

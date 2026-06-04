@@ -82,6 +82,8 @@ namespace HouseVictoria.App
                     {
                         LoggingHelper.WriteToStartupLog($"PersonaContext init error: {personaEx.Message}");
                     }
+
+                    _ = SyncPersonaMcpEndpointsAsync();
                 }
                 catch (Exception ex)
                 {
@@ -432,13 +434,15 @@ namespace HouseVictoria.App
                 if (!string.IsNullOrWhiteSpace(appConfig?.MT4DataPath))
                 {
                     // Auto-connect if path is configured
-                    _ = Task.Run(async () =>
-                    {
-                        await service.ConnectAsync(appConfig.MT4DataPath);
-                    });
+                    _ = Task.Run(async () => await service.ConnectAsync(appConfig.MT4DataPath));
                 }
                 return service;
             });
+            services.AddSingleton<IMarketWatchScanner>(sp =>
+                new HouseVictoria.Services.Trading.MarketWatchScannerService(
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetRequiredService<ITradingService>(),
+                    sp.GetService<IProjectManagementService>()));
 
             // High-level cognitive agent service (composes AI + virtual environment)
             services.AddSingleton<IAgentService, AgentService>();
@@ -451,7 +455,19 @@ namespace HouseVictoria.App
                     sp.GetService<IMemoryService>(),
                     sp.GetService<DatabasePersistenceService>(),
                     sp.GetService<IPersonaContext>()));
-            services.AddSingleton<IAutonomyService, AutonomyOrchestratorService>();
+            services.AddSingleton<IAutonomyService>(sp => new AutonomyOrchestratorService(
+                sp.GetRequiredService<AppConfig>(),
+                sp.GetRequiredService<IAIService>(),
+                sp.GetRequiredService<DatabasePersistenceService>(),
+                sp.GetRequiredService<IProjectManagementService>(),
+                sp.GetRequiredService<IFileGenerationService>(),
+                sp.GetService<IMemoryService>(),
+                sp.GetService<IAgentService>(),
+                sp.GetService<IVirtualEnvironmentService>(),
+                sp.GetService<IJournalService>(),
+                sp.GetService<ITradingService>(),
+                sp.GetService<IMarketWatchScanner>(),
+                sp.GetService<IPersonaContext>()));
             services.AddSingleton(sp => new RemoteCompanionChatService(
                 sp.GetRequiredService<IAIService>(),
                 sp.GetRequiredService<DatabasePersistenceService>(),
@@ -517,7 +533,16 @@ namespace HouseVictoria.App
                 AutonomyEnableArtGeneration = !bool.TryParse(config["AutonomyEnableArtGeneration"], out var aag) || aag,
                 AutonomyMaxActionsPerHour = int.TryParse(config["AutonomyMaxActionsPerHour"], out var ama) && ama > 0 ? ama : 8,
                 AutonomyMaxArtPerHour = int.TryParse(config["AutonomyMaxArtPerHour"], out var amArt) && amArt > 0 ? amArt : 2,
-                AutonomyDataPath = config["AutonomyDataPath"] ?? "Data/Autonomy"
+                AutonomyDataPath = config["AutonomyDataPath"] ?? "Data/Autonomy",
+                TradingWatchEnabled = !bool.TryParse(config["TradingWatchEnabled"], out var twe) || twe,
+                TradingWatchSymbols = config["TradingWatchSymbols"] ?? string.Empty,
+                TradingWatchIntervalSeconds = int.TryParse(config["TradingWatchIntervalSeconds"], out var twi) && twi >= 15 ? twi : 30,
+                TradingWatchPipMoveThreshold = double.TryParse(config["TradingWatchPipMoveThreshold"], out var twp) && twp > 0 ? twp : 8,
+                TradingWatchMaxSpreadPips = double.TryParse(config["TradingWatchMaxSpreadPips"], out var tws) && tws > 0 ? tws : 25,
+                TradingWatchTechnicalEnabled = !bool.TryParse(config["TradingWatchTechnicalEnabled"], out var twte) || twte,
+                TradingWatchTechnicalIntervalSeconds = int.TryParse(config["TradingWatchTechnicalIntervalSeconds"], out var twtis) && twtis >= 60 ? twtis : 300,
+                TradingWatchTechnicalBarCount = int.TryParse(config["TradingWatchTechnicalBarCount"], out var twtbc) && twtbc >= 40 ? twtbc : 120,
+                TradingWatchProjectPriority = int.TryParse(config["TradingWatchProjectPriority"], out var twpp) && twpp >= 1 ? twpp : 9
             };
 
             // Resolve relative paths to absolute paths
@@ -788,6 +813,59 @@ namespace HouseVictoria.App
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error stopping services: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Ensures every persisted persona points at the app MCP endpoint (memory + MT4 bridge tools).
+        /// </summary>
+        private async Task SyncPersonaMcpEndpointsAsync()
+        {
+            try
+            {
+                var persistence = ServiceProvider?.GetService<IPersistenceService>();
+                var appConfig = ServiceProvider?.GetService<AppConfig>();
+                if (persistence == null || appConfig == null)
+                    return;
+
+                var defaultMcp = appConfig.MCPServerEndpoint?.Trim();
+                if (string.IsNullOrWhiteSpace(defaultMcp))
+                    return;
+
+                var contacts = await persistence.GetAllAsync<AIContact>().ConfigureAwait(false);
+                foreach (var contact in contacts.Values)
+                {
+                    if (!string.IsNullOrWhiteSpace(contact.MCPServerEndpoint))
+                        continue;
+
+                    contact.MCPServerEndpoint = defaultMcp;
+                    await persistence.SetAsync($"AIContact_{contact.Id}", contact).ConfigureAwait(false);
+
+                    if (!string.IsNullOrWhiteSpace(contact.DataPath))
+                    {
+                        var configPath = Path.Combine(contact.DataPath, "config.json");
+                        try
+                        {
+                            var json = System.Text.Json.JsonSerializer.Serialize(new
+                            {
+                                contact.Id,
+                                contact.Name,
+                                contact.ModelName,
+                                MCPServerEndpoint = defaultMcp,
+                                contact.CreatedAt
+                            });
+                            await File.WriteAllTextAsync(configPath, json).ConfigureAwait(false);
+                        }
+                        catch (Exception fileEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Could not update persona config.json: {fileEx.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.WriteToStartupLog($"SyncPersonaMcpEndpoints error: {ex.Message}");
             }
         }
 

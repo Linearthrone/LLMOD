@@ -29,8 +29,20 @@ int OnInit()
     Print("Command folder: ", CommandFolder);
     Print("Magic number: ", MagicNumber);
     
-    // Create response folder if it doesn't exist
-    string responsePath = CommandFolder + "/Responses";
+    ExportSymbolMap(true);
+    
+    // Ensure response folder exists
+    string probe = ResponseFolder + "/.bridge_ready";
+    int probeHandle = FileOpen(probe, FILE_WRITE | FILE_TXT);
+    if (probeHandle != INVALID_HANDLE)
+    {
+        FileWriteString(probeHandle, "ok");
+        FileClose(probeHandle);
+    }
+    else
+    {
+        Print("House Victoria: failed to initialize response folder: ", ResponseFolder, " error=", GetLastError());
+    }
     
     return INIT_SUCCEEDED;
 }
@@ -70,31 +82,196 @@ void OnTick()
 }
 
 //+------------------------------------------------------------------+
-//| Update market data for all symbols                               |
+//| Resolve a user/base symbol to this broker's Market Watch name     |
+//| (e.g. EURUSD -> EURUSD.pro). Tries exact, suffixes, prefix scan. |
+//+------------------------------------------------------------------+
+string ResolveBrokerSymbol(string requested)
+{
+    string sym = requested;
+    StringTrimLeft(sym);
+    StringTrimRight(sym);
+    if (StringLen(sym) < 3)
+        return "";
+
+    if (SymbolSelect(sym, true))
+        return sym;
+
+    string suffixes[] = {".pro", ".PRO", ".m", ".M", ".raw", ".i", ".c", ".e", "_i", "-pro", ".micro", ".std", ".ecn", ".fx"};
+    int s;
+    for (s = 0; s < ArraySize(suffixes); s++)
+    {
+        string candidate = sym + suffixes[s];
+        if (SymbolSelect(candidate, true))
+            return candidate;
+    }
+
+    int total = SymbolsTotal(true);
+    int i;
+    for (i = 0; i < total; i++)
+    {
+        string name = SymbolName(i, true);
+        if (StringCompare(StringSubstr(name, 0, StringLen(sym)), sym, false) != 0)
+            continue;
+        if (StringLen(name) > StringLen(sym) + 10)
+            continue;
+        if (SymbolSelect(name, true))
+            return name;
+    }
+
+    return "";
+}
+
+//+------------------------------------------------------------------+
+//| Base symbols for quotes, symbol map, and history export           |
+//+------------------------------------------------------------------+
+void GetWatchBaseSymbols(string &symbols[])
+{
+    string list[] = {"EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD",
+                     "EURGBP", "EURJPY", "GBPJPY", "XAUUSD", "XAGUSD", "US30", "US500", "NAS100"};
+    int n = ArraySize(list);
+    ArrayResize(symbols, n);
+    for (int k = 0; k < n; k++)
+        symbols[k] = list[k];
+}
+
+//+------------------------------------------------------------------+
+//| Write base->broker symbol map for House Victoria tools            |
+//+------------------------------------------------------------------+
+void ExportSymbolMap(bool force)
+{
+    static datetime lastExport = 0;
+    if (!force && TimeCurrent() - lastExport < 60)
+        return;
+    lastExport = TimeCurrent();
+
+    string symbols[];
+    GetWatchBaseSymbols(symbols);
+    string json = "{";
+    bool first = true;
+    int i;
+    for (i = 0; i < ArraySize(symbols); i++)
+    {
+        string broker = ResolveBrokerSymbol(symbols[i]);
+        if (broker == "")
+            continue;
+        if (!first)
+            json += ",";
+        json += "\"" + symbols[i] + "\":\"" + broker + "\"";
+        first = false;
+    }
+    json += "}";
+
+    string mapFile = CommandFolder + "/SymbolMap.json";
+    int mapHandle = FileOpen(mapFile, FILE_WRITE | FILE_TXT);
+    if (mapHandle != INVALID_HANDLE)
+    {
+        FileWriteString(mapHandle, json);
+        FileClose(mapHandle);
+    }
+
+    // Full broker symbol list (Market Watch) for discovery
+    string listJson = "[";
+    bool listFirst = true;
+    int total = SymbolsTotal(true);
+    for (i = 0; i < total; i++)
+    {
+        string name = SymbolName(i, true);
+        if (StringLen(name) < 3)
+            continue;
+        if (!listFirst)
+            listJson += ",";
+        listJson += "\"" + name + "\"";
+        listFirst = false;
+    }
+    listJson += "]";
+
+    string listFile = CommandFolder + "/SymbolsAvailable.json";
+    int listHandle = FileOpen(listFile, FILE_WRITE | FILE_TXT);
+    if (listHandle != INVALID_HANDLE)
+    {
+        FileWriteString(listHandle, listJson);
+        FileClose(listHandle);
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Update market data for watch-list symbols                        |
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Load watchlist from Watchlist.json (written by House Victoria)    |
+//+------------------------------------------------------------------+
+void LoadWatchlistSymbols(string &symbols[])
+{
+    string watchFile = CommandFolder + "/Watchlist.json";
+    int handle = FileOpen(watchFile, FILE_READ | FILE_TXT);
+    if (handle == INVALID_HANDLE)
+    {
+        GetWatchBaseSymbols(symbols);
+        return;
+    }
+
+    string json = "";
+    while (!FileIsEnding(handle))
+        json += FileReadString(handle);
+    FileClose(handle);
+
+    int count = 0;
+    int pos = 0;
+    while (pos < StringLen(json))
+    {
+        int q1 = StringFind(json, "\"", pos);
+        if (q1 < 0)
+            break;
+        int q2 = StringFind(json, "\"", q1 + 1);
+        if (q2 < 0)
+            break;
+        string sym = StringSubstr(json, q1 + 1, q2 - q1 - 1);
+        StringTrimLeft(sym);
+        StringTrimRight(sym);
+        if (StringLen(sym) >= 3)
+        {
+            ArrayResize(symbols, count + 1);
+            symbols[count] = sym;
+            count++;
+        }
+        pos = q2 + 1;
+    }
+
+    if (count == 0)
+        GetWatchBaseSymbols(symbols);
+}
+
+//+------------------------------------------------------------------+
+//| Update market data for watch-list symbols                        |
 //+------------------------------------------------------------------+
 void UpdateMarketData()
 {
-    string symbols[] = {"EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD"};
+    ExportSymbolMap(false);
+
+    string symbols[];
+    LoadWatchlistSymbols(symbols);
     
     for (int i = 0; i < ArraySize(symbols); i++)
     {
-        if (SymbolSelect(symbols[i], true))
+        string brokerSymbol = ResolveBrokerSymbol(symbols[i]);
+        if (brokerSymbol == "")
+            continue;
+
+        double bid = SymbolInfoDouble(brokerSymbol, SYMBOL_BID);
+        double ask = SymbolInfoDouble(brokerSymbol, SYMBOL_ASK);
+        double spread = ask - bid;
+        
+        string data = DoubleToString(bid, (int)MarketInfo(brokerSymbol, MODE_DIGITS)) + "," + 
+                      DoubleToString(ask, (int)MarketInfo(brokerSymbol, MODE_DIGITS)) + "," + 
+                      DoubleToString(spread, (int)MarketInfo(brokerSymbol, MODE_DIGITS));
+        
+        // File name uses base symbol so tools can request "EURUSD"
+        string fileName = CommandFolder + "/MarketData_" + symbols[i] + ".txt";
+        int fileHandle = FileOpen(fileName, FILE_WRITE | FILE_TXT);
+        if (fileHandle != INVALID_HANDLE)
         {
-            double bid = SymbolInfoDouble(symbols[i], SYMBOL_BID);
-            double ask = SymbolInfoDouble(symbols[i], SYMBOL_ASK);
-            double spread = ask - bid;
-            
-            string data = DoubleToString(bid, Digits) + "," + 
-                          DoubleToString(ask, Digits) + "," + 
-                          DoubleToString(spread, Digits);
-            
-            string fileName = CommandFolder + "/MarketData_" + symbols[i] + ".txt";
-            int fileHandle = FileOpen(fileName, FILE_WRITE | FILE_TXT);
-            if (fileHandle != INVALID_HANDLE)
-            {
-                FileWriteString(fileHandle, data);
-                FileClose(fileHandle);
-            }
+            FileWriteString(fileHandle, data);
+            FileClose(fileHandle);
         }
     }
 }
@@ -123,6 +300,303 @@ void ProcessCommands()
     } while (FileFindNext(fileHandle, fileName));
     
     FileFindClose(fileHandle);
+    
+    // Close-position commands (persona / MCP mt4_close_position)
+    fileName = "";
+    fileHandle = FileFindFirst(folderPath + "Close_*.json", fileName, 0);
+    if (fileHandle != INVALID_HANDLE)
+    {
+        do
+        {
+            string fullPath = folderPath + fileName;
+            ProcessCloseCommand(fullPath);
+            FileDelete(fullPath);
+        }
+        while (FileFindNext(fileHandle, fileName));
+        FileFindClose(fileHandle);
+    }
+
+    // Historical export commands (House Victoria / MCP mt4_export_history)
+    fileName = "";
+    fileHandle = FileFindFirst(folderPath + "History_*.json", fileName, 0);
+    if (fileHandle != INVALID_HANDLE)
+    {
+        do
+        {
+            string fullPath = folderPath + fileName;
+            ProcessHistoryCommand(fullPath);
+            FileDelete(fullPath);
+        }
+        while (FileFindNext(fileHandle, fileName));
+        FileFindClose(fileHandle);
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Map timeframe minutes (60=H1) to MT4 period constant             |
+//+------------------------------------------------------------------+
+int PeriodFromMinutes(int minutes)
+{
+    if (minutes <= 1) return PERIOD_M1;
+    if (minutes <= 5) return PERIOD_M5;
+    if (minutes <= 15) return PERIOD_M15;
+    if (minutes <= 30) return PERIOD_M30;
+    if (minutes <= 60) return PERIOD_H1;
+    if (minutes <= 240) return PERIOD_H4;
+    if (minutes <= 1440) return PERIOD_D1;
+    if (minutes <= 10080) return PERIOD_W1;
+    return PERIOD_MN1;
+}
+
+//+------------------------------------------------------------------+
+//| Parse timeframe from JSON (H1, M15, or minutes as number)        |
+//+------------------------------------------------------------------+
+int ParseTimeFrameMinutes(string json)
+{
+    string tfStr = SanitizeJsonString(ExtractJsonValue(json, "TimeFrame"));
+    if (tfStr == "")
+        tfStr = SanitizeJsonString(ExtractJsonValue(json, "timeframe"));
+    if (tfStr == "")
+        tfStr = SanitizeJsonString(ExtractJsonValue(json, "time_frame"));
+
+    StringToUpper(tfStr);
+    if (tfStr == "M1") return 1;
+    if (tfStr == "M5") return 5;
+    if (tfStr == "M15") return 15;
+    if (tfStr == "M30") return 30;
+    if (tfStr == "H1") return 60;
+    if (tfStr == "H4") return 240;
+    if (tfStr == "D1") return 1440;
+    if (tfStr == "W1") return 10080;
+    if (tfStr == "MN1") return 43200;
+
+    int minutes = (int)StringToInteger(tfStr);
+    if (minutes > 0)
+        return minutes;
+
+    return 60;
+}
+
+//+------------------------------------------------------------------+
+//| Export history for a symbol range to bridge CSV                    |
+//+------------------------------------------------------------------+
+int ExportHistoricalData(string baseSymbol, string brokerSymbol, int tfMinutes, datetime startDate, datetime endDate)
+{
+    int period = PeriodFromMinutes(tfMinutes);
+    if (!SymbolSelect(brokerSymbol, true))
+        return 0;
+
+    int digits = (int)MarketInfo(brokerSymbol, MODE_DIGITS);
+    string fileName = CommandFolder + "/" + baseSymbol + "_" + IntegerToString(tfMinutes) + ".csv";
+    int fileHandle = FileOpen(fileName, FILE_WRITE | FILE_TXT);
+    if (fileHandle == INVALID_HANDLE)
+        return 0;
+
+    FileWriteString(fileHandle, "Time,Open,High,Low,Close,Volume\n");
+
+    int totalBars = iBars(brokerSymbol, period);
+    int exported = 0;
+
+    for (int shift = totalBars - 1; shift >= 0; shift--)
+    {
+        datetime barTime = iTime(brokerSymbol, period, shift);
+        if (barTime <= 0)
+            continue;
+        if (barTime > endDate)
+            continue;
+        if (barTime < startDate)
+            break;
+
+        double open = iOpen(brokerSymbol, period, shift);
+        double high = iHigh(brokerSymbol, period, shift);
+        double low = iLow(brokerSymbol, period, shift);
+        double close = iClose(brokerSymbol, period, shift);
+        long volume = iVolume(brokerSymbol, period, shift);
+
+        string line = TimeToString(barTime, TIME_DATE | TIME_MINUTES) + "," +
+                      DoubleToString(open, digits) + "," +
+                      DoubleToString(high, digits) + "," +
+                      DoubleToString(low, digits) + "," +
+                      DoubleToString(close, digits) + "," +
+                      IntegerToString(volume);
+        FileWriteString(fileHandle, line + "\n");
+        exported++;
+    }
+
+    FileClose(fileHandle);
+    Print("House Victoria: exported ", exported, " bars -> ", fileName);
+    return exported;
+}
+
+//+------------------------------------------------------------------+
+//| Process History_*.json export command                            |
+//+------------------------------------------------------------------+
+void ProcessHistoryCommand(string filePath)
+{
+    int fileHandle = FileOpen(filePath, FILE_READ | FILE_TXT);
+    if (fileHandle == INVALID_HANDLE)
+        return;
+
+    string json = "";
+    while (!FileIsEnding(fileHandle))
+        json += FileReadString(fileHandle);
+    FileClose(fileHandle);
+
+    string baseSymbol = SanitizeJsonString(ExtractJsonValue(json, "Symbol"));
+    if (baseSymbol == "")
+        baseSymbol = SanitizeJsonString(ExtractJsonValue(json, "symbol"));
+    StringToUpper(baseSymbol);
+
+    if (StringLen(baseSymbol) < 3)
+    {
+        WriteHistoryResponse(filePath, false, baseSymbol, 0, "", "Invalid history command: Symbol is required");
+        return;
+    }
+
+    int tfMinutes = ParseTimeFrameMinutes(json);
+    string startStr = SanitizeJsonString(ExtractJsonValue(json, "StartDate"));
+    if (startStr == "")
+        startStr = SanitizeJsonString(ExtractJsonValue(json, "start_date"));
+    string endStr = SanitizeJsonString(ExtractJsonValue(json, "EndDate"));
+    if (endStr == "")
+        endStr = SanitizeJsonString(ExtractJsonValue(json, "end_date"));
+
+    datetime startDate = (startStr != "") ? StringToTime(startStr) : (TimeCurrent() - 365 * 24 * 60 * 60);
+    datetime endDate = (endStr != "") ? StringToTime(endStr) : TimeCurrent();
+    if (startDate <= 0)
+        startDate = TimeCurrent() - 365 * 24 * 60 * 60;
+    if (endDate <= 0)
+        endDate = TimeCurrent();
+
+    string brokerSymbol = LookupSymbolMap(baseSymbol);
+    if (brokerSymbol == "")
+        brokerSymbol = ResolveBrokerSymbol(baseSymbol);
+    if (brokerSymbol == "")
+    {
+        WriteHistoryResponse(filePath, false, baseSymbol, 0, "", "Cannot resolve symbol " + baseSymbol + " in Market Watch");
+        return;
+    }
+
+    int barsExported = ExportHistoricalData(baseSymbol, brokerSymbol, tfMinutes, startDate, endDate);
+    string csvFile = baseSymbol + "_" + IntegerToString(tfMinutes) + ".csv";
+
+    if (barsExported > 0)
+    {
+        WriteHistoryResponse(filePath, true, baseSymbol, barsExported, csvFile,
+            "Exported " + IntegerToString(barsExported) + " bars to " + csvFile);
+    }
+    else
+    {
+        WriteHistoryResponse(filePath, false, baseSymbol, 0, csvFile,
+            "No bars exported. Download history in MT4 History Center for " + baseSymbol + " " + IntegerToString(tfMinutes));
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Write history export response JSON                                 |
+//+------------------------------------------------------------------+
+void WriteHistoryResponse(string commandFile, bool success, string baseSymbol, int barsExported, string csvFile, string message)
+{
+    string json = "{";
+    json += "\"success\":" + (success ? "true" : "false") + ",";
+    json += "\"base_symbol\":\"" + baseSymbol + "\",";
+    json += "\"bars_exported\":" + IntegerToString(barsExported) + ",";
+    json += "\"csv_file\":\"" + csvFile + "\",";
+    json += "\"message\":\"" + message + "\"";
+    json += "}";
+    WriteResponse(commandFile, json);
+}
+
+//+------------------------------------------------------------------+
+//| Close an open position by ticket (House Victoria magic only)      |
+//+------------------------------------------------------------------+
+void ProcessCloseCommand(string filePath)
+{
+    if (!EnableTradeExecution)
+    {
+        WriteResponse(filePath, "Trade execution disabled");
+        return;
+    }
+    
+    int fileHandle = FileOpen(filePath, FILE_READ | FILE_TXT);
+    if (fileHandle == INVALID_HANDLE)
+        return;
+    
+    string json = "";
+    while (!FileIsEnding(fileHandle))
+        json += FileReadString(fileHandle);
+    FileClose(fileHandle);
+    
+    string ticketStr = SanitizeJsonString(ExtractJsonValue(json, "Ticket"));
+    if (ticketStr == "")
+    {
+        WriteTradeResponse(filePath, false, 0, "", "", "Invalid close command: Ticket is required");
+        return;
+    }
+    
+    int ticket = (int)StringToInteger(ticketStr);
+    if (ticket <= 0)
+    {
+        WriteTradeResponse(filePath, false, 0, "", "", "Invalid close command: Ticket must be positive");
+        return;
+    }
+    
+    if (!IsExpertEnabled())
+    {
+        WriteTradeResponse(filePath, false, 0, "", "",
+            "Close blocked: Expert Advisors disabled on this chart (check AutoTrading button and EA Common tab).");
+        return;
+    }
+
+    if (!IsTradeAllowed())
+    {
+        WriteTradeResponse(filePath, false, 0, "", "",
+            "Close blocked: IsTradeAllowed() is false. Enable AutoTrading and Allow live trading on this chart.");
+        return;
+    }
+
+    if (IsTradeContextBusy())
+    {
+        WriteTradeResponse(filePath, false, 0, ticket, "",
+            "Close blocked: MT4 trade context busy. Retry in a few seconds.");
+        return;
+    }
+    
+    if (!OrderSelect(ticket, SELECT_BY_TICKET, MODE_TRADES))
+    {
+        WriteTradeResponse(filePath, false, 0, ticket, "",
+            "Position not found for ticket " + IntegerToString(ticket));
+        return;
+    }
+    
+    if (OrderMagicNumber() != MagicNumber)
+    {
+        WriteTradeResponse(filePath, false, 0, ticket, OrderSymbol(),
+            "Position ticket " + IntegerToString(ticket) + " is not a House Victoria trade (wrong magic number).");
+        return;
+    }
+    
+    string brokerSymbol = OrderSymbol();
+    double lots = OrderLots();
+    int orderType = OrderType();
+    double price = (orderType == OP_BUY)
+        ? MarketInfo(brokerSymbol, MODE_BID)
+        : MarketInfo(brokerSymbol, MODE_ASK);
+    
+    bool closed = OrderClose(ticket, lots, price, 3, clrYellow);
+    if (closed)
+    {
+        UpdateOpenPositions(true);
+        WriteTradeResponse(filePath, true, ticket, brokerSymbol, brokerSymbol,
+            "Position closed successfully. Ticket: " + IntegerToString(ticket));
+        Print("House Victoria: Closed position ticket ", ticket, " ", brokerSymbol);
+    }
+    else
+    {
+        int error = GetLastError();
+        WriteTradeResponse(filePath, false, 0, ticket, brokerSymbol, DescribeTradeError(error));
+        Print("House Victoria: Close failed ticket ", ticket, " - ", DescribeTradeError(error));
+    }
 }
 
 //+------------------------------------------------------------------+
@@ -149,11 +623,11 @@ void ProcessTradeCommand(string filePath)
     
     // Simple JSON parsing (basic implementation)
     // In production, use a proper JSON library or parse more carefully
-    string symbol = ExtractJsonValue(json, "Symbol");
-    string typeStr = ExtractJsonValue(json, "Type");
-    string volumeStr = ExtractJsonValue(json, "Volume");
-    string stopLossStr = ExtractJsonValue(json, "StopLoss");
-    string takeProfitStr = ExtractJsonValue(json, "TakeProfit");
+    string symbol = SanitizeJsonString(ExtractJsonValue(json, "Symbol"));
+    string typeStr = SanitizeJsonString(ExtractJsonValue(json, "Type"));
+    string volumeStr = SanitizeJsonString(ExtractJsonValue(json, "Volume"));
+    string stopLossStr = SanitizeJsonString(ExtractJsonValue(json, "StopLoss"));
+    string takeProfitStr = SanitizeJsonString(ExtractJsonValue(json, "TakeProfit"));
     
     if (symbol == "" || typeStr == "" || volumeStr == "")
     {
@@ -166,15 +640,40 @@ void ProcessTradeCommand(string filePath)
     double stopLoss = (stopLossStr != "") ? StringToDouble(stopLossStr) : 0;
     double takeProfit = (takeProfitStr != "") ? StringToDouble(takeProfitStr) : 0;
     
-    if (!SymbolSelect(symbol, true))
+    string brokerSymbol = ResolveBrokerSymbol(symbol);
+    if (brokerSymbol == "")
+        brokerSymbol = LookupSymbolMap(symbol);
+    if (brokerSymbol == "")
     {
-        WriteResponse(filePath, "Symbol not found: " + symbol);
+        WriteTradeResponse(filePath, false, 0, symbol, "",
+            "Symbol not found: " + symbol + " (no broker match in Market Watch)");
         return;
     }
     
-    double price = (type == OP_BUY) ? SymbolInfoDouble(symbol, SYMBOL_ASK) : SymbolInfoDouble(symbol, SYMBOL_BID);
+    if (!IsExpertEnabled())
+    {
+        WriteTradeResponse(filePath, false, 0, symbol, brokerSymbol,
+            "Trade blocked: Expert Advisors disabled on this chart (check AutoTrading button and EA Common tab).");
+        return;
+    }
+
+    if (!IsTradeAllowed())
+    {
+        WriteTradeResponse(filePath, false, 0, symbol, brokerSymbol,
+            "Trade blocked: IsTradeAllowed() is false. Enable AutoTrading and Allow live trading on this chart.");
+        return;
+    }
+
+    if (IsTradeContextBusy())
+    {
+        WriteTradeResponse(filePath, false, 0, symbol, brokerSymbol,
+            "Trade blocked: MT4 trade context busy. Retry in a few seconds.");
+        return;
+    }
     
-    int ticket = OrderSend(symbol, 
+    double price = (type == OP_BUY) ? MarketInfo(brokerSymbol, MODE_ASK) : MarketInfo(brokerSymbol, MODE_BID);
+    
+    int ticket = OrderSend(brokerSymbol, 
                           type, 
                           volume, 
                           price, 
@@ -188,16 +687,86 @@ void ProcessTradeCommand(string filePath)
     
     if (ticket > 0)
     {
-        WriteResponse(filePath, "Trade executed successfully. Ticket: " + IntegerToString(ticket));
-        Print("House Victoria: Trade executed - ", symbol, " ", (type == OP_BUY ? "BUY" : "SELL"), " ", volume, " Ticket: ", ticket);
+        string note = brokerSymbol;
+        if (brokerSymbol != symbol)
+            note = symbol + "->" + brokerSymbol;
+        UpdateOpenPositions(true);
+        WriteTradeResponse(filePath, true, ticket, symbol, brokerSymbol,
+            "Trade executed successfully. Ticket: " + IntegerToString(ticket) + " Symbol: " + note);
+        Print("House Victoria: Trade executed - ", note, " ", (type == OP_BUY ? "BUY" : "SELL"), " ", volume, " Ticket: ", ticket);
     }
     else
     {
         int error = GetLastError();
-        string errorMsg = "Trade execution failed. Error: " + IntegerToString(error);
-        WriteResponse(filePath, errorMsg);
+        string errorMsg = DescribeTradeError(error);
+        WriteTradeResponse(filePath, false, 0, symbol, brokerSymbol, errorMsg);
         Print("House Victoria: Trade execution failed - ", errorMsg);
     }
+}
+
+//+------------------------------------------------------------------+
+//| Human-readable MT4 trade error                                    |
+//+------------------------------------------------------------------+
+string DescribeTradeError(int errorCode)
+{
+    if (errorCode == 4112)
+        return "Error 4112: Broker/server disabled Expert Advisor trading on this account. "
+             + "AutoTrading can be green locally and still fail — contact FOREX.com to enable EA/automated trading on account "
+             + IntegerToString(AccountNumber()) + ".";
+    if (errorCode == 4109)
+        return "Error 4109: Trading not allowed (terminal or account restriction).";
+    if (errorCode == 133)
+        return "Error 133: Trading disabled in terminal — enable AutoTrading.";
+    if (errorCode == 134)
+        return "Error 134: Not enough money for this volume.";
+    if (errorCode == 136)
+        return "Error 136: Off quotes / no price — market may be closed.";
+    if (errorCode == 146)
+        return "Error 146: Trade context busy — retry shortly.";
+    return "Trade execution failed. Error: " + IntegerToString(errorCode);
+}
+
+//+------------------------------------------------------------------+
+//| Look up broker symbol from SymbolMap.json (written by this EA)    |
+//+------------------------------------------------------------------+
+string LookupSymbolMap(string baseSymbol)
+{
+    string mapFile = CommandFolder + "/SymbolMap.json";
+    int handle = FileOpen(mapFile, FILE_READ | FILE_TXT);
+    if (handle == INVALID_HANDLE)
+        return "";
+
+    string json = "";
+    while (!FileIsEnding(handle))
+        json += FileReadString(handle);
+    FileClose(handle);
+
+    string mapped = SanitizeJsonString(ExtractJsonValue(json, baseSymbol));
+    if (mapped == "")
+        return "";
+
+    if (SymbolSelect(mapped, true))
+        return mapped;
+
+    return "";
+}
+
+//+------------------------------------------------------------------+
+//| Strip whitespace and stray JSON quotes from parsed values         |
+//+------------------------------------------------------------------+
+string SanitizeJsonString(string value)
+{
+    string outVal = value;
+    StringTrimLeft(outVal);
+    StringTrimRight(outVal);
+
+    while (StringLen(outVal) > 0 && StringGetCharacter(outVal, 0) == '\"')
+        outVal = StringSubstr(outVal, 1);
+
+    while (StringLen(outVal) > 0 && StringGetCharacter(outVal, StringLen(outVal) - 1) == '\"')
+        outVal = StringSubstr(outVal, 0, StringLen(outVal) - 1);
+
+    return outVal;
 }
 
 //+------------------------------------------------------------------+
@@ -215,19 +784,22 @@ string ExtractJsonValue(string json, string key)
         return "";
     
     int startPos = colonPos + 1;
-    while (startPos < StringLen(json) && (StringGetCharacter(json, startPos) == ' ' || StringGetCharacter(json, startPos) == '\"'))
+    while (startPos < StringLen(json) && StringGetCharacter(json, startPos) == ' ')
         startPos++;
+
+    if (startPos >= StringLen(json))
+        return "";
     
-    int endPos = startPos;
     if (StringGetCharacter(json, startPos) == '\"')
     {
-        endPos = StringFind(json, "\"", startPos + 1);
+        int endPos = StringFind(json, "\"", startPos + 1);
         if (endPos == -1)
             return "";
         return StringSubstr(json, startPos + 1, endPos - startPos - 1);
     }
     else
     {
+        int endPos = startPos;
         while (endPos < StringLen(json) && 
                StringGetCharacter(json, endPos) != ',' && 
                StringGetCharacter(json, endPos) != '}' &&
@@ -238,19 +810,45 @@ string ExtractJsonValue(string json, string key)
 }
 
 //+------------------------------------------------------------------+
+//| Write structured trade response (JSON + legacy text compatibility) |
+//+------------------------------------------------------------------+
+void WriteTradeResponse(string commandFile, bool success, int ticket, string baseSymbol, string brokerSymbol, string message)
+{
+    string json = "{";
+    json += "\"success\":" + (success ? "true" : "false") + ",";
+    json += "\"ticket\":" + IntegerToString(ticket) + ",";
+    json += "\"base_symbol\":\"" + baseSymbol + "\",";
+    json += "\"broker_symbol\":\"" + brokerSymbol + "\",";
+    json += "\"message\":\"" + message + "\"";
+    json += "}";
+    WriteResponse(commandFile, json);
+}
+
+//+------------------------------------------------------------------+
 //| Write response file                                              |
 //+------------------------------------------------------------------+
 void WriteResponse(string commandFile, string response)
 {
-    string responseFile = ResponseFolder + "/Response_" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + ".txt";
-    responseFile = StringReplace(responseFile, ":", "-");
-    responseFile = StringReplace(responseFile, " ", "_");
+    string fileName = commandFile;
+    int slashPos = StringFind(commandFile, "/");
+    if (slashPos >= 0)
+        fileName = StringSubstr(commandFile, slashPos + 1);
+
+    int dotPos = StringFind(fileName, ".json");
+    if (dotPos >= 0)
+        fileName = StringSubstr(fileName, 0, dotPos);
+
+    string responseFile = ResponseFolder + "/Response_" + fileName + ".txt";
     
     int fileHandle = FileOpen(responseFile, FILE_WRITE | FILE_TXT);
     if (fileHandle != INVALID_HANDLE)
     {
         FileWriteString(fileHandle, response);
         FileClose(fileHandle);
+    }
+    else
+    {
+        Print("House Victoria: failed to write response ", responseFile, " error=", GetLastError());
     }
 }
 
@@ -298,10 +896,10 @@ void UpdateAccountInfo()
 //+------------------------------------------------------------------+
 //| Update open positions                                            |
 //+------------------------------------------------------------------+
-void UpdateOpenPositions()
+void UpdateOpenPositions(bool force = false)
 {
     static datetime lastUpdate = 0;
-    if (TimeCurrent() - lastUpdate < 5) // Update every 5 seconds
+    if (!force && TimeCurrent() - lastUpdate < 5) // Update every 5 seconds
         return;
     
     lastUpdate = TimeCurrent();
@@ -348,57 +946,4 @@ void UpdateOpenPositions()
         FileWriteString(fileHandle, "]");
         FileClose(fileHandle);
     }
-}
-
-//+------------------------------------------------------------------+
-//| Export historical data to CSV                                   |
-//+------------------------------------------------------------------+
-void ExportHistoricalData(string symbol, int timeframe, datetime startDate, datetime endDate)
-{
-    string fileName = CommandFolder + "/" + symbol + "_" + IntegerToString(timeframe) + ".csv";
-    int fileHandle = FileOpen(fileName, FILE_WRITE | FILE_TXT);
-    if (fileHandle == INVALID_HANDLE)
-        return;
-    
-    // Write header
-    FileWriteString(fileHandle, "Time,Open,High,Low,Close,Volume\n");
-    
-    datetime currentTime = startDate;
-    while (currentTime <= endDate)
-    {
-        double open[], high[], low[], close[];
-        datetime time[];
-        
-        int copied = CopyOpen(symbol, timeframe, currentTime, 1, open);
-        if (copied > 0)
-        {
-            CopyHigh(symbol, timeframe, currentTime, 1, high);
-            CopyLow(symbol, timeframe, currentTime, 1, low);
-            CopyClose(symbol, timeframe, currentTime, 1, close);
-            CopyTime(symbol, timeframe, currentTime, 1, time);
-            
-            if (ArraySize(time) > 0)
-            {
-                // Get bar index to retrieve volume using iVolume()
-                int barShift = iBarShift(symbol, timeframe, time[0]);
-                long volume = iVolume(symbol, timeframe, barShift);
-                
-                string line = TimeToString(time[0], TIME_DATE | TIME_MINUTES) + "," +
-                             DoubleToString(open[0], Digits) + "," +
-                             DoubleToString(high[0], Digits) + "," +
-                             DoubleToString(low[0], Digits) + "," +
-                             DoubleToString(close[0], Digits) + "," +
-                             IntegerToString(volume);
-                FileWriteString(fileHandle, line + "\n");
-            }
-        }
-        
-        // Move to next bar
-        currentTime = iTime(symbol, timeframe, iBarShift(symbol, timeframe, currentTime) - 1);
-        if (currentTime <= 0)
-            break;
-    }
-    
-    FileClose(fileHandle);
-    Print("Historical data exported: ", fileName);
 }

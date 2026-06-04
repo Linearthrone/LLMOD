@@ -97,6 +97,8 @@ namespace HouseVictoria.Core.Models
         public DateTime EndDate { get; set; }
         public List<Trade> Trades { get; set; } = new();
         public List<EquityPoint> EquityCurve { get; set; } = new();
+        public string? StrategyTypeUsed { get; set; }
+        public int BarsProcessed { get; set; }
     }
 
     /// <summary>
@@ -124,6 +126,33 @@ namespace HouseVictoria.Core.Models
         public double? StopLoss { get; set; }
         public double? TakeProfit { get; set; }
         public string? Comment { get; set; }
+    }
+
+    /// <summary>
+    /// Result of a trade command sent through the MT4 file bridge.
+    /// </summary>
+    public class TradeExecutionResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public int? Ticket { get; set; }
+        public string? CommandId { get; set; }
+        /// <summary>True when the ticket appears in OpenPositions.json after execution.</summary>
+        public bool Verified { get; set; }
+        public string? BrokerSymbol { get; set; }
+    }
+
+    /// <summary>
+    /// Result of a history export command sent through the MT4 file bridge.
+    /// </summary>
+    public class HistoricalExportResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string? CommandId { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+        public int BarsExported { get; set; }
+        public string? CsvFileName { get; set; }
     }
 
     /// <summary>

@@ -14,6 +14,16 @@ from .logger import get_logger
 from .memory import MemoryStorage, MemoryManager
 from .tt import TaskManager, WorkflowEngine, ProgressTracker
 from .agent import CognitiveAgent
+from .trading.mt4_backtest import export_history, get_historical_bars, get_market_watch_status, run_backtest
+from .trading.mt4_bridge import (
+    close_position,
+    execute_trade,
+    get_bridge_status,
+    get_market_data,
+    get_open_positions,
+    list_symbols,
+    verify_ticket,
+)
 
 logger = get_logger("main")
 
@@ -87,6 +97,7 @@ async def create_server():
     await register_memory_tools(mcp, memory_manager)
     await register_data_bank_tools(mcp, storage)
     await register_system_tools(mcp)
+    await register_trading_tools(mcp)
     await register_tt_tools(mcp, task_manager, workflow_engine, progress_tracker)
     await register_agent_tools(mcp, agent)
     
@@ -262,6 +273,12 @@ async def register_memory_tools(mcp_server: FastMCP, memory_mgr: MemoryManager):
             for m in messages
         ]
 
+    _tool_functions["memory_retrieve"] = memory_retrieve
+    _tool_functions["memory_search"] = memory_search
+    _tool_functions["memory_stats"] = memory_stats
+    _tool_functions["memory_conversation_log"] = memory_conversation_log
+    _tool_functions["memory_conversation_get"] = memory_conversation_get
+
 
 async def register_data_bank_tools(mcp_server: FastMCP, storage: MemoryStorage):
     """Register data bank tools."""
@@ -288,17 +305,37 @@ async def register_data_bank_tools(mcp_server: FastMCP, storage: MemoryStorage):
         try:
             conn = sqlite3.connect(db_path)
             cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT Id, Name, Description, DataEntries
-                FROM DataBanks
-                WHERE lower(Name) = lower(?)
-                ORDER BY CreatedAt DESC
-                LIMIT 1
-                """,
-                (bank_name,),
-            )
-            row = cur.fetchone()
+            row = None
+            lookup_names = [
+                bank_name,
+                f"{bank_name} - Personal Data",
+            ]
+            for candidate in lookup_names:
+                cur.execute(
+                    """
+                    SELECT Id, Name, Description, DataEntries
+                    FROM DataBanks
+                    WHERE lower(Name) = lower(?)
+                    ORDER BY CreatedAt DESC
+                    LIMIT 1
+                    """,
+                    (candidate,),
+                )
+                row = cur.fetchone()
+                if row:
+                    break
+            if not row:
+                cur.execute(
+                    """
+                    SELECT Id, Name, Description, DataEntries
+                    FROM DataBanks
+                    WHERE lower(Name) LIKE lower(?)
+                    ORDER BY CreatedAt DESC
+                    LIMIT 1
+                    """,
+                    (f"%{bank_name}%",),
+                )
+                row = cur.fetchone()
         except Exception as exc:
             return {"success": False, "error": f"DB query failed: {exc}"}
         finally:
@@ -333,6 +370,109 @@ async def register_data_bank_tools(mcp_server: FastMCP, storage: MemoryStorage):
             },
             "entries": entries,
         }
+
+    @mcp_server.tool()
+    async def app_memory_search(
+        query: str,
+        contact_id: str | None = None,
+        limit: int = 10,
+    ) -> list:
+        """Search the House Victoria app memory database (persona memories, journals, etc.).
+
+        Args:
+            query: Text to search for
+            contact_id: Optional persona/contact id filter
+            limit: Maximum results (default 10)
+        """
+        config = get_config()
+        db_path = Path(config.app_database_path)
+        if not db_path.exists():
+            return [{"error": f"App database not found at {db_path}"}]
+
+        safe_limit = max(1, min(limit, 50))
+        results: list[dict] = []
+        escaped = query.replace('"', '""')
+        fts_query = f'"{escaped}"'
+        conn = None
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            rows = []
+            try:
+                if contact_id:
+                    cur.execute(
+                        """
+                        SELECT m.Id, m.ContactId, m.Type, m.Content, m.UpdatedAt
+                        FROM Memory_fts f
+                        JOIN Memory m ON m.Id = f.Id
+                        WHERE f MATCH ? AND m.ContactId = ?
+                        ORDER BY m.UpdatedAt DESC
+                        LIMIT ?
+                        """,
+                        (fts_query, contact_id, safe_limit),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT m.Id, m.ContactId, m.Type, m.Content, m.UpdatedAt
+                        FROM Memory_fts f
+                        JOIN Memory m ON m.Id = f.Id
+                        WHERE f MATCH ?
+                        ORDER BY m.UpdatedAt DESC
+                        LIMIT ?
+                        """,
+                        (fts_query, safe_limit),
+                    )
+                rows = cur.fetchall()
+            except sqlite3.OperationalError:
+                rows = []
+
+            if not rows:
+                like = f"%{query}%"
+                if contact_id:
+                    cur.execute(
+                        """
+                        SELECT Id, ContactId, Type, Content, UpdatedAt
+                        FROM Memory
+                        WHERE ContactId = ? AND Content LIKE ?
+                        ORDER BY UpdatedAt DESC
+                        LIMIT ?
+                        """,
+                        (contact_id, like, safe_limit),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT Id, ContactId, Type, Content, UpdatedAt
+                        FROM Memory
+                        WHERE Content LIKE ?
+                        ORDER BY UpdatedAt DESC
+                        LIMIT ?
+                        """,
+                        (like, safe_limit),
+                    )
+                rows = cur.fetchall()
+            for row in rows:
+                results.append(
+                    {
+                        "id": row["Id"],
+                        "contact_id": row["ContactId"],
+                        "type": row["Type"],
+                        "content": row["Content"],
+                        "updated_at": row["UpdatedAt"],
+                    }
+                )
+        except Exception as exc:
+            return [{"error": f"App memory search failed: {exc}"}]
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        return results
 
     @mcp_server.tool()
     async def project_bank_create(
@@ -530,6 +670,15 @@ async def register_data_bank_tools(mcp_server: FastMCP, storage: MemoryStorage):
             "config": entry["value"],
         }
 
+    _tool_functions["external_data_bank_get"] = external_data_bank_get
+    _tool_functions["app_memory_search"] = app_memory_search
+    _tool_functions["project_bank_create"] = project_bank_create
+    _tool_functions["project_bank_get"] = project_bank_get
+    _tool_functions["knowledge_bank_add"] = knowledge_bank_add
+    _tool_functions["resource_bank_index"] = resource_bank_index
+    _tool_functions["config_bank_set"] = config_bank_set
+    _tool_functions["config_bank_get"] = config_bank_get
+
 
 async def register_system_tools(mcp_server: FastMCP):
     """Register system tools."""
@@ -559,6 +708,179 @@ async def register_system_tools(mcp_server: FastMCP):
             List of category names
         """
         return ["project", "knowledge", "resource", "config", "conversation"]
+
+    _tool_functions["system_info"] = system_info
+    _tool_functions["list_categories"] = list_categories
+
+
+async def register_trading_tools(mcp_server: FastMCP):
+    """Register MetaTrader 4 bridge tools."""
+
+    @mcp_server.tool()
+    async def mt4_status() -> dict:
+        """Get MT4 bridge connection status, terminal path, and account snapshot."""
+        return get_bridge_status()
+
+    @mcp_server.tool()
+    async def mt4_list_symbols() -> dict:
+        """List broker symbol names and the base->broker map (e.g. EURUSD -> EURUSD.pro)."""
+        return list_symbols()
+
+    @mcp_server.tool()
+    async def mt4_get_market_data(symbol: str) -> dict:
+        """Get current bid/ask for a symbol from the MT4 bridge."""
+        return get_market_data(symbol)
+
+    @mcp_server.tool()
+    async def mt4_get_open_positions() -> dict:
+        """Get open MT4 positions written by the HouseVictoriaBridge EA."""
+        return get_open_positions()
+
+    @mcp_server.tool()
+    async def mt4_execute_trade(
+        symbol: str,
+        trade_type: int,
+        volume: float,
+        stop_loss: float | None = None,
+        take_profit: float | None = None,
+    ) -> dict:
+        """Execute a live MT4 trade through the file bridge.
+
+        Returns success only when the EA response includes a ticket that appears
+        in OpenPositions.json (verified atomic execution). Call mt4_list_symbols
+        first if symbol suffixes are unknown.
+
+        Args:
+            symbol: Currency pair, e.g. EURUSD
+            trade_type: 0 = buy, 1 = sell
+            volume: Lot size, e.g. 0.01
+            stop_loss: Optional stop loss price
+            take_profit: Optional take profit price
+        """
+        return execute_trade(
+            symbol=symbol,
+            trade_type=trade_type,
+            volume=volume,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+        )
+
+    @mcp_server.tool()
+    async def mt4_close_position(ticket: int) -> dict:
+        """Close an open MT4 position by ticket (HouseVictoria magic only).
+
+        Use mt4_get_open_positions first to list tickets. Verified when the ticket
+        disappears from OpenPositions.json after the EA confirms the close.
+
+        Args:
+            ticket: Position ticket from mt4_get_open_positions or mt4_execute_trade
+        """
+        return close_position(ticket=ticket)
+
+    @mcp_server.tool()
+    async def mt4_verify_ticket(ticket: int) -> dict:
+        """Verify an MT4 ticket exists in OpenPositions.json (HouseVictoria magic)."""
+        return verify_ticket(ticket)
+
+    @mcp_server.tool()
+    async def mt4_market_watch_status() -> dict:
+        """Poll multi-pair market watch: pending alerts, technical signals, watchlist, last scan times.
+
+        Requires House Victoria running with TradingWatchEnabled. Reads market-watch-status.json.
+        """
+        return get_market_watch_status()
+
+    @mcp_server.tool()
+    async def mt4_export_history(
+        symbol: str,
+        time_frame: str = "H1",
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> dict:
+        """Export OHLCV from MT4 to a bridge CSV via the EA (live chart data).
+
+        Use when .hst files are missing. After export, call mt4_get_historical_bars or mt4_run_backtest.
+        """
+        return export_history(
+            symbol=symbol,
+            time_frame=time_frame,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+    @mcp_server.tool()
+    async def mt4_get_historical_bars(
+        symbol: str,
+        time_frame: str = "H1",
+        start_date: str | None = None,
+        end_date: str | None = None,
+        max_bars: int = 5000,
+    ) -> dict:
+        """Load OHLCV bars from MT4 .hst history (requires data downloaded in History Center)."""
+        return get_historical_bars(
+            symbol=symbol,
+            time_frame=time_frame,
+            start_date=start_date,
+            end_date=end_date,
+            max_bars=max_bars,
+        )
+
+    @mcp_server.tool()
+    async def mt4_run_backtest(
+        symbol: str,
+        time_frame: str = "H1",
+        start_date: str | None = None,
+        end_date: str | None = None,
+        strategy_name: str = "HermesBacktest",
+        strategy_type: str = "ma_crossover",
+        fast_period: int = 10,
+        slow_period: int = 30,
+        rsi_period: int = 14,
+        rsi_oversold: float = 30,
+        rsi_overbought: float = 70,
+        breakout_period: int = 20,
+        stop_loss_pips: float = 0,
+        take_profit_pips: float = 0,
+        direction: str = "both",
+        initial_deposit: float = 10000,
+        lot_size: float = 0.01,
+    ) -> dict:
+        """Backtest a strategy on MT4 historical data.
+
+        strategy_type: ma_crossover | ema_crossover | macd | bollinger | rsi | breakout
+        Use mt4_export_history if .hst data is missing, then mt4_get_historical_bars.
+        """
+        return run_backtest(
+            symbol=symbol,
+            time_frame=time_frame,
+            start_date=start_date,
+            end_date=end_date,
+            strategy_name=strategy_name,
+            strategy_type=strategy_type,
+            fast_period=fast_period,
+            slow_period=slow_period,
+            rsi_period=rsi_period,
+            rsi_oversold=rsi_oversold,
+            rsi_overbought=rsi_overbought,
+            breakout_period=breakout_period,
+            stop_loss_pips=stop_loss_pips,
+            take_profit_pips=take_profit_pips,
+            direction=direction,
+            initial_deposit=initial_deposit,
+            lot_size=lot_size,
+        )
+
+    _tool_functions["mt4_status"] = mt4_status
+    _tool_functions["mt4_list_symbols"] = mt4_list_symbols
+    _tool_functions["mt4_get_market_data"] = mt4_get_market_data
+    _tool_functions["mt4_get_open_positions"] = mt4_get_open_positions
+    _tool_functions["mt4_execute_trade"] = mt4_execute_trade
+    _tool_functions["mt4_close_position"] = mt4_close_position
+    _tool_functions["mt4_verify_ticket"] = mt4_verify_ticket
+    _tool_functions["mt4_market_watch_status"] = mt4_market_watch_status
+    _tool_functions["mt4_export_history"] = mt4_export_history
+    _tool_functions["mt4_get_historical_bars"] = mt4_get_historical_bars
+    _tool_functions["mt4_run_backtest"] = mt4_run_backtest
 
 
 async def register_agent_tools(mcp_server: FastMCP, agent: CognitiveAgent):
@@ -597,8 +919,8 @@ async def register_agent_tools(mcp_server: FastMCP, agent: CognitiveAgent):
             "personality": agent.personality,
         }
 
-    # Expose agent_step via HTTP wrapper tool registry
     _tool_functions["agent_step"] = agent_step
+    _tool_functions["agent_state"] = agent_state
 
 
 async def register_tt_tools(
@@ -899,6 +1221,16 @@ async def register_tt_tools(
             "progress": meter.progress,
             "state": meter.state.value,
         }
+
+    _tool_functions["task_create"] = task_create
+    _tool_functions["task_get"] = task_get
+    _tool_functions["task_update_status"] = task_update_status
+    _tool_functions["task_list"] = task_list
+    _tool_functions["workflow_create"] = workflow_create
+    _tool_functions["workflow_execute"] = workflow_execute
+    _tool_functions["workflow_get"] = workflow_get
+    _tool_functions["progress_get"] = progress_get
+    _tool_functions["progress_update"] = progress_update
 
 
 def main():
