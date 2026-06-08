@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 
 namespace HouseVictoria.Core.Models
 {

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using Npgsql;
 
 namespace HouseVictoria.Services.Memory

@@ -5,25 +5,19 @@ using HouseVictoria.Services.Agent;
 using HouseVictoria.Services.Communication;
 using HouseVictoria.Services.Autonomy;
 using HouseVictoria.Services.Persistence;
-using HouseVictoria.Services.ProjectManagement;
 using HouseVictoria.Services.SystemMonitor;
 using HouseVictoria.Services.VirtualEnvironment;
-using HouseVictoria.Services.FileGeneration;
 using HouseVictoria.Services.Logging;
 using HouseVictoria.Services.MCP;
-using HouseVictoria.Services.Trading;
 using HouseVictoria.Services.RemoteCompanion;
 using HouseVictoria.App.RemoteCompanion;
 using HouseVictoria.App.Services;
 using HouseVictoria.Core.Utils;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using System.Windows;
-using System.Diagnostics;
 using System.IO;
-using System;
 
 namespace HouseVictoria.App
 {

@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using HouseVictoria.App.Services;
 using HouseVictoria.Core.Interfaces;

@@ -1,6 +1,4 @@
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -9,7 +7,6 @@ using System.Windows.Threading;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
-using HouseVictoria.Core.Utils;
 using HouseVictoria.App;
 using HouseVictoria.App.Screens.Windows;
 

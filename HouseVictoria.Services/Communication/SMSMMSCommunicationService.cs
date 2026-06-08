@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -8,7 +7,6 @@ using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
 using HouseVictoria.Services.Persona;
 using NAudio.Wave;
-using System.IO;
 
 namespace HouseVictoria.Services.Communication
 {
@@ -27,7 +25,6 @@ namespace HouseVictoria.Services.Communication
         private readonly IMemoryService? _memoryService;
         private readonly IFileGenerationService? _fileGenerationService;
         private readonly ITTSService? _ttsService;
-        private readonly IJournalService? _journalService;
         private readonly PersonaChatContextBuilder _personaContextBuilder;
         /// <summary>Serialize image jobs — A2E/ComfyUI fail when many run at once.</summary>
         private readonly SemaphoreSlim _imageGenerationLock = new(1, 1);
@@ -45,7 +42,6 @@ namespace HouseVictoria.Services.Communication
             _memoryService = memoryService;
             _fileGenerationService = fileGenerationService;
             _ttsService = ttsService;
-            _journalService = journalService;
             _personaContextBuilder = new PersonaChatContextBuilder(memoryService, journalService);
 
             // Subscribe to AI service events if available
@@ -1686,48 +1682,6 @@ namespace HouseVictoria.Services.Communication
         }
 
         #region Memory & journal retrieval (RAG-lite)
-
-        private static readonly HashSet<string> RetrievalStopWords = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "the","and","for","that","with","this","you","your","yours","what","when","where","which",
-            "about","have","has","had","are","was","were","will","would","could","should","can","cant",
-            "did","does","from","into","they","them","then","than","there","here","just","like","want",
-            "wanted","need","needs","know","knew","told","tell","made","make","making","thing","things",
-            "really","said","says","she","her","hers","him","his","our","ours","not","but","all","any",
-            "how","why","who","get","got","its","i'm","i've","dont","don't","doesn't","didn't","ok","okay",
-            "yeah","yes","one","also","because","been","being","over","only","some","still","look","looks"
-        };
-
-        private static List<string> ExtractKeywords(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return new List<string>();
-
-            return System.Text.RegularExpressions.Regex.Matches(text.ToLowerInvariant(), @"[a-z0-9][a-z0-9'\-]{2,}")
-                .Select(m => m.Value.Trim('\''))
-                .Where(t => t.Length >= 3 && !RetrievalStopWords.Contains(t))
-                .Distinct()
-                .ToList();
-        }
-
-        private static int ScoreText(string? text, List<string> keywords)
-        {
-            if (string.IsNullOrWhiteSpace(text) || keywords.Count == 0)
-                return 0;
-
-            var lower = text.ToLowerInvariant();
-            var score = 0;
-            foreach (var keyword in keywords)
-            {
-                var idx = 0;
-                while ((idx = lower.IndexOf(keyword, idx, StringComparison.Ordinal)) >= 0)
-                {
-                    score++;
-                    idx += keyword.Length;
-                }
-            }
-            return score;
-        }
 
         private static string TruncateText(string? s, int max)
         {

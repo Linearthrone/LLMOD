@@ -1,6 +1,5 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -16,7 +15,6 @@ namespace HouseVictoria.Services.AIServices
     public class OllamaAIService : IAIService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _defaultEndpoint;
         private readonly AppConfig? _appConfig;
 
         public event EventHandler<AIMessageEventArgs>? MessageReceived;
@@ -30,7 +28,6 @@ namespace HouseVictoria.Services.AIServices
                 // Longer responses with context and LLM parameters may take more time
                 Timeout = TimeSpan.FromMinutes(5)
             };
-            _defaultEndpoint = defaultEndpoint;
             _appConfig = appConfig;
         }
 
@@ -892,17 +889,6 @@ namespace HouseVictoria.Services.AIServices
             if (text.Length <= maxChars)
                 return text;
             return text.Substring(0, maxChars) + $"… (truncated, {text.Length} chars total)";
-        }
-
-        private async Task<Stream> GenerateImageWithOllamaAsync(AIContact contact, string prompt)
-        {
-            // Note: Ollama doesn't have native image generation in standard API
-            // This is a placeholder for potential future support or custom models
-            // For now, throw a helpful exception
-            throw new NotImplementedException(
-                "Ollama doesn't support image generation directly. " +
-                "Please install and configure a local ComfyUI (or other Automatic1111-compatible) image generation server, " +
-                "and set the image endpoint accordingly in Settings.");
         }
 
         private class StableDiffusionResponse

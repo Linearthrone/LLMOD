@@ -52,35 +52,6 @@ namespace HouseVictoria.Core.Models
     }
 
     /// <summary>
-    /// Memory entry for AI contacts
-    /// </summary>
-    public class MemoryEntry
-    {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string ContactId { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
-        public double Importance { get; set; } = 1.0;
-        public int AccessCount { get; set; } = 0;
-    }
-
-    /// <summary>
-    /// Global knowledge entry
-    /// </summary>
-    public class GlobalKnowledgeEntry
-    {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string Content { get; set; } = string.Empty;
-        public string? Category { get; set; }
-        public List<string> Tags { get; set; } = new();
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
-        public DateTime LastAccessed { get; set; } = DateTime.Now;
-    }
-
-    /// <summary>
-    /// Application settings
-    /// </summary>
-    /// <summary>
     /// Persisted primary/secondary persona selections. Stored under the key
     /// <c>PersonaContextState</c> and managed by IPersonaContext.
     /// </summary>

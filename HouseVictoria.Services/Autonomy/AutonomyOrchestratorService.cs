@@ -18,7 +18,6 @@ namespace HouseVictoria.Services.Autonomy
         private readonly IAIService _aiService;
         private readonly DatabasePersistenceService _database;
         private readonly IProjectManagementService _projects;
-        private readonly IFileGenerationService _files;
         private readonly IMemoryService? _memory;
         private readonly IAgentService? _agent;
         private readonly IVirtualEnvironmentService? _virtualEnvironment;
@@ -43,7 +42,6 @@ namespace HouseVictoria.Services.Autonomy
         private const int MaxConsecutiveSameProject = 3;
         private static readonly TimeSpan ProjectCooldown = TimeSpan.FromMinutes(20);
         private static readonly TimeSpan TopicCooldown = TimeSpan.FromMinutes(30);
-        private static readonly TimeSpan GoalGenCooldown = TimeSpan.FromMinutes(15);
         private const string GoalGenCooldownKey = "__goalgen__";
         private const int MaxDecisionFailuresBeforeBackoff = 3;
         private const int LlmCritiqueEveryNthAction = 4;
@@ -79,7 +77,6 @@ namespace HouseVictoria.Services.Autonomy
             _aiService = aiService;
             _database = database;
             _projects = projects;
-            _files = files;
             _memory = memory;
             _agent = agent;
             _virtualEnvironment = virtualEnvironment;

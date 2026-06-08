@@ -1,7 +1,6 @@
 using System.Windows.Input;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
-using HouseVictoria.Core.Utils;
 using HouseVictoria.App.Screens.Windows;
 
 namespace HouseVictoria.App.Screens.Trays

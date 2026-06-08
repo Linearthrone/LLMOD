@@ -1,11 +1,9 @@
-using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using Hardcodet.Wpf.TaskbarNotification;
@@ -361,7 +359,6 @@ namespace HouseVictoria.App.Screens.Windows
 
         private const int WM_NCHITTEST = 0x0084;
         private const int HTTRANSPARENT = -1;
-        private const int HTCLIENT = 1;
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {

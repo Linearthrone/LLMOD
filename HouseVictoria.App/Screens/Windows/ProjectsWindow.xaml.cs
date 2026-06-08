@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.App.Converters;

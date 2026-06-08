@@ -1,4 +1,3 @@
-using HouseVictoria.Core.Models;
 
 namespace HouseVictoria.Core.Interfaces
 {

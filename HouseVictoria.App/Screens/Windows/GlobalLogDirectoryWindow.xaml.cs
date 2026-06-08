@@ -1,7 +1,5 @@
-using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
@@ -9,7 +7,6 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
-using HouseVictoria.Core.Models;
 
 namespace HouseVictoria.App.Screens.Windows
 {

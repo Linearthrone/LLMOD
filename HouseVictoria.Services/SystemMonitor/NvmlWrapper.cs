@@ -1,6 +1,4 @@
-using System;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace HouseVictoria.Services.SystemMonitor
 {
@@ -17,12 +15,6 @@ namespace HouseVictoria.Services.SystemMonitor
 
         // NVML Return codes
         private const int NvmlSuccess = 0;
-        private const int NvmlErrorNotSupported = -8;
-        private const int NvmlErrorNoPermission = -3;
-        private const int NvmlErrorNotInitialized = -1;
-        private const int NvmlErrorInitializationFailed = -2;
-        private const int NvmlErrorDriverNotLoaded = -4;
-        private const int NvmlErrorNotFound = -6;
 
         /// <summary>
         /// Check if NVML is available on this system

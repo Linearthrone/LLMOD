@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Input;
@@ -7,7 +6,6 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using System.Runtime.InteropServices;
 using HouseVictoria.App.HelperClasses;
-using HouseVictoria.App.Converters;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 

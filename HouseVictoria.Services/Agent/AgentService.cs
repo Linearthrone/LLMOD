@@ -14,7 +14,6 @@ namespace HouseVictoria.Services.Agent
     /// </summary>
     public class AgentService : IAgentService
     {
-        private readonly IAIService _aiService;
         private readonly IVirtualEnvironmentService _virtualEnvironmentService;
         private readonly IPersistenceService? _persistenceService;
         private readonly IPersonaContext? _personaContext;
@@ -31,7 +30,6 @@ namespace HouseVictoria.Services.Agent
 
         public AgentService(IAIService aiService, IVirtualEnvironmentService virtualEnvironmentService, IPersistenceService? persistenceService = null, IPersonaContext? personaContext = null)
         {
-            _aiService = aiService;
             _virtualEnvironmentService = virtualEnvironmentService;
             _persistenceService = persistenceService;
             _personaContext = personaContext;

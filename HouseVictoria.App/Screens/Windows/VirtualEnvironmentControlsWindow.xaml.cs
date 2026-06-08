@@ -1,7 +1,5 @@
-using System;
 using System.Windows;
 using System.Windows.Input;
-using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 
 namespace HouseVictoria.App.Screens.Windows

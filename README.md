@@ -2,7 +2,14 @@
 
 A modular overlay desktop application inspired by Xbox Game Bar, featuring multimodal AI chat interface, SMS/MMS communication, project management, system monitoring, and virtual environment integration.
 
-**Documentation:** Start with [Docs/HouseVictoria_Guide.md](Docs/HouseVictoria_Guide.md) (consolidated status, roadmap pointers, and links to all other docs).
+**Documentation (consolidated):**
+
+| Document | Purpose |
+|----------|---------|
+| **[Docs/HouseVictoria_UserGuide.md](Docs/HouseVictoria_UserGuide.md)** | Complete user guide — installation, UI, settings, integrations, troubleshooting |
+| **[Docs/HouseVictoria_Evolution.md](Docs/HouseVictoria_Evolution.md)** | Project history, current capabilities, gaps, and future roadmap |
+
+Legacy topic docs (Hermes, Unreal, COVAS, MT4, etc.) remain under `Docs/` as deep references; see the Evolution doc §8 for the full map.
 
 ## Features
 

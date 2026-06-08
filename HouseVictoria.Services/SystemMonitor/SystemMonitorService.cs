@@ -2,11 +2,9 @@ using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.TTS;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 
 namespace HouseVictoria.Services.SystemMonitor
@@ -25,7 +23,6 @@ namespace HouseVictoria.Services.SystemMonitor
         private readonly string _rootDirectory;
         private LocalTtsHttpHost? _localTtsHost;
         private VirtualEnvironmentStatus _cachedVirtualEnvironmentStatus = new();
-        private System.Diagnostics.Process? _systemProcess;
         private DateTime _startTime;
         private PerformanceCounter? _cpuCounter;
         private PerformanceCounter? _memoryCounter;
@@ -69,7 +66,6 @@ namespace HouseVictoria.Services.SystemMonitor
             _hermesGatewayService = hermesGatewayService;
             _rootDirectory = LocateRootDirectory();
             _startTime = DateTime.Now;
-            _systemProcess = Process.GetCurrentProcess();
 
             // Configure HttpClient with better settings for reliability
             var handler = new HttpClientHandler

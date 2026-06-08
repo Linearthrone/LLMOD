@@ -1,5 +1,4 @@
 using HouseVictoria.Core.Interfaces;
-using HouseVictoria.Core.Models;
 using System.Text;
 
 namespace HouseVictoria.Services.FileGeneration
@@ -9,12 +8,10 @@ namespace HouseVictoria.Services.FileGeneration
     /// </summary>
     public class FileGenerationService : IFileGenerationService
     {
-        private readonly string _basePath;
         private readonly string _generatedFilesPath;
 
         public FileGenerationService(string basePath = "Media")
         {
-            _basePath = basePath;
             _generatedFilesPath = System.IO.Path.Combine(basePath, "GeneratedFiles");
 
             // Ensure the directory exists

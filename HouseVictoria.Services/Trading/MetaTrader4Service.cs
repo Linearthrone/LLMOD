@@ -885,21 +885,5 @@ namespace HouseVictoria.Services.Trading
                                      DateTime.UtcNow - latest.Value <= TimeSpan.FromSeconds(30);
         }
 
-        private string GetTimeFrameCode(TimeFrame timeFrame)
-        {
-            return timeFrame switch
-            {
-                TimeFrame.M1 => "1",
-                TimeFrame.M5 => "5",
-                TimeFrame.M15 => "15",
-                TimeFrame.M30 => "30",
-                TimeFrame.H1 => "60",
-                TimeFrame.H4 => "240",
-                TimeFrame.D1 => "1440",
-                TimeFrame.W1 => "10080",
-                TimeFrame.MN1 => "43200",
-                _ => "60"
-            };
-        }
     }
 }

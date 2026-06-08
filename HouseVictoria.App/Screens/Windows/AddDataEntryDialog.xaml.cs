@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using HouseVictoria.Core.Models;
 using Microsoft.Win32;

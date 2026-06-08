@@ -1,21 +1,17 @@
-using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
 using System.Windows;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
-using System.Collections.Generic;
 
 namespace HouseVictoria.App.Screens.Windows
 {

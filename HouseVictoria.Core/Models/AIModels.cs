@@ -108,18 +108,4 @@ namespace HouseVictoria.Core.Models
         public DateTime Timestamp { get; set; } = DateTime.Now;
         public string? ModelUsed { get; set; }
     }
-
-    /// <summary>
-    /// Model configuration
-    /// </summary>
-    public class AIModelConfig
-    {
-        public string Name { get; set; } = string.Empty;
-        public string ServerUrl { get; set; } = string.Empty;
-        public int ContextLength { get; set; } = 4096;
-        public float Temperature { get; set; } = 0.7f;
-        public int MaxTokens { get; set; } = 2048;
-        public bool SupportsVision { get; set; } = false;
-        public bool SupportsAudio { get; set; } = false;
-    }
 }

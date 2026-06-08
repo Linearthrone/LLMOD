@@ -9,15 +9,12 @@ using System.Text.RegularExpressions;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Net.WebSockets;
-using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
-using System.Linq;
 using Microsoft.Win32;
 using HouseVictoria.App.Services;
-using HouseVictoria.Services.AIServices;
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,7 +24,6 @@ namespace HouseVictoria.App.Screens.Windows
     {
         private readonly AppConfig _appConfig;
         private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
-        private readonly ITTSService? _ttsService;
         private string? _validationError;
         private bool _isTestingConnection;
         private string? _connectionTestResult;
@@ -723,16 +719,6 @@ namespace HouseVictoria.App.Screens.Windows
         public SettingsWindowViewModel(AppConfig appConfig)
         {
             _appConfig = appConfig;
-
-            // Get TTS service from service provider
-            try
-            {
-                _ttsService = App.ServiceProvider?.GetService<ITTSService>();
-            }
-            catch
-            {
-                _ttsService = null;
-            }
 
             // Load settings from AppConfig
             LmStudioEndpoint = appConfig.LmStudioEndpoint;

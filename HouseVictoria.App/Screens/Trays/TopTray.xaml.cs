@@ -1,12 +1,9 @@
-using System;
 using System.Windows;
 using System.Windows.Controls;
 using HouseVictoria.App.Screens.Windows;
-using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Core.Utils;
-using System.Linq;
 
 namespace HouseVictoria.App.Screens.Trays
 {
