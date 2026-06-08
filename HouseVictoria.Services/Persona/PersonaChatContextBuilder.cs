@@ -58,11 +58,13 @@ namespace HouseVictoria.Services.Persona
                         if (global == null || global.Count == 0)
                             global = await _memoryService.GetGlobalKnowledgeAsync().ConfigureAwait(false);
 
-                        foreach (var entry in global.Take(3))
+                        foreach (var entry in global
+                                     .Select(e => (score: (double)ScoreText(e, keywords), text: e))
+                                     .Where(x => x.score > 0)
+                                     .OrderByDescending(x => x.score)
+                                     .Take(3))
                         {
-                            var score = ScoreText(entry, keywords);
-                            if (score > 0 || global.Count <= 3)
-                                sections.Add((score + 0.3, $"About the user:\n{TruncateText(entry, 400)}"));
+                            sections.Add((entry.score + 0.3, $"About the user:\n{TruncateText(entry.text, 400)}"));
                         }
                     }
                     catch (Exception ex)

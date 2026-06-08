@@ -52,7 +52,51 @@ namespace HouseVictoria.Core.Models
         ExecuteTrade,
         RunBacktest,
         ScanMarkets,
-        SkippedCooldown
+        SkippedCooldown,
+        GenerateGoal
+    }
+
+    /// <summary>A recent action remembered for anti-repetition reasoning.</summary>
+    public class AutonomyRecentActivity
+    {
+        public AutonomyActivityKind Activity { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Topic { get; set; }
+        public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
+    }
+
+    /// <summary>A single concrete step in a multi-tick project plan.</summary>
+    public class AutonomyPlanStep
+    {
+        public string Description { get; set; } = string.Empty;
+        public bool Done { get; set; }
+        public DateTime? CompletedUtc { get; set; }
+    }
+
+    /// <summary>A persisted, step-by-step plan for advancing a project across ticks.</summary>
+    public class AutonomyPlan
+    {
+        public string ProjectId { get; set; } = string.Empty;
+        public string ProjectName { get; set; } = string.Empty;
+        public List<AutonomyPlanStep> Steps { get; set; } = new();
+        public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+
+        public int DoneCount => Steps.Count(s => s.Done);
+        public bool IsComplete => Steps.Count > 0 && Steps.All(s => s.Done);
+        public AutonomyPlanStep? NextStep => Steps.FirstOrDefault(s => !s.Done);
+        public double CompletionFraction => Steps.Count == 0 ? 0 : (double)DoneCount / Steps.Count;
+    }
+
+    /// <summary>A scored record of how a substantive action turned out, used as feedback.</summary>
+    public class AutonomyOutcome
+    {
+        public AutonomyActivityKind Activity { get; set; }
+        public string? Topic { get; set; }
+        public string? ProjectId { get; set; }
+        /// <summary>0.0 (poor) – 1.0 (excellent).</summary>
+        public double Score { get; set; }
+        public string Note { get; set; } = string.Empty;
+        public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
     }
 
     /// <summary>Persisted autonomy runtime state.</summary>
@@ -75,7 +119,17 @@ namespace HouseVictoria.Core.Models
             ["curiosity"] = 0.5,
             ["creativity"] = 0.5,
             ["social"] = 0.3,
-            ["boredom"] = 0.2
+            ["boredom"] = 0.2,
+            ["industry"] = 0.5
+        };
+        /// <summary>Resting values each drive decays toward when not stimulated or satisfied.</summary>
+        public Dictionary<string, double> DriveBaselines { get; set; } = new()
+        {
+            ["curiosity"] = 0.5,
+            ["creativity"] = 0.5,
+            ["social"] = 0.3,
+            ["boredom"] = 0.2,
+            ["industry"] = 0.5
         };
         public int ActionsThisHour { get; set; }
         public DateTime HourWindowStartUtc { get; set; } = DateTime.UtcNow;
@@ -83,6 +137,28 @@ namespace HouseVictoria.Core.Models
         public bool IsRunning { get; set; }
         public long TotalTicks { get; set; }
         public long TotalActions { get; set; }
+
+        // Anti-repetition memory window (most recent first is not guaranteed; ordered by append).
+        public List<AutonomyRecentActivity> RecentActivities { get; set; } = new();
+
+        // Multi-tick plans, keyed implicitly by ProjectId.
+        public List<AutonomyPlan> Plans { get; set; } = new();
+
+        // Rolling outcome feedback for recent substantive actions.
+        public List<AutonomyOutcome> RecentOutcomes { get; set; } = new();
+
+        // Persisted anti-fixation tracking (survives restart).
+        public Dictionary<string, DateTime> ProjectCooldownUntil { get; set; } = new();
+        public Dictionary<string, DateTime> TopicCooldownUntil { get; set; } = new();
+        public string? LastFocusProjectId { get; set; }
+        public int SameFocusStreak { get; set; }
+
+        // Self-initiated goal budget (per rolling day).
+        public int SelfGoalsToday { get; set; }
+        public DateTime SelfGoalDayStartUtc { get; set; } = DateTime.UtcNow;
+
+        // Decision-failure backoff.
+        public int ConsecutiveDecisionFailures { get; set; }
     }
 
     /// <summary>LLM decision payload for one autonomy tick.</summary>

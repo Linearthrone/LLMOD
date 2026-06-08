@@ -42,9 +42,21 @@ namespace HouseVictoria.Services.Autonomy
         // Anti-fixation: stop her grinding the same project tick after tick.
         private const int MaxConsecutiveSameProject = 3;
         private static readonly TimeSpan ProjectCooldown = TimeSpan.FromMinutes(20);
-        private string? _lastFocusProjectId;
-        private int _sameFocusStreak;
-        private readonly Dictionary<string, DateTime> _projectCooldownUntil = new();
+        private static readonly TimeSpan TopicCooldown = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan GoalGenCooldown = TimeSpan.FromMinutes(15);
+        private const string GoalGenCooldownKey = "__goalgen__";
+        private const int MaxDecisionFailuresBeforeBackoff = 3;
+        private const int LlmCritiqueEveryNthAction = 4;
+
+        // Cognitive helpers (planning, self-goals, outcome feedback).
+        private readonly AutonomyPlanner _planner;
+        private readonly GoalGenerator _goalGenerator;
+        private readonly OutcomeEvaluator _outcomeEvaluator;
+
+        // Set by the Execute* methods so ExecuteDecisionAsync can score the outcome
+        // and remember the topic for anti-repetition, without threading it through returns.
+        private string? _lastActivityBody;
+        private string? _lastActivityTopic;
 
         public event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
         public event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
@@ -81,6 +93,10 @@ namespace HouseVictoria.Services.Autonomy
             Directory.CreateDirectory(Path.Combine(_autonomyRoot, "Art"));
             Directory.CreateDirectory(Path.Combine(_autonomyRoot, "Research"));
             _stateStore = new AutonomyStateStore(_autonomyRoot);
+
+            _planner = new AutonomyPlanner(aiService);
+            _goalGenerator = new GoalGenerator(aiService, projects);
+            _outcomeEvaluator = new OutcomeEvaluator(aiService);
         }
 
         public AutonomyRuntimeState GetState()
@@ -169,7 +185,7 @@ namespace HouseVictoria.Services.Autonomy
 
         private async Task RunLoopAsync(CancellationToken cancellationToken)
         {
-            var interval = TimeSpan.FromSeconds(Math.Max(30, _config.AutonomyTickIntervalSeconds));
+            var baseInterval = TimeSpan.FromSeconds(Math.Max(30, _config.AutonomyTickIntervalSeconds));
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -186,6 +202,11 @@ namespace HouseVictoria.Services.Autonomy
                     System.Diagnostics.Debug.WriteLine($"[Autonomy] Tick error: {ex.Message}");
                     await _stateStore.AppendActivityLogAsync($"Tick error: {ex.Message}").ConfigureAwait(false);
                 }
+
+                // Restlessness (boredom / curiosity) shortens the wait so she acts sooner.
+                TimeSpan interval;
+                lock (_stateLock)
+                    interval = DriveSystem.DynamicInterval(baseInterval, _state);
 
                 try
                 {
@@ -208,6 +229,7 @@ namespace HouseVictoria.Services.Autonomy
             }
 
             ResetHourWindowIfNeeded();
+            ResetSelfGoalDayIfNeeded();
             RefreshVitalsFromState();
 
             var contact = await ResolveContactAsync().ConfigureAwait(false);
@@ -218,13 +240,19 @@ namespace HouseVictoria.Services.Autonomy
             }
 
             var userQuiet = await IsUserQuietAsync(contact.Id).ConfigureAwait(false);
+
+            // Homeostatic drive maintenance: pull toward baseline, drift boredom while idle.
+            lock (_stateLock)
+                DriveSystem.Decay(_state, userQuiet, actedThisTick: false);
+
             var highPriority = (await _projects.GetProjectsByPriorityAsync(
                 _config.AutonomyHighPriorityThreshold, 10).ConfigureAwait(false))
                 .Where(p => !IsProjectOnCooldown(p.Id))
                 .Take(3).ToList();
 
             var canAct = CanPerformSubstantiveAction();
-            AutonomyDecision? decision = null;
+            var recentFeedback = SnapshotRecentForPrompt();
+            bool decisionFailed = false;
 
             if (userQuiet && canAct && _marketWatch != null && _config.TradingWatchEnabled)
             {
@@ -238,30 +266,53 @@ namespace HouseVictoria.Services.Autonomy
 
             if (highPriority.Count > 0 && canAct)
             {
-                decision = await DecideAsync(contact, highPriority, userQuiet, preferPriority: true, cancellationToken)
+                var decision = await DecideAsync(contact, highPriority, userQuiet, preferPriority: true, recentFeedback, cancellationToken)
                     .ConfigureAwait(false);
-                if (decision != null && !string.Equals(decision.Mode, "wait", StringComparison.OrdinalIgnoreCase))
+                if (decision == null)
+                    decisionFailed = true;
+                else if (!string.Equals(decision.Mode, "wait", StringComparison.OrdinalIgnoreCase))
                 {
                     await ExecuteDecisionAsync(contact, decision, highPriority, cancellationToken).ConfigureAwait(false);
                     return;
                 }
+            }
+
+            // Idle: she may invent a brand-new goal when a drive runs hot and the budget allows.
+            if (userQuiet && canAct && ShouldGenerateGoal())
+            {
+                if (await ExecuteGenerateGoalAsync(contact, cancellationToken).ConfigureAwait(false))
+                    return;
             }
 
             if (userQuiet && canAct)
             {
                 var allProjects = await _projects.GetAllProjectsAsync().ConfigureAwait(false);
-                decision = await DecideAsync(contact, allProjects
+                var decision = await DecideAsync(contact, allProjects
                     .Where(p => p.Phase != ProjectPhase.Completed && !IsProjectOnCooldown(p.Id))
                     .Take(8).ToList(),
-                    userQuiet, preferPriority: false, cancellationToken).ConfigureAwait(false);
-                if (decision != null)
+                    userQuiet, preferPriority: false, recentFeedback, cancellationToken).ConfigureAwait(false);
+                if (decision == null)
+                    decisionFailed = true;
+                else if (string.Equals(decision.Mode, "wait", StringComparison.OrdinalIgnoreCase))
+                {
+                    await CompleteTickAsync(AutonomyActivityKind.SkippedCooldown,
+                        $"Chose to wait — {Truncate(decision.Reason, 80)}").ConfigureAwait(false);
+                    return;
+                }
+                else
                 {
                     await ExecuteDecisionAsync(contact, decision, highPriority, cancellationToken).ConfigureAwait(false);
                     return;
                 }
             }
 
-            UpdateDrivesLight(userQuiet, highPriority.Count > 0);
+            if (decisionFailed && RegisterDecisionFailureShouldBackOff())
+            {
+                await CompleteTickAsync(AutonomyActivityKind.SkippedCooldown,
+                    "Backing off after repeated decision failures.").ConfigureAwait(false);
+                return;
+            }
+
             var msg = userQuiet
                 ? "User quiet but at action cap or decision deferred."
                 : $"Waiting for user quiet ({_config.AutonomyMinIdleMinutes} min since last message).";
@@ -283,6 +334,9 @@ namespace HouseVictoria.Services.Autonomy
 
             RecordActivityTransition(activity, summary);
             SetVitalsForActivity(activity, summary, holdSeconds: 45);
+
+            _lastActivityBody = null;
+            _lastActivityTopic = decision.Title;
 
             try
             {
@@ -320,7 +374,15 @@ namespace HouseVictoria.Services.Autonomy
 
                 RecordSubstantiveAction();
                 lock (_stateLock)
+                {
                     _state.CurrentFocusProjectId = decision.ProjectId;
+                    _state.ConsecutiveDecisionFailures = 0;
+                    DriveSystem.Satisfy(_state, activity);
+                }
+
+                RecordRecentActivity(activity, decision.Title, _lastActivityTopic);
+                await ScoreOutcomeAsync(contact, activity, _lastActivityTopic, decision.ProjectId, _lastActivityBody, cancellationToken)
+                    .ConfigureAwait(false);
 
                 await CompleteTickAsync(activity, summary, skipTransition: true).ConfigureAwait(false);
                 ActivityCompleted?.Invoke(this, new AutonomyActivityEventArgs
@@ -346,6 +408,18 @@ namespace HouseVictoria.Services.Autonomy
             var priorWork = _journals != null
                 ? await _journals.GetPriorWorkContextAsync(project.Name, project.Id).ConfigureAwait(false)
                 : null;
+
+            // Multi-tick plan: decompose once, then advance one concrete step per session
+            // instead of blindly nudging the completion percentage.
+            var plan = await GetOrCreatePlanAsync(contact, project, priorWork, cancellationToken).ConfigureAwait(false);
+            var currentStep = plan.NextStep;
+            var stepSection = currentStep == null
+                ? "\n\nAll planned steps are done — do a final review/polish pass and note anything outstanding."
+                : $"""
+
+                Plan progress: step {plan.DoneCount + 1} of {plan.Steps.Count}.
+                Focus ONLY on this step right now: {currentStep.Description}
+                """;
 
             var priorSection = string.IsNullOrWhiteSpace(priorWork)
                 ? ""
@@ -387,15 +461,18 @@ namespace HouseVictoria.Services.Autonomy
                 Project description: {project.Description}
                 Phase: {project.Phase}, completion: {project.CompletionPercentage}%
 
-                Task for this session: {decision.Detail}
+                Session intent: {decision.Detail}
+                {stepSection}
                 {priorSection}
                 {deliverableRules}
 
-                Write a detailed markdown deliverable (400-900 words) with the sections above as applicable.
+                Write a detailed markdown deliverable (400-900 words) that completes the step above.
                 Never respond with only "I have completed the research" or "I created the strategy" without the actual substance requested.
                 """;
 
             var note = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
+            _lastActivityBody = note;
+            _lastActivityTopic = project.Name;
             await _projects.AddLogEntryAsync(project.Id, new ProjectLog
             {
                 ProjectId = project.Id,
@@ -404,16 +481,29 @@ namespace HouseVictoria.Services.Autonomy
                 Details = note.Trim()
             }).ConfigureAwait(false);
 
-            // Allow projects to actually reach 100% (was capped at 99%, which made them
-            // immortal and kept them permanently top-priority — the root of the fixation loop).
-            project.CompletionPercentage = Math.Min(100, project.CompletionPercentage + 2);
+            // Mark the step done and derive real completion from steps finished — progress
+            // now reflects actual work, not a blind increment.
+            if (currentStep != null)
+            {
+                currentStep.Done = true;
+                currentStep.CompletedUtc = DateTime.UtcNow;
+            }
+            lock (_stateLock)
+                SavePlan(plan);
+
+            var derivedCompletion = currentStep == null
+                ? 100
+                : (int)Math.Round(plan.CompletionFraction * 100);
+            project.CompletionPercentage = Math.Max(project.CompletionPercentage, derivedCompletion);
             project.LastModifiedAt = DateTime.Now;
             await _projects.UpdateProjectAsync(project).ConfigureAwait(false);
 
-            // When it crosses the finish line, mark it Completed via the phase update so the
-            // milestone event fires (this is what triggers the After Action Report).
-            if (project.CompletionPercentage >= 100 && project.Phase != ProjectPhase.Completed)
+            // Quality gate: the project only finishes when every planned step is done
+            // (the milestone event fires here, which triggers the After Action Report).
+            if (plan.IsComplete && project.Phase != ProjectPhase.Completed)
             {
+                project.CompletionPercentage = 100;
+                await _projects.UpdateProjectAsync(project).ConfigureAwait(false);
                 await _projects.UpdateProjectPhaseAsync(project.Id, ProjectPhase.Completed).ConfigureAwait(false);
                 ClearProjectFocusTracking(project.Id);
             }
@@ -466,6 +556,10 @@ namespace HouseVictoria.Services.Autonomy
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
             var bytes = ms.ToArray();
+
+            _lastActivityBody = enhanced;
+            _lastActivityTopic = decision.Title;
+            ApplyTopicCooldown(decision.Title);
 
             var fileName = $"autonomy-art-{DateTime.UtcNow:yyyyMMdd-HHmmss}.png";
             var artDir = Path.Combine(_autonomyRoot, "Art");
@@ -557,6 +651,9 @@ namespace HouseVictoria.Services.Autonomy
                 """;
 
             var body = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
+            _lastActivityBody = body;
+            _lastActivityTopic = decision.Title;
+            ApplyTopicCooldown(decision.Title);
 
             var researchProject = await GetOrCreateProjectAsync(
                 "Research & curiosity backlog",
@@ -590,6 +687,8 @@ namespace HouseVictoria.Services.Autonomy
                 """;
 
             var reflection = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
+            _lastActivityBody = reflection;
+            _lastActivityTopic = null;
 
             await RecordJournalAsync(
                 AutonomyActivityKind.Reflect,
@@ -625,6 +724,7 @@ namespace HouseVictoria.Services.Autonomy
             List<Project> projects,
             bool userQuiet,
             bool preferPriority,
+            PromptSignals signals,
             CancellationToken cancellationToken)
         {
             var projectLines = projects.Count == 0
@@ -632,7 +732,6 @@ namespace HouseVictoria.Services.Autonomy
                 : string.Join("\n", projects.Select(p =>
                     $"- [{p.Id}] {p.Name} (P{p.Priority}, {p.Phase}, {p.CompletionPercentage}%): {Truncate(p.Description, 120)}"));
 
-            var drives = string.Join(", ", _state.Drives.Select(kv => $"{kv.Key}={kv.Value:F2}"));
             var modeHint = preferPriority
                 ? "Prefer mode \"priority\" and activity \"project\" for the highest-priority project."
                 : "User is quiet — choose an idle activity you genuinely want: art, research, project, reflect, or environment.";
@@ -642,13 +741,19 @@ namespace HouseVictoria.Services.Autonomy
                 {{modeHint}}
 
                 User quiet (no recent chat): {{userQuiet}}
-                Drives: {{drives}}
+                Drives: {{signals.Drives}}
+                Right now these appeal most (drive-weighted): {{signals.DriveHint}}
+                Recently worked topics (do NOT repeat or rephrase these): {{signals.RecentTopics}}
+                Feedback on your recent work (0-1, higher is better): {{signals.FeedbackHint}}
                 Last activity: {{_state.LastActivity}} — {{_state.LastActivitySummary ?? "none"}}
                 Art this hour: {{_state.ArtGeneratedThisHour}}/{{_config.AutonomyMaxArtPerHour}}
                 Actions this hour: {{_state.ActionsThisHour}}/{{_config.AutonomyMaxActionsPerHour}}
 
                 Open projects:
                 {{projectLines}}
+
+                Let your strongest drives and the feedback guide you: lean into what scored well,
+                change approach where scores were low, and pick something genuinely different from the recent topics.
 
                 Reply with ONLY a JSON object (no markdown):
                 {"mode":"priority|idle|wait","activity":"project|art|research|reflect|environment|trade","title":"short title","detail":"concrete prompt or notes","projectId":"id or empty","reason":"why this choice"}
@@ -657,9 +762,39 @@ namespace HouseVictoria.Services.Autonomy
                 For activity "backtest", put a JSON backtest request in detail (same shape as the ```backtest block).
                 """;
 
-            var raw = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
+            string raw;
+            try
+            {
+                raw = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Autonomy] decide error: {ex.Message}");
+                return null;
+            }
+
             return ParseDecision(raw);
         }
+
+        private PromptSignals SnapshotRecentForPrompt()
+        {
+            lock (_stateLock)
+            {
+                var drives = string.Join(", ", _state.Drives.Select(kv => $"{kv.Key}={kv.Value:F2}"));
+                var driveHint = DriveSystem.SuggestionHint(_state);
+                var recentTopics = string.Join(", ", _state.RecentActivities
+                    .TakeLast(8)
+                    .Select(a => string.IsNullOrWhiteSpace(a.Topic) ? a.Title : a.Topic)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct());
+                if (string.IsNullOrWhiteSpace(recentTopics))
+                    recentTopics = "(none yet)";
+                var feedback = OutcomeEvaluator.BuildFeedbackHint(_state.RecentOutcomes);
+                return new PromptSignals(drives, driveHint, recentTopics, feedback);
+            }
+        }
+
+        private sealed record PromptSignals(string Drives, string DriveHint, string RecentTopics, string FeedbackHint);
 
         private bool IsProjectOnCooldown(string projectId)
         {
@@ -667,7 +802,7 @@ namespace HouseVictoria.Services.Autonomy
                 return false;
             lock (_stateLock)
             {
-                return _projectCooldownUntil.TryGetValue(projectId, out var until) && DateTime.UtcNow < until;
+                return _state.ProjectCooldownUntil.TryGetValue(projectId, out var until) && DateTime.UtcNow < until;
             }
         }
 
@@ -678,21 +813,21 @@ namespace HouseVictoria.Services.Autonomy
 
             lock (_stateLock)
             {
-                if (projectId == _lastFocusProjectId)
-                    _sameFocusStreak++;
+                if (projectId == _state.LastFocusProjectId)
+                    _state.SameFocusStreak++;
                 else
                 {
-                    _lastFocusProjectId = projectId;
-                    _sameFocusStreak = 1;
+                    _state.LastFocusProjectId = projectId;
+                    _state.SameFocusStreak = 1;
                 }
 
                 // Worked the same project too many ticks in a row → force a break so she
                 // rotates to other projects / research / reflection instead of looping.
-                if (_sameFocusStreak >= MaxConsecutiveSameProject)
+                if (_state.SameFocusStreak >= MaxConsecutiveSameProject)
                 {
-                    _projectCooldownUntil[projectId] = DateTime.UtcNow + ProjectCooldown;
-                    _sameFocusStreak = 0;
-                    _lastFocusProjectId = null;
+                    _state.ProjectCooldownUntil[projectId] = DateTime.UtcNow + ProjectCooldown;
+                    _state.SameFocusStreak = 0;
+                    _state.LastFocusProjectId = null;
                 }
             }
         }
@@ -701,13 +836,40 @@ namespace HouseVictoria.Services.Autonomy
         {
             lock (_stateLock)
             {
-                _projectCooldownUntil.Remove(projectId);
-                if (_lastFocusProjectId == projectId)
+                _state.ProjectCooldownUntil.Remove(projectId);
+                if (_state.LastFocusProjectId == projectId)
                 {
-                    _lastFocusProjectId = null;
-                    _sameFocusStreak = 0;
+                    _state.LastFocusProjectId = null;
+                    _state.SameFocusStreak = 0;
                 }
             }
+        }
+
+        private bool IsTopicOnCooldown(string topic)
+        {
+            if (string.IsNullOrWhiteSpace(topic))
+                return false;
+            lock (_stateLock)
+                return _state.TopicCooldownUntil.TryGetValue(topic, out var until) && DateTime.UtcNow < until;
+        }
+
+        private void ApplyTopicCooldown(string topic)
+        {
+            if (string.IsNullOrWhiteSpace(topic))
+                return;
+            lock (_stateLock)
+            {
+                PruneExpiredCooldowns(_state.TopicCooldownUntil);
+                _state.TopicCooldownUntil[topic] = DateTime.UtcNow + TopicCooldown;
+            }
+        }
+
+        private static void PruneExpiredCooldowns(Dictionary<string, DateTime> map)
+        {
+            var now = DateTime.UtcNow;
+            var expired = map.Where(kv => kv.Value < now).Select(kv => kv.Key).ToList();
+            foreach (var key in expired)
+                map.Remove(key);
         }
 
         private async Task<Project?> ResolveProjectForDecisionAsync(AutonomyDecision decision)
@@ -834,23 +996,187 @@ namespace HouseVictoria.Services.Autonomy
             }
         }
 
-        private void UpdateDrivesLight(bool userQuiet, bool hasHighPriority)
+        private void ResetSelfGoalDayIfNeeded()
         {
             lock (_stateLock)
             {
-                if (userQuiet)
-                {
-                    _state.Drives["boredom"] = Math.Min(1.0, _state.Drives.GetValueOrDefault("boredom") + 0.04);
-                    _state.Drives["creativity"] = Math.Min(1.0, _state.Drives.GetValueOrDefault("creativity") + 0.03);
-                }
-                else
-                {
-                    _state.Drives["social"] = Math.Min(1.0, _state.Drives.GetValueOrDefault("social") + 0.05);
-                }
-
-                if (hasHighPriority)
-                    _state.Drives["curiosity"] = Math.Min(1.0, _state.Drives.GetValueOrDefault("curiosity") + 0.02);
+                if (DateTime.UtcNow - _state.SelfGoalDayStartUtc < TimeSpan.FromDays(1))
+                    return;
+                _state.SelfGoalDayStartUtc = DateTime.UtcNow;
+                _state.SelfGoalsToday = 0;
             }
+        }
+
+        private bool ShouldGenerateGoal()
+        {
+            if (!_config.AutonomyEnableSelfGoals)
+                return false;
+            if (IsTopicOnCooldown(GoalGenCooldownKey))
+                return false;
+
+            lock (_stateLock)
+            {
+                if (_state.SelfGoalsToday >= Math.Max(0, _config.AutonomyMaxSelfGoalsPerDay))
+                    return false;
+                // Only when a drive is genuinely hot — she wants something, not busywork.
+                var dominant = DriveSystem.Dominant(_state);
+                return dominant.Value >= 0.75;
+            }
+        }
+
+        private async Task<bool> ExecuteGenerateGoalAsync(AIContact contact, CancellationToken cancellationToken)
+        {
+            // Cool down regardless of outcome so a hot drive doesn't trigger this every tick.
+            ApplyTopicCooldown(GoalGenCooldownKey);
+
+            var existing = await _projects.GetAllProjectsAsync().ConfigureAwait(false);
+            AutonomyRuntimeState snapshot;
+            lock (_stateLock)
+                snapshot = CloneState(_state);
+
+            var project = await _goalGenerator
+                .TryGenerateGoalAsync(contact, snapshot, existing, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (project == null)
+            {
+                // She considered starting something new but nothing compelling surfaced.
+                await CompleteTickAsync(AutonomyActivityKind.GenerateGoal,
+                    "Considered new directions — nothing worth starting yet.").ConfigureAwait(false);
+                return true;
+            }
+
+            var summary = $"Started a self-initiated project: {project.Name}";
+            RecordActivityTransition(AutonomyActivityKind.GenerateGoal, summary);
+            SetVitalsForActivity(AutonomyActivityKind.GenerateGoal, summary, holdSeconds: 45);
+
+            lock (_stateLock)
+            {
+                _state.SelfGoalsToday++;
+                _state.ConsecutiveDecisionFailures = 0;
+                DriveSystem.Satisfy(_state, AutonomyActivityKind.GenerateGoal);
+            }
+
+            RecordRecentActivity(AutonomyActivityKind.GenerateGoal, project.Name, project.Name);
+            RecordSubstantiveAction();
+
+            await RecordJournalAsync(
+                AutonomyActivityKind.GenerateGoal,
+                $"{project.Name} — self-initiated",
+                project.Description,
+                project.Id,
+                project.Name).ConfigureAwait(false);
+            await AppendAutonomyMemoryAsync(contact, $"Decided to start a new project: {project.Name} — {project.Description}").ConfigureAwait(false);
+
+            await CompleteTickAsync(AutonomyActivityKind.GenerateGoal, summary, skipTransition: true).ConfigureAwait(false);
+            ActivityCompleted?.Invoke(this, new AutonomyActivityEventArgs
+            {
+                Activity = AutonomyActivityKind.GenerateGoal,
+                Summary = summary
+            });
+            return true;
+        }
+
+        private bool RegisterDecisionFailureShouldBackOff()
+        {
+            lock (_stateLock)
+            {
+                _state.ConsecutiveDecisionFailures++;
+                return _state.ConsecutiveDecisionFailures >= MaxDecisionFailuresBeforeBackoff;
+            }
+        }
+
+        private void RecordRecentActivity(AutonomyActivityKind activity, string title, string? topic)
+        {
+            lock (_stateLock)
+            {
+                _state.RecentActivities.Add(new AutonomyRecentActivity
+                {
+                    Activity = activity,
+                    Title = title,
+                    Topic = topic,
+                    TimestampUtc = DateTime.UtcNow
+                });
+                // Keep only the most recent window.
+                const int window = 8;
+                if (_state.RecentActivities.Count > window)
+                    _state.RecentActivities.RemoveRange(0, _state.RecentActivities.Count - window);
+            }
+        }
+
+        private async Task ScoreOutcomeAsync(
+            AIContact contact,
+            AutonomyActivityKind activity,
+            string? topic,
+            string? projectId,
+            string? body,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(body))
+                return;
+
+            IReadOnlyList<AutonomyRecentActivity> recent;
+            bool useLlmCritique;
+            lock (_stateLock)
+            {
+                recent = _state.RecentActivities.ToList();
+                useLlmCritique = LlmCritiqueEveryNthAction > 0
+                                 && _state.TotalActions % LlmCritiqueEveryNthAction == 0;
+            }
+
+            AutonomyOutcome outcome;
+            try
+            {
+                outcome = await _outcomeEvaluator.EvaluateAsync(
+                    contact, activity, topic, projectId, body!, recent, useLlmCritique, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Autonomy] outcome scoring failed: {ex.Message}");
+                return;
+            }
+
+            lock (_stateLock)
+            {
+                _state.RecentOutcomes.Add(outcome);
+                const int window = 20;
+                if (_state.RecentOutcomes.Count > window)
+                    _state.RecentOutcomes.RemoveRange(0, _state.RecentOutcomes.Count - window);
+            }
+
+            await _stateStore.AppendActivityLogAsync(
+                $"Outcome[{activity}] score={outcome.Score:F2} ({outcome.Note})").ConfigureAwait(false);
+        }
+
+        private async Task<AutonomyPlan> GetOrCreatePlanAsync(
+            AIContact contact,
+            Project project,
+            string? priorWork,
+            CancellationToken cancellationToken)
+        {
+            lock (_stateLock)
+            {
+                var existing = _state.Plans.FirstOrDefault(p => p.ProjectId == project.Id);
+                if (existing != null && existing.Steps.Count > 0)
+                    return existing;
+            }
+
+            var plan = await _planner.CreatePlanAsync(contact, project, priorWork, cancellationToken).ConfigureAwait(false);
+            lock (_stateLock)
+                SavePlan(plan);
+            return plan;
+        }
+
+        private void SavePlan(AutonomyPlan plan)
+        {
+            // Caller holds _stateLock (or is single-threaded within the tick).
+            _state.Plans.RemoveAll(p => p.ProjectId == plan.ProjectId);
+            _state.Plans.Add(plan);
+            // Drop plans for projects that no longer matter to keep state bounded.
+            const int maxPlans = 30;
+            if (_state.Plans.Count > maxPlans)
+                _state.Plans.RemoveRange(0, _state.Plans.Count - maxPlans);
         }
 
         private async Task CompleteTickAsync(AutonomyActivityKind kind, string summary, bool skipTransition = false)
@@ -862,7 +1188,8 @@ namespace HouseVictoria.Services.Autonomy
             {
                 if (kind is AutonomyActivityKind.CreateArt or AutonomyActivityKind.WriteResearch
                     or AutonomyActivityKind.WorkOnPriorityProject or AutonomyActivityKind.AdvancePersonalProject
-                    or AutonomyActivityKind.Reflect or AutonomyActivityKind.ExploreEnvironment)
+                    or AutonomyActivityKind.Reflect or AutonomyActivityKind.ExploreEnvironment
+                    or AutonomyActivityKind.GenerateGoal)
                     _state.LastActionUtc = DateTime.UtcNow;
             }
 
@@ -870,7 +1197,8 @@ namespace HouseVictoria.Services.Autonomy
 
             var substantiveKind = kind is AutonomyActivityKind.CreateArt or AutonomyActivityKind.WriteResearch
                 or AutonomyActivityKind.WorkOnPriorityProject or AutonomyActivityKind.AdvancePersonalProject
-                or AutonomyActivityKind.Reflect or AutonomyActivityKind.ExploreEnvironment;
+                or AutonomyActivityKind.Reflect or AutonomyActivityKind.ExploreEnvironment
+                or AutonomyActivityKind.GenerateGoal;
 
             if (!substantiveKind && (kind != AutonomyActivityKind.WaitingForUserQuiet || _state.TotalTicks % 5 == 0))
                 await _stateStore.AppendActivityLogAsync($"{kind}: {summary}").ConfigureAwait(false);
@@ -959,18 +1287,16 @@ namespace HouseVictoria.Services.Autonomy
 
             try
             {
-                return JsonSerializer.Deserialize<AutonomyDecision>(json, JsonOptions);
+                var decision = JsonSerializer.Deserialize<AutonomyDecision>(json, JsonOptions);
+                if (decision != null && !string.IsNullOrWhiteSpace(decision.Activity))
+                    return decision;
+                return null;
             }
             catch
             {
-                return new AutonomyDecision
-                {
-                    Mode = "idle",
-                    Activity = "reflect",
-                    Title = "Quiet reflection",
-                    Detail = raw.Trim(),
-                    Reason = "Fallback — could not parse JSON decision."
-                };
+                // Null signals a decision failure so the loop can back off instead of
+                // spamming fallback reflections every tick.
+                return null;
             }
         }
 
@@ -1041,12 +1367,48 @@ namespace HouseVictoria.Services.Autonomy
                 PreviousActivityEndedUtc = source.PreviousActivityEndedUtc,
                 CurrentFocusProjectId = source.CurrentFocusProjectId,
                 Drives = new Dictionary<string, double>(source.Drives),
+                DriveBaselines = new Dictionary<string, double>(source.DriveBaselines),
                 ActionsThisHour = source.ActionsThisHour,
                 HourWindowStartUtc = source.HourWindowStartUtc,
                 ArtGeneratedThisHour = source.ArtGeneratedThisHour,
                 IsRunning = source.IsRunning,
                 TotalTicks = source.TotalTicks,
-                TotalActions = source.TotalActions
+                TotalActions = source.TotalActions,
+                RecentActivities = source.RecentActivities.Select(a => new AutonomyRecentActivity
+                {
+                    Activity = a.Activity,
+                    Title = a.Title,
+                    Topic = a.Topic,
+                    TimestampUtc = a.TimestampUtc
+                }).ToList(),
+                Plans = source.Plans.Select(p => new AutonomyPlan
+                {
+                    ProjectId = p.ProjectId,
+                    ProjectName = p.ProjectName,
+                    CreatedUtc = p.CreatedUtc,
+                    Steps = p.Steps.Select(s => new AutonomyPlanStep
+                    {
+                        Description = s.Description,
+                        Done = s.Done,
+                        CompletedUtc = s.CompletedUtc
+                    }).ToList()
+                }).ToList(),
+                RecentOutcomes = source.RecentOutcomes.Select(o => new AutonomyOutcome
+                {
+                    Activity = o.Activity,
+                    Topic = o.Topic,
+                    ProjectId = o.ProjectId,
+                    Score = o.Score,
+                    Note = o.Note,
+                    TimestampUtc = o.TimestampUtc
+                }).ToList(),
+                ProjectCooldownUntil = new Dictionary<string, DateTime>(source.ProjectCooldownUntil),
+                TopicCooldownUntil = new Dictionary<string, DateTime>(source.TopicCooldownUntil),
+                LastFocusProjectId = source.LastFocusProjectId,
+                SameFocusStreak = source.SameFocusStreak,
+                SelfGoalsToday = source.SelfGoalsToday,
+                SelfGoalDayStartUtc = source.SelfGoalDayStartUtc,
+                ConsecutiveDecisionFailures = source.ConsecutiveDecisionFailures
             };
 
         private async Task AppendTradingBridgeStatusAsync(Project project, AIContact contact)
@@ -1235,6 +1597,12 @@ namespace HouseVictoria.Services.Autonomy
                 project?.Name).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"{summary}\n{note}").ConfigureAwait(false);
+
+            lock (_stateLock)
+                DriveSystem.Satisfy(_state, AutonomyActivityKind.ScanMarkets);
+            RecordRecentActivity(AutonomyActivityKind.ScanMarkets, "Market scan", null);
+            await ScoreOutcomeAsync(contact, AutonomyActivityKind.ScanMarkets, null, project?.Id, note, cancellationToken)
+                .ConfigureAwait(false);
 
             RecordSubstantiveAction();
             SetVitalsForActivity(AutonomyActivityKind.ScanMarkets, summary, holdSeconds: 60);

@@ -103,6 +103,8 @@ namespace HouseVictoria.App.Screens.Windows
             var logTags = FindName("LogTags") as System.Windows.Controls.ItemsControl;
             var linkedFilesPanel = FindName("LinkedFilesPanel") as System.Windows.Controls.Border;
             var logLinkedFiles = FindName("LogLinkedFiles") as System.Windows.Controls.ItemsControl;
+            var imagePreviewPanel = FindName("ImagePreviewPanel") as System.Windows.Controls.Border;
+            var imagePreviews = FindName("ImagePreviews") as System.Windows.Controls.ItemsControl;
 
             if (e.NewValue is LogCategoryViewModel selectedItem)
             {
@@ -139,6 +141,16 @@ namespace HouseVictoria.App.Screens.Windows
                     if (logLinkedFiles != null)
                         logLinkedFiles.ItemsSource = linkedItems;
 
+                    var imageItems = linkedItems
+                        .Where(i => IsImageFile(i.Path) && File.Exists(i.Path))
+                        .ToList();
+
+                    if (imagePreviews != null)
+                        imagePreviews.ItemsSource = imageItems;
+
+                    if (imagePreviewPanel != null)
+                        imagePreviewPanel.Visibility = imageItems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
                     // Set tags
                     if (logTags != null)
                     {
@@ -155,6 +167,7 @@ namespace HouseVictoria.App.Screens.Windows
                     if (noSelectionHint != null) noSelectionHint.Visibility = Visibility.Visible;
                     if (logDetailsPanel != null) logDetailsPanel.Visibility = Visibility.Collapsed;
                     if (linkedFilesPanel != null) linkedFilesPanel.Visibility = Visibility.Collapsed;
+                    if (imagePreviewPanel != null) imagePreviewPanel.Visibility = Visibility.Collapsed;
                 }
             }
             else
@@ -163,6 +176,7 @@ namespace HouseVictoria.App.Screens.Windows
                 if (noSelectionHint != null) noSelectionHint.Visibility = Visibility.Visible;
                 if (logDetailsPanel != null) logDetailsPanel.Visibility = Visibility.Collapsed;
                 if (linkedFilesPanel != null) linkedFilesPanel.Visibility = Visibility.Collapsed;
+                if (imagePreviewPanel != null) imagePreviewPanel.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -192,6 +206,47 @@ namespace HouseVictoria.App.Screens.Windows
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        private void ImagePreview_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is not Image image || image.Tag is not string path || string.IsNullOrWhiteSpace(path))
+                return;
+
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    MessageBox.Show($"Image not found:\n{path}", "Image Preview", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open image:\n{path}\n\n{ex.Message}",
+                    "Image Preview",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private static readonly string[] ImageExtensions =
+            { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tif", ".tiff" };
+
+        private static bool IsImageFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            var ext = Path.GetExtension(path);
+            return !string.IsNullOrEmpty(ext) &&
+                   ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase);
         }
 
         private void GlobalLogDirectoryWindow_Loaded(object sender, RoutedEventArgs e)

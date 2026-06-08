@@ -106,17 +106,20 @@ namespace HouseVictoria.Services.Trading.Backtest
                 using var reader = new BinaryReader(file);
                 file.Seek(148, SeekOrigin.Begin);
 
-                while (file.Position < file.Length)
+                // MT4 build 600+ (.hst version 401) bar record is 60 bytes:
+                // time:int64(8), open(8), high(8), low(8), close(8),
+                // tick_volume:int64(8), spread:int32(4), real_volume:int64(8).
+                while (file.Position + 60 <= file.Length)
                 {
                     var unixSeconds = reader.ReadInt64();
                     var time = DateTimeOffset.FromUnixTimeSeconds(unixSeconds).UtcDateTime;
                     var open = reader.ReadDouble();
-                    var low = reader.ReadDouble();
                     var high = reader.ReadDouble();
+                    var low = reader.ReadDouble();
                     var close = reader.ReadDouble();
                     var volume = reader.ReadInt64();
-                    reader.ReadInt32();
-                    reader.ReadInt32();
+                    reader.ReadInt32();  // spread
+                    reader.ReadInt64();  // real_volume
 
                     if (time >= startDate && time <= endDate)
                     {

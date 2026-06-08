@@ -229,7 +229,7 @@ namespace HouseVictoria.Services.Trading
                     ["EndDate"] = endDate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
                 };
 
-                await File.WriteAllTextAsync(
+                await AtomicWriteAllTextAsync(
                     commandFile,
                     JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }),
                     cancellationToken).ConfigureAwait(false);
@@ -634,8 +634,23 @@ namespace HouseVictoria.Services.Trading
 
                 Directory.CreateDirectory(Path.Combine(commandPath, "Responses"));
 
-                var json = JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(commandFile, json, cancellationToken).ConfigureAwait(false);
+                // Stamp the target account so the EA can reject wrong-terminal routing.
+                var account = await GetAccountInfoAsync().ConfigureAwait(false);
+                var payload = new Dictionary<string, object?>
+                {
+                    ["Symbol"] = request.Symbol.ToUpperInvariant(),
+                    ["Type"] = (int)request.Type,
+                    ["Volume"] = request.Volume,
+                };
+                if (request.StopLoss.HasValue)
+                    payload["StopLoss"] = request.StopLoss.Value;
+                if (request.TakeProfit.HasValue)
+                    payload["TakeProfit"] = request.TakeProfit.Value;
+                if (account != null && account.AccountNumber != 0)
+                    payload["AccountNumber"] = account.AccountNumber;
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                await AtomicWriteAllTextAsync(commandFile, json, cancellationToken).ConfigureAwait(false);
 
                 System.Diagnostics.Debug.WriteLine($"Trade command written: {commandFile}");
 
@@ -826,6 +841,18 @@ namespace HouseVictoria.Services.Trading
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating market data: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Writes a command file atomically (temp + rename) so the EA never reads a
+        /// half-written file. The temp name does not match the EA's command globs.
+        /// </summary>
+        private static async Task AtomicWriteAllTextAsync(string path, string content, CancellationToken cancellationToken = default)
+        {
+            var dir = Path.GetDirectoryName(path) ?? ".";
+            var tmp = Path.Combine(dir, "." + Path.GetFileName(path) + ".writing");
+            await File.WriteAllTextAsync(tmp, content, cancellationToken).ConfigureAwait(false);
+            File.Move(tmp, path, overwrite: true);
         }
 
         private void RefreshBridgeActivityStatus()

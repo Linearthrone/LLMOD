@@ -222,6 +222,10 @@ namespace HouseVictoria.Core.Models
         public int AutonomyMaxArtPerHour { get; set; } = 2;
         /// <summary>Folder for autonomy state, logs, and generated artifacts.</summary>
         public string AutonomyDataPath { get; set; } = "Data/Autonomy";
+        /// <summary>Allow autonomy to start its own self-initiated projects from internal drives.</summary>
+        public bool AutonomyEnableSelfGoals { get; set; } = true;
+        /// <summary>Cap on self-initiated projects created per rolling day.</summary>
+        public int AutonomyMaxSelfGoalsPerDay { get; set; } = 3;
 
         /// <summary>When true, background service polls MT4 quotes across <see cref="TradingWatchSymbols"/>.</summary>
         public bool TradingWatchEnabled { get; set; } = true;

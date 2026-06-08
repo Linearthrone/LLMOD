@@ -1,5 +1,6 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Services.Persona;
 
 namespace HouseVictoria.Services.AIServices
 {
@@ -76,11 +77,37 @@ namespace HouseVictoria.Services.AIServices
 
         private bool ShouldUseHermes(AIContact contact)
         {
-            if (string.Equals(PrimaryLLM, "hermes", StringComparison.OrdinalIgnoreCase))
-                return true;
+            if (contact.AdditionalServers.TryGetValue("hermes", out var explicitFlag))
+            {
+                if (string.Equals(explicitFlag, "true", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (string.Equals(explicitFlag, "false", StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
 
-            return contact.AdditionalServers.TryGetValue("hermes", out var flag) &&
-                   string.Equals(flag, "true", StringComparison.OrdinalIgnoreCase);
+            // Hermes runs the house tool loop (MCP, terminal, shared memory). Only the primary
+            // persona uses it when Hermes is the global primary — companions stay on direct LLM chat.
+            if (string.Equals(PrimaryLLM, "hermes", StringComparison.OrdinalIgnoreCase))
+                return PersonaPromptComposer.IsPrimaryPersona(contact);
+
+            return false;
+        }
+
+        /// <summary>
+        /// Direct Ollama/LM chat for companions when the global primary is Hermes.
+        /// </summary>
+        private async Task<string> SendViaDirectLlmAsync(AIContact contact, string message, List<ChatMessage>? context)
+        {
+            var endpoint = string.IsNullOrWhiteSpace(contact.ServerEndpoint)
+                ? OllamaEndpoint
+                : contact.ServerEndpoint.Trim().TrimEnd('/');
+
+            var prepared = PersonaPromptComposer.WithIdentity(WithEndpoint(contact, endpoint));
+
+            if (IsOpenAIEndpoint(endpoint))
+                return await _lmStudioService.SendMessageAsync(prepared, message, context);
+
+            return await _ollamaService.SendMessageAsync(prepared, message, context);
         }
 
         public event EventHandler<AIMessageEventArgs>? MessageReceived
@@ -118,9 +145,15 @@ namespace HouseVictoria.Services.AIServices
         public async Task<string> SendMessageAsync(AIContact contact, string message, List<ChatMessage>? context = null)
         {
             if (ShouldUseHermes(contact))
-                return await _hermesService.SendMessageAsync(contact, message, context);
+            {
+                var prepared = PersonaPromptComposer.WithIdentity(contact);
+                return await _hermesService.SendMessageAsync(prepared, message, context);
+            }
 
-            var forPrimary = WithEndpoint(contact, PrimaryEndpoint);
+            if (string.Equals(PrimaryLLM, "hermes", StringComparison.OrdinalIgnoreCase))
+                return await SendViaDirectLlmAsync(contact, message, context);
+
+            var forPrimary = PersonaPromptComposer.WithIdentity(WithEndpoint(contact, PrimaryEndpoint));
             return await PrimaryService.SendMessageAsync(forPrimary, message, context);
         }
 

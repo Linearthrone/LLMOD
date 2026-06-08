@@ -43,6 +43,16 @@ namespace HouseVictoria.Core.Interfaces
         Task ArchiveAsync(string logId);
 
         /// <summary>
+        /// Restore a previously archived entry back into the review inbox (marks it unread).
+        /// </summary>
+        Task UnarchiveAsync(string logId);
+
+        /// <summary>
+        /// When true, archived entries are included in the category tree so they can be reviewed/restored.
+        /// </summary>
+        bool IncludeArchived { get; set; }
+
+        /// <summary>
         /// Export logs to a file
         /// </summary>
         Task ExportLogsAsync(string filePath, LogExportOptions? options = null);

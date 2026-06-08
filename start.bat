@@ -289,10 +289,10 @@ REM Ensure stale app instances don't keep old click-through behavior.
 taskkill /IM HouseVictoria.App.exe /F >nul 2>&1
 timeout /t 1 /nobreak >nul
 echo Building House Victoria App (Release)...
-dotnet build "%SCRIPT_DIR%\HouseVictoria.App\HouseVictoria.App.csproj" -c Release --no-restore >nul 2>&1
+dotnet build "%SCRIPT_DIR%\HouseVictoria.sln" -c Release
 if errorlevel 1 (
-    echo [WARN] Release build failed; trying full solution build...
-    dotnet build "%SCRIPT_DIR%\HouseVictoria.sln" -c Release
+    echo [ERROR] Release build failed. Fix errors above, then run start.bat again.
+    echo [ERROR] Will attempt to start existing exe — fixes may be missing until build succeeds.
 )
 set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Release\net8.0-windows\HouseVictoria.App.exe"
 if not exist "%APP_EXE%" set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Debug\net8.0-windows\HouseVictoria.App.exe"

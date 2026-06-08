@@ -34,6 +34,72 @@ VERIFY_POLL_SECONDS = 10
 
 VERIFY_POLL_INTERVAL = 0.5
 
+# If set, every order is checked against this MT4 login before sending, to
+# prevent routing trades to the wrong terminal/account.
+EXPECTED_ACCOUNT_ENV = "MT4_EXPECTED_ACCOUNT"
+
+
+def _atomic_write_command(path: Path, text: str) -> None:
+    """Write a command file atomically so the EA never reads a partial file.
+
+    The temp file deliberately does NOT match the EA's Trade_*/Close_*/History_*
+    glob patterns, so it is invisible until the atomic rename completes.
+    """
+    tmp = path.parent / ("." + path.name + ".writing")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _expected_account(configured: Optional[int]) -> Optional[int]:
+    if configured is not None:
+        return configured
+    raw = os.getenv(EXPECTED_ACCOUNT_ENV)
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+    return None
+
+
+def _resolved_account(status: dict[str, Any]) -> Optional[int]:
+    acct = status.get("account")
+    if isinstance(acct, dict):
+        val = acct.get("AccountNumber", acct.get("account"))
+        try:
+            return int(val) if val is not None else None
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _account_safety_error(
+    status: dict[str, Any], expected: Optional[int]
+) -> Optional[dict[str, Any]]:
+    """Return an error dict if the resolved terminal is not the expected account."""
+    if expected is None:
+        return None
+    resolved = _resolved_account(status)
+    if resolved is None:
+        return {
+            "success": False,
+            "message": (
+                f"Account safety abort: MT4_EXPECTED_ACCOUNT={expected} is set but the "
+                "resolved terminal's account is unknown (AccountInfo.json missing). "
+                "Refusing to trade."
+            ),
+        }
+    if resolved != expected:
+        return {
+            "success": False,
+            "message": (
+                f"Account safety abort: resolved MT4 terminal is account {resolved} but "
+                f"MT4_EXPECTED_ACCOUNT={expected}. Refusing to route an order to the "
+                "wrong account."
+            ),
+        }
+    return None
+
 
 
 
@@ -516,6 +582,14 @@ def get_bridge_status(configured_path: Optional[str] = None) -> dict[str, Any]:
 
     symbol_map = _load_symbol_map(paths["command_root"])
 
+    heartbeat = None
+    heartbeat_file = paths["command_root"] / "Heartbeat.json"
+    if heartbeat_file.is_file():
+        try:
+            heartbeat = json.loads(heartbeat_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            heartbeat = None
+
 
 
     return {
@@ -531,6 +605,8 @@ def get_bridge_status(configured_path: Optional[str] = None) -> dict[str, Any]:
         "account": account,
 
         "symbol_map": symbol_map,
+
+        "heartbeat": heartbeat,
 
     }
 
@@ -851,6 +927,8 @@ def execute_trade(
 
     configured_path: Optional[str] = None,
 
+    expected_account: Optional[int] = None,
+
 ) -> dict[str, Any]:
 
     status = get_bridge_status(configured_path)
@@ -874,6 +952,16 @@ def execute_trade(
     if not symbol or volume <= 0:
 
         return {"success": False, "message": "symbol and positive volume are required"}
+
+
+
+    expected = _expected_account(expected_account)
+
+    account_error = _account_safety_error(status, expected)
+
+    if account_error is not None:
+
+        return account_error
 
 
 
@@ -913,7 +1001,7 @@ def execute_trade(
 
     command_id = f"Trade_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex}"
 
-    payload = {
+    payload: dict[str, Any] = {
 
         "Symbol": base,
 
@@ -922,6 +1010,12 @@ def execute_trade(
         "Volume": float(volume),
 
     }
+
+    stamp = _resolved_account(status) if _resolved_account(status) is not None else expected
+
+    if stamp is not None:
+
+        payload["AccountNumber"] = stamp
 
     if stop_loss is not None:
 
@@ -937,7 +1031,7 @@ def execute_trade(
 
     response_file = paths["responses"] / f"Response_{command_id}.txt"
 
-    command_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _atomic_write_command(command_file, json.dumps(payload, indent=2))
 
 
 
@@ -1091,6 +1185,8 @@ def close_position(
 
     configured_path: Optional[str] = None,
 
+    expected_account: Optional[int] = None,
+
 ) -> dict[str, Any]:
 
     status = get_bridge_status(configured_path)
@@ -1114,6 +1210,16 @@ def close_position(
     if ticket <= 0:
 
         return {"success": False, "message": "ticket must be a positive integer"}
+
+
+
+    expected = _expected_account(expected_account)
+
+    account_error = _account_safety_error(status, expected)
+
+    if account_error is not None:
+
+        return account_error
 
 
 
@@ -1143,13 +1249,19 @@ def close_position(
 
     command_id = f"Close_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex}"
 
-    payload = {"Ticket": int(ticket)}
+    payload: dict[str, Any] = {"Ticket": int(ticket)}
+
+    stamp = _resolved_account(status) if _resolved_account(status) is not None else expected
+
+    if stamp is not None:
+
+        payload["AccountNumber"] = stamp
 
     command_file = paths["command_root"] / f"{command_id}.json"
 
     response_file = paths["responses"] / f"Response_{command_id}.txt"
 
-    command_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _atomic_write_command(command_file, json.dumps(payload, indent=2))
 
 
 

@@ -17,12 +17,32 @@ namespace HouseVictoria.App.Screens.Windows
         private ObservableCollection<LogCategoryViewModel> _categories = new();
         private bool _isLoading;
         private string? _selectedLogId;
+        private bool _selectedIsArchived;
+        private bool _showArchived;
 
         public void NotifyLogEntrySelected(string logId)
         {
             _selectedLogId = logId;
+            _selectedIsArchived = _selectedLogEntry?.IsArchived ?? false;
+            OnPropertyChanged(nameof(SelectedIsArchived));
             CommandManager.InvalidateRequerySuggested();
         }
+
+        public bool ShowArchived
+        {
+            get => _showArchived;
+            set
+            {
+                if (SetProperty(ref _showArchived, value))
+                {
+                    _loggingService.IncludeArchived = value;
+                    _ = RefreshLogsAsync();
+                }
+            }
+        }
+
+        /// <summary>True when the currently selected entry is archived (so it can be restored).</summary>
+        public bool SelectedIsArchived => _selectedIsArchived;
 
         public ObservableCollection<LogCategoryViewModel> Categories
         {
@@ -45,15 +65,18 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand RefreshCommand { get; }
         public ICommand MarkAllReadCommand { get; }
         public ICommand ArchiveSelectedCommand { get; }
+        public ICommand UnarchiveSelectedCommand { get; }
         public ICommand ExportCommand { get; }
 
         public GlobalLogDirectoryWindowViewModel(ILoggingService loggingService)
         {
             _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
+            _showArchived = _loggingService.IncludeArchived;
 
             RefreshCommand = new RelayCommand(async () => await RefreshLogsAsync());
             MarkAllReadCommand = new RelayCommand(async () => await MarkAllReadAsync());
-            ArchiveSelectedCommand = new RelayCommand(async () => await ArchiveSelectedAsync(), () => !string.IsNullOrWhiteSpace(_selectedLogId));
+            ArchiveSelectedCommand = new RelayCommand(async () => await ArchiveSelectedAsync(), () => !string.IsNullOrWhiteSpace(_selectedLogId) && !_selectedIsArchived);
+            UnarchiveSelectedCommand = new RelayCommand(async () => await UnarchiveSelectedAsync(), () => !string.IsNullOrWhiteSpace(_selectedLogId) && _selectedIsArchived);
             ExportCommand = new RelayCommand(async () => await ExportLogsAsync());
 
             System.Windows.Application.Current.Dispatcher.BeginInvoke(
@@ -145,7 +168,9 @@ namespace HouseVictoria.App.Screens.Windows
         private static LogCategoryViewModel CreateEntryNode(LogEntry entry) =>
             new()
             {
-                Name = $"{entry.Title} - {entry.Timestamp:MM/dd HH:mm}",
+                Name = entry.IsArchived
+                    ? $"[archived] {entry.Title} - {entry.Timestamp:MM/dd HH:mm}"
+                    : $"{entry.Title} - {entry.Timestamp:MM/dd HH:mm}",
                 Tag = entry.Id,
                 LogEntry = entry
             };
@@ -167,8 +192,31 @@ namespace HouseVictoria.App.Screens.Windows
         {
             _selectedLogId = entry.Id;
             SelectedLogEntry = entry;
+            _selectedIsArchived = entry.IsArchived;
+            OnPropertyChanged(nameof(SelectedIsArchived));
             CommandManager.InvalidateRequerySuggested();
             return Task.CompletedTask;
+        }
+
+        public async Task UnarchiveSelectedAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_selectedLogId))
+                return;
+
+            try
+            {
+                await _loggingService.UnarchiveAsync(_selectedLogId);
+                await RefreshLogsAsync();
+                SelectedLogEntry = null;
+                _selectedLogId = null;
+                _selectedIsArchived = false;
+                OnPropertyChanged(nameof(SelectedIsArchived));
+                CommandManager.InvalidateRequerySuggested();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error unarchiving log entry: {ex.Message}");
+            }
         }
 
         public async Task ArchiveSelectedAsync()

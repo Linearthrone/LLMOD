@@ -2,6 +2,13 @@
 # Set default behavior to automatically normalize line endings.
 * text=auto
 
+# Windows batch/cmd scripts MUST use CRLF. cmd.exe tracks its position in a
+# .bat file by byte offset and re-seeks during execution; LF-only endings
+# misalign those offsets and cause intermittent "X was unexpected at this time"
+# parser errors (notably in nested if/else blocks).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by

@@ -538,6 +538,8 @@ namespace HouseVictoria.App
                 AutonomyMaxActionsPerHour = int.TryParse(config["AutonomyMaxActionsPerHour"], out var ama) && ama > 0 ? ama : 8,
                 AutonomyMaxArtPerHour = int.TryParse(config["AutonomyMaxArtPerHour"], out var amArt) && amArt > 0 ? amArt : 2,
                 AutonomyDataPath = config["AutonomyDataPath"] ?? "Data/Autonomy",
+                AutonomyEnableSelfGoals = !bool.TryParse(config["AutonomyEnableSelfGoals"], out var aesg) || aesg,
+                AutonomyMaxSelfGoalsPerDay = int.TryParse(config["AutonomyMaxSelfGoalsPerDay"], out var amsg) && amsg >= 0 ? amsg : 3,
                 TradingWatchEnabled = !bool.TryParse(config["TradingWatchEnabled"], out var twe) || twe,
                 TradingWatchSymbols = config["TradingWatchSymbols"] ?? string.Empty,
                 TradingWatchIntervalSeconds = int.TryParse(config["TradingWatchIntervalSeconds"], out var twi) && twi >= 15 ? twi : 30,

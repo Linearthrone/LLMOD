@@ -19,5 +19,6 @@
     ],
     "java.configuration.runtimes": [
         
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

@@ -215,7 +215,9 @@ namespace HouseVictoria.Services.AIServices
                             _httpClient,
                             a2eToken!,
                             _appConfig?.A2eApiBaseUrl);
-                        return await a2e.GenerateImageAsync(prompt);
+                        var stream = await a2e.GenerateImageAsync(prompt);
+                        System.Diagnostics.Debug.WriteLine("[A2E] Image generation succeeded.");
+                        return stream;
                     }
                     catch (Exception a2eEx)
                     {

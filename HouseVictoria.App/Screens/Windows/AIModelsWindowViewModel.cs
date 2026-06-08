@@ -1033,6 +1033,15 @@ namespace HouseVictoria.App.Screens.Windows
                 await _persistenceService.DeleteAsync($"AIContact_{contact.Id}");
                 _aiContacts.Remove(contact);
 
+                try
+                {
+                    App.GetService<IEventAggregator>()?.Publish(new HouseVictoria.Core.Events.PersonaCreatedEvent());
+                }
+                catch (Exception pubEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to publish persona refresh after delete: {pubEx.Message}");
+                }
+
                 // If we deleted the primary, promote the first remaining persona so the household
                 // always has a primary to fall back on.
                 if (wasPrimary && _personaContext != null)

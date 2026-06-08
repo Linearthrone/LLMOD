@@ -28,6 +28,9 @@ namespace HouseVictoria.Services.Logging
         private readonly object _refreshLock = new object();
         private bool _isRefreshing = false;
 
+        /// <inheritdoc />
+        public bool IncludeArchived { get; set; } = false;
+
         public LoggingService(AppConfig appConfig, IPersistenceService persistenceService, IProjectManagementService? projectManagementService = null)
         {
             _appConfig = appConfig ?? throw new ArgumentNullException(nameof(appConfig));
@@ -110,6 +113,19 @@ namespace HouseVictoria.Services.Logging
             {
                 entry.IsRead = true;
                 entry.IsArchived = true;
+            }
+            await SaveInboxStatusAsync().ConfigureAwait(false);
+            RebuildInboxCategories();
+        }
+
+        public async Task UnarchiveAsync(string logId)
+        {
+            _archivedLogIds.Remove(logId);
+            _readLogIds.Remove(logId);
+            if (_allEntries.TryGetValue(logId, out var entry))
+            {
+                entry.IsArchived = false;
+                entry.IsRead = false;
             }
             await SaveInboxStatusAsync().ConfigureAwait(false);
             RebuildInboxCategories();
@@ -529,7 +545,7 @@ namespace HouseVictoria.Services.Logging
         private void RebuildInboxCategories()
         {
             _categories.Clear();
-            foreach (var entry in _allEntries.Values.Where(e => !e.IsArchived))
+            foreach (var entry in _allEntries.Values.Where(e => IncludeArchived || !e.IsArchived))
                 AddLogEntryToCategories(entry);
 
             UpdateCategoryCounts();

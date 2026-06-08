@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
@@ -28,6 +29,9 @@ namespace HouseVictoria.Services.Communication
         private readonly ITTSService? _ttsService;
         private readonly IJournalService? _journalService;
         private readonly PersonaChatContextBuilder _personaContextBuilder;
+        /// <summary>Serialize image jobs — A2E/ComfyUI fail when many run at once.</summary>
+        private readonly SemaphoreSlim _imageGenerationLock = new(1, 1);
+        private readonly Dictionary<string, string> _lastImagePromptByConversation = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, CallState> _activeCalls = new(); // Track active calls by conversation ID
         private readonly HashSet<string> _pendingFollowUps = new(); // Conversations with a scheduled auto follow-up
 
@@ -487,9 +491,9 @@ namespace HouseVictoria.Services.Communication
             var conversation = _conversations.FirstOrDefault(c => c.Id == message.ConversationId);
             if (conversation == null)
             {
-                // Try to extract contact ID from conversation ID format: "conv-{contactId}-{guid}"
-                var parts = message.ConversationId.Split('-');
-                var contactId = parts.Length >= 2 ? parts[1] : message.ConversationId;
+                var contactId = ConversationContactResolver.ExtractContactId(
+                    message.ConversationId,
+                    _aiContacts.Keys);
 
                 conversation = new Conversation
                 {
@@ -545,8 +549,17 @@ namespace HouseVictoria.Services.Communication
             if (conversation != null && _aiService != null)
             {
                 var contact = _contacts.FirstOrDefault(c => c.Id == conversation.ContactId);
-                if (contact != null && contact.Type == ContactType.AI && _aiContacts.TryGetValue(contact.Id, out var aiContact))
+                if (contact != null && contact.Type == ContactType.AI)
                 {
+                    var aiContact = await ResolveAiContactForChatAsync(contact.Id).ConfigureAwait(false);
+                    if (aiContact == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"No AIContact resolved for chat contact id={contact.Id} name={contact.Name}");
+                    }
+                    else
+                    {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"Chat routing: persona={aiContact.Name} id={aiContact.Id} primary={aiContact.IsPrimaryAI} role={aiContact.Role}");
                     try
                     {
                         // Get chat context for this conversation
@@ -565,22 +578,46 @@ namespace HouseVictoria.Services.Communication
                             Timestamp = message.Timestamp
                         });
 
-                        // If user asked for image generation, generate and save to File Retrieval (no link) via ComfyUI/image server
-                        if (IsImageGenerationRequest(message.Content) && _fileGenerationService != null)
+                        // If user asked for image generation, generate and attach to chat + File Retrieval
+                        if (ShouldGenerateImageForMessage(message.ConversationId, message.Content))
                         {
-                            var (imageSuccess, imageResponseMessage) = await ProcessImageGenerationRequestAsync(aiContact, message.Content, message.ConversationId);
-                            if (imageSuccess)
+                            var queued = _imageGenerationLock.CurrentCount == 0;
+                            await PublishIncomingTextAsync(
+                                conversation,
+                                message.ConversationId,
+                                queued
+                                    ? "🎨 Queued — finishing your previous image, then starting this one…"
+                                    : "🎨 Generating your image… this can take up to a minute.");
+
+                            await _imageGenerationLock.WaitAsync().ConfigureAwait(false);
+                            ImageGenerationResult imageResult;
+                            try
                             {
-                                context.Add(new ChatMessage { Role = "assistant", Content = imageResponseMessage, Timestamp = DateTime.Now, ModelUsed = aiContact.ModelName });
+                                imageResult = await ProcessImageGenerationRequestAsync(aiContact, message.Content, message.ConversationId);
+                            }
+                            finally
+                            {
+                                _imageGenerationLock.Release();
+                            }
+
+                            if (imageResult.Success && imageResult.ImageBytes != null && !string.IsNullOrWhiteSpace(imageResult.ChatFilePath))
+                            {
+                                context.Add(new ChatMessage { Role = "assistant", Content = imageResult.Message, Timestamp = DateTime.Now, ModelUsed = aiContact.ModelName });
+
+                                var imageBytes = imageResult.ImageBytes;
                                 var imageResponseMsg = new ConversationMessage
                                 {
                                     Id = Guid.NewGuid().ToString(),
                                     ConversationId = message.ConversationId,
-                                    Content = imageResponseMessage,
+                                    Content = imageResult.Message,
                                     Direction = MessageDirection.Incoming,
-                                    Type = MessageType.Text,
+                                    Type = MessageType.Image,
+                                    FilePath = imageResult.ChatFilePath,
+                                    MediaType = "image/png",
+                                    MediaData = imageBytes.Length <= 10 * 1024 * 1024 ? imageBytes : null,
                                     Timestamp = DateTime.Now
                                 };
+
                                 if (!_messages.ContainsKey(message.ConversationId))
                                     _messages[message.ConversationId] = new List<ConversationMessage>();
                                 if (!_messages[message.ConversationId].Any(m => m.Id == imageResponseMsg.Id))
@@ -594,13 +631,14 @@ namespace HouseVictoria.Services.Communication
                                 if (context.Count > 20) context.RemoveRange(0, context.Count - 20);
                                 return;
                             }
-                            // imageSuccess false = error; imageResponseMessage contains error text - fall through to show error as the reply
-                            context.Add(new ChatMessage { Role = "assistant", Content = imageResponseMessage, Timestamp = DateTime.Now, ModelUsed = aiContact.ModelName });
+
+                            // imageSuccess false = error; imageResult.Message contains error text
+                            context.Add(new ChatMessage { Role = "assistant", Content = imageResult.Message, Timestamp = DateTime.Now, ModelUsed = aiContact.ModelName });
                             var errMsg = new ConversationMessage
                             {
                                 Id = Guid.NewGuid().ToString(),
                                 ConversationId = message.ConversationId,
-                                Content = imageResponseMessage,
+                                Content = imageResult.Message,
                                 Direction = MessageDirection.Incoming,
                                 Type = MessageType.Text,
                                 Timestamp = DateTime.Now
@@ -620,13 +658,22 @@ namespace HouseVictoria.Services.Communication
 
                         // Retrieve relevant journals + memories and inject them so the AI is aware of
                         // its own prior work (research, strategies, projects) when replying.
+                        if (_imageGenerationLock.CurrentCount == 0 && IsImageStatusInquiry(message.Content))
+                        {
+                            await PublishIncomingTextAsync(conversation, message.ConversationId, "⏳ Still generating your image — hang on, this can take up to a minute.");
+                            if (context.Count > 20) context.RemoveRange(0, context.Count - 20);
+                            return;
+                        }
+
                         var retrieval = await BuildRetrievalContextAsync(aiContact, message.Content);
                         List<ChatMessage> contextForAi = context;
-                        if (!string.IsNullOrWhiteSpace(retrieval))
+                        var imageGuard = BuildImageChatGuardNote(message.Content);
+                        if (!string.IsNullOrWhiteSpace(retrieval) || !string.IsNullOrWhiteSpace(imageGuard))
                         {
+                            var systemContent = string.Join("\n\n", new[] { retrieval, imageGuard }.Where(s => !string.IsNullOrWhiteSpace(s)));
                             contextForAi = new List<ChatMessage>(context.Count + 1)
                             {
-                                new ChatMessage { Role = "system", Content = retrieval, Timestamp = DateTime.Now }
+                                new ChatMessage { Role = "system", Content = systemContent, Timestamp = DateTime.Now }
                             };
                             contextForAi.AddRange(context);
                         }
@@ -773,8 +820,32 @@ namespace HouseVictoria.Services.Communication
                             ConversationId = message.ConversationId
                         });
                     }
+                    }
                 }
             }
+        }
+
+        /// <summary>Loads the latest persona record from persistence so chat uses current prompts and sharing flags.</summary>
+        private async Task<AIContact?> ResolveAiContactForChatAsync(string contactId)
+        {
+            if (_persistenceService != null)
+            {
+                try
+                {
+                    var fresh = await _persistenceService.GetAsync<AIContact>($"AIContact_{contactId}").ConfigureAwait(false);
+                    if (fresh != null)
+                    {
+                        _aiContacts[contactId] = fresh;
+                        return fresh;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ResolveAiContactForChatAsync persistence: {ex.Message}");
+                }
+            }
+
+            return _aiContacts.TryGetValue(contactId, out var cached) ? cached : null;
         }
 
         private async Task<(bool fileCreated, string responseMessage, string? fileName)> ProcessFileCreationRequestAsync(
@@ -880,14 +951,150 @@ namespace HouseVictoria.Services.Communication
             return m.Contains("draw", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("generate image", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("generate an image", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("generate a picture", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("create image", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("create an image", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("create a picture", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("make an image", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("make a picture", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("send me a picture", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("send me an image", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("send me a photo", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("send a picture", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("show me a picture", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("picture of", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("image of", StringComparison.OrdinalIgnoreCase) ||
+                   m.Contains("photo of", StringComparison.OrdinalIgnoreCase) ||
                    m.Contains("stable diffusion", StringComparison.OrdinalIgnoreCase) ||
-                   System.Text.RegularExpressions.Regex.IsMatch(m, @"(generate|create|make)\s+(?:an?\s+)?(image|picture|photo)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                   System.Text.RegularExpressions.Regex.IsMatch(m, @"(generate|create|make|send|show)\s+(?:me\s+)?(?:an?\s+)?(image|picture|photo)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        /// <summary>
+        /// Broader intent check so casual requests ("I want a picture of…") still trigger generation
+        /// instead of a text-only reply where the persona claims to send an image.
+        /// </summary>
+        private bool ShouldGenerateImageForMessage(string conversationId, string message)
+        {
+            if (IsImageGenerationRequest(message))
+                return true;
+            if (IsImageFollowUpRequest(message) && _lastImagePromptByConversation.ContainsKey(conversationId))
+                return true;
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+            var m = message.Trim();
+            var wantsVisual = m.Contains("picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("photo", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("drawing", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("portrait", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("selfie", StringComparison.OrdinalIgnoreCase);
+            if (!wantsVisual)
+                return false;
+            return System.Text.RegularExpressions.Regex.IsMatch(m,
+                @"\b(send|show|give|make|create|generate|draw|paint|want|need|get|another|more|again)\b",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        private static bool IsImageFollowUpRequest(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+            var m = message.Trim();
+            if (m.Equals("again", StringComparison.OrdinalIgnoreCase)
+                || m.Equals("retry", StringComparison.OrdinalIgnoreCase)
+                || m.Equals("one more", StringComparison.OrdinalIgnoreCase)
+                || m.Equals("another", StringComparison.OrdinalIgnoreCase)
+                || m.Equals("more", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return m.Contains("try again", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("another one", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("one more", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("do it again", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("send another", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("another picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("another image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("another photo", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("generate another", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string ResolveImagePrompt(string conversationId, string userMessage)
+        {
+            if (IsImageFollowUpRequest(userMessage)
+                && _lastImagePromptByConversation.TryGetValue(conversationId, out var last)
+                && !string.IsNullOrWhiteSpace(last))
+            {
+                return last;
+            }
+            return ExtractImagePrompt(userMessage);
+        }
+
+        private static bool IsImageStatusInquiry(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+            var m = message.Trim();
+            return m.Contains("where is", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("where's", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("wheres the", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("did you send", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("still working", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("is it ready", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string? BuildImageChatGuardNote(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return null;
+            var m = message.Trim();
+            var mentionsImage = m.Contains("picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("photo", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("selfie", StringComparison.OrdinalIgnoreCase);
+            if (!mentionsImage)
+                return null;
+            return "[System: You cannot attach or transmit images in chat. Do not claim you sent, uploaded, or attached photos. Image delivery is handled separately by the app when the user explicitly requests generation.]";
+        }
+
+        private async Task PublishIncomingTextAsync(Conversation conversation, string conversationId, string content)
+        {
+            var msg = new ConversationMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                ConversationId = conversationId,
+                Content = content,
+                Direction = MessageDirection.Incoming,
+                Type = MessageType.Text,
+                Timestamp = DateTime.Now
+            };
+            if (!_messages.ContainsKey(conversationId))
+                _messages[conversationId] = new List<ConversationMessage>();
+            if (!_messages[conversationId].Any(m => m.Id == msg.Id))
+                _messages[conversationId].Add(msg);
+            if (_persistenceService is DatabasePersistenceService db)
+            {
+                try { await db.SaveMessageAsync(msg).ConfigureAwait(false); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error saving status message: {ex.Message}"); }
+            }
+            conversation.LastMessageAt = msg.Timestamp;
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs { Message = msg, ConversationId = conversationId });
+        }
+
+        private sealed class ImageGenerationResult
+        {
+            public bool Success { get; init; }
+            public string Message { get; init; } = string.Empty;
+            public byte[]? ImageBytes { get; init; }
+            public string? ChatFilePath { get; init; }
+            public string? RetrievalFilePath { get; init; }
+        }
+
+        private static async Task<string> SaveImageToConversationMediaAsync(string conversationId, byte[] imageBytes, string extension = ".png")
+        {
+            var mediaDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "Media", conversationId);
+            Directory.CreateDirectory(mediaDir);
+            var storedFileName = $"{Guid.NewGuid()}{extension}";
+            var fullPath = Path.GetFullPath(Path.Combine(mediaDir, storedFileName));
+            await File.WriteAllBytesAsync(fullPath, imageBytes).ConfigureAwait(false);
+            return fullPath;
         }
 
         /// <summary>
@@ -899,9 +1106,16 @@ namespace HouseVictoria.Services.Communication
             var m = message.Trim();
             var prefixes = new[]
             {
-                "draw ", "draw a ", "draw an ", "generate image of ", "generate an image of ", "generate image: ",
-                "create image of ", "create an image of ", "create image: ", "make an image of ", "make a picture of ",
-                "picture of ", "image of ", "generate ", "create ", "make "
+                "draw ", "draw a ", "draw an ",
+                "generate image of ", "generate an image of ", "generate a picture of ", "generate image: ", "generate a picture: ",
+                "create image of ", "create an image of ", "create a picture of ", "create image: ", "create a picture: ",
+                "make an image of ", "make a picture of ",
+                "send me a picture of ", "send me an image of ", "send me a photo of ",
+                "send me a picture ", "send me an image ", "send me a photo ",
+                "send a picture of ", "send an image of ",
+                "show me a picture of ", "show me an image of ",
+                "picture of ", "image of ", "photo of ",
+                "generate ", "create ", "make ", "send me ", "show me "
             };
             foreach (var prefix in prefixes)
             {
@@ -916,41 +1130,66 @@ namespace HouseVictoria.Services.Communication
         }
 
         /// <summary>
-        /// Runs ComfyUI (or compatible image server) image generation and saves the image to File Retrieval (no link).
-        /// Uses the AI to turn the user's short request into a detailed, high-quality prompt first.
-        /// Returns (true, successMessage) or (false, errorMessage).
+        /// Generates an image via A2E/ComfyUI, saves to File Retrieval and conversation media for inline chat display.
         /// </summary>
-        private async Task<(bool success, string responseMessage)> ProcessImageGenerationRequestAsync(AIContact aiContact, string userMessage, string conversationId)
+        private async Task<ImageGenerationResult> ProcessImageGenerationRequestAsync(AIContact aiContact, string userMessage, string conversationId)
         {
-            if (_aiService == null || _fileGenerationService == null)
-                return (false, "❌ Image generation is not available. File Retrieval service is not configured.");
+            if (_aiService == null)
+                return new ImageGenerationResult { Success = false, Message = "❌ Image generation is not available. AI service is not configured." };
             try
             {
-                var userPrompt = ExtractImagePrompt(userMessage);
-                // Have the AI expand the user's short request into a detailed, high-quality image prompt
-                var detailedPrompt = await _aiService.EnhanceImagePromptAsync(aiContact, userPrompt);
+                var userPrompt = ResolveImagePrompt(conversationId, userMessage);
+                var detailedPrompt = await _aiService.EnhanceImagePromptAsync(aiContact, userPrompt).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(detailedPrompt))
                     detailedPrompt = userPrompt;
-                using var imageStream = await _aiService.GenerateImageAsync(aiContact, detailedPrompt);
+                using var imageStream = await _aiService.GenerateImageAsync(aiContact, detailedPrompt).ConfigureAwait(false);
                 using var ms = new MemoryStream();
-                await imageStream.CopyToAsync(ms);
+                await imageStream.CopyToAsync(ms).ConfigureAwait(false);
                 var imageBytes = ms.ToArray();
-                var fileName = $"img_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-                var filePath = await _fileGenerationService.CreateFileAsync(fileName, imageBytes, null);
-                var responseMessage = $"✅ Image saved to File Retrieval.\n\n📄 Filename: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval\n\nOpen the File Retrieval button (📥) in the top tray to view it.";
-                System.Diagnostics.Debug.WriteLine($"ComfyUI image saved to File Retrieval: {filePath}");
-                return (true, responseMessage);
+                if (imageBytes.Length == 0)
+                    return new ImageGenerationResult { Success = false, Message = "❌ Image generation returned an empty file. Check Settings → Image Generation (A2E token or ComfyUI)." };
+
+                _lastImagePromptByConversation[conversationId] = detailedPrompt;
+
+                var chatFilePath = await SaveImageToConversationMediaAsync(conversationId, imageBytes);
+                string? retrievalPath = null;
+                if (_fileGenerationService != null)
+                {
+                    var fileName = $"img_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+                    retrievalPath = await _fileGenerationService.CreateFileAsync(fileName, imageBytes, null);
+                }
+                var caption = "Here's your image.";
+                System.Diagnostics.Debug.WriteLine($"Image generated: chat={chatFilePath}, retrieval={retrievalPath} ({imageBytes.Length} bytes)");
+                return new ImageGenerationResult
+                {
+                    Success = true,
+                    Message = caption,
+                    ImageBytes = imageBytes,
+                    ChatFilePath = chatFilePath,
+                    RetrievalFilePath = retrievalPath
+                };
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ComfyUI image generation failed: {ex.Message}\n{ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine($"Image generation failed: {ex.Message}\n{ex.StackTrace}");
                 var msg = ex.Message;
-                var hint = "Start ComfyUI (e.g. http://localhost:8188) or check Settings → Image Endpoint.";
+                if (msg.Contains("coin", StringComparison.OrdinalIgnoreCase)
+                    || msg.Contains("credit", StringComparison.OrdinalIgnoreCase)
+                    || msg.Contains("balance", StringComparison.OrdinalIgnoreCase)
+                    || msg.Contains("quota", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new ImageGenerationResult
+                    {
+                        Success = false,
+                        Message = $"❌ A2E credits may be exhausted: {msg}\n\nCheck your balance at video.a2e.ai or set Image Generation provider to ComfyUI in Settings."
+                    };
+                }
+                var hint = "Start ComfyUI (e.g. http://localhost:8188) or check Settings → Image Generation.";
                 var isConnectionRelated = ex is System.Net.Http.HttpRequestException
                     || msg.Contains("connection", StringComparison.OrdinalIgnoreCase) || msg.Contains("refused", StringComparison.OrdinalIgnoreCase) || msg.Contains("timed out", StringComparison.OrdinalIgnoreCase);
                 if (isConnectionRelated)
-                    return (false, $"❌ Image generation failed: {msg}\n\n{hint}");
-                return (false, $"❌ Image generation failed: {msg}");
+                    return new ImageGenerationResult { Success = false, Message = $"❌ Image generation failed: {msg}\n\n{hint}" };
+                return new ImageGenerationResult { Success = false, Message = $"❌ Image generation failed: {msg}" };
             }
         }
 

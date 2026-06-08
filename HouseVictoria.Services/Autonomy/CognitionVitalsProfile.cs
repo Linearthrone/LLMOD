@@ -38,6 +38,7 @@ namespace HouseVictoria.Services.Autonomy
             AutonomyActivityKind.CreateArt => CognitionVitalRhythm.CreativeCalm,
             AutonomyActivityKind.WriteResearch => CognitionVitalRhythm.Research,
             AutonomyActivityKind.Reflect => CognitionVitalRhythm.Reflecting,
+            AutonomyActivityKind.GenerateGoal => CognitionVitalRhythm.Research,
             AutonomyActivityKind.ExploreEnvironment => CognitionVitalRhythm.Environment,
             AutonomyActivityKind.ExecuteTrade => CognitionVitalRhythm.TradingActive,
             AutonomyActivityKind.RunBacktest => CognitionVitalRhythm.Research,
