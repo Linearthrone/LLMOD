@@ -291,7 +291,7 @@
                                       Padding="0,5,0,8">
                             <Border Style="{StaticResource Card}" Margin="0,5">
                                 <StackPanel>
-                                <TextBlock Text="👤 Create New AI Persona" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
+                                <TextBlock Text="{Binding PersonaFormTitle}" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
 
                                 <!-- Live preview card -->
                                 <Border Background="#1A00D4FF" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
@@ -703,21 +703,36 @@
 
                         <!-- Sticky footer: always visible without scrolling -->
                         <Border Grid.Row="1" Background="#200A0E27" BorderBrush="#3000D4FF" BorderThickness="0,1,0,0" Padding="10,8,10,4" Margin="0,0,0,2">
-                            <Button Content="💾 Create Persona"
-                                   HorizontalAlignment="Right" Width="200"
-                                   Command="{Binding SavePersonaCommand}"
-                                   ToolTip="Create a new AI persona with the specified name and model">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GlassButton}">
-                                        <Style.Triggers>
-                                            <Trigger Property="IsEnabled" Value="False">
-                                                <Setter Property="Opacity" Value="0.5"/>
-                                                <Setter Property="ToolTip" Value="Please enter a name and select/type a model name"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="Cancel"
+                                        Command="{Binding CancelEditPersonaCommand}"
+                                        Visibility="{Binding IsEditingPersona, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource GlassButton}"/>
+                                    </Button.Style>
+                                </Button>
+                                <Button Grid.Column="2"
+                                        Content="{Binding SavePersonaButtonText}"
+                                        Width="200"
+                                        Command="{Binding SavePersonaCommand}"
+                                        ToolTip="Save persona settings including model, prompt, and LLM parameters">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource GlassButton}">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter Property="Opacity" Value="0.5"/>
+                                                    <Setter Property="ToolTip" Value="Please enter a name and select/type a model name"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
                         </Border>
                     </Grid>
 
@@ -725,7 +740,16 @@
                     <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=ContactBook}">
                         <Border Style="{StaticResource Card}" Margin="0,5">
                             <StackPanel>
-                                <TextBlock Text="📖 AI Contact Book" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="📖 AI Contact Book" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Style="{StaticResource GlassButton}" Content="📥 Restore Backup"
+                                            Command="{Binding RestorePersonaCommand}"
+                                            ToolTip="Import a persona backup (.zip) from another machine or model"/>
+                                </Grid>
                                 <ItemsControl ItemsSource="{Binding AIContacts}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -761,6 +785,10 @@
                                                         <Button Style="{StaticResource GlassButton}" Content="📂 Load" 
                                                                Margin="5,0" Command="{Binding DataContext.LoadPersonaCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                CommandParameter="{Binding}"/>
+                                                        <Button Style="{StaticResource GlassButton}" Content="💾 Backup"
+                                                               Margin="5,0" Command="{Binding DataContext.BackupPersonaCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               CommandParameter="{Binding}"
+                                                               ToolTip="Export memories, databanks, chat history, and media"/>
                                                         <Button Style="{StaticResource GlassButton}" Content="✏️ Edit" 
                                                                Margin="5,0" Command="{Binding DataContext.EditPersonaCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                CommandParameter="{Binding}"/>

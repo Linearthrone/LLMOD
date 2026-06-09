@@ -21,9 +21,11 @@ namespace HouseVictoria.App.Screens.Windows
         private readonly IPersistenceService _persistenceService;
         private readonly IMemoryService _memoryService;
         private readonly IMCPService? _mcpService;
+        private readonly IPersonaBackupService? _personaBackupService;
         private readonly AppConfig _appConfig;
         private readonly IPersonaContext? _personaContext;
         private string _currentView = "ContactBook"; // ContactBook, LoadModel, CreatePersona
+        private string? _editingContactId;
         private AIContact? _selectedContact;
         private string _selectedModel = string.Empty;
         private string _availableModelsEndpoint = "http://localhost:11434";
@@ -102,10 +104,13 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand ShowContactBookCommand { get; }
         public ICommand LoadAvailableModelsCommand { get; }
         public ICommand SavePersonaCommand { get; }
+        public ICommand CancelEditPersonaCommand { get; }
         public ICommand DeletePersonaCommand { get; }
         public ICommand LoadPersonaCommand { get; }
         public ICommand EditPersonaCommand { get; }
         public ICommand SetPrimaryPersonaCommand { get; }
+        public ICommand BackupPersonaCommand { get; }
+        public ICommand RestorePersonaCommand { get; }
         public ICommand BrowsePortraitCommand { get; }
         public ICommand PullModelCommand { get; }
         public ICommand PullModelForPersonaCommand { get; }
@@ -279,6 +284,12 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
         public bool HasNameValidationMessage => !string.IsNullOrWhiteSpace(_nameValidationMessage);
+
+        public bool IsEditingPersona => !string.IsNullOrWhiteSpace(_editingContactId);
+
+        public string PersonaFormTitle => IsEditingPersona ? "✏️ Edit AI Persona" : "👤 Create New AI Persona";
+
+        public string SavePersonaButtonText => IsEditingPersona ? "💾 Save Changes" : "💾 Create Persona";
 
         // Live preview bindings for the create-persona card
         public string PreviewName => string.IsNullOrWhiteSpace(_newPersonaName) ? "New persona" : _newPersonaName.Trim();
@@ -504,34 +515,56 @@ namespace HouseVictoria.App.Screens.Windows
 
         public bool HasGeneratedImage => !string.IsNullOrWhiteSpace(_generatedImagePath);
 
-        public AIModelsWindowViewModel(IAIService aiService, IPersistenceService persistenceService, IMemoryService memoryService, AppConfig appConfig, IMCPService? mcpService = null)
+        public AIModelsWindowViewModel(IAIService aiService, IPersistenceService persistenceService, IMemoryService memoryService, AppConfig appConfig, IMCPService? mcpService = null, IPersonaBackupService? personaBackupService = null)
         {
             _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
             _persistenceService = persistenceService ?? throw new ArgumentNullException(nameof(persistenceService));
             _memoryService = memoryService ?? throw new ArgumentNullException(nameof(memoryService));
             _appConfig = appConfig ?? throw new ArgumentNullException(nameof(appConfig));
             _mcpService = mcpService;
+            _personaBackupService = personaBackupService;
             try { _personaContext = App.GetService<IPersonaContext>(); } catch { _personaContext = null; }
 
             LoadModelCommand = new RelayCommand(() => CurrentView = "LoadModel");
             CreatePersonaCommand = new RelayCommand(async () =>
             {
+                _editingContactId = null;
+                OnPropertyChanged(nameof(IsEditingPersona));
+                OnPropertyChanged(nameof(PersonaFormTitle));
+                OnPropertyChanged(nameof(SavePersonaButtonText));
+                ClearPersonaForm();
                 CurrentView = "CreatePersona";
                 _knowledgeSharingTouched = false;
                 ApplyDefaultKnowledgeSharingForRole(NewPersonaRole);
-                // Load available models when switching to Create Persona view
                 if (_availableModels.Count == 0)
                     await LoadAvailableModelsAsync();
-                // Always reload Piper voices so dropdown shows current server/list or local Piper data dir
                 await LoadAvailablePiperVoicesAsync();
             });
-            ShowContactBookCommand = new RelayCommand(() => CurrentView = "ContactBook");
+            ShowContactBookCommand = new RelayCommand(() =>
+            {
+                _editingContactId = null;
+                OnPropertyChanged(nameof(IsEditingPersona));
+                OnPropertyChanged(nameof(PersonaFormTitle));
+                OnPropertyChanged(nameof(SavePersonaButtonText));
+                CurrentView = "ContactBook";
+            });
             LoadAvailableModelsCommand = new RelayCommand(async () => await LoadAvailableModelsAsync());
-            SavePersonaCommand = new RelayCommand(async () => await CreatePersonaAsync(), () => !string.IsNullOrWhiteSpace(NewPersonaName) && !string.IsNullOrWhiteSpace(NewPersonaModel));
+            SavePersonaCommand = new RelayCommand(async () => await SavePersonaAsync(), () => !string.IsNullOrWhiteSpace(NewPersonaName) && !string.IsNullOrWhiteSpace(NewPersonaModel));
+            CancelEditPersonaCommand = new RelayCommand(() =>
+            {
+                _editingContactId = null;
+                OnPropertyChanged(nameof(IsEditingPersona));
+                OnPropertyChanged(nameof(PersonaFormTitle));
+                OnPropertyChanged(nameof(SavePersonaButtonText));
+                ClearPersonaForm();
+                CurrentView = "ContactBook";
+            });
             DeletePersonaCommand = new RelayCommand(async (param) => await DeletePersonaAsync(param as AIContact), (param) => param is AIContact);
             LoadPersonaCommand = new RelayCommand(async (param) => await LoadPersonaAsync(param as AIContact), (param) => param is AIContact);
             EditPersonaCommand = new RelayCommand(async (param) => await EditPersonaAsync(param as AIContact), (param) => param is AIContact);
             SetPrimaryPersonaCommand = new RelayCommand(async (param) => await SetPrimaryPersonaAsync(param as AIContact), (param) => param is AIContact);
+            BackupPersonaCommand = new RelayCommand(async (param) => await BackupPersonaAsync(param as AIContact), (param) => param is AIContact && _personaBackupService != null);
+            RestorePersonaCommand = new RelayCommand(async () => await RestorePersonaAsync(), () => _personaBackupService != null);
             BrowsePortraitCommand = new RelayCommand(() => BrowsePortrait());
             ShowImageGenerationCommand = new RelayCommand(() => CurrentView = "ImageGeneration");
             GenerateImageCommand = new RelayCommand(async () => await GenerateImageAsync(), () => !string.IsNullOrWhiteSpace(ImageGenerationPrompt) && !IsGeneratingImage);
@@ -772,6 +805,17 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private async Task SavePersonaAsync()
+        {
+            if (IsEditingPersona)
+            {
+                await UpdatePersonaAsync();
+                return;
+            }
+
+            await CreatePersonaAsync();
+        }
+
         private async Task CreatePersonaAsync()
         {
             try
@@ -900,31 +944,7 @@ namespace HouseVictoria.App.Screens.Windows
                     System.Diagnostics.Debug.WriteLine($"Failed to publish PersonaCreatedEvent: {ex.Message}");
                 }
 
-                // Clear form
-                NewPersonaName = string.Empty;
-                NewPersonaModel = string.Empty;
-                NewPersonaSystemPrompt = string.Empty;
-                NewPersonaDescription = string.Empty;
-                PullModelStatus = string.Empty;
-                // Reset LLM parameters to defaults
-                NewPersonaTemperature = 0.7;
-                NewPersonaTopP = 0.9;
-                NewPersonaTopK = 40;
-                NewPersonaRepeatPenalty = 1.1;
-                NewPersonaMaxTokens = -1;
-                NewPersonaContextLength = 4096;
-                NewPersonaPiperVoice = string.Empty;
-                NewPersonaAvatarModelPath = string.Empty;
-                NewPersonaAvatarVoiceSpeed = 1.0;
-                NewPersonaAvatarVoicePitch = 1.0;
-                NewPersonaAvatarUrl = string.Empty;
-                NewPersonaRole = PersonaRole.Companion;
-                SelectedPersonaPreset = "Custom";
-                NameValidationMessage = string.Empty;
-                _knowledgeSharingTouched = false;
-                ApplyDefaultKnowledgeSharingForRole(PersonaRole.Companion);
-
-                // Switch to contact book
+                ClearPersonaForm();
                 CurrentView = "ContactBook";
             }
             catch (Exception ex)
@@ -1073,6 +1093,111 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private async Task BackupPersonaAsync(AIContact? contact)
+        {
+            if (contact == null || _personaBackupService == null) return;
+
+            try
+            {
+                var safeName = string.Join("_", contact.Name.Split(Path.GetInvalidFileNameChars()));
+                var dialog = new SaveFileDialog
+                {
+                    Title = $"Backup {contact.Name}",
+                    Filter = "Persona Backup (*.zip)|*.zip|All Files (*.*)|*.*",
+                    DefaultExt = "zip",
+                    FileName = $"persona-{safeName}-{DateTime.Now:yyyyMMdd}.zip"
+                };
+
+                if (dialog.ShowDialog() != true) return;
+
+                var result = await _personaBackupService.ExportAsync(contact, dialog.FileName);
+                MessageBox.Show(
+                    result.Message,
+                    result.Success ? "Backup Complete" : "Backup Failed",
+                    MessageBoxButton.OK,
+                    result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Backup failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task RestorePersonaAsync()
+        {
+            if (_personaBackupService == null) return;
+
+            try
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Title = "Restore Persona from Backup",
+                    Filter = "Persona Backup (*.zip)|*.zip|All Files (*.*)|*.*"
+                };
+
+                if (dialog.ShowDialog() != true) return;
+
+                var preview = await _personaBackupService.PreviewAsync(dialog.FileName);
+                if (preview?.Persona == null)
+                {
+                    MessageBox.Show("Could not read this backup file.", "Invalid Backup", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var existing = await _persistenceService.GetAsync<AIContact>($"AIContact_{preview.Persona.Id}");
+                PersonaImportMode mode = PersonaImportMode.NewCopy;
+
+                if (existing != null)
+                {
+                    var choice = MessageBox.Show(
+                        $"A persona named \"{existing.Name}\" with the same ID already exists.\n\n" +
+                        "Yes = overwrite existing persona (memories replaced)\n" +
+                        "No = import as a new copy\n" +
+                        "Cancel = abort",
+                        "Persona Already Exists",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
+
+                    if (choice == MessageBoxResult.Cancel) return;
+                    mode = choice == MessageBoxResult.Yes ? PersonaImportMode.PreserveId : PersonaImportMode.NewCopy;
+                }
+                else
+                {
+                    var confirm = MessageBox.Show(
+                        $"Restore persona \"{preview.Persona.Name}\"?\n\n" +
+                        $"{preview.Manifest.MemoryCount} memories, {preview.Manifest.MessageCount} messages, {preview.Manifest.FileCount} files.",
+                        "Confirm Restore",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+                    if (confirm != MessageBoxResult.Yes) return;
+                }
+
+                var result = await _personaBackupService.ImportAsync(dialog.FileName, mode);
+                if (result.Success)
+                {
+                    await LoadAIContactsAsync();
+                    try
+                    {
+                        App.GetService<IEventAggregator>()?.Publish(new HouseVictoria.Core.Events.PersonaCreatedEvent());
+                    }
+                    catch (Exception pubEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to publish persona refresh after restore: {pubEx.Message}");
+                    }
+                }
+
+                MessageBox.Show(
+                    result.Message,
+                    result.Success ? "Restore Complete" : "Restore Failed",
+                    MessageBoxButton.OK,
+                    result.Success ? MessageBoxImage.Information : MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Restore failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void BrowsePortrait()
         {
             try
@@ -1102,9 +1227,200 @@ namespace HouseVictoria.App.Screens.Windows
                 return;
             }
 
-            NameValidationMessage = _aiContacts.Any(c => c.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
+            NameValidationMessage = _aiContacts.Any(c =>
+                    c.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(c.Id, _editingContactId, StringComparison.Ordinal))
                 ? $"A persona named '{trimmed}' already exists."
                 : string.Empty;
+        }
+
+        private void ClearPersonaForm()
+        {
+            NewPersonaName = string.Empty;
+            NewPersonaModel = string.Empty;
+            NewPersonaSystemPrompt = string.Empty;
+            NewPersonaDescription = string.Empty;
+            NewPersonaMCPServer = _appConfig.MCPServerEndpoint;
+            PullModelStatus = string.Empty;
+            NewPersonaTemperature = 0.7;
+            NewPersonaTopP = 0.9;
+            NewPersonaTopK = 40;
+            NewPersonaRepeatPenalty = 1.1;
+            NewPersonaMaxTokens = -1;
+            NewPersonaContextLength = 4096;
+            NewPersonaPiperVoice = string.Empty;
+            NewPersonaAvatarModelPath = string.Empty;
+            NewPersonaAvatarVoiceSpeed = 1.0;
+            NewPersonaAvatarVoicePitch = 1.0;
+            NewPersonaAvatarUrl = string.Empty;
+            NewPersonaRole = PersonaRole.Companion;
+            SelectedPersonaPreset = "Custom";
+            NameValidationMessage = string.Empty;
+            _knowledgeSharingTouched = false;
+            ApplyDefaultKnowledgeSharingForRole(PersonaRole.Companion);
+        }
+
+        private void PopulateFormFromContact(AIContact contact)
+        {
+            _knowledgeSharingTouched = true;
+            NewPersonaName = contact.Name;
+            NewPersonaModel = contact.ModelName;
+            NewPersonaSystemPrompt = contact.SystemPrompt ?? string.Empty;
+            NewPersonaDescription = contact.Description ?? string.Empty;
+            NewPersonaMCPServer = string.IsNullOrWhiteSpace(contact.MCPServerEndpoint)
+                ? _appConfig.MCPServerEndpoint
+                : contact.MCPServerEndpoint;
+            NewPersonaPiperVoice = contact.PiperVoiceId ?? string.Empty;
+            NewPersonaAvatarUrl = contact.AvatarUrl ?? string.Empty;
+            NewPersonaAvatarModelPath = contact.AvatarModelPath ?? string.Empty;
+            NewPersonaAvatarVoiceSpeed = contact.AvatarVoiceSpeed;
+            NewPersonaAvatarVoicePitch = contact.AvatarVoicePitch;
+            NewPersonaRole = contact.Role;
+            NewPersonaTemperature = contact.Temperature;
+            NewPersonaTopP = contact.TopP;
+            NewPersonaTopK = contact.TopK;
+            NewPersonaRepeatPenalty = contact.RepeatPenalty;
+            NewPersonaMaxTokens = contact.MaxTokens;
+            NewPersonaContextLength = contact.ContextLength;
+            SelectedPersonaPreset = "Custom";
+            AvailableModelsEndpoint = contact.ServerEndpoint;
+
+            var sharing = contact.KnowledgeSharing ?? new PersonaKnowledgeSharing();
+            _shareUserBasics = sharing.ShareUserBasics;
+            _shareOwnMemories = sharing.ShareOwnMemories;
+            _shareOwnDataBank = sharing.ShareOwnDataBank;
+            _shareHouseJournals = sharing.ShareHouseJournals;
+            _shareOtherPersonaMemories = sharing.ShareOtherPersonaMemories;
+            _shareSharedDataBanks = sharing.ShareSharedDataBanks;
+            OnPropertyChanged(nameof(ShareUserBasics));
+            OnPropertyChanged(nameof(ShareOwnMemories));
+            OnPropertyChanged(nameof(ShareOwnDataBank));
+            OnPropertyChanged(nameof(ShareHouseJournals));
+            OnPropertyChanged(nameof(ShareOtherPersonaMemories));
+            OnPropertyChanged(nameof(ShareSharedDataBanks));
+
+            ValidatePersonaName();
+        }
+
+        private async Task UpdatePersonaAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_editingContactId))
+            {
+                return;
+            }
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(NewPersonaName))
+                {
+                    PullModelStatus = "✗ Error: Persona name is required";
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(NewPersonaModel))
+                {
+                    PullModelStatus = "✗ Error: Model name is required";
+                    return;
+                }
+
+                var trimmedName = NewPersonaName.Trim();
+                if (_aiContacts.Any(c =>
+                        c.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(c.Id, _editingContactId, StringComparison.Ordinal)))
+                {
+                    PullModelStatus = $"✗ An AI contact with the name '{trimmedName}' already exists.";
+                    return;
+                }
+
+                var contact = await _persistenceService.GetAsync<AIContact>($"AIContact_{_editingContactId}");
+                if (contact == null)
+                {
+                    PullModelStatus = "✗ Persona not found.";
+                    return;
+                }
+
+                var previousModel = contact.ModelName;
+                var mcpEndpoint = string.IsNullOrWhiteSpace(NewPersonaMCPServer)
+                    ? _appConfig.MCPServerEndpoint
+                    : NewPersonaMCPServer.Trim();
+
+                contact.Name = trimmedName;
+                contact.ModelName = NewPersonaModel.Trim();
+                contact.PiperVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim();
+                contact.SystemPrompt = string.IsNullOrWhiteSpace(NewPersonaSystemPrompt)
+                    ? contact.SystemPrompt
+                    : NewPersonaSystemPrompt.Trim();
+                contact.Description = NewPersonaDescription?.Trim();
+                contact.AvatarUrl = string.IsNullOrWhiteSpace(NewPersonaAvatarUrl) ? null : NewPersonaAvatarUrl.Trim();
+                contact.AvatarModelPath = string.IsNullOrWhiteSpace(NewPersonaAvatarModelPath) ? null : NewPersonaAvatarModelPath.Trim();
+                contact.AvatarVoiceSpeed = NewPersonaAvatarVoiceSpeed;
+                contact.AvatarVoicePitch = NewPersonaAvatarVoicePitch;
+                contact.ServerEndpoint = AvailableModelsEndpoint;
+                contact.MCPServerEndpoint = mcpEndpoint;
+                contact.Role = NewPersonaRole;
+                contact.IsPrimaryAI = NewPersonaRole == PersonaRole.Primary;
+                contact.Temperature = NewPersonaTemperature;
+                contact.TopP = NewPersonaTopP;
+                contact.TopK = NewPersonaTopK;
+                contact.RepeatPenalty = NewPersonaRepeatPenalty;
+                contact.MaxTokens = NewPersonaMaxTokens;
+                contact.ContextLength = NewPersonaContextLength;
+                contact.KnowledgeSharing = BuildNewPersonaKnowledgeSharing();
+                contact.LastUsedAt = DateTime.Now;
+
+                if (!string.Equals(previousModel, contact.ModelName, StringComparison.OrdinalIgnoreCase))
+                {
+                    contact.IsLoaded = false;
+                }
+
+                await _persistenceService.SetAsync($"AIContact_{contact.Id}", contact);
+
+                if (NewPersonaRole == PersonaRole.Primary && _personaContext != null)
+                {
+                    try { await _personaContext.SetPrimaryAsync(contact.Id); }
+                    catch (Exception primEx) { System.Diagnostics.Debug.WriteLine($"Could not set primary persona: {primEx.Message}"); }
+                }
+
+                if (!string.IsNullOrWhiteSpace(contact.DataPath))
+                {
+                    Directory.CreateDirectory(contact.DataPath);
+                    var configPath = Path.Combine(contact.DataPath, "config.json");
+                    var config = new
+                    {
+                        contact.Id,
+                        contact.Name,
+                        contact.ModelName,
+                        contact.MCPServerEndpoint,
+                        contact.CreatedAt,
+                        UpdatedAt = DateTime.Now
+                    };
+                    await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(config));
+                }
+
+                await LoadAIContactsAsync();
+
+                try
+                {
+                    App.GetService<IEventAggregator>()?.Publish(new HouseVictoria.Core.Events.PersonaCreatedEvent());
+                }
+                catch (Exception pubEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to publish persona refresh after update: {pubEx.Message}");
+                }
+
+                _editingContactId = null;
+                OnPropertyChanged(nameof(IsEditingPersona));
+                OnPropertyChanged(nameof(PersonaFormTitle));
+                OnPropertyChanged(nameof(SavePersonaButtonText));
+                ClearPersonaForm();
+                CurrentView = "ContactBook";
+                PullModelStatus = $"✓ Updated {contact.Name}. Use Load if you changed the model.";
+            }
+            catch (Exception ex)
+            {
+                PullModelStatus = $"✗ Error updating persona: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Error updating persona: {ex.Message}\n{ex.StackTrace}");
+            }
         }
 
         private void ApplyDefaultKnowledgeSharingForRole(PersonaRole role)
@@ -1196,86 +1512,34 @@ namespace HouseVictoria.App.Screens.Windows
 
             try
             {
-                // Create a copy of the contact to edit
-                var contactCopy = new AIContact
-                {
-                    Id = contact.Id,
-                    Name = contact.Name,
-                    ModelName = contact.ModelName,
-                    PiperVoiceId = contact.PiperVoiceId,
-                    SystemPrompt = contact.SystemPrompt,
-                    Description = contact.Description,
-                    AvatarUrl = contact.AvatarUrl,
-                    AvatarModelPath = contact.AvatarModelPath,
-                    AvatarVoiceSpeed = contact.AvatarVoiceSpeed,
-                    AvatarVoicePitch = contact.AvatarVoicePitch,
-                    PersonalityTraits = contact.PersonalityTraits != null ? new Dictionary<string, string>(contact.PersonalityTraits) : new Dictionary<string, string>(),
-                    ServerEndpoint = contact.ServerEndpoint,
-                    MCPServerEndpoint = contact.MCPServerEndpoint,
-                    AdditionalServers = contact.AdditionalServers != null ? new Dictionary<string, string>(contact.AdditionalServers) : new Dictionary<string, string>(),
-                    IsLoaded = contact.IsLoaded,
-                    CreatedAt = contact.CreatedAt,
-                    LastUsedAt = contact.LastUsedAt,
-                    IsPrimaryAI = contact.IsPrimaryAI,
-                    DataPath = contact.DataPath,
-                    // LLM Parameters
-                    Temperature = contact.Temperature,
-                    TopP = contact.TopP,
-                    TopK = contact.TopK,
-                    RepeatPenalty = contact.RepeatPenalty,
-                    MaxTokens = contact.MaxTokens,
-                    ContextLength = contact.ContextLength
-                };
+                var fresh = await _persistenceService.GetAsync<AIContact>($"AIContact_{contact.Id}") ?? contact;
 
-                // Open edit dialog
-                EditSystemPromptDialog? dialog = null;
-                try
+                _editingContactId = fresh.Id;
+                OnPropertyChanged(nameof(IsEditingPersona));
+                OnPropertyChanged(nameof(PersonaFormTitle));
+                OnPropertyChanged(nameof(SavePersonaButtonText));
+
+                PopulateFormFromContact(fresh);
+                PullModelStatus = string.Empty;
+
+                if (_availableModels.Count == 0)
                 {
-                    dialog = new EditSystemPromptDialog(contactCopy);
-                    var app = System.Windows.Application.Current;
-                    if (app != null)
-                        dialog.Owner = app.Windows.OfType<System.Windows.Window>().FirstOrDefault(w => w.IsActive) ?? app.MainWindow;
+                    await LoadAvailableModelsAsync();
                 }
-                catch (Exception dialogEx)
+                else if (!string.IsNullOrWhiteSpace(fresh.ModelName) && !_availableModels.Contains(fresh.ModelName))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error creating EditSystemPromptDialog: {dialogEx.Message}\n{dialogEx.StackTrace}");
-                    System.Windows.MessageBox.Show($"Error opening edit dialog: {dialogEx.Message}", "Error",
-                        System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                    return;
+                    _availableModels.Add(fresh.ModelName);
+                    OnPropertyChanged(nameof(AvailableModels));
                 }
 
-                if (dialog == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("EditSystemPromptDialog is null after creation");
-                    return;
-                }
-
-                var result = dialog.ShowDialog();
-
-                // If user clicked Save, update the contact
-                if (result == true)
-                {
-                    contact.SystemPrompt = dialog.SystemPrompt?.Trim();
-                    contact.PiperVoiceId = string.IsNullOrWhiteSpace(dialog.PiperVoiceId) ? null : dialog.PiperVoiceId.Trim();
-                    contact.AvatarModelPath = string.IsNullOrWhiteSpace(dialog.AvatarModelPath) ? null : dialog.AvatarModelPath.Trim();
-                    contact.AvatarVoiceSpeed = dialog.AvatarVoiceSpeed;
-                    contact.AvatarVoicePitch = dialog.AvatarVoicePitch;
-                    contact.KnowledgeSharing = dialog.KnowledgeSharing.Clone();
-
-                    // Save updated contact to persistence
-                    await _persistenceService.SetAsync($"AIContact_{contact.Id}", contact);
-
-                    // Reload contacts to refresh UI
-                    await LoadAIContactsAsync();
-
-                    System.Diagnostics.Debug.WriteLine($"System prompt updated for persona: {contact.Name}");
-                }
+                await LoadAvailablePiperVoicesAsync();
+                CurrentView = "CreatePersona";
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error editing persona: {ex.Message}");
-                System.Windows.MessageBox.Show($"Error editing persona: {ex.Message}", "Error",
-                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                MessageBox.Show($"Error opening persona editor: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -786,6 +786,37 @@ namespace HouseVictoria.Services.Persistence
                 });
         }
 
+        public async Task<List<string>> GetConversationIdsForContactAsync(string contactId)
+        {
+            using var connection = new SQLiteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var results = await connection.QueryAsync<string>(@"
+                SELECT DISTINCT ConversationId
+                FROM Messages
+                WHERE ConversationId = @ExactId
+                   OR ConversationId LIKE @Prefix
+                ORDER BY ConversationId",
+                new
+                {
+                    ExactId = $"conv-{contactId}",
+                    Prefix = $"conv-{contactId}-%"
+                });
+
+            var ids = results.ToList();
+            if (ids.Count == 0)
+            {
+                ids.Add($"conv-{contactId}");
+            }
+
+            return ids;
+        }
+
+        public async Task<List<ConversationMessage>> GetAllMessagesForConversationAsync(string conversationId)
+        {
+            return await GetMessagesAsync(conversationId, int.MaxValue);
+        }
+
         public async Task<List<ConversationMessage>> GetMessagesAsync(string conversationId, int limit = 100)
         {
             using var connection = new SQLiteConnection(_connectionString);
@@ -895,6 +926,79 @@ namespace HouseVictoria.Services.Persistence
                 System.Diagnostics.Debug.WriteLine($"Error parsing last message: {ex.Message}");
                 return null;
             }
+        }
+
+        public async Task<List<PersonaMemoryRecord>> GetMemoryRecordsForPersonaAsync(string personaId)
+        {
+            using var connection = new SQLiteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var rows = await connection.QueryAsync(@"
+                SELECT * FROM Memory
+                WHERE ContactId = @PersonaId OR PersonaId = @PersonaId
+                ORDER BY CreatedAt ASC",
+                new { PersonaId = personaId });
+
+            var records = new List<PersonaMemoryRecord>();
+            foreach (dynamic row in rows)
+            {
+                records.Add(new PersonaMemoryRecord
+                {
+                    Id = row.Id as string ?? Guid.NewGuid().ToString(),
+                    ContactId = row.ContactId as string ?? string.Empty,
+                    Content = row.Content as string ?? string.Empty,
+                    CreatedAt = row.CreatedAt as string ?? DateTime.UtcNow.ToString("O"),
+                    Importance = row.Importance as double? ?? 1.0,
+                    AccessCount = Convert.ToInt32(row.AccessCount ?? 0),
+                    Type = row.Type as string,
+                    Metadata = row.Metadata as string,
+                    TenantId = row.TenantId as string,
+                    PersonaId = row.PersonaId as string,
+                    ProjectId = row.ProjectId as string,
+                    Pinned = Convert.ToInt32(row.Pinned ?? 0),
+                    TtlSeconds = row.TtlSeconds as long?,
+                    UpdatedAt = row.UpdatedAt as string,
+                    LastAccessed = row.LastAccessed as string,
+                    Lineage = row.Lineage as string
+                });
+            }
+
+            return records;
+        }
+
+        public async Task RestoreMemoryRecordAsync(PersonaMemoryRecord record)
+        {
+            using var connection = new SQLiteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            await connection.ExecuteAsync(@"
+                INSERT OR REPLACE INTO Memory
+                (Id, ContactId, Content, CreatedAt, Importance, AccessCount, Type, Metadata, TenantId, PersonaId, ProjectId, Pinned, TtlSeconds, UpdatedAt, LastAccessed, Lineage)
+                VALUES (@Id, @ContactId, @Content, @CreatedAt, @Importance, @AccessCount,
+                        @Type, @Metadata, @TenantId, @PersonaId, @ProjectId, @Pinned, @TtlSeconds, @UpdatedAt, @LastAccessed, @Lineage)",
+                record);
+
+            await SyncMemoryFtsAsync(connection, record.Id, record.Content);
+        }
+
+        public async Task DeleteMemoriesForPersonaAsync(string personaId)
+        {
+            using var connection = new SQLiteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var ids = await connection.QueryAsync<string>(
+                "SELECT Id FROM Memory WHERE ContactId = @PersonaId OR PersonaId = @PersonaId",
+                new { PersonaId = personaId });
+
+            foreach (var id in ids)
+            {
+                try { await connection.ExecuteAsync("DELETE FROM Memory_fts WHERE Id = @Id", new { Id = id }); }
+                catch { /* FTS may not exist */ }
+            }
+
+            await connection.ExecuteAsync(
+                "DELETE FROM Memory WHERE ContactId = @PersonaId OR PersonaId = @PersonaId",
+                new { PersonaId = personaId });
         }
 
         // --- IMemoryService v2 ---

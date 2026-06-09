@@ -58,6 +58,7 @@ namespace HouseVictoria.Services.Autonomy
 
         public event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
         public event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
+        public event EventHandler? AutonomyLevelChanged;
 
         public AutonomyOrchestratorService(
             AppConfig config,
@@ -117,6 +118,42 @@ namespace HouseVictoria.Services.Autonomy
             }
         }
 
+        public AutonomyLevel GetAutonomyLevel() => _config.AutonomyLevel;
+
+        public async Task SetAutonomyLevelAsync(AutonomyLevel level)
+        {
+            var previous = _config.AutonomyLevel;
+            if (previous == level)
+                return;
+
+            _config.AutonomyLevel = level;
+            AutonomyLevelChanged?.Invoke(this, EventArgs.Empty);
+
+            if (level == AutonomyLevel.Off)
+            {
+                await StopAsync().ConfigureAwait(false);
+                ApplyVitals(CognitionVitalsProfile.ForRhythm(CognitionVitalRhythm.Resting, "Autonomy off"));
+                return;
+            }
+
+            if (previous == AutonomyLevel.Off && AutonomyLevelProfile.IsActive(_config))
+                await StartAsync().ConfigureAwait(false);
+        }
+
+        public string? GetUserGuidanceSuggestion()
+        {
+            lock (_stateLock)
+                return _state.UserGuidanceSuggestion;
+        }
+
+        public void SetUserGuidanceSuggestion(string? suggestion)
+        {
+            var trimmed = string.IsNullOrWhiteSpace(suggestion) ? null : suggestion.Trim();
+            lock (_stateLock)
+                _state.UserGuidanceSuggestion = trimmed;
+            _ = _stateStore.SaveStateAsync(_state);
+        }
+
         public void PushVitalOverride(CognitionVitalRhythm rhythm, string label, TimeSpan? duration = null)
         {
             lock (_stateLock)
@@ -131,7 +168,7 @@ namespace HouseVictoria.Services.Autonomy
 
         public async Task StartAsync(CancellationToken cancellationToken = default)
         {
-            if (!_config.EnableAutonomy)
+            if (!AutonomyLevelProfile.IsActive(_config))
                 return;
 
             if (_loopTask != null && !_loopTask.IsCompleted)
@@ -182,7 +219,7 @@ namespace HouseVictoria.Services.Autonomy
 
         private async Task RunLoopAsync(CancellationToken cancellationToken)
         {
-            var baseInterval = TimeSpan.FromSeconds(Math.Max(30, _config.AutonomyTickIntervalSeconds));
+            var baseInterval = TimeSpan.FromSeconds(Math.Max(30, AutonomyLevelProfile.EffectiveTickIntervalSeconds(_config)));
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -529,7 +566,7 @@ namespace HouseVictoria.Services.Autonomy
 
             lock (_stateLock)
             {
-                if (_state.ArtGeneratedThisHour >= _config.AutonomyMaxArtPerHour)
+                if (_state.ArtGeneratedThisHour >= AutonomyLevelProfile.EffectiveMaxArtPerHour(_config))
                     throw new InvalidOperationException("Art rate limit for this hour.");
             }
 
@@ -733,18 +770,37 @@ namespace HouseVictoria.Services.Autonomy
                 ? "Prefer mode \"priority\" and activity \"project\" for the highest-priority project."
                 : "User is quiet — choose an idle activity you genuinely want: art, research, project, reflect, or environment.";
 
+            string? userGuidance;
+            int sameFocusStreak;
+            lock (_stateLock)
+            {
+                userGuidance = _state.UserGuidanceSuggestion;
+                sameFocusStreak = _state.SameFocusStreak;
+            }
+
+            var guidanceBlock = string.IsNullOrWhiteSpace(userGuidance)
+                ? string.Empty
+                : $"\nUser guidance (follow this if you feel stuck, looping, or fixated): {userGuidance}\n";
+
+            var fixationHint = sameFocusStreak >= 2
+                ? "\nYou have been focused on the same project repeatedly — pick a genuinely different activity or topic.\n"
+                : string.Empty;
+
+            var maxArt = AutonomyLevelProfile.EffectiveMaxArtPerHour(_config);
+            var maxActions = AutonomyLevelProfile.EffectiveMaxActionsPerHour(_config);
+
             var prompt = $$"""
                 You are {{contact.Name}}, the autonomous mind of House Victoria.
                 {{modeHint}}
-
+                {{fixationHint}}{{guidanceBlock}}
                 User quiet (no recent chat): {{userQuiet}}
                 Drives: {{signals.Drives}}
                 Right now these appeal most (drive-weighted): {{signals.DriveHint}}
                 Recently worked topics (do NOT repeat or rephrase these): {{signals.RecentTopics}}
                 Feedback on your recent work (0-1, higher is better): {{signals.FeedbackHint}}
                 Last activity: {{_state.LastActivity}} — {{_state.LastActivitySummary ?? "none"}}
-                Art this hour: {{_state.ArtGeneratedThisHour}}/{{_config.AutonomyMaxArtPerHour}}
-                Actions this hour: {{_state.ActionsThisHour}}/{{_config.AutonomyMaxActionsPerHour}}
+                Art this hour: {{_state.ArtGeneratedThisHour}}/{{maxArt}}
+                Actions this hour: {{_state.ActionsThisHour}}/{{maxActions}}
 
                 Open projects:
                 {{projectLines}}
@@ -928,7 +984,7 @@ namespace HouseVictoria.Services.Autonomy
             lock (_stateLock)
                 _state.LastUserActivityUtc = lastUser.Timestamp.ToUniversalTime();
 
-            return idleSince >= TimeSpan.FromMinutes(Math.Max(1, _config.AutonomyMinIdleMinutes));
+            return idleSince >= TimeSpan.FromMinutes(Math.Max(1, AutonomyLevelProfile.EffectiveMinIdleMinutes(_config)));
         }
 
         private async Task<AIContact?> ResolveContactAsync()
@@ -966,9 +1022,13 @@ namespace HouseVictoria.Services.Autonomy
 
         private bool CanPerformSubstantiveAction()
         {
+            if (_config.AutonomyLevel == AutonomyLevel.Off)
+                return false;
+
             ResetHourWindowIfNeeded();
+            var cap = AutonomyLevelProfile.EffectiveMaxActionsPerHour(_config);
             lock (_stateLock)
-                return _state.ActionsThisHour < _config.AutonomyMaxActionsPerHour;
+                return _state.ActionsThisHour < cap;
         }
 
         private void RecordSubstantiveAction()
@@ -1405,7 +1465,8 @@ namespace HouseVictoria.Services.Autonomy
                 SameFocusStreak = source.SameFocusStreak,
                 SelfGoalsToday = source.SelfGoalsToday,
                 SelfGoalDayStartUtc = source.SelfGoalDayStartUtc,
-                ConsecutiveDecisionFailures = source.ConsecutiveDecisionFailures
+                ConsecutiveDecisionFailures = source.ConsecutiveDecisionFailures,
+                UserGuidanceSuggestion = source.UserGuidanceSuggestion
             };
 
         private async Task AppendTradingBridgeStatusAsync(Project project, AIContact contact)

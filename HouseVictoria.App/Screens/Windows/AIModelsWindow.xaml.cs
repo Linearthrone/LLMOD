@@ -26,8 +26,9 @@ namespace HouseVictoria.App.Screens.Windows
             var memoryService = App.GetService<IMemoryService>();
             var mcpService = App.GetService<IMCPService>();
             var appConfig = App.GetService<AppConfig>();
+            var personaBackupService = App.GetService<IPersonaBackupService>();
 
-            ViewModel = new AIModelsWindowViewModel(aiService, persistenceService, memoryService, appConfig, mcpService);
+            ViewModel = new AIModelsWindowViewModel(aiService, persistenceService, memoryService, appConfig, mcpService, personaBackupService);
             DataContext = ViewModel;
 
             Loaded += AIModelsWindow_Loaded;

@@ -1563,6 +1563,7 @@ namespace HouseVictoria.App.Screens.Windows
             if (string.IsNullOrEmpty(launcher) || !File.Exists(launcher))
                 return false;
 
+            WriteComfyUIExtraModelsConfig(comfyRootWithMainPy);
             Directory.CreateDirectory(Path.Combine(bootstrap!, "Media"));
             var logPath = Path.Combine(bootstrap!, "Media", "comfyui.log");
             Process.Start(new ProcessStartInfo
@@ -1718,9 +1719,21 @@ namespace HouseVictoria.App.Screens.Windows
 
         private static void WriteComfyUIExtraModelsConfig(string comfyUIRoot)
         {
-            const string extraModelsYaml = @"# Extra models from D:\ComfyUI\models - loaded by House Victoria on ComfyUI startup
+            const string extraModelsYaml = @"# Extra model search paths - loaded by House Victoria on ComfyUI startup
 d_comfyui_models:
     base_path: D:\ComfyUI\models
+    checkpoints: checkpoints
+    text_encoders: text_encoders
+    clip_vision: clip_vision
+    configs: configs
+    controlnet: controlnet
+    diffusion_models: diffusion_models
+    embeddings: embeddings
+    loras: loras
+    upscale_models: upscale_models
+    vae: vae
+v_models:
+    base_path: V:\models
     checkpoints: checkpoints
     text_encoders: text_encoders
     clip_vision: clip_vision
@@ -2294,7 +2307,7 @@ d_comfyui_models:
 
                 await autonomy.StopAsync().ConfigureAwait(false);
                 var cfg = App.GetService<AppConfig>();
-                if (cfg?.EnableAutonomy == true)
+                if (cfg?.EnableAutonomy == true && cfg.AutonomyLevel != AutonomyLevel.Off)
                     await autonomy.StartAsync().ConfigureAwait(false);
             }
             catch (Exception ex)

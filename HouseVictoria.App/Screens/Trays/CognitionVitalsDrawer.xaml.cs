@@ -10,6 +10,7 @@ namespace HouseVictoria.App.Screens.Trays
     {
         private readonly CognitionVitalsDrawerViewModel _viewModel;
         private readonly DispatcherTimer _pollTimer;
+        private DispatcherTimer? _singleClickTimer;
         private bool _pollInProgress;
         private bool _isUnloaded;
 
@@ -48,7 +49,49 @@ namespace HouseVictoria.App.Screens.Trays
         {
             _isUnloaded = true;
             _pollTimer.Stop();
+            _singleClickTimer?.Stop();
             _viewModel.Dispose();
+        }
+
+        private void PulseWidget_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount >= 2)
+            {
+                CancelPendingSingleClick();
+                _viewModel.CollapseToHandle();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.ClickCount == 1)
+                ScheduleSingleClickOpen();
+        }
+
+        private void DrawerHeaderPulse_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _viewModel.CollapseToHandle();
+            e.Handled = true;
+        }
+
+        private void ScheduleSingleClickOpen()
+        {
+            CancelPendingSingleClick();
+            _singleClickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(280) };
+            _singleClickTimer.Tick += (_, _) =>
+            {
+                CancelPendingSingleClick();
+                _viewModel.OpenDrawer();
+            };
+            _singleClickTimer.Start();
+        }
+
+        private void CancelPendingSingleClick()
+        {
+            if (_singleClickTimer == null)
+                return;
+
+            _singleClickTimer.Stop();
+            _singleClickTimer = null;
         }
 
         private void RootGrid_MouseDown(object sender, MouseButtonEventArgs e)
@@ -56,10 +99,13 @@ namespace HouseVictoria.App.Screens.Trays
             try
             {
                 var source = e.OriginalSource as DependencyObject;
-                if (source != null && (IsDescendantOf(source, CollapsedTab) || IsDescendantOf(source, DrawerPanel)))
+                if (source != null && (IsDescendantOf(source, CollapsedPullHandle)
+                    || IsDescendantOf(source, PulseWidget)
+                    || IsDescendantOf(source, DrawerPanel)))
                     return;
 
-                _viewModel.IsDrawerOpen = false;
+                if (_viewModel.CollapseState == VitalsDrawerCollapseState.Open)
+                    _viewModel.CollapseToPulse();
             }
             catch (Exception ex)
             {

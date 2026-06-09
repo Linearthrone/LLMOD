@@ -1,3 +1,4 @@
+using System.Configuration;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -6,9 +7,17 @@ using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Events;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Services.Autonomy;
 
 namespace HouseVictoria.App.Screens.Trays
 {
+    public enum VitalsDrawerCollapseState
+    {
+        Handle,
+        Pulse,
+        Open
+    }
+
     public class CognitionVitalsDrawerViewModel : ObservableObject, IDisposable
     {
         private readonly System.Windows.Controls.Border _drawerPanel;
@@ -17,24 +26,31 @@ namespace HouseVictoria.App.Screens.Trays
         private readonly IAutonomyService? _autonomyService;
         private readonly ITradingService? _tradingService;
         private readonly IPersonaContext? _personaContext;
+        private readonly AppConfig? _appConfig;
         private DateTime _lastTradingVitalsPollUtc = DateTime.MinValue;
-        private bool _isDrawerOpen;
-        public bool IsDrawerOpen
+
+        private VitalsDrawerCollapseState _collapseState = VitalsDrawerCollapseState.Pulse;
+        public VitalsDrawerCollapseState CollapseState
         {
-            get => _isDrawerOpen;
+            get => _collapseState;
             set
             {
-                if (SetProperty(ref _isDrawerOpen, value))
-                    _drawerPanel.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+                if (!SetProperty(ref _collapseState, value))
+                    return;
+
+                _drawerPanel.Visibility = value == VitalsDrawerCollapseState.Open
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                OnPropertyChanged(nameof(IsHandleMode));
+                OnPropertyChanged(nameof(IsPulseMode));
+                OnPropertyChanged(nameof(IsOpenMode));
             }
         }
 
-        private string _activeAiName = "AI";
-        public string ActiveAiName
-        {
-            get => _activeAiName;
-            set => SetProperty(ref _activeAiName, value);
-        }
+        public bool IsHandleMode => CollapseState == VitalsDrawerCollapseState.Handle;
+        public bool IsPulseMode => CollapseState == VitalsDrawerCollapseState.Pulse;
+        public bool IsOpenMode => CollapseState == VitalsDrawerCollapseState.Open;
 
         private CognitionVitalRhythm _cognitionRhythm = CognitionVitalRhythm.Resting;
         public CognitionVitalRhythm CognitionRhythm
@@ -71,11 +87,25 @@ namespace HouseVictoria.App.Screens.Trays
             set => SetProperty(ref _cognitionRhythmDescription, value);
         }
 
+        private string _autonomyLevelLabel = "Mid";
+        public string AutonomyLevelLabel
+        {
+            get => _autonomyLevelLabel;
+            set => SetProperty(ref _autonomyLevelLabel, value);
+        }
+
         private string _autonomyStatusText = "Stopped";
         public string AutonomyStatusText
         {
             get => _autonomyStatusText;
             set => SetProperty(ref _autonomyStatusText, value);
+        }
+
+        private string _autonomySuggestion = string.Empty;
+        public string AutonomySuggestion
+        {
+            get => _autonomySuggestion;
+            set => SetProperty(ref _autonomySuggestion, value);
         }
 
         private string _currentActivityDescription = "No activity yet";
@@ -106,7 +136,9 @@ namespace HouseVictoria.App.Screens.Trays
             set => SetProperty(ref _previousActivityDuration, value);
         }
 
-        public ICommand ToggleDrawerCommand { get; }
+        public ICommand ExpandFromHandleCommand { get; }
+        public ICommand CycleAutonomyLevelCommand { get; }
+        public ICommand ApplyAutonomySuggestionCommand { get; }
 
         public CognitionVitalsDrawerViewModel(System.Windows.Controls.Border drawerPanel)
         {
@@ -115,6 +147,7 @@ namespace HouseVictoria.App.Screens.Trays
 
             try
             {
+                _appConfig = App.GetService<AppConfig>();
                 _autonomyService = App.GetService<IAutonomyService>();
                 _tradingService = App.GetService<ITradingService>();
                 _personaContext = App.GetService<IPersonaContext>();
@@ -122,13 +155,17 @@ namespace HouseVictoria.App.Screens.Trays
                 if (_autonomyService != null)
                 {
                     _autonomyService.VitalsChanged += OnAutonomyVitalsChanged;
-                    RunOnUiThread(() => ApplyVitals(_autonomyService.GetVitals()));
+                    _autonomyService.AutonomyLevelChanged += OnAutonomyLevelChanged;
+                    RunOnUiThread(() =>
+                    {
+                        ApplyVitals(_autonomyService.GetVitals());
+                        RefreshAutonomyLevel();
+                        AutonomySuggestion = _autonomyService.GetUserGuidanceSuggestion() ?? string.Empty;
+                    });
                 }
-
-                if (_personaContext != null)
+                else if (_appConfig != null)
                 {
-                    _personaContext.PrimaryChanged += OnPrimaryPersonaChanged;
-                    _ = RefreshActiveAiNameAsync();
+                    RefreshAutonomyLevel();
                 }
             }
             catch (Exception ex)
@@ -136,13 +173,22 @@ namespace HouseVictoria.App.Screens.Trays
                 System.Diagnostics.Debug.WriteLine($"CognitionVitalsDrawer: service init failed: {ex.Message}");
             }
 
-            ToggleDrawerCommand = new RelayCommand(() => IsDrawerOpen = !IsDrawerOpen);
+            ExpandFromHandleCommand = new RelayCommand(() => CollapseState = VitalsDrawerCollapseState.Pulse);
+            CycleAutonomyLevelCommand = new RelayCommand(() => _ = CycleAutonomyLevelAsync());
+            ApplyAutonomySuggestionCommand = new RelayCommand(ApplyAutonomySuggestion);
+
             _drawerPanel.Visibility = Visibility.Collapsed;
 
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _refreshTimer.Tick += (_, _) => RefreshLiveFields();
             _refreshTimer.Start();
         }
+
+        public void CollapseToHandle() => CollapseState = VitalsDrawerCollapseState.Handle;
+
+        public void OpenDrawer() => CollapseState = VitalsDrawerCollapseState.Open;
+
+        public void CollapseToPulse() => CollapseState = VitalsDrawerCollapseState.Pulse;
 
         public async Task PollTradingVitalsAsync()
         {
@@ -176,28 +222,55 @@ namespace HouseVictoria.App.Screens.Trays
             }
         }
 
-        private void OnAutonomyVitalsChanged(object? sender, CognitionVitalsChangedEventArgs e) =>
-            RunOnUiThread(() => ApplyVitals(e.Vitals));
-
-        private void OnPrimaryPersonaChanged(object? sender, PersonaChangedEvent e) =>
-            RunOnUiThread(() => _ = RefreshActiveAiNameAsync());
-
-        private async Task RefreshActiveAiNameAsync()
+        private async Task CycleAutonomyLevelAsync()
         {
-            if (_personaContext == null)
+            if (_autonomyService == null || _appConfig == null)
                 return;
 
             try
             {
-                var contact = await _personaContext.GetPrimaryAsync().ConfigureAwait(false);
-                var name = contact?.Name?.Trim();
-                RunOnUiThread(() => ActiveAiName = string.IsNullOrWhiteSpace(name) ? "AI" : name);
+                var next = AutonomyLevelProfile.Cycle(_autonomyService.GetAutonomyLevel());
+                await _autonomyService.SetAutonomyLevelAsync(next).ConfigureAwait(true);
+                _appConfig.AutonomyLevel = next;
+                PersistAutonomyLevel(next);
+                RunOnUiThread(RefreshAutonomyLevel);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"CognitionVitalsDrawer persona: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Cycle autonomy level: {ex.Message}");
             }
         }
+
+        private void ApplyAutonomySuggestion()
+        {
+            _autonomyService?.SetUserGuidanceSuggestion(AutonomySuggestion);
+        }
+
+        private static void PersistAutonomyLevel(AutonomyLevel level)
+        {
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                var settings = config.AppSettings.Settings;
+                if (settings["AutonomyLevel"] == null)
+                    settings.Add("AutonomyLevel", level.ToString());
+                else
+                    settings["AutonomyLevel"].Value = level.ToString();
+
+                config.Save(ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection("appSettings");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Persist autonomy level: {ex.Message}");
+            }
+        }
+
+        private void OnAutonomyVitalsChanged(object? sender, CognitionVitalsChangedEventArgs e) =>
+            RunOnUiThread(() => ApplyVitals(e.Vitals));
+
+        private void OnAutonomyLevelChanged(object? sender, EventArgs e) =>
+            RunOnUiThread(RefreshAutonomyLevel);
 
         private void RefreshLiveFields()
         {
@@ -212,6 +285,12 @@ namespace HouseVictoria.App.Screens.Trays
             {
                 System.Diagnostics.Debug.WriteLine($"Cognition vitals refresh: {ex.Message}");
             }
+        }
+
+        private void RefreshAutonomyLevel()
+        {
+            var level = _autonomyService?.GetAutonomyLevel() ?? _appConfig?.AutonomyLevel ?? AutonomyLevel.Mid;
+            AutonomyLevelLabel = AutonomyLevelProfile.DisplayLabel(level);
         }
 
         private void RunOnUiThread(Action action)
@@ -229,7 +308,11 @@ namespace HouseVictoria.App.Screens.Trays
             CognitionIntensity = vitals.Intensity;
             CognitionWaveColorHex = vitals.WaveColorHex;
             CognitionRhythmDescription = string.IsNullOrWhiteSpace(vitals.Label) ? "Present" : vitals.Label;
-            AutonomyStatusText = vitals.AutonomyRunning ? "Running" : "Stopped";
+
+            var levelLabel = AutonomyLevelLabel;
+            AutonomyStatusText = vitals.AutonomyRunning
+                ? $"{levelLabel} · Running"
+                : levelLabel == "Off" ? "Off" : $"{levelLabel} · Stopped";
 
             CurrentActivityDescription = string.IsNullOrWhiteSpace(vitals.LastActivitySummary)
                 ? "No activity yet"
@@ -273,9 +356,10 @@ namespace HouseVictoria.App.Screens.Trays
         {
             _refreshTimer.Stop();
             if (_autonomyService != null)
+            {
                 _autonomyService.VitalsChanged -= OnAutonomyVitalsChanged;
-            if (_personaContext != null)
-                _personaContext.PrimaryChanged -= OnPrimaryPersonaChanged;
+                _autonomyService.AutonomyLevelChanged -= OnAutonomyLevelChanged;
+            }
         }
     }
 }

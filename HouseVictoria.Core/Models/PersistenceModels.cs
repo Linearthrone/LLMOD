@@ -179,6 +179,8 @@ namespace HouseVictoria.Core.Models
 
         // Autonomy (background agent loop)
         public bool EnableAutonomy { get; set; } = true;
+        /// <summary>Runtime autonomy intensity (Off / Low / Mid / Full).</summary>
+        public AutonomyLevel AutonomyLevel { get; set; } = AutonomyLevel.Mid;
         /// <summary>Seconds between autonomy ticks (perceive / decide / act).</summary>
         public int AutonomyTickIntervalSeconds { get; set; } = 90;
         /// <summary>Minutes without user chat before idle activities run.</summary>

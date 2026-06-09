@@ -206,7 +206,7 @@ set "COMFYUI_LOG=%SCRIPT_DIR%\Media\comfyui.log"
 set "COMFYUI_STARTED=0"
 if defined COMFYUI_PORTABLE_PATH (
     echo Starting ComfyUI ^(portable^)...
-    REM Ensure D:\ComfyUI\models is loaded as extra models (copy config to ComfyUI root)
+    REM Ensure D:\ComfyUI\models and V:\models are loaded as extra models (copy config to ComfyUI root)
     if exist "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" (
         copy /Y "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" "%COMFYUI_PORTABLE_PATH%\extra_model_paths.yaml" >nul 2>&1
     )
@@ -260,7 +260,7 @@ if "!COMFYUI_STARTED!" == "0" (
             REM Start-Process detaches from this console so the Electron/Python backend does not flood this terminal
             powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%LOCALAPPDATA%\Programs\ComfyUI\ComfyUI.exe' -WorkingDirectory '%LOCALAPPDATA%\Programs\ComfyUI'"
         ) else (
-            REM Ensure D:\ComfyUI\models is loaded as extra models
+            REM Ensure D:\ComfyUI\models and V:\models are loaded as extra models
             if exist "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" (
                 copy /Y "%SCRIPT_DIR%\extra_model_paths_d_comfyui.yaml" "!COMFYUI_PATH!\extra_model_paths.yaml" >nul 2>&1
             )

@@ -1,5 +1,14 @@
 namespace HouseVictoria.Core.Models
 {
+    /// <summary>Runtime autonomy intensity — cycles from the vitals drawer.</summary>
+    public enum AutonomyLevel
+    {
+        Off,
+        Low,
+        Mid,
+        Full
+    }
+
     /// <summary>ECG-style cognition rhythm — drives pulse rate and waveform shape in the UI.</summary>
     public enum CognitionVitalRhythm
     {
@@ -159,6 +168,9 @@ namespace HouseVictoria.Core.Models
 
         // Decision-failure backoff.
         public int ConsecutiveDecisionFailures { get; set; }
+
+        /// <summary>User-provided nudge when autonomy seems stuck or fixated.</summary>
+        public string? UserGuidanceSuggestion { get; set; }
     }
 
     /// <summary>LLM decision payload for one autonomy tick.</summary>

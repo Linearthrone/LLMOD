@@ -179,7 +179,7 @@ namespace HouseVictoria.App
             {
                 var autonomy = ServiceProvider?.GetService<IAutonomyService>();
                 var appConfig = ServiceProvider?.GetService<AppConfig>();
-                if (autonomy == null || appConfig == null || !appConfig.EnableAutonomy)
+                if (autonomy == null || appConfig == null || !appConfig.EnableAutonomy || appConfig.AutonomyLevel == AutonomyLevel.Off)
                     return;
 
                 _ = Task.Run(async () =>
@@ -326,6 +326,11 @@ namespace HouseVictoria.App
                     sp.GetRequiredService<IPersistenceService>(),
                     sp.GetRequiredService<AppConfig>(),
                     sp.GetService<IEventAggregator>()));
+            services.AddSingleton<IPersonaBackupService>(sp =>
+                new HouseVictoria.Services.Persona.PersonaBackupService(
+                    sp.GetRequiredService<DatabasePersistenceService>(),
+                    sp.GetRequiredService<IMemoryService>(),
+                    sp.GetRequiredService<AppConfig>()));
             services.AddSingleton<IFileGenerationService>(sp =>
             {
                 var appConfig = sp.GetService<AppConfig>();
@@ -524,6 +529,9 @@ namespace HouseVictoria.App
                 RemoteCompanionListenOnLan = bool.TryParse(config["RemoteCompanionListenOnLan"], out var rclan) && rclan,
                 RemoteCompanionNotifyUnreal = bool.TryParse(config["RemoteCompanionNotifyUnreal"], out var rcnu) && rcnu,
                 EnableAutonomy = !bool.TryParse(config["EnableAutonomy"], out var enableAutonomy) || enableAutonomy,
+                AutonomyLevel = Enum.TryParse<AutonomyLevel>(config["AutonomyLevel"], true, out var autonomyLevel)
+                    ? autonomyLevel
+                    : AutonomyLevel.Mid,
                 AutonomyTickIntervalSeconds = int.TryParse(config["AutonomyTickIntervalSeconds"], out var ati) && ati >= 30 ? ati : 90,
                 AutonomyMinIdleMinutes = int.TryParse(config["AutonomyMinIdleMinutes"], out var ami) && ami >= 1 ? ami : 2,
                 AutonomyHighPriorityThreshold = int.TryParse(config["AutonomyHighPriorityThreshold"], out var ahp) && ahp >= 1 ? ahp : 7,
