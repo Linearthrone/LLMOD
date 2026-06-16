@@ -479,9 +479,9 @@ namespace HouseVictoria.Services.Autonomy
                 - **External Sources**: cite actual documentation, papers, or platforms (MetaTrader docs, academic sources, etc.). Do NOT cite your own prior journal files as primary sources.
                 - **Live Execution (optional)**: to request a real demo trade through the MT4 bridge, include a fenced block exactly like:
                   ```trade
-                  {"Symbol":"EURUSD","Type":0,"Volume":0.01}
+                  {"Symbol":"EURUSD","Type":0,"Volume":0.01,"StopLoss":1.0830,"TakeProfit":1.0900}
                   ```
-                  Type 0 = buy, 1 = sell. Use small volume (0.01). Do NOT claim a trade executed unless this block is present and the bridge confirms it.
+                  Type 0 = buy, 1 = sell. **StopLoss is mandatory** — set it ~20 pips from current bid/ask using live quotes (never copy placeholder prices). Use small volume (0.01). Do NOT claim a trade executed unless this block is present and the bridge confirms it.
                 """
                 : """
 
@@ -811,7 +811,7 @@ namespace HouseVictoria.Services.Autonomy
                 Reply with ONLY a JSON object (no markdown):
                 {"mode":"priority|idle|wait","activity":"project|art|research|reflect|environment|trade","title":"short title","detail":"concrete prompt or notes","projectId":"id or empty","reason":"why this choice"}
 
-                For activity "trade", put a JSON trade request in detail, e.g. {"Symbol":"EURUSD","Type":0,"Volume":0.01}. Only choose "trade" when the MT4 bridge should place a real demo order now.
+                For activity "trade", put ONLY a raw JSON trade request in detail (no prose). StopLoss is mandatory — compute it ~20 pips from the current bid/ask (never copy example prices). Only choose "trade" when the MT4 bridge should place a real demo order now.
                 For activity "backtest", put a JSON backtest request in detail (same shape as the ```backtest block).
                 """;
 
@@ -1531,7 +1531,8 @@ namespace HouseVictoria.Services.Autonomy
 
             var request = Mt4TradeBridgeHelper.TryParseTradeRequest(decision.Detail)
                 ?? throw new InvalidOperationException(
-                    "Trade decision detail must contain JSON, e.g. {\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01}");
+                    "Trade decision detail must contain JSON, e.g. {\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01,\"StopLoss\":1.0830}. " +
+                    "Put ONLY the trade JSON in detail (no prose). StopLoss is required by the MT4 bridge.");
 
             var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
             if (!status.IsConnected || !status.IsBridgeActive)
@@ -1593,11 +1594,29 @@ namespace HouseVictoria.Services.Autonomy
                 toProcess.Select(a => $"- [{a.AlertType}] {a.Message}"));
 
             var quotes = new List<string>();
+            double exampleBid = 0;
+            double exampleAsk = 0;
             foreach (var symbol in _marketWatch.WatchSymbols.Take(20))
             {
                 var q = await _tradingService.GetMarketDataAsync(symbol).ConfigureAwait(false);
                 if (q != null)
+                {
                     quotes.Add($"{symbol}: bid={q.Bid:F5} ask={q.Ask:F5} spread={(q.Ask - q.Bid):F5}");
+                    if (exampleBid <= 0 && symbol.Equals("EURUSD", StringComparison.OrdinalIgnoreCase))
+                    {
+                        exampleBid = q.Bid;
+                        exampleAsk = q.Ask;
+                    }
+                }
+            }
+            if (exampleBid <= 0 && quotes.Count > 0)
+            {
+                var first = await _tradingService.GetMarketDataAsync(_marketWatch.WatchSymbols.First()).ConfigureAwait(false);
+                if (first != null)
+                {
+                    exampleBid = first.Bid;
+                    exampleAsk = first.Ask;
+                }
             }
 
             var allProjects = await _projects.GetAllProjectsAsync().ConfigureAwait(false);
@@ -1613,6 +1632,8 @@ namespace HouseVictoria.Services.Autonomy
                 ? $"\n\n**Technical signals** ({technicalAlerts.Count}): prioritize backtest with suggested strategy_type from alerts."
                 : string.Empty;
 
+            var tradeBlockExample = BuildTradeBlockExample(exampleBid, exampleAsk);
+
             var prompt = $"""
                 You are {contact.Name}, monitoring FX/CFD markets via the House Victoria MT4 bridge.
 
@@ -1625,7 +1646,10 @@ namespace HouseVictoria.Services.Autonomy
                 Review these moves across pairs. For each alert worth acting on:
                 1. State the setup (trend, mean-reversion, breakout) and timeframe.
                 2. If validation is needed, include a ```backtest``` JSON block for that symbol.
-                3. Only include a ```trade``` block if you want a small demo execution (0.01 lot).
+                3. Only include a ```trade``` block if you want a small demo execution (0.01 lot). **Every trade block MUST include StopLoss** (~20 pips from bid/ask), e.g.:
+                   ```trade
+                   {tradeBlockExample}
+                   ```
 
                 Do not claim trades ran without a trade block. Be concise (300-500 words).
                 """;
@@ -1725,30 +1749,95 @@ namespace HouseVictoria.Services.Autonomy
                 return result;
             }
 
-            var export = await _tradingService.ExportHistoricalDataAsync(
+            HistoricalExportResult? lastExport = null;
+
+            async Task<BacktestResult?> TryExportAndBacktestAsync(
+                string symbol,
+                TimeFrame timeFrame,
+                DateTime startDate,
+                DateTime endDate)
+            {
+                var export = await _tradingService.ExportHistoricalDataAsync(
+                    symbol,
+                    timeFrame,
+                    startDate,
+                    endDate,
+                    cancellationToken).ConfigureAwait(false);
+                lastExport = export;
+
+                if (!export.Success || export.BarsExported <= 0)
+                    return null;
+
+                var retryRequest = new BacktestRequest
+                {
+                    StrategyName = request.StrategyName,
+                    Symbol = request.Symbol,
+                    TimeFrame = timeFrame,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    InitialDeposit = request.InitialDeposit,
+                    LotSize = request.LotSize,
+                    StrategyParameters = new Dictionary<string, object>(request.StrategyParameters)
+                };
+
+                var retry = await _tradingService.RunBacktestAsync(retryRequest, cancellationToken).ConfigureAwait(false);
+                return retry.Success ? retry : null;
+            }
+
+            var success = await TryExportAndBacktestAsync(
                 request.Symbol,
                 request.TimeFrame,
                 request.StartDate,
-                request.EndDate,
-                cancellationToken).ConfigureAwait(false);
+                request.EndDate).ConfigureAwait(false);
+            if (success != null)
+                return success;
 
-            if (!export.Success || export.BarsExported <= 0)
-                return result;
+            // Shorter window — MT4 often has recent bars but not full 6-month history.
+            var shortStart = DateTime.UtcNow.AddDays(-14);
+            success = await TryExportAndBacktestAsync(
+                request.Symbol,
+                request.TimeFrame,
+                shortStart,
+                request.EndDate).ConfigureAwait(false);
+            if (success != null)
+                return success;
 
-            return await _tradingService.RunBacktestAsync(request, cancellationToken).ConfigureAwait(false);
+            // Intraday timeframes for scalp/intraday projects.
+            foreach (var tf in new[] { TimeFrame.M15, TimeFrame.M5, TimeFrame.M1, TimeFrame.H1 })
+            {
+                if (tf == request.TimeFrame)
+                    continue;
+
+                success = await TryExportAndBacktestAsync(
+                    request.Symbol,
+                    tf,
+                    shortStart,
+                    request.EndDate).ConfigureAwait(false);
+                if (success != null)
+                    return success;
+            }
+
+            if (lastExport != null && !string.IsNullOrWhiteSpace(lastExport.Message))
+            {
+                result.ErrorMessage =
+                    $"{result.ErrorMessage} Bridge export: {lastExport.Message}";
+            }
+
+            return result;
         }
 
         private static BacktestRequest BuildDefaultBacktestRequest(Project project, string note)
         {
             var symbol = InferSymbolFromText(project.Name, project.Description, note) ?? "EURUSD";
             var strategyType = InferStrategyTypeFromText(note);
+            var timeFrame = InferTimeFrameFromText(project.Description, note);
 
             return new BacktestRequest
             {
                 StrategyName = $"Auto-{SanitizeFileName(project.Name)}",
                 Symbol = symbol,
-                TimeFrame = TimeFrame.H1,
-                StartDate = DateTime.UtcNow.AddMonths(-6),
+                TimeFrame = timeFrame,
+                StartDate = DateTime.UtcNow.AddDays(-30),
                 EndDate = DateTime.UtcNow,
                 InitialDeposit = 10000,
                 LotSize = 0.01,
@@ -1759,6 +1848,29 @@ namespace HouseVictoria.Services.Autonomy
                     ["slow_period"] = 30
                 }
             };
+        }
+
+        private static TimeFrame InferTimeFrameFromText(params string?[] parts)
+        {
+            var text = string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p))).ToUpperInvariant();
+            if (text.Contains("M1", StringComparison.Ordinal) || text.Contains("1 MIN", StringComparison.Ordinal))
+                return TimeFrame.M1;
+            if (text.Contains("M5", StringComparison.Ordinal) || text.Contains("5 MIN", StringComparison.Ordinal))
+                return TimeFrame.M5;
+            if (text.Contains("M15", StringComparison.Ordinal) || text.Contains("15 MIN", StringComparison.Ordinal))
+                return TimeFrame.M15;
+            if (text.Contains("H4", StringComparison.Ordinal))
+                return TimeFrame.H4;
+            if (text.Contains("D1", StringComparison.Ordinal) || text.Contains("DAILY", StringComparison.Ordinal))
+                return TimeFrame.D1;
+            if (text.Contains("H1", StringComparison.Ordinal) || text.Contains("1HR", StringComparison.Ordinal) ||
+                text.Contains("1 HOUR", StringComparison.Ordinal))
+                return TimeFrame.H1;
+            if (text.Contains("INTRADAY", StringComparison.Ordinal) ||
+                text.Contains("SCALP", StringComparison.Ordinal))
+                return TimeFrame.M5;
+
+            return TimeFrame.M15;
         }
 
         private async Task ExecuteBacktestDecisionAsync(
@@ -1821,6 +1933,16 @@ namespace HouseVictoria.Services.Autonomy
             if (lower.Contains("breakout", StringComparison.Ordinal) || lower.Contains("donchian", StringComparison.Ordinal))
                 return "breakout";
             return "ma_crossover";
+        }
+
+        private static string BuildTradeBlockExample(double bid, double ask)
+        {
+            if (bid <= 0 || ask <= 0)
+                return """{"Symbol":"EURUSD","Type":0,"Volume":0.01,"StopLoss":"<bid minus 20 pips>","TakeProfit":"<ask plus 40 pips>"}""";
+
+            var sl = Math.Round(bid - 0.0020, 5);
+            var tp = Math.Round(ask + 0.0040, 5);
+            return $$"""{"Symbol":"EURUSD","Type":0,"Volume":0.01,"StopLoss":{{sl}},"TakeProfit":{{tp}}}""";
         }
 
         private static bool ContainsTradingKeywords(params string?[] parts)

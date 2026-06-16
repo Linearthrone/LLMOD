@@ -22,18 +22,27 @@
 
 ## Recommended option A — Tailscale (or equivalent mesh VPN)
 
-**When to use:** You want phone ↔ PC connectivity with **minimal public DNS** exposure; both devices run Tailscale.
+**When to use:** You want phone ↔ PC connectivity with **minimal public DNS** exposure; both devices run Tailscale. **Personal plan is free** (no subscription required for homelab use).
 
-**Outline:**
+**Quick setup (loopback + `tailscale serve` — recommended):**
 
-1. Install Tailscale on the **Windows PC** and **phone**; sign in to the same tailnet (or use ACLs for device sharing).
-2. Confirm the PC’s **Tailscale IP** (e.g. `100.x.y.z`) — from the Tailscale admin console or `tailscale status` on the PC.
-3. Keep **House Victoria** bound to **loopback**: set `RemoteCompanionListenOnLan` = **false** so Kestrel listens on `127.0.0.1:17890` only.
-4. From the **phone** (Wi-Fi or cellular, as long as Tailscale is on), open a browser or HTTP client and call:
-   - `http://127.0.0.1:17890` is **not** used on the phone — use **`http://<tailscale-ip>:17890/api/remote/v1/health`** (or MagicDNS hostname if configured).
-5. **Firewall on Windows:** With **loopback-only** bind, you **do not** need an inbound rule for port 17890 on the LAN interface; Tailscale reaches the stack per Tailscale’s own routing. If you previously added rules for 17890, remove or restrict them.
+1. Install Tailscale on **Windows PC** and **phone**; sign in to the **same tailnet**.
+2. Keep **`RemoteCompanionListenOnLan` = false** (Kestrel on `127.0.0.1:17890` only).
+3. On the PC, run **`scripts/Setup-TailscaleRemoteCompanion.ps1`** (or manually: `tailscale serve --bg 17890`). This proxies **HTTPS on your MagicDNS hostname** to `http://127.0.0.1:17890`.
+4. In the Android app, set **Base URL** to `https://<your-pc-hostname>.<tailnet>.ts.net` (no port suffix). Use the same **API token** as House Victoria Settings.
+5. Test from the phone (Wi‑Fi or cellular, Tailscale on): **Check Health**, then a chat message.
 
-**Operational note:** Tailscale ACLs can further restrict which devices may hit which ports — use them for defense in depth.
+**Why `tailscale serve`?** With loopback-only bind, nothing listens on the Tailscale IP (`100.x.y.z`). Direct `http://100.x.y.z:17890` will **fail** unless you enable **Listen on LAN** (`0.0.0.0`). `tailscale serve` keeps loopback binding and adds HTTPS on the tailnet.
+
+**Alternative (direct Tailscale IP, HTTP):**
+
+1. Set **`RemoteCompanionListenOnLan` = true** (bind `0.0.0.0:17890`).
+2. Restrict Windows Firewall to your tailnet if possible; avoid exposing 17890 to the whole LAN without need.
+3. Phone Base URL: `http://<tailscale-ip>:17890` (from `tailscale status` on the PC).
+
+**Firewall:** With loopback + `tailscale serve`, you do **not** need an inbound Windows rule for port 17890.
+
+**Operational note:** Tailscale ACLs can further restrict which devices may reach Serve endpoints — use them for defense in depth.
 
 ---
 
@@ -117,7 +126,8 @@ Use this lane for `AndroidRemoteCompanion/` and QA validation.
 
 ### 2) Choose Android base URL
 
-- **Tailscale (mesh):** `http://<tailscale-ip>:17890`
+- **Tailscale + serve (recommended, loopback bind):** `https://<pc-hostname>.<tailnet>.ts.net` — run `scripts/Setup-TailscaleRemoteCompanion.ps1` on the PC first
+- **Tailscale direct IP (LAN bind only):** `http://<tailscale-ip>:17890`
 - **Cloudflare Tunnel (recommended internet path):** `https://<your-hostname>`
 - **LAN fallback (only with strict firewall + LAN bind):** `http://<pc-lan-ip>:17890`
 
@@ -160,6 +170,7 @@ In Android app settings, enter the base URL only (no trailing endpoint path). Th
 ## References in repo
 
 - API host: `HouseVictoria.App/RemoteCompanion/RemoteCompanionWebHost.cs`
+- **Tailscale setup script:** `scripts/Setup-TailscaleRemoteCompanion.ps1`
 - Config fields: `HouseVictoria.Core/Models/PersistenceModels.cs` (`RemoteCompanion*`)
 - **QA smoke harness (reads `HouseVictoria.App/App.config`):** `scripts/Verify-HouseVictoriaStack.ps1` — appends evidence to `tmpcode/qa-stack-evidence.txt`
 - **Cross-repo integration runbook (LLMOD + Unreal):** `Docs/CrossRepo_Integration_Runbook.md` (orchestrated validator: `scripts/Verify-CrossRepoIntegration.ps1`)

@@ -204,6 +204,7 @@ Here's how the AI can interact with MT4:
 - Check that "Allow automated trading" is enabled in MT4
 - Ensure you have sufficient margin
 - Check MT4's Journal tab for error messages
+- **"Rejected: stop-loss is required"** — the EA enforces `RequireStopLoss=true` (v1.11+). Every trade command must include `StopLoss` in the JSON payload. House Victoria auto-fills ~20 pips from current bid/ask when omitted, but the AI should always specify a stop in ```trade``` blocks and autonomy decisions.
 
 ## Security Notes
 

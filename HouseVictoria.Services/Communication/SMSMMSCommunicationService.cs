@@ -6,7 +6,6 @@ using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
 using HouseVictoria.Services.Persona;
-using NAudio.Wave;
 
 namespace HouseVictoria.Services.Communication
 {
@@ -24,7 +23,8 @@ namespace HouseVictoria.Services.Communication
         private readonly IPersistenceService? _persistenceService;
         private readonly IMemoryService? _memoryService;
         private readonly IFileGenerationService? _fileGenerationService;
-        private readonly ITTSService? _ttsService;
+        private readonly IVoiceCallEngineService? _voiceEngine;
+        private readonly AppConfig? _appConfig;
         private readonly PersonaChatContextBuilder _personaContextBuilder;
         /// <summary>Serialize image jobs — A2E/ComfyUI fail when many run at once.</summary>
         private readonly SemaphoreSlim _imageGenerationLock = new(1, 1);
@@ -35,13 +35,14 @@ namespace HouseVictoria.Services.Communication
         public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
         public event EventHandler<CallStateChangedEventArgs>? CallStateChanged;
 
-        public SMSMMSCommunicationService(IAIService? aiService = null, IPersistenceService? persistenceService = null, IMemoryService? memoryService = null, IFileGenerationService? fileGenerationService = null, ITTSService? ttsService = null, IJournalService? journalService = null)
+        public SMSMMSCommunicationService(IAIService? aiService = null, IPersistenceService? persistenceService = null, IMemoryService? memoryService = null, IFileGenerationService? fileGenerationService = null, IJournalService? journalService = null, IVoiceCallEngineService? voiceEngine = null, AppConfig? appConfig = null)
         {
             _aiService = aiService;
             _persistenceService = persistenceService;
             _memoryService = memoryService;
             _fileGenerationService = fileGenerationService;
-            _ttsService = ttsService;
+            _voiceEngine = voiceEngine;
+            _appConfig = appConfig;
             _personaContextBuilder = new PersonaChatContextBuilder(memoryService, journalService);
 
             // Subscribe to AI service events if available
@@ -1299,8 +1300,13 @@ namespace HouseVictoria.Services.Communication
 
                 System.Diagnostics.Debug.WriteLine($"Call started for conversation {conversation.Id}");
 
-                // Trigger AI voice greeting when call connects (fire-and-forget)
-                _ = TriggerCallGreetingAsync(conversation.Id, contactId);
+                // Streaming voice engine owns mic + speakers (VAD -> STT -> LLM -> TTS on-device).
+                var engineStarted = await TryStartVoiceEngineAsync(conversation.Id, contactId).ConfigureAwait(false);
+                if (!engineStarted)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "VoiceEngine: failed to start. Check VoiceEngineEnabled in App.config and that the Python venv exists.");
+                }
             }
             catch (Exception ex)
             {
@@ -1309,51 +1315,163 @@ namespace HouseVictoria.Services.Communication
         }
 
         /// <summary>
-        /// Sends a one-off prompt to the AI to greet the user when the call connects, then raises MessageReceived so TTS speaks it.
+        /// Launches the external streaming speech-to-speech engine for this call, configured
+        /// with the contact's persona (model, system prompt, voice). Returns true on success.
         /// </summary>
-        private async Task TriggerCallGreetingAsync(string conversationId, string contactId)
+        private async Task<bool> TryStartVoiceEngineAsync(string conversationId, string contactId)
         {
-            if (_aiService == null) return;
-            var contact = _contacts.FirstOrDefault(c => c.Id == contactId);
-            if (contact == null || contact.Type != ContactType.AI) return;
-            if (!_aiContacts.TryGetValue(contactId, out var aiContact)) return;
-
             try
             {
-                var greetingPrompt = "The user has just joined the call. Greet them in one short, natural sentence.";
-                var greetingContext = new List<ChatMessage>(); // Do not use main chat context so greeting is one-off
-                var response = await _aiService.SendMessageAsync(aiContact, greetingPrompt, greetingContext);
-                if (string.IsNullOrWhiteSpace(response)) return;
+                if (_voiceEngine == null || _appConfig == null || !_appConfig.VoiceEngineEnabled)
+                    return false;
 
-                var greetingMsg = new ConversationMessage
+                var aiContact = await ResolveAiContactForChatAsync(contactId).ConfigureAwait(false);
+                if (aiContact == null || string.IsNullOrWhiteSpace(aiContact.ModelName))
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    System.Diagnostics.Debug.WriteLine("VoiceEngine: no usable AI contact/model; using legacy path.");
+                    return false;
+                }
+
+                var withIdentity = HouseVictoria.Services.Persona.PersonaPromptComposer.WithIdentity(aiContact);
+                const string voiceCallStyle =
+                    "\n\nThis is a live voice call. Reply in one or two short, spoken sentences. " +
+                    "Start your reply with a brief natural filler like \"Umm,\" \"So,\" or \"Well,\". " +
+                    "Speak in the first person and sound conversational. " +
+                    "Do not use markdown, bullet points, emojis, or stage directions.";
+                var systemPrompt = (withIdentity.SystemPrompt ?? string.Empty) + voiceCallStyle;
+
+                // Decide the LLM backend the same way text chat does (mirrors FallbackAIService):
+                // a Hermes-primary house persona routes through Hermes; OpenAI-style endpoints
+                // (Hermes / LM Studio / Anything LLM) use /v1/chat/completions; everything else
+                // uses Ollama's native /api/chat.
+                string backend, chatUrl, model;
+                string? apiKey = null;
+
+                if (ShouldUseHermesForVoice(aiContact))
+                {
+                    backend = "openai";
+                    var hermes = string.IsNullOrWhiteSpace(_appConfig?.HermesEndpoint)
+                        ? "http://127.0.0.1:8642/v1"
+                        : _appConfig!.HermesEndpoint.Trim().TrimEnd('/');
+                    if (!hermes.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+                        hermes += "/v1";
+                    chatUrl = hermes + "/chat/completions";
+                    model = string.IsNullOrWhiteSpace(_appConfig?.HermesModelName) ? "hermes-agent" : _appConfig!.HermesModelName;
+                    apiKey = _appConfig?.HermesApiKey;
+                }
+                else
+                {
+                    var baseEndpoint = string.IsNullOrWhiteSpace(aiContact.ServerEndpoint)
+                        ? (string.IsNullOrWhiteSpace(_appConfig?.OllamaEndpoint) ? "http://localhost:11434" : _appConfig!.OllamaEndpoint)
+                        : aiContact.ServerEndpoint;
+                    baseEndpoint = baseEndpoint.Trim().TrimEnd('/');
+
+                    if (IsOpenAiEndpoint(baseEndpoint))
+                    {
+                        backend = "openai";
+                        chatUrl = baseEndpoint.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase)
+                            ? baseEndpoint
+                            : baseEndpoint + "/chat/completions";
+                    }
+                    else
+                    {
+                        backend = "ollama";
+                        chatUrl = baseEndpoint.EndsWith("/api/chat", StringComparison.OrdinalIgnoreCase)
+                            ? baseEndpoint
+                            : baseEndpoint + "/api/chat";
+                    }
+                    model = aiContact.ModelName;
+                }
+
+                var session = new VoiceCallEngineSession
+                {
                     ConversationId = conversationId,
-                    Content = response,
-                    Direction = MessageDirection.Incoming,
-                    Type = MessageType.Text,
-                    Timestamp = DateTime.Now
+                    Model = model,
+                    Backend = backend,
+                    OllamaChatUrl = chatUrl,
+                    ApiKey = apiKey,
+                    SystemPrompt = systemPrompt,
+                    Voice = ResolveEngineVoice(aiContact),
+                    Speed = aiContact.AvatarVoiceSpeed > 0 ? aiContact.AvatarVoiceSpeed : 1.2,
+                    Temperature = aiContact.Temperature > 0 ? aiContact.Temperature : 0.9
                 };
-                if (!_messages.ContainsKey(conversationId))
-                    _messages[conversationId] = new List<ConversationMessage>();
-                if (!_messages[conversationId].Any(m => m.Id == greetingMsg.Id))
-                    _messages[conversationId].Add(greetingMsg);
-                var conv = _conversations.FirstOrDefault(c => c.Id == conversationId);
-                if (conv != null)
-                    conv.LastMessageAt = greetingMsg.Timestamp;
-                MessageReceived?.Invoke(this, new MessageReceivedEventArgs { Message = greetingMsg, ConversationId = conversationId });
-                System.Diagnostics.Debug.WriteLine($"Call greeting sent for conversation {conversationId}");
+                System.Diagnostics.Debug.WriteLine($"VoiceEngine: backend={backend}, url={chatUrl}, model={model}");
+
+                var started = await _voiceEngine.StartAsync(session).ConfigureAwait(false);
+                if (started)
+                    System.Diagnostics.Debug.WriteLine($"VoiceEngine: active for conversation {conversationId}");
+                return started;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error triggering call greeting: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"TryStartVoiceEngineAsync: {ex.Message}");
+                return false;
             }
+        }
+
+        /// <summary>
+        /// Picks a Kokoro voice for the engine. A persona's PiperVoiceId is normally a Piper
+        /// model name (e.g. en_US-amy-medium), so only reuse it when it matches the Kokoro id
+        /// pattern (e.g. af_nicole); otherwise fall back to the configured default.
+        /// </summary>
+        private string ResolveEngineVoice(AIContact aiContact)
+        {
+            var pv = aiContact.PiperVoiceId;
+            if (!string.IsNullOrWhiteSpace(pv) &&
+                System.Text.RegularExpressions.Regex.IsMatch(pv, "^[a-z]{2}_[a-z]+$"))
+            {
+                return pv;
+            }
+            return _appConfig?.VoiceEngineVoice ?? "af_nicole";
+        }
+
+        /// <summary>
+        /// Mirrors FallbackAIService.ShouldUseHermes: a per-persona "hermes" flag wins, otherwise
+        /// the primary house persona uses Hermes when Hermes is the configured primary LLM.
+        /// </summary>
+        private bool ShouldUseHermesForVoice(AIContact contact)
+        {
+            if (contact.AdditionalServers != null &&
+                contact.AdditionalServers.TryGetValue("hermes", out var flag))
+            {
+                if (string.Equals(flag, "true", StringComparison.OrdinalIgnoreCase)) return true;
+                if (string.Equals(flag, "false", StringComparison.OrdinalIgnoreCase)) return false;
+            }
+
+            var primary = (_appConfig?.PrimaryLLM ?? "ollama").Trim().ToLowerInvariant();
+            if (primary == "hermes")
+                return HouseVictoria.Services.Persona.PersonaPromptComposer.IsPrimaryPersona(contact);
+
+            return false;
+        }
+
+        /// <summary>
+        /// True when the endpoint speaks the OpenAI chat-completions protocol (LM Studio,
+        /// Anything LLM, or any URL exposing a /v1 base).
+        /// </summary>
+        private bool IsOpenAiEndpoint(string? endpoint)
+        {
+            var e = (endpoint ?? string.Empty).TrimEnd('/');
+            if (e.Length == 0) return false;
+            var lm = (_appConfig?.LmStudioEndpoint ?? "http://localhost:1234/v1").TrimEnd('/');
+            var allm = (_appConfig?.AnythingLLMEndpoint ?? "http://localhost:3001").TrimEnd('/');
+            return e.Equals(lm, StringComparison.OrdinalIgnoreCase)
+                || e.StartsWith("http://localhost:1234", StringComparison.OrdinalIgnoreCase)
+                || e.Equals(allm, StringComparison.OrdinalIgnoreCase)
+                || e.StartsWith("http://localhost:3001", StringComparison.OrdinalIgnoreCase)
+                || e.EndsWith("/v1", StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task EndVideoCallAsync(string conversationId)
         {
             try
             {
+                if (_voiceEngine != null && _voiceEngine.IsRunning &&
+                    string.Equals(_voiceEngine.ActiveConversationId, conversationId, StringComparison.Ordinal))
+                {
+                    await _voiceEngine.StopAsync().ConfigureAwait(false);
+                }
+
                 var conversation = _conversations.FirstOrDefault(c => c.Id == conversationId);
                 if (conversation != null)
                 {
@@ -1376,180 +1494,6 @@ namespace HouseVictoria.Services.Communication
             }
 
             await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Speaks a message using TTS during an active call
-        /// </summary>
-        public async Task SpeakMessageAsync(string conversationId, string text)
-        {
-            if (_ttsService == null)
-            {
-                System.Diagnostics.Debug.WriteLine("TTS: Service is not available (null)");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                System.Diagnostics.Debug.WriteLine("TTS: Text is empty, cannot synthesize speech");
-                return;
-            }
-
-            try
-            {
-                // Check if call is active
-                if (!_activeCalls.TryGetValue(conversationId, out var callState) || callState != CallState.Connected)
-                {
-                    System.Diagnostics.Debug.WriteLine($"TTS: Call is not active for conversation {conversationId} (state: {callState})");
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine($"TTS: Synthesizing speech for text: {text.Substring(0, Math.Min(50, text.Length))}...");
-
-                // Use AI contact's Piper voice if this conversation is with an AI contact
-                string? voice = null;
-                var conversation = _conversations.FirstOrDefault(c => c.Id == conversationId);
-                if (conversation != null && _aiContacts.TryGetValue(conversation.ContactId, out var aiContact) && !string.IsNullOrWhiteSpace(aiContact.PiperVoiceId))
-                    voice = aiContact.PiperVoiceId;
-
-                // Get audio data from TTS service
-                var audioData = await _ttsService.SynthesizeSpeechAsync(text, voice);
-                if (audioData == null || audioData.Length == 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("TTS: Service returned no audio data");
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine($"TTS: Received {audioData.Length} bytes of audio data");
-
-                // Save audio to temp file and play it
-                var tempPath = Path.Combine(Path.GetTempPath(), $"tts_{Guid.NewGuid()}.wav");
-                try
-                {
-                    await File.WriteAllBytesAsync(tempPath, audioData);
-                    System.Diagnostics.Debug.WriteLine($"TTS: Saved audio to temp file: {tempPath}");
-
-                    // Play audio using NAudio
-                    await PlayAudioFileAsync(tempPath);
-
-                    // Clean up temp file after a delay
-                    _ = Task.Delay(5000).ContinueWith(_ =>
-                    {
-                        try
-                        {
-                            if (File.Exists(tempPath))
-                            {
-                                File.Delete(tempPath);
-                                System.Diagnostics.Debug.WriteLine($"TTS: Cleaned up temp file: {tempPath}");
-                            }
-                        }
-                        catch (Exception deleteEx)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"TTS: Error deleting temp audio file: {deleteEx.Message}");
-                        }
-                    });
-                }
-                catch (Exception fileEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"TTS: Error writing or playing audio file: {fileEx.Message}\n{fileEx.StackTrace}");
-                    // Clean up on error
-                    try
-                    {
-                        if (File.Exists(tempPath))
-                            File.Delete(tempPath);
-                    }
-                    catch (Exception cleanupEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"TTS: Error during cleanup: {cleanupEx.Message}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"TTS: Error speaking message: {ex.Message}\n{ex.StackTrace}");
-            }
-        }
-
-        private async Task PlayAudioFileAsync(string filePath)
-        {
-            try
-            {
-                if (!File.Exists(filePath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"Audio file does not exist: {filePath}");
-                    return;
-                }
-
-                // Use AudioFileReader which handles WAV, MP3, and other common formats
-                WaveStream audioFile;
-                try
-                {
-                    audioFile = new AudioFileReader(filePath);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Failed to create audio reader: {ex.Message}");
-                    throw;
-                }
-
-                if (audioFile == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("Failed to create audio reader");
-                    return;
-                }
-
-                using (audioFile)
-                using (var outputDevice = new WaveOutEvent())
-                {
-                    try
-                    {
-                        outputDevice.Init(audioFile);
-                        outputDevice.Play();
-
-                        System.Diagnostics.Debug.WriteLine($"Playing audio file: {filePath}");
-
-                        // Wait for playback to complete with timeout (max 5 minutes so long messages finish)
-                        const int playbackTimeoutSeconds = 300;
-                        var timeout = DateTime.Now.AddSeconds(playbackTimeoutSeconds);
-                        while (outputDevice.PlaybackState == PlaybackState.Playing && DateTime.Now < timeout)
-                        {
-                            await Task.Delay(100);
-                        }
-
-                        // Stop playback if still playing after timeout
-                        if (outputDevice.PlaybackState == PlaybackState.Playing)
-                        {
-                            outputDevice.Stop();
-                            System.Diagnostics.Debug.WriteLine($"Audio playback timed out after {playbackTimeoutSeconds}s and was stopped");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("Audio playback completed successfully");
-                        }
-                    }
-                    finally
-                    {
-                        if (outputDevice.PlaybackState != PlaybackState.Stopped)
-                        {
-                            outputDevice.Stop();
-                        }
-                    }
-                }
-            }
-            catch (NAudio.MmException ex)
-            {
-                // Handle audio device errors
-                System.Diagnostics.Debug.WriteLine($"Audio device error: {ex.Message}");
-            }
-            catch (FormatException ex)
-            {
-                // Handle unsupported audio format
-                System.Diagnostics.Debug.WriteLine($"Unsupported audio format: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error playing audio: {ex.Message}\n{ex.StackTrace}");
-            }
         }
 
         public Task ShareDocumentAsync(string conversationId, string filePath)

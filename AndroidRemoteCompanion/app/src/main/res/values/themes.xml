@@ -1,4 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RemoteCompanion" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="Theme.RemoteCompanion" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/hv_primary</item>
+        <item name="colorPrimaryContainer">@color/hv_surface_elevated</item>
+        <item name="colorSecondary">@color/hv_accent</item>
+        <item name="colorSurface">@color/hv_surface</item>
+        <item name="android:colorBackground">@color/hv_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@drawable/bg_mesh</item>
+    </style>
+
+    <style name="Widget.RemoteCompanion.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="android:background">@android:color/transparent</item>
+        <item name="titleTextColor">@color/hv_text_primary</item>
+        <item name="subtitleTextColor">@color/hv_text_secondary</item>
+    </style>
+
+    <style name="Widget.RemoteCompanion.InputBar" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/hv_surface_elevated</item>
+        <item name="boxStrokeColor">@color/hv_bubble_stroke</item>
+        <item name="hintTextColor">@color/hv_text_muted</item>
+        <item name="android:textColorHint">@color/hv_text_muted</item>
+    </style>
+
+    <style name="TextAppearance.RemoteCompanion.Message" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/hv_text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineSpacingMultiplier">1.25</item>
+    </style>
+
+    <style name="TextAppearance.RemoteCompanion.Timestamp" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textColor">@color/hv_text_muted</item>
+        <item name="android:textSize">11sp</item>
+    </style>
 </resources>

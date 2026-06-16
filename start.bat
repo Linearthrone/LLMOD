@@ -5,9 +5,6 @@ REM House Victoria - start all services and the app. Run install.bat first if no
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 set "MCP_PATH=%SCRIPT_DIR%\MCPServer"
-set "PIPER_DATA=%SCRIPT_DIR%\Media\PiperVoices"
-set "PIPER_MODEL=en_US-amy-medium"
-set "KOKORO_PORT=8880"
 set "STT_PORT=8000"
 cd /d "%SCRIPT_DIR%"
 
@@ -108,58 +105,7 @@ if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
 )
 echo.
 
-REM --- Kokoro TTS (port 8880) ---
-REM kokoro-fastapi is NOT on PyPI; use Docker or a local clone (see https://github.com/remsky/Kokoro-FastAPI).
-echo Starting Kokoro TTS...
-netstat -an | findstr /C:":%KOKORO_PORT%" | findstr /C:"LISTENING" >nul 2>&1
-if not errorlevel 1 (
-    echo [INFO] Kokoro TTS already on port %KOKORO_PORT%. Skipping.
-) else (
-    set "KOKORO_STARTED=0"
-    where docker >nul 2>&1
-    if not errorlevel 1 (
-        echo [INFO] Starting Kokoro TTS via Docker...
-        start "Kokoro TTS" /B /D "%SCRIPT_DIR%" cmd /c "docker run --rm -p %KOKORO_PORT%:%KOKORO_PORT% ghcr.io/remsky/kokoro-fastapi-cpu:latest >> Media\kokoro.log 2>&1"
-        set "KOKORO_STARTED=1"
-    )
-    if "!KOKORO_STARTED!"=="0" (
-        set "KOKORO_CLONE=%SCRIPT_DIR%\Kokoro-FastAPI"
-        if exist "!KOKORO_CLONE!\start-cpu.ps1" (
-            echo [INFO] Starting Kokoro TTS from clone...
-            set "KOKORO_PS1=%SCRIPT_DIR%\.ps1 scripts\start-kokoro.ps1"
-            start "Kokoro TTS" /B /D "%SCRIPT_DIR%" powershell -NoProfile -ExecutionPolicy Bypass -File "!KOKORO_PS1!" -ScriptDir "%SCRIPT_DIR%" -KokoroCloneDir "!KOKORO_CLONE!" -Port %KOKORO_PORT%
-            set "KOKORO_STARTED=1"
-        )
-    )
-    if "!KOKORO_STARTED!"=="1" (
-        timeout /t 2 /nobreak >nul
-        echo [OK] Kokoro TTS - http://localhost:%KOKORO_PORT%
-    ) else (
-        echo [INFO] Kokoro TTS skipped. kokoro-fastapi is not on PyPI. Use: Docker ^(docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest^) or clone https://github.com/remsky/Kokoro-FastAPI and run start-cpu.ps1 from the clone.
-    )
-)
-echo.
-
-REM --- Piper TTS (port 5000) ---
-echo Starting Piper TTS...
-if not exist "%SCRIPT_DIR%\PiperServer\piper_server.py" (
-    echo [INFO] PiperServer\piper_server.py not found. Skipping.
-) else if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
-    echo [INFO] MCP venv missing. Run install.bat. Skipping Piper.
-) else (
-    netstat -an | findstr /C:":5000" | findstr /C:"LISTENING" >nul 2>&1
-    if not errorlevel 1 (
-        echo [INFO] Piper TTS already on port 5000. Skipping.
-    ) else (
-        if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
-        start "Piper TTS" /B /D "%SCRIPT_DIR%" cmd /c "%MCP_PATH%\.venv\Scripts\python.exe PiperServer\piper_server.py --model %PIPER_MODEL% --port 5000 --data-dir "%PIPER_DATA%" --debug >> Media\piper.log 2>&1"
-        timeout /t 2 /nobreak >nul
-        echo [OK] Piper TTS - http://localhost:5000
-    )
-)
-echo.
-
-REM --- STT (port 8000) ---
+REM --- STT (port 8000) — chat dictation + remote companion only; voice calls use the streaming engine ---
 echo Starting STT Server...
 if not exist "%SCRIPT_DIR%\STTServer\app.py" (
     echo [INFO] STTServer\app.py not found. Skipping.

@@ -909,6 +909,122 @@ def _apply_ticket_verification(
 
 
 
+DEFAULT_STOP_LOSS_PIPS = 20.0
+MIN_SANITY_STOP_PIPS = 2.0
+MAX_SANITY_STOP_PIPS = 500.0
+
+
+def _pip_size(symbol: str) -> float:
+    s = symbol.upper()
+    if "JPY" in s:
+        return 0.01
+    if s.startswith("XAU") or "GOLD" in s:
+        return 0.1
+    if s.startswith("XAG") or "SILVER" in s:
+        return 0.01
+    if any(x in s for x in ("US30", "US500", "NAS", "DAX", "UK100")):
+        return 1.0
+    return 0.0001
+
+
+def _infer_price_digits(price: float) -> int:
+    if price >= 10000:
+        return 1
+    if price >= 1000:
+        return 2
+    if price >= 100:
+        return 3
+    if price >= 10:
+        return 4
+    return 5
+
+
+def _default_stop_loss(symbol: str, trade_type: int, bid: float, ask: float, pips: float = DEFAULT_STOP_LOSS_PIPS) -> float:
+    pip = _pip_size(symbol)
+    distance = pips * pip
+    if trade_type == 1:
+        return round(ask + distance, _infer_price_digits(ask))
+    return round(bid - distance, _infer_price_digits(bid))
+
+
+def _is_valid_stop_loss(symbol: str, trade_type: int, stop_loss: float, bid: float, ask: float) -> tuple[bool, str]:
+    if stop_loss <= 0:
+        return False, "missing"
+    pip = _pip_size(symbol)
+    ref_price = bid if trade_type == 0 else ask
+    if trade_type == 0 and stop_loss >= ref_price:
+        return False, "buy SL must be below bid"
+    if trade_type == 1 and stop_loss <= ref_price:
+        return False, "sell SL must be above ask"
+    distance_pips = abs(ref_price - stop_loss) / pip
+    if distance_pips < MIN_SANITY_STOP_PIPS:
+        return False, f"too close ({distance_pips:.1f} pips)"
+    if distance_pips > MAX_SANITY_STOP_PIPS:
+        return False, f"too far ({distance_pips:.0f} pips)"
+    return True, ""
+
+
+def _is_valid_take_profit(symbol: str, trade_type: int, take_profit: float, bid: float, ask: float) -> tuple[bool, str]:
+    if take_profit <= 0:
+        return False, "missing"
+    pip = _pip_size(symbol)
+    ref_price = ask if trade_type == 0 else bid
+    if trade_type == 0 and take_profit <= ref_price:
+        return False, "buy TP must be above ask"
+    if trade_type == 1 and take_profit >= ref_price:
+        return False, "sell TP must be below bid"
+    distance_pips = abs(ref_price - take_profit) / pip
+    if distance_pips < MIN_SANITY_STOP_PIPS:
+        return False, f"too close ({distance_pips:.1f} pips)"
+    if distance_pips > MAX_SANITY_STOP_PIPS:
+        return False, f"too far ({distance_pips:.0f} pips)"
+    return True, ""
+
+
+def _sanitize_stops(
+    symbol: str,
+    trade_type: int,
+    stop_loss: Optional[float],
+    take_profit: Optional[float],
+    bid: Optional[float],
+    ask: Optional[float],
+) -> tuple[Optional[float], Optional[float], Optional[str]]:
+    """Correct stale AI stop-loss prices and drop invalid take-profit levels."""
+    if bid is None or ask is None or bid <= 0 or ask <= 0:
+        if stop_loss is None or float(stop_loss) <= 0:
+            return stop_loss, take_profit, None
+        return stop_loss, take_profit, None
+
+    bid_f = float(bid)
+    ask_f = float(ask)
+    notes: list[str] = []
+    sl = float(stop_loss) if stop_loss is not None else 0.0
+    tp = float(take_profit) if take_profit is not None else 0.0
+
+    sl_ok, sl_reason = _is_valid_stop_loss(symbol, trade_type, sl, bid_f, ask_f)
+    if not sl_ok:
+        old = sl if sl > 0 else None
+        sl = _default_stop_loss(symbol, trade_type, bid_f, ask_f)
+        notes.append(f"StopLoss corrected ({sl_reason}): {old} -> {sl:.5f}")
+
+    if tp > 0:
+        tp_ok, tp_reason = _is_valid_take_profit(symbol, trade_type, tp, bid_f, ask_f)
+        if not tp_ok:
+            notes.append(f"TakeProfit dropped ({tp_reason}): {tp:.5f}")
+            tp = 0.0
+
+    return sl, (tp if tp > 0 else None), ("; ".join(notes) if notes else None)
+
+
+def _attach_stop_corrections(result: dict[str, Any], corrections: Optional[str]) -> dict[str, Any]:
+    if corrections:
+        result["stop_corrections"] = corrections
+        msg = result.get("message")
+        if msg:
+            result["message"] = f"{msg} [{corrections}]"
+    return result
+
+
 def execute_trade(
 
     symbol: str,
@@ -952,6 +1068,42 @@ def execute_trade(
     if not symbol or volume <= 0:
 
         return {"success": False, "message": "symbol and positive volume are required"}
+
+
+
+    md = get_market_data(symbol, configured_path=configured_path)
+    bid = float(md["bid"]) if md.get("success") and md.get("bid") else None
+    ask = float(md["ask"]) if md.get("success") and md.get("ask") else None
+
+    stop_loss, take_profit, stop_corrections = _sanitize_stops(
+        symbol.upper(),
+        int(trade_type),
+        stop_loss,
+        take_profit,
+        bid,
+        ask,
+    )
+
+    if stop_loss is None or float(stop_loss) <= 0:
+
+        if bid is not None and ask is not None:
+            stop_loss = _default_stop_loss(symbol.upper(), int(trade_type), bid, ask)
+
+        if stop_loss is None or float(stop_loss) <= 0:
+
+            return {
+
+                "success": False,
+
+                "message": (
+
+                    "stop_loss is required (MT4 bridge RequireStopLoss=true). "
+
+                    "Pass stop_loss or ensure market data is available for auto-fill."
+
+                ),
+
+            }
 
 
 
@@ -1051,7 +1203,11 @@ def execute_trade(
 
             result["requested_symbol"] = base
 
-            return _apply_ticket_verification(result, paths["command_root"], verify_timeout_seconds)
+            return _apply_ticket_verification(
+                _attach_stop_corrections(result, stop_corrections),
+                paths["command_root"],
+                verify_timeout_seconds,
+            )
 
 
 
@@ -1077,7 +1233,11 @@ def execute_trade(
 
                     result["requested_symbol"] = base
 
-                    return _apply_ticket_verification(result, paths["command_root"], verify_timeout_seconds)
+                    return _apply_ticket_verification(
+                        _attach_stop_corrections(result, stop_corrections),
+                        paths["command_root"],
+                        verify_timeout_seconds,
+                    )
 
 
 

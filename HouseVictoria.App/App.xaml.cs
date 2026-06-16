@@ -369,40 +369,17 @@ namespace HouseVictoria.App
                     sp.GetRequiredService<OllamaAIService>(),
                     sp.GetRequiredService<HermesAIService>(),
                     sp.GetRequiredService<AppConfig>()));
-            // Register TTS Service
-            services.AddSingleton<HouseVictoria.Core.Interfaces.ITTSService>(sp =>
-            {
-                try
-                {
-                    var appConfig = sp.GetService<AppConfig>();
-                    var endpoint = appConfig?.TTSEndpoint ?? "http://localhost:8880";
-                    if (string.IsNullOrWhiteSpace(endpoint))
-                    {
-                        endpoint = "http://localhost:8880";
-                    }
-                    var piperDataDir = appConfig?.PiperDataDir;
-                    var piperDefaultVoice = appConfig?.PiperDefaultModel;
-                    var winFallback = appConfig?.UseWindowsTTSFallback ?? true;
-                    return new HouseVictoria.Services.TTS.TTSService(endpoint, useWindowsTTSFallback: winFallback, piperDataDir: piperDataDir, piperDefaultVoice: piperDefaultVoice);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error creating TTS service: {ex.Message}");
-                    // Return a service that will fail gracefully
-                    var appConfig = sp.GetService<AppConfig>();
-                    var winFallback = appConfig?.UseWindowsTTSFallback ?? true;
-                    return new HouseVictoria.Services.TTS.TTSService("http://localhost:8880", winFallback, appConfig?.PiperDataDir, appConfig?.PiperDefaultModel);
-                }
-            });
             // Register CommunicationService with AI service dependency
+            services.AddSingleton<IVoiceCallEngineService, HouseVictoria.Services.Voice.VoiceCallEngineService>();
             services.AddSingleton<ICommunicationService>(sp =>
                 new SMSMMSCommunicationService(
                     sp.GetService<IAIService>(),
                     sp.GetService<IPersistenceService>(),
                     sp.GetService<IMemoryService>(),
                     sp.GetService<IFileGenerationService>(),
-                    sp.GetService<HouseVictoria.Core.Interfaces.ITTSService>(),
-                    sp.GetService<IJournalService>()));
+                    sp.GetService<IJournalService>(),
+                    sp.GetService<IVoiceCallEngineService>(),
+                    sp.GetService<AppConfig>()));
             services.AddSingleton<IMCPService, MCPService>();
             services.AddSingleton<IProjectManagementService, HouseVictoria.Services.ProjectManagement.PersistentProjectManagementService>();
             services.AddSingleton<IVirtualEnvironmentService, UnrealEnvironmentService>();
@@ -550,7 +527,13 @@ namespace HouseVictoria.App
                 TradingWatchTechnicalEnabled = !bool.TryParse(config["TradingWatchTechnicalEnabled"], out var twte) || twte,
                 TradingWatchTechnicalIntervalSeconds = int.TryParse(config["TradingWatchTechnicalIntervalSeconds"], out var twtis) && twtis >= 60 ? twtis : 300,
                 TradingWatchTechnicalBarCount = int.TryParse(config["TradingWatchTechnicalBarCount"], out var twtbc) && twtbc >= 40 ? twtbc : 120,
-                TradingWatchProjectPriority = int.TryParse(config["TradingWatchProjectPriority"], out var twpp) && twpp >= 1 ? twpp : 9
+                TradingWatchProjectPriority = int.TryParse(config["TradingWatchProjectPriority"], out var twpp) && twpp >= 1 ? twpp : 9,
+                VoiceEngineEnabled = !bool.TryParse(config["VoiceEngineEnabled"], out var vee) || vee,
+                VoiceEngineDirectory = config["VoiceEngineDirectory"] ?? string.Empty,
+                VoiceEnginePython = config["VoiceEnginePython"] ?? string.Empty,
+                VoiceEngineScript = string.IsNullOrWhiteSpace(config["VoiceEngineScript"]) ? "speech_to_speech.py" : config["VoiceEngineScript"]!,
+                VoiceEngineVoice = string.IsNullOrWhiteSpace(config["VoiceEngineVoice"]) ? "af_nicole" : config["VoiceEngineVoice"]!,
+                VoiceEngineShowConsole = !bool.TryParse(config["VoiceEngineShowConsole"], out var vesc) || vesc
             };
 
             // Resolve relative paths to absolute paths
@@ -762,7 +745,7 @@ namespace HouseVictoria.App
                     }
                 }
 
-                // Stop SystemMonitorService servers (includes LocalTtsHttpHost and COVAS bridge)
+                // Stop SystemMonitorService servers (includes COVAS bridge)
                 var systemMonitorService = ServiceProvider?.GetService<ISystemMonitorService>();
                 if (systemMonitorService != null)
                 {

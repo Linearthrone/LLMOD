@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
@@ -103,6 +104,102 @@ namespace HouseVictoria.Services.RemoteCompanion
                 await TryNotifyUnrealAsync(userMessage.Trim(), reply).ConfigureAwait(false);
 
             return RemoteCompanionChatResult.Success(reply, conversationId);
+        }
+
+        public async Task<IReadOnlyList<RemoteContactSummary>> ListContactsAsync(CancellationToken cancellationToken = default)
+        {
+            Dictionary<string, AIContact> contacts;
+            try
+            {
+                contacts = await _database.GetAllAsync<AIContact>().ConfigureAwait(false);
+            }
+            catch
+            {
+                return Array.Empty<RemoteContactSummary>();
+            }
+
+            if (contacts.Count == 0)
+                return Array.Empty<RemoteContactSummary>();
+
+            var summaries = new List<RemoteContactSummary>(contacts.Count);
+            foreach (var contact in contacts.Values.OrderByDescending(c => c.LastUsedAt))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var conversationId = $"conv-{contact.Id}";
+                var messages = await _database.GetMessagesAsync(conversationId, 1).ConfigureAwait(false);
+                var last = messages.OrderByDescending(m => m.Timestamp).FirstOrDefault();
+                var preview = last?.Content;
+                if (!string.IsNullOrEmpty(preview) && preview.Length > 140)
+                    preview = preview[..140] + "…";
+
+                summaries.Add(new RemoteContactSummary
+                {
+                    Id = contact.Id,
+                    Name = contact.Name,
+                    Description = contact.Description,
+                    IsPrimary = contact.IsPrimaryAI,
+                    HasAvatar = HasAvatarFile(contact.AvatarUrl),
+                    LastMessagePreview = preview,
+                    LastMessageAt = last?.Timestamp ?? contact.LastUsedAt
+                });
+            }
+
+            return summaries;
+        }
+
+        public async Task<IReadOnlyList<RemoteMessageDto>> GetContactMessagesAsync(
+            string contactId,
+            int limit = 60,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(contactId))
+                return Array.Empty<RemoteMessageDto>();
+
+            var contact = await ResolveContactAsync(contactId).ConfigureAwait(false);
+            if (contact == null)
+                return Array.Empty<RemoteMessageDto>();
+
+            var conversationId = $"conv-{contact.Id}";
+            var messages = await _database.GetMessagesAsync(conversationId, Math.Clamp(limit, 1, 200))
+                .ConfigureAwait(false);
+
+            return messages
+                .Where(m => m.Type == MessageType.Text)
+                .OrderBy(m => m.Timestamp)
+                .Select(m => new RemoteMessageDto
+                {
+                    Id = m.Id,
+                    Role = m.Direction == MessageDirection.Outgoing ? "user" : "assistant",
+                    Content = m.Content,
+                    Timestamp = m.Timestamp
+                })
+                .ToList();
+        }
+
+        public async Task<(string Path, string ContentType)?> TryGetAvatarAsync(string contactId)
+        {
+            var contact = await ResolveContactAsync(contactId).ConfigureAwait(false);
+            if (contact == null || !HasAvatarFile(contact.AvatarUrl))
+                return null;
+
+            var path = contact.AvatarUrl!.Trim();
+            var contentType = GuessImageContentType(path);
+            return (path, contentType);
+        }
+
+        private static bool HasAvatarFile(string? avatarUrl) =>
+            !string.IsNullOrWhiteSpace(avatarUrl) && File.Exists(avatarUrl.Trim());
+
+        private static string GuessImageContentType(string path)
+        {
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            return ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                _ => "image/png"
+            };
         }
 
         public async Task<RemoteCompanionChatResult> ChatFromAudioAsync(byte[] audioBytes, string? contactIdOverride, CancellationToken cancellationToken = default)
@@ -216,6 +313,25 @@ namespace HouseVictoria.Services.RemoteCompanion
                 System.Diagnostics.Debug.WriteLine($"RemoteCompanionChatService: Unreal notify failed: {ex.Message}");
             }
         }
+    }
+
+    public sealed class RemoteContactSummary
+    {
+        public string Id { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public string? Description { get; init; }
+        public bool IsPrimary { get; init; }
+        public bool HasAvatar { get; init; }
+        public string? LastMessagePreview { get; init; }
+        public DateTime LastMessageAt { get; init; }
+    }
+
+    public sealed class RemoteMessageDto
+    {
+        public string Id { get; init; } = string.Empty;
+        public string Role { get; init; } = string.Empty;
+        public string Content { get; init; } = string.Empty;
+        public DateTime Timestamp { get; init; }
     }
 
     public sealed class RemoteCompanionChatResult

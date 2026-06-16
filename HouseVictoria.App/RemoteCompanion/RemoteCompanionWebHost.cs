@@ -53,7 +53,45 @@ namespace HouseVictoria.App.RemoteCompanion
             app.UseCors(static p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 
             app.MapGet("/api/remote/v1/health", () =>
-                Results.Json(new { ok = true, service = "house-victoria-remote", version = 1 }));
+                Results.Json(new { ok = true, service = "house-victoria-remote", version = 2 }));
+
+            app.MapGet("/api/remote/v1/contacts", async (HttpContext http, RemoteCompanionChatService chatService, CancellationToken ct) =>
+            {
+                if (!IsAuthorized(http, cfg))
+                    return Results.Json(new { error = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+
+                var contacts = await chatService.ListContactsAsync(ct).ConfigureAwait(false);
+                return Results.Json(new { contacts });
+            });
+
+            app.MapGet("/api/remote/v1/contacts/{contactId}/messages", async (
+                HttpContext http,
+                string contactId,
+                RemoteCompanionChatService chatService,
+                int? limit,
+                CancellationToken ct) =>
+            {
+                if (!IsAuthorized(http, cfg))
+                    return Results.Json(new { error = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+
+                var messages = await chatService.GetContactMessagesAsync(contactId, limit ?? 60, ct).ConfigureAwait(false);
+                return Results.Json(new { contactId, messages });
+            });
+
+            app.MapGet("/api/remote/v1/contacts/{contactId}/avatar", async (
+                HttpContext http,
+                string contactId,
+                RemoteCompanionChatService chatService) =>
+            {
+                if (!IsAuthorized(http, cfg))
+                    return Results.Json(new { error = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+
+                var avatar = await chatService.TryGetAvatarAsync(contactId).ConfigureAwait(false);
+                if (avatar == null)
+                    return Results.NotFound();
+
+                return Results.File(avatar.Value.Path, avatar.Value.ContentType);
+            });
 
             app.MapPost("/api/remote/v1/chat", async (HttpContext http, RemoteCompanionChatService chatService, CancellationToken ct) =>
             {
@@ -117,7 +155,8 @@ namespace HouseVictoria.App.RemoteCompanion
 
             var bind = cfg.RemoteCompanionListenOnLan ? "all interfaces" : "127.0.0.1";
             LoggingHelper.WriteToStartupLog(
-                $"Remote companion API listening on http://{bind}:{cfg.RemoteCompanionListenPort} (text: POST /api/remote/v1/chat, audio: POST /api/remote/v1/chat-audio).");
+                $"Remote companion API listening on http://{bind}:{cfg.RemoteCompanionListenPort} " +
+                $"(GET /api/remote/v1/contacts, GET .../messages, GET .../avatar, POST .../chat, POST .../chat-audio).");
         }
 
         private static bool IsAuthorized(HttpContext http, AppConfig cfg)

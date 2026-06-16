@@ -1020,6 +1020,7 @@
                                        Foreground="{StaticResource TextSecondaryBrush}" Padding="8" 
                                        Width="40" Height="40" Margin="0,0,4,0"
                                        Command="{Binding ToggleAudioRecordingCommand}"
+                                       IsEnabled="{Binding CanUseChatMicrophone}"
                                        ToolTip="{Binding AudioRecordingTooltip}">
                                     <Button.Style>
                                         <Style TargetType="Button">

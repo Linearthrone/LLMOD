@@ -418,6 +418,24 @@ namespace HouseVictoria.Services.Trading
 
 
 
+        public const double DefaultStopLossPips = 20;
+
+        public const double MinSanityStopPips = 2;
+
+        public const double MaxSanityStopPips = 500;
+
+
+
+        private static readonly JsonSerializerOptions TradeJsonOptions = new()
+
+        {
+
+            PropertyNameCaseInsensitive = true
+
+        };
+
+
+
         public static TradeRequest? TryParseTradeRequest(string? text)
 
         {
@@ -440,13 +458,41 @@ namespace HouseVictoria.Services.Trading
 
             {
 
-                return JsonSerializer.Deserialize<TradeRequest>(json, new JsonSerializerOptions
+                using var doc = JsonDocument.Parse(json);
+
+                var root = doc.RootElement;
+
+                var request = new TradeRequest
 
                 {
 
-                    PropertyNameCaseInsensitive = true
+                    Symbol = GetJsonString(root, "Symbol", "symbol") ?? string.Empty,
 
-                });
+                    Volume = GetJsonDouble(root, 0, "Volume", "volume"),
+
+                };
+
+
+
+                if (string.IsNullOrWhiteSpace(request.Symbol) || request.Volume <= 0)
+
+                    return null;
+
+
+
+                request.Type = ParseTradeType(root);
+
+                request.StopLoss = GetJsonNullableDouble(root, "StopLoss", "stop_loss", "stopLoss");
+
+                request.TakeProfit = GetJsonNullableDouble(root, "TakeProfit", "take_profit", "takeProfit");
+
+                request.Price = GetJsonNullableDouble(root, "Price", "price");
+
+                request.Comment = GetJsonString(root, "Comment", "comment");
+
+
+
+                return request;
 
             }
 
@@ -466,9 +512,13 @@ namespace HouseVictoria.Services.Trading
 
         {
 
+            var trimmed = text.Trim();
+
+
+
             var fenced = Regex.Match(
 
-                text,
+                trimmed,
 
                 @"```(?:trade|json)\s*([\s\S]*?)```",
 
@@ -482,9 +532,487 @@ namespace HouseVictoria.Services.Trading
 
 
 
-            var inline = Regex.Match(text, @"\{[^{}]*""Symbol""[^{}]*\}", RegexOptions.IgnoreCase);
+            if (trimmed.StartsWith('{') && trimmed.Contains("\"Symbol\"", StringComparison.OrdinalIgnoreCase))
+
+                return trimmed;
+
+
+
+            var balanced = ExtractBalancedJsonObject(trimmed, "Symbol");
+
+            if (!string.IsNullOrWhiteSpace(balanced))
+
+                return balanced;
+
+
+
+            var inline = Regex.Match(trimmed, @"\{[^{}]*""Symbol""[^{}]*\}", RegexOptions.IgnoreCase);
 
             return inline.Success ? inline.Value.Trim() : null;
+
+        }
+
+
+
+        /// <summary>
+
+        /// Fills StopLoss when missing, using current quotes and <see cref="DefaultStopLossPips"/>.
+
+        /// The MT4 bridge rejects market orders without a stop-loss when RequireStopLoss=true.
+
+        /// </summary>
+
+        public static void ApplyDefaultStopLoss(TradeRequest request, MarketData? quote, double defaultPips = DefaultStopLossPips)
+
+        {
+
+            if (request.StopLoss is > 0)
+
+                return;
+
+
+
+            if (quote == null || quote.Bid <= 0 || quote.Ask <= 0)
+
+                return;
+
+
+
+            var pip = GetPipSize(request.Symbol);
+
+            var distance = defaultPips * pip;
+
+            var digits = InferPriceDigits(request.Type == TradeType.Buy ? quote.Bid : quote.Ask);
+
+
+
+            request.StopLoss = request.Type == TradeType.Buy
+
+                ? Math.Round(quote.Bid - distance, digits)
+
+                : Math.Round(quote.Ask + distance, digits);
+
+        }
+
+
+
+        /// <summary>
+
+        /// Validates stop-loss and take-profit against live quotes. Recomputes a bad or stale
+
+        /// stop-loss (~20 pips) and drops an invalid take-profit so MT4 does not reject the order.
+
+        /// </summary>
+
+        public static string? SanitizeStopLossAndTakeProfit(
+
+            TradeRequest request,
+
+            MarketData? quote,
+
+            double defaultStopPips = DefaultStopLossPips)
+
+        {
+
+            if (quote == null || quote.Bid <= 0 || quote.Ask <= 0)
+
+            {
+
+                ApplyDefaultStopLoss(request, quote, defaultStopPips);
+
+                return null;
+
+            }
+
+
+
+            var notes = new List<string>();
+
+
+
+            if (!IsValidStopLoss(request, quote, out var slReason))
+
+            {
+
+                var old = request.StopLoss;
+
+                request.StopLoss = null;
+
+                ApplyDefaultStopLoss(request, quote, defaultStopPips);
+
+                notes.Add($"StopLoss corrected ({slReason}): {old} -> {request.StopLoss:F5}");
+
+            }
+
+
+
+            if (request.TakeProfit is > 0 && !IsValidTakeProfit(request, quote, out var tpReason))
+
+            {
+
+                notes.Add($"TakeProfit dropped ({tpReason}): {request.TakeProfit:F5}");
+
+                request.TakeProfit = null;
+
+            }
+
+
+
+            return notes.Count > 0 ? string.Join("; ", notes) : null;
+
+        }
+
+
+
+        public static bool IsValidStopLoss(TradeRequest request, MarketData quote, out string reason)
+
+        {
+
+            reason = string.Empty;
+
+            if (request.StopLoss is not > 0)
+
+            {
+
+                reason = "missing";
+
+                return false;
+
+            }
+
+
+
+            var sl = request.StopLoss.Value;
+
+            var pip = GetPipSize(request.Symbol);
+
+            var refPrice = request.Type == TradeType.Buy ? quote.Bid : quote.Ask;
+
+
+
+            if (request.Type == TradeType.Buy && sl >= refPrice)
+
+            {
+
+                reason = "buy SL must be below bid";
+
+                return false;
+
+            }
+
+
+
+            if (request.Type == TradeType.Sell && sl <= refPrice)
+
+            {
+
+                reason = "sell SL must be above ask";
+
+                return false;
+
+            }
+
+
+
+            var distancePips = Math.Abs(refPrice - sl) / pip;
+
+            if (distancePips < MinSanityStopPips)
+
+            {
+
+                reason = $"too close ({distancePips:F1} pips)";
+
+                return false;
+
+            }
+
+
+
+            if (distancePips > MaxSanityStopPips)
+
+            {
+
+                reason = $"too far ({distancePips:F0} pips)";
+
+                return false;
+
+            }
+
+
+
+            return true;
+
+        }
+
+
+
+        public static bool IsValidTakeProfit(TradeRequest request, MarketData quote, out string reason)
+
+        {
+
+            reason = string.Empty;
+
+            if (request.TakeProfit is not > 0)
+
+            {
+
+                reason = "missing";
+
+                return false;
+
+            }
+
+
+
+            var tp = request.TakeProfit.Value;
+
+            var pip = GetPipSize(request.Symbol);
+
+            var refPrice = request.Type == TradeType.Buy ? quote.Ask : quote.Bid;
+
+
+
+            if (request.Type == TradeType.Buy && tp <= refPrice)
+
+            {
+
+                reason = "buy TP must be above ask";
+
+                return false;
+
+            }
+
+
+
+            if (request.Type == TradeType.Sell && tp >= refPrice)
+
+            {
+
+                reason = "sell TP must be below bid";
+
+                return false;
+
+            }
+
+
+
+            var distancePips = Math.Abs(refPrice - tp) / pip;
+
+            if (distancePips < MinSanityStopPips)
+
+            {
+
+                reason = $"too close ({distancePips:F1} pips)";
+
+                return false;
+
+            }
+
+
+
+            if (distancePips > MaxSanityStopPips)
+
+            {
+
+                reason = $"too far ({distancePips:F0} pips)";
+
+                return false;
+
+            }
+
+
+
+            return true;
+
+        }
+
+
+
+        public static double GetPipSize(string symbol)
+
+        {
+
+            var s = symbol.ToUpperInvariant();
+
+            if (s.Contains("JPY"))
+
+                return 0.01;
+
+            if (s.StartsWith("XAU", StringComparison.Ordinal) || s.Contains("GOLD"))
+
+                return 0.1;
+
+            if (s.StartsWith("XAG", StringComparison.Ordinal) || s.Contains("SILVER"))
+
+                return 0.01;
+
+            if (s.Contains("US30") || s.Contains("US500") || s.Contains("NAS") || s.Contains("DAX") || s.Contains("UK100"))
+
+                return 1.0;
+
+            return 0.0001;
+
+        }
+
+
+
+        private static int InferPriceDigits(double price)
+
+        {
+
+            if (price >= 10000)
+
+                return 1;
+
+            if (price >= 1000)
+
+                return 2;
+
+            if (price >= 100)
+
+                return 3;
+
+            if (price >= 10)
+
+                return 4;
+
+            return 5;
+
+        }
+
+
+
+        private static string? ExtractBalancedJsonObject(string text, string requiredKey)
+
+        {
+
+            var keyToken = $"\"{requiredKey}\"";
+
+            var keyIdx = text.IndexOf(keyToken, StringComparison.OrdinalIgnoreCase);
+
+            if (keyIdx < 0)
+
+                return null;
+
+
+
+            var start = text.LastIndexOf('{', keyIdx);
+
+            if (start < 0)
+
+                return null;
+
+
+
+            var depth = 0;
+
+            for (var i = start; i < text.Length; i++)
+
+            {
+
+                if (text[i] == '{')
+
+                    depth++;
+
+                else if (text[i] == '}')
+
+                {
+
+                    depth--;
+
+                    if (depth == 0)
+
+                        return text.Substring(start, i - start + 1);
+
+                }
+
+            }
+
+
+
+            return null;
+
+        }
+
+
+
+        private static TradeType ParseTradeType(JsonElement root)
+
+        {
+
+            if (root.TryGetProperty("Type", out var typeProp) || root.TryGetProperty("type", out typeProp))
+
+            {
+
+                if (typeProp.ValueKind == JsonValueKind.Number && typeProp.TryGetInt32(out var numeric))
+
+                    return numeric == 1 ? TradeType.Sell : TradeType.Buy;
+
+
+
+                if (typeProp.ValueKind == JsonValueKind.String)
+
+                {
+
+                    var raw = typeProp.GetString() ?? string.Empty;
+
+                    if (raw.Equals("sell", StringComparison.OrdinalIgnoreCase) || raw == "1")
+
+                        return TradeType.Sell;
+
+                    if (raw.Equals("buy", StringComparison.OrdinalIgnoreCase) || raw == "0")
+
+                        return TradeType.Buy;
+
+                }
+
+            }
+
+
+
+            return TradeType.Buy;
+
+        }
+
+
+
+        private static double? GetJsonNullableDouble(JsonElement root, params string[] names)
+
+        {
+
+            foreach (var name in names)
+
+            {
+
+                if (!root.TryGetProperty(name, out var prop))
+
+                    continue;
+
+
+
+                if (prop.ValueKind == JsonValueKind.Null)
+
+                    return null;
+
+
+
+                if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDouble(out var numeric))
+
+                    return numeric;
+
+
+
+                if (prop.ValueKind == JsonValueKind.String &&
+
+                    double.TryParse(prop.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+
+                    return parsed;
+
+            }
+
+
+
+            return null;
 
         }
 

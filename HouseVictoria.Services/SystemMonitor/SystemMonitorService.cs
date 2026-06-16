@@ -1,6 +1,5 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
-using HouseVictoria.Services.TTS;
 using System.Diagnostics;
 using System.Linq;
 using System.Management;
@@ -21,7 +20,6 @@ namespace HouseVictoria.Services.SystemMonitor
         private readonly CovasBridge.OpenAICompatibleBridge? _covasBridge;
         private readonly IHermesGatewayService? _hermesGatewayService;
         private readonly string _rootDirectory;
-        private LocalTtsHttpHost? _localTtsHost;
         private VirtualEnvironmentStatus _cachedVirtualEnvironmentStatus = new();
         private DateTime _startTime;
         private PerformanceCounter? _cpuCounter;
@@ -224,16 +222,6 @@ namespace HouseVictoria.Services.SystemMonitor
                     tasks.Add(CheckMCPServerAsync(mcpStatus));
                 }
 
-                if (_serverStatuses.TryGetValue("TTS", out var ttsStatus))
-                {
-                    tasks.Add(CheckTTSServerAsync(ttsStatus));
-                }
-
-                if (_serverStatuses.TryGetValue("Kokoro TTS", out var kokoroTtsStatus))
-                {
-                    tasks.Add(CheckKokoroServerAsync(kokoroTtsStatus));
-                }
-
                 if (_serverStatuses.TryGetValue("STT", out var sttStatus))
                 {
                     tasks.Add(CheckSTTServerAsync(sttStatus));
@@ -312,18 +300,6 @@ namespace HouseVictoria.Services.SystemMonitor
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Auto-start MCP failed: {ex.Message}");
-            }
-
-            try
-            {
-                if (_serverStatuses.TryGetValue("TTS", out var ttsStatus))
-                {
-                    await StartTtsServiceIfNeededAsync(ttsStatus).ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Auto-start TTS failed: {ex.Message}");
             }
 
             try
@@ -440,11 +416,6 @@ namespace HouseVictoria.Services.SystemMonitor
             if (_serverStatuses.TryGetValue("MCP", out var mcpStatus))
             {
                 mcpStatus.Endpoint = _appConfig.MCPServerEndpoint;
-            }
-
-            if (_serverStatuses.TryGetValue("TTS", out var ttsStatus))
-            {
-                ttsStatus.Endpoint = _appConfig.TTSEndpoint;
             }
 
             if (_serverStatuses.TryGetValue("STT", out var sttStatus))
@@ -625,22 +596,6 @@ namespace HouseVictoria.Services.SystemMonitor
                 Type = ServerType.UnrealEngine
             };
 
-            _serverStatuses["TTS"] = new ServerStatus
-            {
-                Name = "TTS Service",
-                IsRunning = false,
-                Endpoint = "http://localhost:5000",
-                Type = ServerType.TTS
-            };
-
-            _serverStatuses["Kokoro TTS"] = new ServerStatus
-            {
-                Name = "Kokoro TTS",
-                IsRunning = false,
-                Endpoint = "http://localhost:8880",
-                Type = ServerType.TTS
-            };
-
             _serverStatuses["DataBank"] = new ServerStatus
             {
                 Name = "Data Bank",
@@ -783,36 +738,6 @@ namespace HouseVictoria.Services.SystemMonitor
         {
             if (_serverStatuses.TryGetValue(serverName, out var status))
             {
-                if (serverName == "Kokoro TTS")
-                {
-                    try
-                    {
-                        var scriptDir = Path.Combine(_rootDirectory, ".ps1 scripts");
-                        var scriptPath = Path.Combine(scriptDir, "stop-kokoro.ps1");
-                        if (File.Exists(scriptPath))
-                        {
-                            var psi = new ProcessStartInfo
-                            {
-                                FileName = "powershell",
-                                ArgumentList = { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath },
-                                WorkingDirectory = _rootDirectory,
-                                UseShellExecute = false,
-                                CreateNoWindow = true
-                            };
-                            using var p = Process.Start(psi);
-                            p?.WaitForExit(5000);
-                        }
-                        else
-                        {
-                            KillProcessOnPort(8880);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Stop Kokoro TTS: {ex.Message}");
-                    }
-                }
-
                 var previousStatus = new ServerStatus
                 {
                     Name = status.Name,
@@ -911,56 +836,6 @@ namespace HouseVictoria.Services.SystemMonitor
                     if (_hermesGatewayService != null)
                         await _hermesGatewayService.EnsureGatewayRunningAsync().ConfigureAwait(false);
                 }
-                else if (serverName == "Kokoro TTS")
-                {
-                    try
-                    {
-                        // kokoro-fastapi is not on PyPI; use Docker or run from clone (see start.bat / start-kokoro.ps1).
-                        var kokoroClone = Path.Combine(_rootDirectory, "Kokoro-FastAPI");
-                        var startKokoroPs1 = Path.Combine(_rootDirectory, ".ps1 scripts", "start-kokoro.ps1");
-                        var started = false;
-
-                        // Try Docker first
-                        try
-                        {
-                            var psi = new ProcessStartInfo
-                            {
-                                FileName = "docker",
-                                Arguments = "run --rm -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest",
-                                WorkingDirectory = _rootDirectory,
-                                UseShellExecute = true,
-                                CreateNoWindow = false
-                            };
-                            Process.Start(psi);
-                            started = true;
-                        }
-                        catch
-                        {
-                            // Docker not available or failed
-                        }
-
-                        if (!started && File.Exists(Path.Combine(kokoroClone, "start-cpu.ps1")) && File.Exists(startKokoroPs1))
-                        {
-                            var psi = new ProcessStartInfo
-                            {
-                                FileName = "powershell",
-                                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{startKokoroPs1}\" -ScriptDir \"{_rootDirectory}\" -KokoroCloneDir \"{kokoroClone}\" -Port 8880",
-                                WorkingDirectory = _rootDirectory,
-                                UseShellExecute = true,
-                                CreateNoWindow = false
-                            };
-                            Process.Start(psi);
-                            started = true;
-                        }
-
-                        if (started)
-                            await Task.Delay(500).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Start Kokoro TTS: {ex.Message}");
-                    }
-                }
 
                 var previousStatus = new ServerStatus
                 {
@@ -1014,18 +889,6 @@ namespace HouseVictoria.Services.SystemMonitor
             foreach (var serverName in _serverStatuses.Keys.ToList())
             {
                 await StopServerAsync(serverName);
-            }
-
-            if (_localTtsHost != null)
-            {
-                try
-                {
-                    await _localTtsHost.StopAsync().ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error stopping embedded TTS host: {ex.Message}");
-                }
             }
 
             if (_covasBridge != null)
@@ -1436,61 +1299,6 @@ namespace HouseVictoria.Services.SystemMonitor
             }
         }
 
-        private async Task StartTtsServiceIfNeededAsync(ServerStatus status)
-        {
-            var endpoint = _appConfig?.TTSEndpoint ?? status.Endpoint ?? "http://localhost:5000";
-            status.Endpoint = endpoint;
-
-            if (await IsTtsHealthyAsync(endpoint).ConfigureAwait(false))
-            {
-                UpdateServerStatus(status, true, "TTS");
-                return;
-            }
-
-            try
-            {
-                _localTtsHost ??= new LocalTtsHttpHost(endpoint);
-                await _localTtsHost.StartAsync().ConfigureAwait(false);
-
-                await Task.Delay(300).ConfigureAwait(false);
-                var isRunning = await IsTtsHealthyAsync(endpoint).ConfigureAwait(false);
-                UpdateServerStatus(status, isRunning, "TTS");
-            }
-            catch (HttpListenerException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Embedded TTS failed to start: {ex.Message}");
-                UpdateServerStatus(status, false, "TTS");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to start embedded TTS service: {ex.Message}");
-                UpdateServerStatus(status, false, "TTS");
-            }
-        }
-
-        private async Task<bool> IsTtsHealthyAsync(string endpoint)
-        {
-            if (string.IsNullOrWhiteSpace(endpoint))
-                return false;
-
-            try
-            {
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
-                var baseUrl = endpoint.TrimEnd('/');
-                var response = await _httpClient.GetAsync($"{baseUrl}/health", linked.Token).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
-                    return true;
-
-                response = await _httpClient.GetAsync($"{baseUrl}/", linked.Token).ConfigureAwait(false);
-                return response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         private async Task CheckOllamaServerAsync(ServerStatus status)
         {
             // Circuit breaker: Skip check if server has failed recently
@@ -1730,134 +1538,6 @@ namespace HouseVictoria.Services.SystemMonitor
             }
         }
 
-        private async Task CheckTTSServerAsync(ServerStatus status)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(status.Endpoint))
-                    return;
-
-                // Try /health endpoint first, then root
-                var endpoints = new[] { "/health", "/" };
-                bool isRunning = false;
-
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
-                foreach (var endpoint in endpoints)
-                {
-                    try
-                    {
-                        var response = await _httpClient.GetAsync($"{status.Endpoint}{endpoint}", linked.Token).ConfigureAwait(false);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            isRunning = true;
-                            break;
-                        }
-                    }
-                    catch (TaskCanceledException) when (timeoutCts.Token.IsCancellationRequested || _cts.Token.IsCancellationRequested)
-                    {
-                        // Expected timeout or cancellation - try next endpoint
-                        continue;
-                    }
-                    catch (System.Net.Http.HttpRequestException)
-                    {
-                        // Connection failed - try next endpoint
-                        continue;
-                    }
-                    catch (System.Net.Sockets.SocketException)
-                    {
-                        // Socket error - try next endpoint
-                        continue;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log unexpected exceptions but continue
-                        System.Diagnostics.Debug.WriteLine($"TTS check error on {endpoint}: {ex.GetType().Name} - {ex.Message}");
-                        continue;
-                    }
-                }
-
-                UpdateServerStatus(status, isRunning, "TTS");
-            }
-            catch (TaskCanceledException)
-            {
-                // Expected when server is down or timeout occurs
-                UpdateServerStatus(status, false, "TTS");
-            }
-            catch (HttpRequestException)
-            {
-                // Expected when server is unreachable
-                UpdateServerStatus(status, false, "TTS");
-            }
-            catch (System.Net.Sockets.SocketException)
-            {
-                // Expected when server is unreachable
-                UpdateServerStatus(status, false, "TTS");
-            }
-            catch (Exception ex)
-            {
-                // Only log unexpected exceptions
-                System.Diagnostics.Debug.WriteLine($"TTS health check error: {ex.Message}");
-                UpdateServerStatus(status, false, "TTS");
-            }
-        }
-
-        private async Task CheckKokoroServerAsync(ServerStatus status)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(status.Endpoint))
-                    return;
-
-                var baseUrl = status.Endpoint.TrimEnd('/');
-                var endpoints = new[] { "/v1", "/health", "/" };
-                bool isRunning = false;
-
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
-                foreach (var path in endpoints)
-                {
-                    try
-                    {
-                        var response = await _httpClient.GetAsync($"{baseUrl}{path}", linked.Token).ConfigureAwait(false);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            isRunning = true;
-                            break;
-                        }
-                    }
-                    catch (TaskCanceledException) when (timeoutCts.Token.IsCancellationRequested || _cts.Token.IsCancellationRequested)
-                    { continue; }
-                    catch (HttpRequestException) { continue; }
-                    catch (System.Net.Sockets.SocketException) { continue; }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Kokoro TTS check on {path}: {ex.Message}");
-                        continue;
-                    }
-                }
-
-                UpdateServerStatus(status, isRunning, "Kokoro TTS");
-            }
-            catch (TaskCanceledException)
-            {
-                UpdateServerStatus(status, false, "Kokoro TTS");
-            }
-            catch (HttpRequestException)
-            {
-                UpdateServerStatus(status, false, "Kokoro TTS");
-            }
-            catch (System.Net.Sockets.SocketException)
-            {
-                UpdateServerStatus(status, false, "Kokoro TTS");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Kokoro TTS health check error: {ex.Message}");
-                UpdateServerStatus(status, false, "Kokoro TTS");
-            }
-        }
-
         private async Task CheckSTTServerAsync(ServerStatus status)
         {
             try
@@ -2001,20 +1681,6 @@ namespace HouseVictoria.Services.SystemMonitor
             catch { }
 
             // Stop async services before disposing
-            try
-            {
-                if (_localTtsHost != null)
-                {
-                    try
-                    {
-                        _localTtsHost.StopAsync().GetAwaiter().GetResult();
-                    }
-                    catch { }
-                    _localTtsHost.Dispose();
-                }
-            }
-            catch { }
-
             try
             {
                 if (_covasBridge != null)

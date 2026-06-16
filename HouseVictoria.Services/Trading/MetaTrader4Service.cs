@@ -611,6 +611,24 @@ namespace HouseVictoria.Services.Trading
                 };
             }
 
+            var quote = await GetMarketDataAsync(request.Symbol).ConfigureAwait(false);
+            var stopCorrections = Mt4TradeBridgeHelper.SanitizeStopLossAndTakeProfit(request, quote);
+            if (!string.IsNullOrEmpty(stopCorrections))
+                System.Diagnostics.Debug.WriteLine($"Trade stop sanity: {stopCorrections}");
+
+            if (request.StopLoss is null or <= 0)
+            {
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Message =
+                        "Stop-loss is required by the MT4 bridge (RequireStopLoss=true). " +
+                        "Include StopLoss in the trade JSON, e.g. " +
+                        "{\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01,\"StopLoss\":1.0830}. " +
+                        "Place it ~20 pips from the current bid/ask."
+                };
+            }
+
             try
             {
                 var commandPath = Path.Combine(_mt4DataPath, "MQL4", "Files", _commandFolder);
@@ -685,6 +703,9 @@ namespace HouseVictoria.Services.Trading
                     {
                         parsed.BrokerSymbol = brokerHint;
                     }
+
+                    if (!string.IsNullOrEmpty(stopCorrections))
+                        parsed.Message = $"{parsed.Message} [{stopCorrections}]";
 
                     return await Mt4TradeBridgeHelper.VerifyTicketAsync(
                         parsed,

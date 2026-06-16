@@ -165,16 +165,12 @@ namespace HouseVictoria.App.Screens.Windows
         {
             try
             {
-                var ttsService = App.ServiceProvider?.GetService<ITTSService>();
-                if (ttsService != null)
-                {
-                    var voices = await ttsService.GetAvailablePiperVoicesAsync();
-                    AvailablePiperVoices.Clear();
-                    foreach (var v in voices)
-                        AvailablePiperVoices.Add(v);
-                }
+                AvailablePiperVoices.Clear();
+                foreach (var v in HouseVictoria.Services.Voice.VoiceCatalog.GetKokoroVoices())
+                    AvailablePiperVoices.Add(v);
             }
             catch { }
+            await System.Threading.Tasks.Task.CompletedTask;
         }
 
         private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

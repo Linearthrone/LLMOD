@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "House Victoria"
 #property link      ""
-#property version   "1.10"
+#property version   "1.12"
 #property strict
 
 //--- Input parameters
@@ -38,7 +38,7 @@ int    OrderLogCount = 0;
 //+------------------------------------------------------------------+
 int OnInit()
 {
-    Print("House Victoria Bridge v1.10 initialized");
+    Print("House Victoria Bridge v1.12 initialized");
     Print("Command folder: ", CommandFolder);
     Print("Magic number: ", MagicNumber, " Account: ", AccountNumber());
 
@@ -515,14 +515,50 @@ int ParseTimeFrameMinutes(string json)
 }
 
 //+------------------------------------------------------------------+
-//| Export history for a symbol range to bridge CSV                    |
+//| Wait for broker/server history to sync for symbol+timeframe       |
 //+------------------------------------------------------------------+
-int ExportHistoricalData(string baseSymbol, string brokerSymbol, int tfMinutes, datetime startDate, datetime endDate)
+int EnsureHistoryLoaded(string brokerSymbol, int period, datetime needFrom, int maxWaitSec = 45)
 {
-    int period = PeriodFromMinutes(tfMinutes);
     if (!SymbolSelect(brokerSymbol, true))
         return 0;
 
+    // Opening a chart nudges the terminal to request missing history (build 1090+).
+    long chartId = ChartOpen(brokerSymbol, period);
+    if (chartId > 0)
+    {
+        ChartSetInteger(chartId, CHART_AUTOSCROLL, true);
+        ChartRedraw(chartId);
+    }
+
+    int waited = 0;
+    while (waited < maxWaitSec)
+    {
+        RefreshRates();
+        int bars = iBars(brokerSymbol, period);
+        if (bars > 0)
+        {
+            datetime oldest = iTime(brokerSymbol, period, bars - 1);
+            // Touch distant bars to encourage server fill.
+            iClose(brokerSymbol, period, bars - 1);
+            iTime(brokerSymbol, period, 0);
+
+            if (needFrom <= 0 || oldest <= needFrom || bars >= 500)
+                return bars;
+        }
+
+        Sleep(1000);
+        waited++;
+    }
+
+    return iBars(brokerSymbol, period);
+}
+
+//+------------------------------------------------------------------+
+//| Write OHLCV rows to bridge CSV (optional date window)             |
+//+------------------------------------------------------------------+
+int WriteHistoryCsv(string baseSymbol, string brokerSymbol, int period, int tfMinutes,
+                    datetime startDate, datetime endDate, bool useDateFilter)
+{
     int digits = (int)MarketInfo(brokerSymbol, MODE_DIGITS);
     string fileName = CommandFolder + "/" + baseSymbol + "_" + IntegerToString(tfMinutes) + ".csv";
     int fileHandle = FileOpen(fileName, FILE_WRITE | FILE_TXT);
@@ -539,12 +575,14 @@ int ExportHistoricalData(string baseSymbol, string brokerSymbol, int tfMinutes, 
         datetime barTime = iTime(brokerSymbol, period, shift);
         if (barTime <= 0)
             continue;
-        // Iterating oldest -> newest, so bars before the window come first
-        // (skip them) and bars after the window terminate the loop.
-        if (barTime < startDate)
-            continue;
-        if (barTime > endDate)
-            break;
+
+        if (useDateFilter)
+        {
+            if (barTime < startDate)
+                continue;
+            if (barTime > endDate)
+                break;
+        }
 
         double open = iOpen(brokerSymbol, period, shift);
         double high = iHigh(brokerSymbol, period, shift);
@@ -563,8 +601,37 @@ int ExportHistoricalData(string baseSymbol, string brokerSymbol, int tfMinutes, 
     }
 
     FileClose(fileHandle);
-    Print("House Victoria: exported ", exported, " bars -> ", fileName);
+    Print("House Victoria: exported ", exported, " bars -> ", fileName,
+          useDateFilter ? "" : " (all available, date window skipped)");
     return exported;
+}
+
+//+------------------------------------------------------------------+
+//| Export history for a symbol range to bridge CSV                    |
+//+------------------------------------------------------------------+
+int ExportHistoricalData(string baseSymbol, string brokerSymbol, int tfMinutes, datetime startDate, datetime endDate)
+{
+    int period = PeriodFromMinutes(tfMinutes);
+    if (!SymbolSelect(brokerSymbol, true))
+        return 0;
+
+    int totalBars = EnsureHistoryLoaded(brokerSymbol, period, startDate, 45);
+    if (totalBars <= 0)
+        return 0;
+
+    int exported = WriteHistoryCsv(baseSymbol, brokerSymbol, period, tfMinutes, startDate, endDate, true);
+    if (exported > 0)
+        return exported;
+
+    // Date window may not overlap synced history; export everything available.
+    if (iBars(brokerSymbol, period) > 0)
+    {
+        Print("House Victoria: date-filtered export empty for ", baseSymbol,
+              " — exporting all available bars");
+        return WriteHistoryCsv(baseSymbol, brokerSymbol, period, tfMinutes, 0, 0, false);
+    }
+
+    return 0;
 }
 
 //+------------------------------------------------------------------+
@@ -903,6 +970,9 @@ void ProcessTradeCommand(string filePath)
     }
     
     double price = (type == OP_BUY) ? MarketInfo(brokerSymbol, MODE_ASK) : MarketInfo(brokerSymbol, MODE_BID);
+
+    string sanitizeNote = "";
+    SanitizeStops(symbol, type, brokerSymbol, stopLoss, takeProfit, sanitizeNote);
     
     int ticket = OrderSend(brokerSymbol, 
                           type, 
@@ -924,7 +994,8 @@ void ProcessTradeCommand(string filePath)
             note = symbol + "->" + brokerSymbol;
         UpdateOpenPositions(true);
         WriteTradeResponse(filePath, true, ticket, symbol, brokerSymbol,
-            "Trade executed successfully. Ticket: " + IntegerToString(ticket) + " Symbol: " + note);
+            "Trade executed successfully. Ticket: " + IntegerToString(ticket) + " Symbol: " + note +
+            (sanitizeNote != "" ? " [" + sanitizeNote + "]" : ""));
         Print("House Victoria: Trade executed - ", note, " ", (type == OP_BUY ? "BUY" : "SELL"), " ", volume, " Ticket: ", ticket);
     }
     else
@@ -933,6 +1004,91 @@ void ProcessTradeCommand(string filePath)
         string errorMsg = DescribeTradeError(error);
         WriteTradeResponse(filePath, false, 0, symbol, brokerSymbol, errorMsg);
         Print("House Victoria: Trade execution failed - ", errorMsg);
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Pip size for stop sanity checks (matches House Victoria bridge)  |
+//+------------------------------------------------------------------+
+double PipSizeForSymbol(string sym)
+{
+    string u = sym;
+    StringToUpper(u);
+    if (StringFind(u, "JPY") >= 0) return 0.01;
+    if (StringFind(u, "XAU") == 0 || StringFind(u, "GOLD") >= 0) return 0.1;
+    if (StringFind(u, "XAG") == 0 || StringFind(u, "SILVER") >= 0) return 0.01;
+    if (StringFind(u, "US30") >= 0 || StringFind(u, "US500") >= 0 ||
+        StringFind(u, "NAS") >= 0 || StringFind(u, "DAX") >= 0 || StringFind(u, "UK100") >= 0)
+        return 1.0;
+    return 0.0001;
+}
+
+//+------------------------------------------------------------------+
+//| Correct stale AI stop-loss / drop invalid take-profit            |
+//+------------------------------------------------------------------+
+void SanitizeStops(string baseSymbol, int type, string brokerSymbol,
+                   double &stopLoss, double &takeProfit, string &note)
+{
+    note = "";
+    double bid = MarketInfo(brokerSymbol, MODE_BID);
+    double ask = MarketInfo(brokerSymbol, MODE_ASK);
+    if (bid <= 0 || ask <= 0)
+        return;
+
+    double pip = PipSizeForSymbol(baseSymbol);
+    int digits = (int)MarketInfo(brokerSymbol, MODE_DIGITS);
+    double minPips = 2.0;
+    double maxPips = 500.0;
+    double defaultPips = 20.0;
+
+    bool slOk = (stopLoss > 0);
+    double refSl = (type == OP_BUY) ? bid : ask;
+    if (slOk)
+    {
+        if (type == OP_BUY && stopLoss >= refSl)
+            slOk = false;
+        else if (type == OP_SELL && stopLoss <= refSl)
+            slOk = false;
+        else
+        {
+            double distPips = MathAbs(refSl - stopLoss) / pip;
+            if (distPips < minPips || distPips > maxPips)
+                slOk = false;
+        }
+    }
+
+    if (!slOk)
+    {
+        double oldSl = stopLoss;
+        double dist = defaultPips * pip;
+        stopLoss = (type == OP_BUY)
+            ? NormalizeDouble(bid - dist, digits)
+            : NormalizeDouble(ask + dist, digits);
+        note = "SL corrected " + DoubleToString(oldSl, digits) + "->" + DoubleToString(stopLoss, digits);
+        Print("House Victoria: ", note);
+    }
+
+    if (takeProfit > 0)
+    {
+        bool tpOk = true;
+        double refTp = (type == OP_BUY) ? ask : bid;
+        if (type == OP_BUY && takeProfit <= refTp)
+            tpOk = false;
+        else if (type == OP_SELL && takeProfit >= refTp)
+            tpOk = false;
+        else
+        {
+            double distPips = MathAbs(refTp - takeProfit) / pip;
+            if (distPips < minPips || distPips > maxPips)
+                tpOk = false;
+        }
+        if (!tpOk)
+        {
+            note = note + (note != "" ? "; " : "") +
+                   "TP dropped " + DoubleToString(takeProfit, digits);
+            Print("House Victoria: invalid take-profit dropped ", DoubleToString(takeProfit, digits));
+            takeProfit = 0;
+        }
     }
 }
 

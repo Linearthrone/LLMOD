@@ -1,63 +1,47 @@
-# Android Remote Companion (MVP v2)
+# Victoria Link (Android Remote Companion v0.3)
 
-Minimal Android app for House Victoria remote companion:
+Messaging-style remote companion for House Victoria — inbox threads, persona directory, per-contact chat with avatars and accent themes.
 
-- `GET /api/remote/v1/health`
-- `POST /api/remote/v1/chat` (Bearer token)
-- `POST /api/remote/v1/chat-audio` (`multipart/form-data`, field name: `audio`)
+## App flow
 
-This MVP now supports both text and short microphone audio turns.
+| Screen | Purpose |
+|--------|---------|
+| **Inbox** | Conversation threads for every AI contact on the PC |
+| **Persona Directory** | Grid of all AI contacts — tap to open a thread |
+| **Chat** | Persona header (avatar, name, status) + themed bubbles + voice |
+| **Settings** | Tailscale URL + API token only (no chat config here) |
 
-## 1) Prerequisites on PC
+Toolbar icons: **Personas** (contact book) · **Settings** (connection)
 
-In House Victoria settings:
+## PC API (House Victoria remote companion)
 
-- `RemoteCompanionEnabled = true`
-- `RemoteCompanionApiToken` set (16+ chars)
-- Optional: keep `RemoteCompanionListenOnLan = false` and use Tailscale / Cloudflare Tunnel
+Requires **House Victoria restart** after updating the PC app.
 
-Restart House Victoria after changing these settings.
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `GET /api/remote/v1/health` | No | Liveness |
+| `GET /api/remote/v1/contacts` | Bearer | AI contact book + last message preview |
+| `GET /api/remote/v1/contacts/{id}/messages` | Bearer | Thread history |
+| `GET /api/remote/v1/contacts/{id}/avatar` | Bearer | Contact portrait (local file on PC) |
+| `POST /api/remote/v1/chat` | Bearer | Text chat (`contactId` in body) |
+| `POST /api/remote/v1/chat-audio` | Bearer | Voice upload |
 
-## 2) Open in Android Studio
+## Setup
 
-1. Open folder: `AndroidRemoteCompanion/`
-2. Let Gradle sync.
-3. Run on device/emulator (API 26+).
+1. **PC:** Enable remote companion in House Victoria Settings, set API token (16+ chars), restart app.
+2. **Tailscale:** Run `scripts/Setup-TailscaleRemoteCompanion.ps1` on the PC.
+3. **Phone:** Install Tailscale, open Victoria Link → **Settings** → paste HTTPS URL + token → **Test link** → **Save**.
+4. Open **Personas** or tap a thread to chat with any AI contact.
 
-## 3) Configure in app
+## Build
 
-- **Base URL** examples:
-  - Local testing (same network / adb reverse): `http://127.0.0.1:17890`
-  - Tunnel URL: `https://your-subdomain.example`
-- **API token**: same value as House Victoria setting.
-- **Contact ID (optional)**: if provided, sent as `contactId` to both text and audio endpoints.
-- Tap **Check Health**, then send text and/or audio chat.
+```powershell
+cd AndroidRemoteCompanion
+.\gradlew.bat installDebug
+```
 
-## 4) Audio usage and permissions
+## Design notes
 
-- App permission required: `RECORD_AUDIO`.
-- On first audio attempt, Android prompts for microphone access.
-- Tap **Record & Send Audio** to start capture, then **Stop & Send Audio** to upload.
-- Audio endpoint request:
-  - URL: `/api/remote/v1/chat-audio`
-  - Content-Type: `multipart/form-data`
-  - File field: `audio`
-  - Optional form field: `contactId`
-- The app displays API responses including `conversationId`.
-
-Error handling includes explicit messages for:
-
-- `audio_field_required`
-- `multipart_form_required`
-- `unauthorized`
-
-## 5) Reliability and UX
-
-- In-session chronological conversation log (user + assistant + system/error events).
-- Base URL / token / contact ID are persisted locally.
-- URL/token validation before text or audio send.
-- Loading states and retry button for transient network failures.
-
-## 6) Next planned upgrades
-
-- Optional certificate pinning for public tunnel host.
+- Each persona gets a unique accent from the House Victoria palette (bubbles, headers, rings).
+- Avatars load from the PC when the persona has a portrait path set in AI Models.
+- Screen transitions use slide/fade animations; inbox opens with a subtle scale-in.

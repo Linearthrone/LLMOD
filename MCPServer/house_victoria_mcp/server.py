@@ -754,7 +754,7 @@ async def register_trading_tools(mcp_server: FastMCP):
             symbol: Currency pair, e.g. EURUSD
             trade_type: 0 = buy, 1 = sell
             volume: Lot size, e.g. 0.01
-            stop_loss: Optional stop loss price
+            stop_loss: Required stop loss price (bridge RequireStopLoss=true). Auto-filled ~20 pips from quote when omitted.
             take_profit: Optional take profit price
         """
         return execute_trade(

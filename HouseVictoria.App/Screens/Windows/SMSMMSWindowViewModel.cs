@@ -27,7 +27,7 @@ namespace HouseVictoria.App.Screens.Windows
         private Contact? _selectedDialerContact = null;
         private CallState _currentCallState = CallState.None;
         private string? _loadingConversationId = null; // Track which conversation is currently loading to prevent concurrent loads
-        private string? _activeCallConversationId = null; // Conversation id for the active call (dialer or conversation) for TTS
+        private string? _activeCallConversationId = null;
         private bool _showContactProfile = false;
         private string _contactProfileBody = string.Empty;
         private bool _isMessageSelectionMode = false;
@@ -176,7 +176,9 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
-        public string AudioRecordingTooltip => _isRecordingAudio ? "Stop recording" : "Start voice recording";
+        public string AudioRecordingTooltip => IsCallActive
+            ? "Voice call active — speak directly (streaming engine)"
+            : (_isRecordingAudio ? "Stop recording" : "Dictate message (transcribe to text)");
 
         public string RecordingDurationText => _recordingDuration.TotalMinutes >= 1
             ? $"{(int)_recordingDuration.TotalMinutes}:{_recordingDuration.Seconds:D2}"
@@ -327,6 +329,8 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
         public bool IsCallActive => _currentCallState == CallState.Connected || _currentCallState == CallState.Outgoing || _currentCallState == CallState.Incoming;
+        /// <summary>Chat mic dictation is disabled during voice calls — the streaming engine owns the microphone.</summary>
+        public bool CanUseChatMicrophone => !IsCallActive;
         public bool CanStartCall => _selectedConversation != null && !IsCallActive;
         public bool CanEndCall => IsCallActive;
         public bool IsMessageSelectionMode
@@ -415,7 +419,7 @@ namespace HouseVictoria.App.Screens.Windows
             });
             AttachMediaCommand = new RelayCommand(() => AttachMedia());
             ClearMediaCommand = new RelayCommand(() => ClearPendingMedia(), () => HasPendingMedia);
-            ToggleAudioRecordingCommand = new RelayCommand(async () => await ToggleAudioRecordingAsync());
+            ToggleAudioRecordingCommand = new RelayCommand(async () => await ToggleAudioRecordingAsync(), () => CanUseChatMicrophone);
             StartCallCommand = new RelayCommand(async () => await StartCallAsync(isVoiceCall: false), () => CanStartCall);
             StartPhoneCallCommand = new RelayCommand(async () => await StartCallAsync(isVoiceCall: true), () => CanStartCall);
             EndCallCommand = new RelayCommand(async () => await EndCallAsync(), () => CanEndCall);
@@ -1375,59 +1379,24 @@ namespace HouseVictoria.App.Screens.Windows
                     OnPropertyChanged(nameof(CanEndCall));
                     OnPropertyChanged(nameof(CanStartDialerCall));
                     OnPropertyChanged(nameof(CanEndDialerCall));
+                    OnPropertyChanged(nameof(CanUseChatMicrophone));
                     System.Windows.Input.CommandManager.InvalidateRequerySuggested();
 
-                    // If call is connected, subscribe to messages for TTS (works for both conversation and dialer calls)
-                    if (e.State == CallState.Connected)
-                    {
-                        _activeCallConversationId = e.ConversationId;
-                        _communicationService.MessageReceived += HandleMessageDuringCall;
-                    }
-                    else if (e.State == CallState.Ended)
-                    {
+                    if (e.State == CallState.Ended)
                         _activeCallConversationId = null;
-                        _communicationService.MessageReceived -= HandleMessageDuringCall;
-                    }
                 }
             });
         }
 
-        private async void HandleMessageDuringCall(object? sender, MessageReceivedEventArgs e)
-        {
-            try
-            {
-                if (_activeCallConversationId == null || e.ConversationId != _activeCallConversationId)
-                    return;
-
-                // Only speak incoming messages during active call
-                if (e.Message.Direction == MessageDirection.Incoming && CurrentCallState == CallState.Connected)
-                {
-                    // Cast to communication service to access SpeakMessageAsync
-                    if (_communicationService is HouseVictoria.Services.Communication.SMSMMSCommunicationService commService)
-                    {
-                        // Fire and forget - don't wait for TTS to complete
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await commService.SpeakMessageAsync(e.ConversationId, e.Message.Content);
-                            }
-                            catch (Exception ttsEx)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Error speaking message during call: {ttsEx.Message}");
-                            }
-                        });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in HandleMessageDuringCall: {ex.Message}\n{ex.StackTrace}");
-            }
-        }
-
         private async Task ToggleAudioRecordingAsync()
         {
+            if (IsCallActive)
+            {
+                MessageBox.Show("Voice calls use the streaming engine — speak directly into your microphone.",
+                    "Call Active", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             if (_isRecordingAudio)
             {
                 // Stop recording
@@ -1567,30 +1536,9 @@ namespace HouseVictoria.App.Screens.Windows
                     return;
                 }
 
-                var inCall = CurrentCallState == CallState.Connected && !string.IsNullOrWhiteSpace(_activeCallConversationId);
-                if (inCall && !string.IsNullOrWhiteSpace(transcription))
-                {
-                    var conversationId = _activeCallConversationId!;
-                    var message = new ConversationMessage
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        ConversationId = conversationId,
-                        Content = transcription,
-                        Direction = MessageDirection.Outgoing,
-                        Type = MessageType.Text,
-                        Timestamp = DateTime.Now
-                    };
-                    if (_selectedConversation?.Id == conversationId && !Messages.Any(m => m.Id == message.Id))
-                        Messages.Add(message);
-                    MessageText = string.Empty;
-                    await _communicationService.SendMessageAsync(message);
-                }
-                else
-                {
-                    MessageText = transcription;
-                    if (!string.IsNullOrWhiteSpace(transcription))
-                        MessageBox.Show($"Transcription:\n\n{transcription}", "Transcription Complete", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                MessageText = transcription;
+                if (!string.IsNullOrWhiteSpace(transcription))
+                    MessageBox.Show($"Transcription:\n\n{transcription}", "Transcription Complete", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

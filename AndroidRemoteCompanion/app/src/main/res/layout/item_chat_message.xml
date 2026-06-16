@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="@dimen/chat_padding"
+    android:paddingTop="4dp"
+    android:paddingEnd="@dimen/chat_padding"
+    android:paddingBottom="4dp">
+
+    <LinearLayout
+        android:id="@+id/messageRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/avatarContainer"
+            android:layout_width="@dimen/avatar_size"
+            android:layout_height="@dimen/avatar_size"
+            android:layout_gravity="bottom"
+            android:layout_marginEnd="8dp">
+
+            <ImageView
+                android:id="@+id/avatarIcon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                tools:src="@drawable/ic_sparkle" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/senderLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:textColor="@color/hv_text_muted"
+                android:textSize="11sp"
+                android:visibility="gone"
+                tools:text="Victoria"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/messageBody"
+                style="@style/TextAppearance.RemoteCompanion.Message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_bubble_assistant"
+                android:paddingStart="14dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="10dp"
+                tools:text="Hello from House Victoria." />
+
+            <TextView
+                android:id="@+id/timestampText"
+                style="@style/TextAppearance.RemoteCompanion.Timestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:visibility="gone"
+                tools:text="2:34 PM"
+                tools:visibility="visible" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/systemMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_status_chip"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp"
+        android:textColor="@color/hv_text_secondary"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:text="Connected to PC"
+        tools:visibility="gone" />
+</FrameLayout>

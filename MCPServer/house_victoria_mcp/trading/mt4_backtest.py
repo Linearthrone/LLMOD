@@ -101,11 +101,16 @@ def get_historical_bars(
             if not broker_dir.is_dir():
                 continue
             for candidate in candidates:
-                hst = broker_dir / candidate / f"{candidate}{tf_code}.hst"
-                if hst.is_file():
-                    bars = _read_hst_file(hst, symbol, tf, start, end)
-                    if bars:
-                        break
+                for hst in (
+                    broker_dir / f"{candidate}{tf_code}.hst",
+                    broker_dir / candidate / f"{candidate}{tf_code}.hst",
+                ):
+                    if hst.is_file():
+                        bars = _read_hst_file(hst, symbol, tf, start, end)
+                        if bars:
+                            break
+                if bars:
+                    break
             if bars:
                 break
 

@@ -227,5 +227,19 @@ namespace HouseVictoria.Core.Models
 
         /// <summary>Priority for the dedicated MT4 Market Watch project (should be ≥ AutonomyHighPriorityThreshold).</summary>
         public int TradingWatchProjectPriority { get; set; } = 9;
+
+        // Streaming voice-call engine (On-Device-Speech-to-Speech-Conversational-AI)
+        /// <summary>When true, voice calls launch the external streaming speech-to-speech engine instead of the legacy push-to-talk STT/TTS path.</summary>
+        public bool VoiceEngineEnabled { get; set; } = true;
+        /// <summary>Path to the engine repo folder. Empty = auto-detect by walking up from the app directory looking for "On-Device-Speech-to-Speech-Conversational-AI".</summary>
+        public string VoiceEngineDirectory { get; set; } = string.Empty;
+        /// <summary>Path to the engine's Python interpreter. Empty = {VoiceEngineDirectory}\.venv\Scripts\python.exe.</summary>
+        public string VoiceEnginePython { get; set; } = string.Empty;
+        /// <summary>Engine entry script (relative to the engine directory).</summary>
+        public string VoiceEngineScript { get; set; } = "speech_to_speech.py";
+        /// <summary>Default Kokoro voice id used when a persona has no compatible voice set.</summary>
+        public string VoiceEngineVoice { get; set; } = "af_nicole";
+        /// <summary>Show the engine's console window during calls (useful for live transcripts/diagnostics).</summary>
+        public bool VoiceEngineShowConsole { get; set; } = true;
     }
 }

@@ -30,10 +30,11 @@ namespace HouseVictoria.Services.Trading.Backtest
                 {
                     foreach (var candidate in symbolCandidates)
                     {
-                        var symbolFolder = Path.Combine(brokerFolder, candidate);
-                        var hstFile = Path.Combine(symbolFolder, $"{candidate}{timeframeCode}.hst");
-                        if (File.Exists(hstFile))
+                        foreach (var hstFile in ResolveHstCandidates(brokerFolder, candidate, timeframeCode))
                         {
+                            if (!File.Exists(hstFile))
+                                continue;
+
                             bars = ReadHstFile(hstFile, symbol, timeFrame, startDate, endDate);
                             if (bars.Count > 0)
                                 return bars;
@@ -57,6 +58,17 @@ namespace HouseVictoria.Services.Trading.Backtest
             }
 
             return bars;
+        }
+
+        /// <summary>
+        /// MT4 stores .hst files flat under the broker folder (EURUSD60.hst) or,
+        /// on some builds, under a symbol subfolder (EURUSD/EURUSD60.hst).
+        /// </summary>
+        public static IEnumerable<string> ResolveHstCandidates(string brokerFolder, string symbol, string timeframeCode)
+        {
+            var fileName = $"{symbol}{timeframeCode}.hst";
+            yield return Path.Combine(brokerFolder, fileName);
+            yield return Path.Combine(brokerFolder, symbol, fileName);
         }
 
         public static List<string> ResolveSymbolCandidates(string commandPath, string symbol)
@@ -165,10 +177,11 @@ namespace HouseVictoria.Services.Trading.Backtest
                     if (parts.Length < 6)
                         continue;
 
-                    if (!DateTime.TryParse(parts[0], CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time))
+                    if (!DateTime.TryParse(parts[0], CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var time))
                         continue;
 
-                    if (time < startDate || time > endDate)
+                    // MT4 CSV timestamps are broker/server local; allow a day of slack vs UTC request window.
+                    if (time < startDate.AddDays(-1) || time > endDate.AddDays(1))
                         continue;
 
                     if (!double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var open) ||

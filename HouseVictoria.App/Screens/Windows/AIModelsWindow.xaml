@@ -468,7 +468,7 @@
                                             </Style>
                                         </ComboBox.ItemContainerStyle>
                                         <ComboBox.ToolTip>
-                                            <TextBlock>Voice used when this AI speaks during calls. Uses Kokoro or Piper TTS per Settings endpoint.</TextBlock>
+                                            <TextBlock>Voice used during streaming voice calls (Kokoro, built into the on-device engine).</TextBlock>
                                         </ComboBox.ToolTip>
                                     </ComboBox>
                                 </Grid>

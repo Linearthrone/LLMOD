@@ -169,41 +169,10 @@
                     <Border Style="{StaticResource Card}" Margin="0,5"
                             Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
                         <StackPanel>
-                            <TextBlock Text="🔊 Text-to-Speech &amp; Speech-to-Text" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🎙 Speech-to-Text" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="TTS Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Text="{Binding TTSEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
-                                <TextBlock Grid.Column="2" Text="{Binding TTSConnectionStatus}" 
-                                          Foreground="#00FF88" 
-                                          VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
-                                          Visibility="{Binding TTSConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#4CAF50"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding TTSConnectionStatus}" Value="✗ Failed">
-                                                    <Setter Property="Foreground" Value="#FF3366"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding TTSConnectionStatus}" Value="Testing...">
-                                                    <Setter Property="Foreground" Value="#FFAA00"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <Button Grid.Column="3" Content="Test" Style="{StaticResource GlassButton}" 
-                                       Command="{Binding TestTTSConnectionCommand}" 
-                                       Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
-                            </Grid>
+                            <TextBlock Text="Used for chat dictation and the remote companion app. Voice calls use the built-in streaming engine (no STT server needed)."
+                                      FontSize="11" Foreground="#5A6A7A" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -237,28 +206,6 @@
                                        Command="{Binding TestSTTConnectionCommand}" 
                                        Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                             </Grid>
-                            <!-- Kokoro TTS Server (port 8880): start/stop -->
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Kokoro TTS Server:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding KokoroTTSStatus}" Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
-                                <Button Grid.Column="2" Content="Start Kokoro" Style="{StaticResource GlassButton}" 
-                                       Command="{Binding StartKokoroCommand}" Width="110" Margin="5,0"/>
-                                <Button Grid.Column="3" Content="Stop Kokoro" Style="{StaticResource GlassButton}" 
-                                       Command="{Binding StopKokoroCommand}" Width="110" Margin="5,0"/>
-                            </Grid>
-                            <TextBlock Text="Kokoro TTS runs on http://localhost:8880. Set TTS Endpoint above to this URL to use Kokoro. Start/stop also available in System Monitor tray." 
-                                      FontSize="11" Foreground="#5A6A7A" Margin="0,2,0,0" TextWrapping="Wrap"/>
-                            <CheckBox Margin="0,8,0,0" Foreground="#E0F7FF"
-                                      IsChecked="{Binding UseWindowsTTSFallback}"
-                                      Content="Allow Microsoft Windows TTS if Kokoro/Piper is unreachable"/>
-                            <TextBlock FontSize="11" Foreground="#5A6A7A" Margin="0,2,0,0" TextWrapping="Wrap"
-                                       Text="If you hear a generic Windows voice, Kokoro likely failed or was stopped—check Kokoro status above, or turn this off to avoid the fallback (restart app after changing)."/>
                         </StackPanel>
                     </Border>
 

@@ -790,19 +790,15 @@ namespace HouseVictoria.App.Screens.Windows
         {
             try
             {
-                var ttsService = App.ServiceProvider?.GetService<ITTSService>();
                 _availablePiperVoices.Clear();
-                if (ttsService != null)
-                {
-                    var voices = await ttsService.GetAvailablePiperVoicesAsync();
-                    foreach (var v in voices)
-                        _availablePiperVoices.Add(v);
-                }
+                foreach (var v in HouseVictoria.Services.Voice.VoiceCatalog.GetKokoroVoices())
+                    _availablePiperVoices.Add(v);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading Piper voices: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading Kokoro voices: {ex.Message}");
             }
+            await Task.CompletedTask;
         }
 
         private async Task SavePersonaAsync()

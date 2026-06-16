@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="bubble_radius">18dp</dimen>
+    <dimen name="bubble_radius_small">6dp</dimen>
+    <dimen name="chat_padding">12dp</dimen>
+    <dimen name="avatar_size">36dp</dimen>
+    <dimen name="input_bar_radius">28dp</dimen>
+    <dimen name="fab_size">52dp</dimen>
+</resources>
