@@ -424,6 +424,11 @@ namespace HouseVictoria.Services.Trading
 
         public const double MaxSanityStopPips = 500;
 
+        public const double MaxAutonomyDemoVolume = 0.01;
+
+        public const string TradeJsonExample =
+            "{\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01,\"StopLoss\":\"<bid minus 20 pips>\",\"TakeProfit\":\"<ask plus 40 pips>\"}";
+
 
 
         private static readonly JsonSerializerOptions TradeJsonOptions = new()
@@ -660,6 +665,44 @@ namespace HouseVictoria.Services.Trading
 
             return notes.Count > 0 ? string.Join("; ", notes) : null;
 
+        }
+
+        /// <summary>
+        /// Requires a live quote, sanitizes stops, and refuses to pass stale AI prices to MT4.
+        /// </summary>
+        public static bool TryPrepareTradeForExecution(
+            TradeRequest request,
+            MarketData? quote,
+            out string? corrections,
+            out string error)
+        {
+            corrections = null;
+            error = string.Empty;
+
+            if (quote == null || quote.Bid <= 0 || quote.Ask <= 0)
+            {
+                error =
+                    $"Live quote unavailable for {request.Symbol}. Trade rejected — will not send orders without current bid/ask.";
+                return false;
+            }
+
+            corrections = SanitizeStopLossAndTakeProfit(request, quote);
+
+            if (request.StopLoss is null or <= 0)
+            {
+                error =
+                    $"Stop-loss could not be computed for {request.Symbol} from bid={quote.Bid:F5} ask={quote.Ask:F5}.";
+                return false;
+            }
+
+            if (!IsValidStopLoss(request, quote, out var slReason))
+            {
+                error =
+                    $"Stop-loss still invalid after sanitization ({slReason}) for {request.Symbol} at bid={quote.Bid:F5} ask={quote.Ask:F5}.";
+                return false;
+            }
+
+            return true;
         }
 
 

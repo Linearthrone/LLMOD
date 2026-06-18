@@ -10,10 +10,15 @@ namespace HouseVictoria.Core.Interfaces
     {
         AutonomyRuntimeState GetState();
         CognitionVitalsSnapshot GetVitals();
+        AutonomyControlSnapshot GetControlSnapshot();
         AutonomyLevel GetAutonomyLevel();
         Task SetAutonomyLevelAsync(AutonomyLevel level);
         string? GetUserGuidanceSuggestion();
         void SetUserGuidanceSuggestion(string? suggestion);
+        void ClearUserGuidance();
+        Task ApplySettingsAsync(AutonomySettingsUpdate update);
+        Task RestartLoopAsync();
+        IReadOnlyList<AutonomyActionLogEntry> GetRecentActionLog(TimeSpan window);
         Task StartAsync(CancellationToken cancellationToken = default);
         Task StopAsync();
         /// <summary>Temporarily override vitals (e.g. active trading).</summary>
@@ -21,5 +26,6 @@ namespace HouseVictoria.Core.Interfaces
         event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
         event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
         event EventHandler? AutonomyLevelChanged;
+        event EventHandler? ActionLogChanged;
     }
 }

@@ -100,6 +100,8 @@ async def server_info():
                 "config_bank_get",
                 "system_info",
                 "list_categories",
+                "save_to_file_retrieval",
+                "list_house_victoria_tools",
                 "task_create",
                 "task_get",
                 "task_update_status",

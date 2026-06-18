@@ -30,6 +30,16 @@ namespace HouseVictoria.Core.Interfaces
         /// Deletes a generated file
         /// </summary>
         Task<bool> DeleteFileAsync(string fileName);
+
+        /// <summary>
+        /// Copies an existing file on disk into the File Retrieval folder.
+        /// </summary>
+        Task<string?> ImportExternalFileAsync(string sourcePath, string? targetFileName = null);
+
+        /// <summary>
+        /// Absolute path to the File Retrieval root (Media/GeneratedFiles).
+        /// </summary>
+        string GeneratedFilesRoot { get; }
     }
 
     /// <summary>

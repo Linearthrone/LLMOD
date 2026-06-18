@@ -119,6 +119,11 @@ namespace HouseVictoria.Core.Models
         public string DataBankPath { get; set; } = "Data/Databanks";
         public string LogsPath { get; set; } = "Logs";
         public string MediaPath { get; set; } = "Media";
+        /// <summary>
+        /// When true, personas keep their voice but must not claim actions (files, tools, trades)
+        /// they did not actually perform.
+        /// </summary>
+        public bool OperationalMode { get; set; } = true;
         public int RefreshIntervalMs { get; set; } = 1000;
         public bool EnableOverlay { get; set; } = true;
         public double OverlayOpacity { get; set; } = 0.85;
@@ -191,7 +196,7 @@ namespace HouseVictoria.Core.Models
         public string AutonomyAiContactId { get; set; } = string.Empty;
         public bool AutonomyEnableArtGeneration { get; set; } = true;
         /// <summary>Cap substantive autonomy actions per rolling hour.</summary>
-        public int AutonomyMaxActionsPerHour { get; set; } = 8;
+        public int AutonomyMaxActionsPerHour { get; set; } = 6;
         public int AutonomyMaxArtPerHour { get; set; } = 2;
         /// <summary>Folder for autonomy state, logs, and generated artifacts.</summary>
         public string AutonomyDataPath { get; set; } = "Data/Autonomy";
@@ -199,6 +204,18 @@ namespace HouseVictoria.Core.Models
         public bool AutonomyEnableSelfGoals { get; set; } = true;
         /// <summary>Cap on self-initiated projects created per rolling day.</summary>
         public int AutonomyMaxSelfGoalsPerDay { get; set; } = 3;
+
+        /// <summary>Minimum dominant drive (0–1) before self-goal generation runs.</summary>
+        public double AutonomySelfGoalDriveThreshold { get; set; } = 0.65;
+
+        /// <summary>Max concurrent self-initiated open projects before goal generation is blocked.</summary>
+        public int AutonomyMaxActiveSelfProjects { get; set; } = 3;
+
+        /// <summary>Substantive actions while user guidance is active before it auto-clears.</summary>
+        public int AutonomyUserGuidanceMaxTicks { get; set; } = 3;
+
+        /// <summary>Max persisted interest tags Victoria actively deepens.</summary>
+        public int AutonomyMaxInterestTags { get; set; } = 3;
 
         /// <summary>When true, background service polls MT4 quotes across <see cref="TradingWatchSymbols"/>.</summary>
         public bool TradingWatchEnabled { get; set; } = true;

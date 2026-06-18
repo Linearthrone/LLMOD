@@ -56,6 +56,13 @@ if (Test-Path $appConfigPath) {
 }
 $mt4PathEscaped = $mt4Path -replace '\\', '/'
 
+$fileRetrievalPath = Join-Path $RepoRoot "HouseVictoria.App\bin\Release\net8.0-windows\Media\GeneratedFiles"
+if (-not (Test-Path $fileRetrievalPath)) {
+    $fileRetrievalPath = Join-Path $RepoRoot "Media\GeneratedFiles"
+}
+New-Item -ItemType Directory -Force -Path $fileRetrievalPath | Out-Null
+$fileRetrievalEscaped = $fileRetrievalPath -replace '\\', '/'
+
 $mcpFragment = @"
 
 # --- House Victoria (auto-merged by setup-hermes-integration.ps1) ---
@@ -66,6 +73,7 @@ mcp_servers:
     args: ["-m", "house_victoria_mcp"]
     env:
       MT4_DATA_PATH: "$mt4PathEscaped"
+      FILE_RETRIEVAL_PATH: "$fileRetrievalEscaped"
     timeout: 300
     enabled: true
   house_victoria_data:
@@ -89,6 +97,7 @@ if (Test-Path $ConfigFile) {
     args: ["-m", "house_victoria_mcp"]
     env:
       MT4_DATA_PATH: "$mt4PathEscaped"
+      FILE_RETRIEVAL_PATH: "$fileRetrievalEscaped"
     timeout: 300
     enabled: true
 "@

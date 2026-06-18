@@ -10,6 +10,8 @@ namespace HouseVictoria.Services.FileGeneration
     {
         private readonly string _generatedFilesPath;
 
+        public string GeneratedFilesRoot => _generatedFilesPath;
+
         public FileGenerationService(string basePath = "Media")
         {
             _generatedFilesPath = System.IO.Path.Combine(basePath, "GeneratedFiles");
@@ -173,6 +175,28 @@ namespace HouseVictoria.Services.FileGeneration
             {
                 System.Diagnostics.Debug.WriteLine($"Error deleting file '{fileName}': {ex.Message}");
                 return await Task.FromResult(false);
+            }
+        }
+
+        public async Task<string?> ImportExternalFileAsync(string sourcePath, string? targetFileName = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(sourcePath) || !System.IO.File.Exists(sourcePath))
+                    return null;
+
+                var fileName = string.IsNullOrWhiteSpace(targetFileName)
+                    ? System.IO.Path.GetFileName(sourcePath)
+                    : targetFileName;
+                var bytes = await System.IO.File.ReadAllBytesAsync(sourcePath).ConfigureAwait(false);
+                var copiedPath = await CreateFileAsync(fileName, bytes).ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"Imported external file to retrieval: {copiedPath}");
+                return copiedPath;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error importing external file '{sourcePath}': {ex.Message}");
+                return null;
             }
         }
 

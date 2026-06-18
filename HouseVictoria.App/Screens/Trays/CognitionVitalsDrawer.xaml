@@ -6,17 +6,39 @@
              xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
              xmlns:controls="clr-namespace:HouseVictoria.App.Controls"
              mc:Ignorable="d"
-             d:DesignHeight="400" d:DesignWidth="320"
+             d:DesignHeight="400" d:DesignWidth="360"
              Unloaded="Control_Unloaded">
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
+        <Style x:Key="ControlLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#80C4D4"/>
+            <Setter Property="Margin" Value="0,6,0,2"/>
+        </Style>
+        <Style x:Key="ControlInput" TargetType="TextBox">
+            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#E0F7FF"/>
+            <Setter Property="Background" Value="#1A152535"/>
+            <Setter Property="BorderBrush" Value="#4000D4FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style x:Key="MiniButton" TargetType="Button">
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Background" Value="#3320B2FF"/>
+            <Setter Property="BorderBrush" Value="#6000D4FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#E0F7FF"/>
+            <Setter Property="FontSize" Value="10"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid"
           Background="Transparent"
           MouseDown="RootGrid_MouseDown">
-        <!-- Minimal edge handle -->
         <Button x:Name="CollapsedPullHandle"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
@@ -46,7 +68,6 @@
             </Button.Template>
         </Button>
 
-        <!-- Compact pulse widget (no name) -->
         <Border x:Name="PulseWidget"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
@@ -75,126 +96,200 @@
             </StackPanel>
         </Border>
 
-        <!-- Expanded drawer panel -->
         <Border x:Name="DrawerPanel"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
-                Margin="0,0,0,0"
-                Width="300"
+                Width="340"
                 Background="#CC0A0E27"
                 CornerRadius="6"
                 Padding="10"
                 BorderBrush="#4000D4FF"
                 BorderThickness="1"
                 Visibility="Collapsed">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
-                <StackPanel>
-                    <Border Background="Transparent"
-                            BorderThickness="0"
-                            Padding="0,0,0,8"
-                            Cursor="Hand"
-                            ToolTip="Collapse to handle"
-                            MouseLeftButtonDown="DrawerHeaderPulse_MouseLeftButtonDown">
-                        <StackPanel>
-                            <controls:CognitionVitalsControl Margin="0,0,0,4"
-                                                               WaveHeight="56"
-                                                               Rhythm="{Binding CognitionRhythm}"
-                                                               BeatsPerMinute="{Binding CognitionBpm}"
-                                                               Intensity="{Binding CognitionIntensity}"
-                                                               WaveColorHex="{Binding CognitionWaveColorHex}"/>
-                            <TextBlock Text="{Binding CognitionRhythmDescription}"
-                                       FontSize="11"
-                                       Foreground="#80C4D4"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
+            <TabControl SelectedIndex="{Binding SelectedTabIndex}"
+                        Background="Transparent"
+                        BorderThickness="0">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Foreground" Value="#E0F7FF"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="Padding" Value="10,4"/>
+                    </Style>
+                </TabControl.Resources>
 
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                <!-- Pulse tab -->
+                <TabItem Header="Pulse">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
                         <StackPanel>
-                            <Grid Margin="0,0,0,6">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Command="{Binding CycleAutonomyLevelCommand}"
-                                            MinWidth="52"
-                                            Height="24"
-                                            Padding="8,2"
-                                            Margin="0,0,6,0"
-                                            Background="#3320B2FF"
-                                            BorderBrush="#6000D4FF"
-                                            BorderThickness="1"
-                                            Cursor="Hand"
-                                            ToolTip="Click to cycle autonomy level">
-                                        <TextBlock Text="{Binding AutonomyLevelLabel}"
-                                                   FontSize="11"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#E0F7FF"/>
-                                    </Button>
-                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
-                                             Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
-                                    <TextBlock Text="{Binding AutonomyStatusText}" FontSize="11" Foreground="#E0F7FF"/>
+                            <Border Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0,0,0,8"
+                                    Cursor="Hand"
+                                    ToolTip="Collapse to handle"
+                                    MouseLeftButtonDown="DrawerHeaderPulse_MouseLeftButtonDown">
+                                <StackPanel>
+                                    <controls:CognitionVitalsControl Margin="0,0,0,4"
+                                                                       WaveHeight="56"
+                                                                       Rhythm="{Binding CognitionRhythm}"
+                                                                       BeatsPerMinute="{Binding CognitionBpm}"
+                                                                       Intensity="{Binding CognitionIntensity}"
+                                                                       WaveColorHex="{Binding CognitionWaveColorHex}"/>
+                                    <TextBlock Text="{Binding CognitionRhythmDescription}"
+                                               FontSize="11"
+                                               Foreground="#80C4D4"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"/>
                                 </StackPanel>
-                            </Grid>
+                            </Border>
 
-                            <TextBlock Text="Guidance (if stuck or fixated)" FontSize="11" Foreground="#80C4D4" Margin="0,0,0,4"/>
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Command="{Binding CycleAutonomyLevelCommand}"
+                                                    Style="{StaticResource MiniButton}"
+                                                    MinWidth="52"
+                                                    Margin="0,0,6,0"
+                                                    ToolTip="Cycle Off → Low → Mid → Full">
+                                                <TextBlock Text="{Binding AutonomyLevelLabel}" FontWeight="SemiBold"/>
+                                            </Button>
+                                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                     Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
+                                            <TextBlock Text="{Binding AutonomyStatusText}" FontSize="11" Foreground="#E0F7FF"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <TextBlock Text="Guidance (if stuck or fixated)" Style="{StaticResource ControlLabel}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding AutonomySuggestion, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource ControlInput}"
+                                                 AcceptsReturn="False"
+                                                 VerticalContentAlignment="Center"/>
+                                        <Button Grid.Column="1"
+                                                Command="{Binding ApplyAutonomySuggestionCommand}"
+                                                Style="{StaticResource MiniButton}"
+                                                Margin="6,0,0,0"
+                                                Content="Apply"/>
+                                        <Button Grid.Column="2"
+                                                Command="{Binding ClearGuidanceCommand}"
+                                                Style="{StaticResource MiniButton}"
+                                                Margin="4,0,0,0"
+                                                Content="Clear"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding GuidanceStatus}" FontSize="10" Foreground="#607080" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                                    <TextBlock Text="Current activity" Style="{StaticResource ControlLabel}" Margin="0,10,0,2"/>
+                                    <TextBlock Text="{Binding CurrentActivityElapsed}" FontSize="12" Foreground="#00D4FF" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding CurrentActivityDescription}" FontSize="12" Foreground="#E0F7FF" TextWrapping="Wrap"/>
+
+                                    <TextBlock Text="Last activity" Style="{StaticResource ControlLabel}" Margin="0,10,0,2"/>
+                                    <TextBlock Text="{Binding PreviousActivityDescription}" FontSize="12" Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                    <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="#607080">
+                                        <Run Text="Duration: "/>
+                                        <Run Text="{Binding PreviousActivityDuration}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Control tab -->
+                <TabItem Header="Control">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
+                        <StackPanel>
+                            <TextBlock Text="Autonomy &amp; Cognition" FontSize="14" Foreground="#F48FB1" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                            <CheckBox Content="Enable autonomy loop"
+                                      IsChecked="{Binding EnableAutonomy}"
+                                      Foreground="#E0F7FF" FontSize="11" Margin="0,0,0,4"/>
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox Text="{Binding AutonomySuggestion, UpdateSourceTrigger=PropertyChanged}"
-                                         MinHeight="28"
-                                         Padding="6,4"
-                                         FontSize="11"
-                                         Foreground="#E0F7FF"
-                                         Background="#1A152535"
-                                         BorderBrush="#4000D4FF"
-                                         BorderThickness="1"
-                                         AcceptsReturn="False"
-                                         VerticalContentAlignment="Center">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox">
-                                            <Style.Triggers>
-                                                <Trigger Property="Text" Value="">
-                                                    <Setter Property="ToolTip" Value="e.g. Try research on a new topic, or switch to art"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
-                                <Button Grid.Column="1"
-                                        Command="{Binding ApplyAutonomySuggestionCommand}"
-                                        Margin="6,0,0,0"
-                                        Padding="8,4"
-                                        Background="#3320B2FF"
-                                        BorderBrush="#6000D4FF"
-                                        BorderThickness="1"
-                                        Cursor="Hand"
-                                        ToolTip="Apply guidance to next autonomy decisions">
-                                    <TextBlock Text="Apply" FontSize="10" Foreground="#E0F7FF"/>
-                                </Button>
+                                <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                    <TextBlock Text="Tick interval (sec)" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding TickIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Min idle (min)" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding MinIdleMinutes, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Priority threshold" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding HighPriorityThreshold, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Max actions / hour" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding MaxActionsPerHour, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Max art / hour" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding MaxArtPerHour, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                    <CheckBox Content="Art generation" IsChecked="{Binding EnableArtGeneration}" Foreground="#E0F7FF" FontSize="11" Margin="0,6,0,4"/>
+                                    <CheckBox Content="Self-initiated goals" IsChecked="{Binding EnableSelfGoals}" Foreground="#E0F7FF" FontSize="11" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Self-goals / day" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding MaxSelfGoalsPerDay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Self-goal drive threshold" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding SelfGoalDriveThreshold, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Max active self-projects" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding MaxActiveSelfProjects, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                    <TextBlock Text="Guidance auto-clear (ticks)" Style="{StaticResource ControlLabel}"/>
+                                    <TextBox Text="{Binding UserGuidanceMaxTicks, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
+                                </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="Current activity" FontSize="11" Foreground="#80C4D4" Margin="0,10,0,2"/>
-                            <TextBlock Text="{Binding CurrentActivityElapsed}" FontSize="12" Foreground="#00D4FF" Margin="0,0,0,4"/>
-                            <TextBlock Text="{Binding CurrentActivityDescription}" FontSize="12" Foreground="#E0F7FF"
-                                       TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                <Button Command="{Binding SaveAutonomySettingsCommand}" Style="{StaticResource MiniButton}" Content="Save settings" Margin="0,0,6,0"/>
+                                <Button Command="{Binding RestartAutonomyCommand}" Style="{StaticResource MiniButton}" Content="Restart loop" Margin="0,0,6,0"/>
+                                <Button Command="{Binding CycleAutonomyLevelCommand}" Style="{StaticResource MiniButton}" Content="{Binding AutonomyLevelLabel, StringFormat=Level: {0}}"/>
+                            </StackPanel>
 
-                            <TextBlock Text="Last activity" FontSize="11" Foreground="#80C4D4" Margin="0,10,0,2"/>
-                            <TextBlock Text="{Binding PreviousActivityDescription}" FontSize="12" Foreground="#E0F7FF"
-                                       TextWrapping="Wrap"/>
-                            <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="#607080">
-                                <Run Text="Duration: "/>
-                                <Run Text="{Binding PreviousActivityDuration}"/>
-                            </TextBlock>
+                            <Border Style="{StaticResource Card}" Margin="0,6,0,6" Padding="8">
+                                <StackPanel>
+                                    <TextBlock Text="Live state" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding DrivesSummary}" FontSize="10" Foreground="#C4D4E0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Interests" Style="{StaticResource ControlLabel}"/>
+                                    <TextBlock Text="{Binding InterestsSummary}" FontSize="10" Foreground="#C4D4E0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding BudgetSummary}" FontSize="10" Foreground="#607080" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding ActionLogHeader}" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold"/>
+                                <Button Grid.Column="1" Command="{Binding RefreshActionLogCommand}" Style="{StaticResource MiniButton}" Content="Refresh"/>
+                            </Grid>
+
+                            <Border Background="#121828" BorderBrush="#304050" BorderThickness="1" CornerRadius="4" MaxHeight="220">
+                                <ListBox ItemsSource="{Binding ActionLogLines}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,2">
+                                                <TextBlock Text="{Binding Timestamp}" FontSize="9" Foreground="#607080"/>
+                                                <TextBlock Text="{Binding Text}" FontSize="10" Foreground="#C4D4E0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                            <TextBlock Text="Rolling 24-hour window from activity.log" FontSize="9" Foreground="#506070" Margin="0,4,0,0"/>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
         </Border>
     </Grid>
 </UserControl>

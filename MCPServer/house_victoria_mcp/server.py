@@ -709,8 +709,72 @@ async def register_system_tools(mcp_server: FastMCP):
         """
         return ["project", "knowledge", "resource", "config", "conversation"]
 
+    @mcp_server.tool()
+    async def save_to_file_retrieval(filename: str, content: str) -> dict:
+        """Save a user-facing file to the House Victoria File Retrieval folder (📥 top tray).
+
+        Use this when the user asks for a document, research paper, report, or any file
+        they should be able to open from File Retrieval in the desktop app.
+
+        Args:
+            filename: Target filename including extension (e.g. research_paper.md)
+            content: Full file body (markdown, text, json, etc.)
+        """
+        from pathlib import Path
+        from .config import resolve_file_retrieval_path
+
+        safe_name = Path(filename).name.strip()
+        if not safe_name:
+            return {"success": False, "error": "filename is required"}
+
+        target_dir = Path(resolve_file_retrieval_path())
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / safe_name
+        if target_path.exists():
+            stem = target_path.stem
+            suffix = target_path.suffix
+            from datetime import datetime, timezone
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            target_path = target_dir / f"{stem}_{stamp}{suffix}"
+
+        target_path.write_text(content, encoding="utf-8")
+        return {
+            "success": True,
+            "filename": target_path.name,
+            "path": str(target_path),
+            "location": "File Retrieval",
+        }
+
+    @mcp_server.tool()
+    async def list_house_victoria_tools() -> dict:
+        """List House Victoria MCP tools and when to use them.
+
+        Call this when you need to deliver a file, run MT4/trading actions, or store memory —
+        instead of guessing or narrating actions you have not taken.
+        """
+        from .config import resolve_file_retrieval_path
+
+        return {
+            "file_retrieval_path": resolve_file_retrieval_path(),
+            "deliver_files": {
+                "save_to_file_retrieval": "Save a document/paper/report to the user's File Retrieval folder (📥 top tray).",
+                "chat_file_markers": "Or put content in [FILE]filename.md[/FILE] in the chat reply (app saves automatically).",
+            },
+            "trading": [
+                "mt4_status", "mt4_list_symbols", "mt4_get_market_data",
+                "mt4_get_open_positions", "mt4_execute_trade", "mt4_close_position",
+                "mt4_run_backtest", "mt4_export_history", "mt4_get_historical_bars",
+            ],
+            "memory_and_banks": [
+                "memory_store", "memory_search", "memory_retrieve",
+                "project_bank_create", "knowledge_bank_add", "config_bank_set",
+            ],
+        }
+
     _tool_functions["system_info"] = system_info
     _tool_functions["list_categories"] = list_categories
+    _tool_functions["save_to_file_retrieval"] = save_to_file_retrieval
+    _tool_functions["list_house_victoria_tools"] = list_house_victoria_tools
 
 
 async def register_trading_tools(mcp_server: FastMCP):

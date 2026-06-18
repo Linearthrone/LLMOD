@@ -29,8 +29,14 @@ namespace HouseVictoria.Services.Autonomy
             AIContact contact,
             AutonomyRuntimeState state,
             IReadOnlyList<Project> existingProjects,
+            int maxActiveSelfProjects,
+            string interestHint,
             CancellationToken cancellationToken = default)
         {
+            var activeSelfCount = CountActiveSelfInitiated(existingProjects, contact.Id);
+            if (activeSelfCount >= maxActiveSelfProjects)
+                return null;
+
             var dominant = DriveSystem.Dominant(state);
             var existingNames = string.Join("\n", existingProjects
                 .Where(p => p.Phase != ProjectPhase.Completed)
@@ -47,9 +53,11 @@ namespace HouseVictoria.Services.Autonomy
             var prompt = $$"""
                 You are {{contact.Name}}, the autonomous mind of House Victoria, during quiet time.
                 Your strongest drive right now is "{{dominant.Name}}" ({{dominant.Value:F2}}).
+                Active interests to deepen (prefer one of these): {{interestHint}}
 
                 You may start ONE new self-initiated project that you genuinely want to pursue —
                 something that satisfies that drive and is distinct from what already exists.
+                Do NOT start a new project if an active interest can be advanced instead.
 
                 Existing open projects (do NOT duplicate these):
                 {{existingNames}}
@@ -138,6 +146,14 @@ namespace HouseVictoria.Services.Autonomy
         }
 
         private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max] + "…";
+
+        private static int CountActiveSelfInitiated(IReadOnlyList<Project> projects, string contactId)
+        {
+            return projects.Count(p =>
+                p.Phase != ProjectPhase.Completed &&
+                (string.Equals(p.AssignedAIId, contactId, StringComparison.Ordinal) ||
+                 (p.Description?.Contains("Self-initiated", StringComparison.OrdinalIgnoreCase) ?? false)));
+        }
 
         private sealed class GoalProposal
         {

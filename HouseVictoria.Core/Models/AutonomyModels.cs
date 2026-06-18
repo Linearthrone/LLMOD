@@ -129,7 +129,7 @@ namespace HouseVictoria.Core.Models
             ["creativity"] = 0.5,
             ["social"] = 0.3,
             ["boredom"] = 0.2,
-            ["industry"] = 0.5
+            ["purpose"] = 0.5
         };
         /// <summary>Resting values each drive decays toward when not stimulated or satisfied.</summary>
         public Dictionary<string, double> DriveBaselines { get; set; } = new()
@@ -138,8 +138,14 @@ namespace HouseVictoria.Core.Models
             ["creativity"] = 0.5,
             ["social"] = 0.3,
             ["boredom"] = 0.2,
-            ["industry"] = 0.5
+            ["purpose"] = 0.5
         };
+
+        /// <summary>Persisted interest weights (tag → 0–1). Decays slowly; grows when topics are explored.</summary>
+        public Dictionary<string, double> InterestWeights { get; set; } = new();
+
+        /// <summary>Top interest tags Victoria is actively deepening (max 3).</summary>
+        public List<string> ActiveInterestTags { get; set; } = new();
         public int ActionsThisHour { get; set; }
         public DateTime HourWindowStartUtc { get; set; } = DateTime.UtcNow;
         public int ArtGeneratedThisHour { get; set; }
@@ -171,6 +177,63 @@ namespace HouseVictoria.Core.Models
 
         /// <summary>User-provided nudge when autonomy seems stuck or fixated.</summary>
         public string? UserGuidanceSuggestion { get; set; }
+
+        /// <summary>Substantive actions remaining before user guidance auto-clears.</summary>
+        public int UserGuidanceTicksRemaining { get; set; }
+    }
+
+    /// <summary>One line from autonomy activity.log within a rolling window.</summary>
+    public class AutonomyActionLogEntry
+    {
+        public DateTime TimestampLocal { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public AutonomyActivityKind? ActivityKind { get; set; }
+    }
+
+    /// <summary>Live autonomy/cognition control panel snapshot for the vitals drawer.</summary>
+    public class AutonomyControlSnapshot
+    {
+        public Dictionary<string, double> Drives { get; set; } = new();
+        public List<AutonomyInterestTag> Interests { get; set; } = new();
+        public int ActionsThisHour { get; set; }
+        public int MaxActionsPerHour { get; set; }
+        public int ArtGeneratedThisHour { get; set; }
+        public int MaxArtPerHour { get; set; }
+        public int SelfGoalsToday { get; set; }
+        public int MaxSelfGoalsPerDay { get; set; }
+        public string? UserGuidance { get; set; }
+        public int UserGuidanceTicksRemaining { get; set; }
+        public long TotalActions { get; set; }
+        public long TotalTicks { get; set; }
+        public bool IsRunning { get; set; }
+        public AutonomyLevel Level { get; set; }
+    }
+
+    public class AutonomyInterestTag
+    {
+        public string Tag { get; set; } = string.Empty;
+        public double Weight { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    /// <summary>Partial autonomy settings update from the vitals control drawer.</summary>
+    public class AutonomySettingsUpdate
+    {
+        public bool? EnableAutonomy { get; set; }
+        public AutonomyLevel? Level { get; set; }
+        public int? TickIntervalSeconds { get; set; }
+        public int? MinIdleMinutes { get; set; }
+        public int? HighPriorityThreshold { get; set; }
+        public bool? EnableArtGeneration { get; set; }
+        public int? MaxActionsPerHour { get; set; }
+        public int? MaxArtPerHour { get; set; }
+        public bool? EnableSelfGoals { get; set; }
+        public int? MaxSelfGoalsPerDay { get; set; }
+        public double? SelfGoalDriveThreshold { get; set; }
+        public int? MaxActiveSelfProjects { get; set; }
+        public int? UserGuidanceMaxTicks { get; set; }
+        public string? UserGuidance { get; set; }
+        public bool ClearUserGuidance { get; set; }
     }
 
     /// <summary>LLM decision payload for one autonomy tick.</summary>

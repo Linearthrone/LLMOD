@@ -1,7 +1,7 @@
 using HouseVictoria.Core.Models;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
-using System.Configuration;
+using HouseVictoria.Core.Utils;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -1947,7 +1947,7 @@ v_models:
                         EmbeddingVectorDimensions = importedConfig.EmbeddingVectorDimensions > 0 ? importedConfig.EmbeddingVectorDimensions : 768;
                         HybridLexicalWeight = importedConfig.HybridLexicalWeight;
 
-                        MessageBox.Show("Settings imported successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                        SaveSettings();
                     }
                 }
             }
@@ -2114,57 +2114,8 @@ v_models:
                 _appConfig.EmbeddingVectorDimensions = EmbeddingVectorDimensions;
                 _appConfig.HybridLexicalWeight = HybridLexicalWeight;
 
-                // Save to App.config file (basic settings only)
-                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-
-                UpdateOrAddSetting(config, "LmStudioEndpoint", LmStudioEndpoint);
-                UpdateOrAddSetting(config, "PrimaryLLM", PrimaryLLM);
-                UpdateOrAddSetting(config, "OllamaEndpoint", OllamaEndpoint);
-                UpdateOrAddSetting(config, "AnythingLLMEndpoint", AnythingLLMEndpoint);
-                UpdateOrAddSetting(config, "HermesEndpoint", HermesEndpoint);
-                UpdateOrAddSetting(config, "HermesApiKey", HermesApiKey ?? string.Empty);
-                UpdateOrAddSetting(config, "HermesModelName", HermesModelName ?? "hermes-agent");
-                UpdateOrAddSetting(config, "HermesAutoStart", HermesAutoStart.ToString());
-                UpdateOrAddSetting(config, "MCPServerEndpoint", MCPServerEndpoint);
-                UpdateOrAddSetting(config, "TTSEndpoint", TTSEndpoint);
-                UpdateOrAddSetting(config, "UseWindowsTTSFallback", UseWindowsTTSFallback.ToString());
-                UpdateOrAddSetting(config, "STTEndpoint", STTEndpoint ?? string.Empty);
-                UpdateOrAddSetting(config, "UnrealEngineEndpoint", UnrealEngineEndpoint);
-                UpdateOrAddSetting(config, "RemoteCompanionEnabled", RemoteCompanionEnabled.ToString());
-                UpdateOrAddSetting(config, "RemoteCompanionListenPort", RemoteCompanionListenPort.ToString());
-                UpdateOrAddSetting(config, "RemoteCompanionApiToken", RemoteCompanionApiToken);
-                UpdateOrAddSetting(config, "RemoteCompanionAiContactId", RemoteCompanionAiContactId);
-                UpdateOrAddSetting(config, "RemoteCompanionListenOnLan", RemoteCompanionListenOnLan.ToString());
-                UpdateOrAddSetting(config, "RemoteCompanionNotifyUnreal", RemoteCompanionNotifyUnreal.ToString());
-                UpdateOrAddSetting(config, "EnableAutonomy", EnableAutonomy.ToString());
-                UpdateOrAddSetting(config, "AutonomyTickIntervalSeconds", AutonomyTickIntervalSeconds.ToString());
-                UpdateOrAddSetting(config, "AutonomyMinIdleMinutes", AutonomyMinIdleMinutes.ToString());
-                UpdateOrAddSetting(config, "AutonomyHighPriorityThreshold", AutonomyHighPriorityThreshold.ToString());
-                UpdateOrAddSetting(config, "AutonomyAiContactId", AutonomyAiContactId ?? string.Empty);
-                UpdateOrAddSetting(config, "AutonomyEnableArtGeneration", AutonomyEnableArtGeneration.ToString());
-                UpdateOrAddSetting(config, "AutonomyMaxActionsPerHour", AutonomyMaxActionsPerHour.ToString());
-                UpdateOrAddSetting(config, "AutonomyMaxArtPerHour", AutonomyMaxArtPerHour.ToString());
-                UpdateOrAddSetting(config, "ImageGenerationProvider", ImageGenerationProvider);
-                UpdateOrAddSetting(config, "A2eApiToken", A2eApiToken ?? string.Empty);
-                UpdateOrAddSetting(config, "A2eApiBaseUrl", A2eApiBaseUrl ?? "https://video.a2e.ai");
-                UpdateOrAddSetting(config, "StableDiffusionEndpoint", StableDiffusionEndpoint);
-                UpdateOrAddSetting(config, "StabilityMatrixPath", StabilityMatrixPath ?? string.Empty);
-                UpdateOrAddSetting(config, "ComfyUIPortablePath", ComfyUIPortablePath ?? string.Empty);
-                UpdateOrAddSetting(config, "ComfyUICustomWorkflowPath", ComfyUICustomWorkflowPath ?? string.Empty);
-                UpdateOrAddSetting(config, "ComfyUIPreferredCheckpoint", ComfyUIPreferredCheckpoint ?? string.Empty);
-                UpdateOrAddSetting(config, "ColorScheme", ThemeManager.GetThemeIdByIndex(SelectedThemeIndex));
-                UpdateOrAddSetting(config, "EnableOverlay", EnableOverlay.ToString());
-                UpdateOrAddSetting(config, "OverlayOpacity", OverlayOpacity.ToString());
-                UpdateOrAddSetting(config, "AutoHideTrays", AutoHideTrays.ToString());
-                UpdateOrAddSetting(config, "AutoHideDelayMs", AutoHideDelayMs.ToString());
-                UpdateOrAddSetting(config, "EnablePgVector", EnablePgVector.ToString());
-                UpdateOrAddSetting(config, "PgVectorConnectionString", PgVectorConnectionString ?? string.Empty);
-                UpdateOrAddSetting(config, "OllamaEmbeddingModel", OllamaEmbeddingModel);
-                UpdateOrAddSetting(config, "EmbeddingVectorDimensions", EmbeddingVectorDimensions.ToString());
-                UpdateOrAddSetting(config, "HybridLexicalWeight", HybridLexicalWeight.ToString(CultureInfo.InvariantCulture));
-
-                config.Save(ConfigurationSaveMode.Modified);
-                ConfigurationManager.RefreshSection("appSettings");
+                // Persist outside build output (%LocalAppData%\HouseVictoria\user-settings.json)
+                UserSettingsStore.Save(_appConfig);
 
                 _ = RestartAutonomyLoopAsync();
 
@@ -2190,23 +2141,15 @@ v_models:
                     System.Diagnostics.Debug.WriteLine($"Could not write primary-llm.txt / comfyui-portable-path.txt: {ex.Message}");
                 }
 
-                MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(
+                    $"Settings saved successfully!\n\nStored in:\n{UserSettingsStore.GetSettingsFilePath()}",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error saving settings: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void UpdateOrAddSetting(Configuration config, string key, string value)
-        {
-            if (config.AppSettings.Settings[key] != null)
-            {
-                config.AppSettings.Settings[key].Value = value;
-            }
-            else
-            {
-                config.AppSettings.Settings.Add(key, value);
             }
         }
 

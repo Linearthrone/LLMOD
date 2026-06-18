@@ -364,6 +364,90 @@ namespace HouseVictoria.Tests
 
         }
 
+
+
+        [Fact]
+
+        public void TryPrepareTradeForExecution_RejectsWhenQuoteUnavailable()
+
+        {
+
+            var request = new TradeRequest
+
+            {
+
+                Symbol = "EURUSD",
+
+                Type = TradeType.Buy,
+
+                Volume = 0.01,
+
+                StopLoss = 1.0830
+
+            };
+
+
+
+            var ok = Mt4TradeBridgeHelper.TryPrepareTradeForExecution(request, null, out var corrections, out var error);
+
+
+
+            Assert.False(ok);
+
+            Assert.Null(corrections);
+
+            Assert.Contains("Live quote unavailable", error);
+
+            Assert.Equal(1.0830, request.StopLoss);
+
+        }
+
+
+
+        [Fact]
+
+        public void TryPrepareTradeForExecution_CorrectsStaleStopBeforeSend()
+
+        {
+
+            var request = new TradeRequest
+
+            {
+
+                Symbol = "EURUSD",
+
+                Type = TradeType.Buy,
+
+                Volume = 0.01,
+
+                StopLoss = 1.0780,
+
+                TakeProfit = 1.0920
+
+            };
+
+            var quote = new MarketData { Symbol = "EURUSD", Bid = 1.15900, Ask = 1.15920 };
+
+
+
+            var ok = Mt4TradeBridgeHelper.TryPrepareTradeForExecution(request, quote, out var corrections, out var error);
+
+
+
+            Assert.True(ok);
+
+            Assert.Empty(error);
+
+            Assert.NotNull(corrections);
+
+            Assert.Contains("StopLoss corrected", corrections);
+
+            Assert.True(request.StopLoss < quote.Bid);
+
+            Assert.Null(request.TakeProfit);
+
+        }
+
     }
 
 }

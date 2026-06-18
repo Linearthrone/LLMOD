@@ -11,9 +11,15 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class RemoteApiClient {
-    private val http = OkHttpClient()
+    // LLM replies can take well over OkHttp's default 10s read timeout (especially over Tailscale).
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.MINUTES)
+        .writeTimeout(2, TimeUnit.MINUTES)
+        .build()
     private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val chatReqAdapter = moshi.adapter(ChatRequest::class.java)
     private val chatRespAdapter = moshi.adapter(ChatResponse::class.java)

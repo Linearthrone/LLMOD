@@ -489,6 +489,7 @@ namespace HouseVictoria.App
                 DataBankPath = config["DataBankPath"] ?? "Data\\Databanks",
                 LogsPath = config["LogsPath"] ?? "Logs",
                 MediaPath = config["MediaPath"] ?? "Media",
+                OperationalMode = !bool.TryParse(config["OperationalMode"], out var operationalMode) || operationalMode,
                 EnableOverlay = bool.TryParse(config["EnableOverlay"], out var enableOverlay) && enableOverlay,
                 AutoHideTrays = bool.TryParse(config["AutoHideTrays"], out var autoHideTrays) && autoHideTrays,
                 EnablePgVector = bool.TryParse(config["EnablePgVector"], out var enablePg) && enablePg,
@@ -519,6 +520,10 @@ namespace HouseVictoria.App
                 AutonomyDataPath = config["AutonomyDataPath"] ?? "Data/Autonomy",
                 AutonomyEnableSelfGoals = !bool.TryParse(config["AutonomyEnableSelfGoals"], out var aesg) || aesg,
                 AutonomyMaxSelfGoalsPerDay = int.TryParse(config["AutonomyMaxSelfGoalsPerDay"], out var amsg) && amsg >= 0 ? amsg : 3,
+                AutonomySelfGoalDriveThreshold = double.TryParse(config["AutonomySelfGoalDriveThreshold"], out var asgdt) && asgdt is > 0 and <= 1 ? asgdt : 0.65,
+                AutonomyMaxActiveSelfProjects = int.TryParse(config["AutonomyMaxActiveSelfProjects"], out var amasp) && amasp > 0 ? amasp : 3,
+                AutonomyUserGuidanceMaxTicks = int.TryParse(config["AutonomyUserGuidanceMaxTicks"], out var augmt) && augmt > 0 ? augmt : 3,
+                AutonomyMaxInterestTags = int.TryParse(config["AutonomyMaxInterestTags"], out var amit) && amit > 0 ? amit : 3,
                 TradingWatchEnabled = !bool.TryParse(config["TradingWatchEnabled"], out var twe) || twe,
                 TradingWatchSymbols = config["TradingWatchSymbols"] ?? string.Empty,
                 TradingWatchIntervalSeconds = int.TryParse(config["TradingWatchIntervalSeconds"], out var twi) && twi >= 15 ? twi : 30,
@@ -533,8 +538,27 @@ namespace HouseVictoria.App
                 VoiceEnginePython = config["VoiceEnginePython"] ?? string.Empty,
                 VoiceEngineScript = string.IsNullOrWhiteSpace(config["VoiceEngineScript"]) ? "speech_to_speech.py" : config["VoiceEngineScript"]!,
                 VoiceEngineVoice = string.IsNullOrWhiteSpace(config["VoiceEngineVoice"]) ? "af_nicole" : config["VoiceEngineVoice"]!,
-                VoiceEngineShowConsole = !bool.TryParse(config["VoiceEngineShowConsole"], out var vesc) || vesc
+                VoiceEngineShowConsole = !bool.TryParse(config["VoiceEngineShowConsole"], out var vesc) || vesc,
+                RefreshIntervalMs = int.TryParse(config["RefreshIntervalMs"], out var refreshMs) && refreshMs > 0 ? refreshMs : 1000,
+                OverlayOpacity = double.TryParse(config["OverlayOpacity"], out var overlayOpacity) ? overlayOpacity : 0.85,
+                AutoHideDelayMs = int.TryParse(config["AutoHideDelayMs"], out var autoHideDelay) && autoHideDelay >= 0 ? autoHideDelay : 3000,
+                WalkSpeed = double.TryParse(config["WalkSpeed"], out var walkSpeed) && walkSpeed > 0 ? walkSpeed : 1.0,
+                RunSpeed = double.TryParse(config["RunSpeed"], out var runSpeed) && runSpeed > 0 ? runSpeed : 2.0,
+                JumpHeight = double.TryParse(config["JumpHeight"], out var jumpHeight) && jumpHeight > 0 ? jumpHeight : 1.0,
+                EnablePhysicsInteraction = !bool.TryParse(config["EnablePhysicsInteraction"], out var enablePhysics) || enablePhysics,
+                EnableFileSystemAccess = !bool.TryParse(config["EnableFileSystemAccess"], out var enableFs) || enableFs,
+                EnableNetworkAccess = !bool.TryParse(config["EnableNetworkAccess"], out var enableNet) || enableNet,
+                EnableSystemCommands = bool.TryParse(config["EnableSystemCommands"], out var enableSysCmd) && enableSysCmd,
+                EnablePersistentMemory = !bool.TryParse(config["EnablePersistentMemory"], out var enableMem) || enableMem,
+                PersistentMemoryPath = config["PersistentMemoryPath"] ?? "Data/Memory",
+                MemoryMaxEntries = int.TryParse(config["MemoryMaxEntries"], out var memMax) && memMax > 0 ? memMax : 10000,
+                MemoryImportanceThreshold = double.TryParse(config["MemoryImportanceThreshold"], out var memThreshold) ? memThreshold : 0.5,
+                MemoryRetentionDays = int.TryParse(config["MemoryRetentionDays"], out var memDays) && memDays > 0 ? memDays : 90
             };
+
+            var userSettings = HouseVictoria.Core.Utils.UserSettingsStore.TryLoad();
+            if (userSettings != null)
+                HouseVictoria.Core.Utils.UserSettingsStore.MergeInto(appConfig, userSettings);
 
             // Resolve relative paths to absolute paths
             var appDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;

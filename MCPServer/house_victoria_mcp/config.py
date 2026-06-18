@@ -58,6 +58,25 @@ def resolve_data_banks_path() -> str:
     return str(fallback)
 
 
+def resolve_file_retrieval_path() -> str:
+    """Locate the WPF File Retrieval folder (Media/GeneratedFiles)."""
+    configured = os.getenv("FILE_RETRIEVAL_PATH", "").strip()
+    if configured:
+        return configured
+
+    root = _repo_root()
+    fallback = root / "Media" / "GeneratedFiles"
+    candidates = [
+        root / "HouseVictoria.App" / "bin" / "Release" / "net8.0-windows" / "Media" / "GeneratedFiles",
+        root / "HouseVictoria.App" / "bin" / "Debug" / "net8.0-windows" / "Media" / "GeneratedFiles",
+        root / "Media" / "GeneratedFiles",
+    ]
+    for path in candidates:
+        if path.is_dir():
+            return str(path)
+    return str(fallback)
+
+
 @dataclass
 class ServerConfig:
     """Server configuration settings."""
@@ -76,6 +95,7 @@ class ServerConfig:
 
     # Data banks settings
     data_banks_path: str = field(default_factory=resolve_data_banks_path)
+    file_retrieval_path: str = field(default_factory=resolve_file_retrieval_path)
     projects_path: str = field(
         default_factory=lambda: os.getenv(
             "PROJECTS_PATH", str(Path(__file__).parent.parent / "data" / "projects")
@@ -110,7 +130,7 @@ class ServerConfig:
     def __post_init__(self):
         """Ensure directories exist after initialization."""
         # Create necessary directories
-        for path_key in ["database_path", "app_database_path", "data_banks_path", "projects_path", "log_file"]:
+        for path_key in ["database_path", "app_database_path", "data_banks_path", "file_retrieval_path", "projects_path", "log_file"]:
             path_value = getattr(self, path_key)
             if path_key == "database_path":
                 Path(path_value).parent.mkdir(parents=True, exist_ok=True)
@@ -118,6 +138,8 @@ class ServerConfig:
                 Path(path_value).parent.mkdir(parents=True, exist_ok=True)
             elif path_key == "log_file":
                 Path(path_value).parent.mkdir(parents=True, exist_ok=True)
+            elif path_key in {"file_retrieval_path", "data_banks_path", "projects_path"}:
+                Path(path_value).mkdir(parents=True, exist_ok=True)
             else:
                 Path(path_value).mkdir(parents=True, exist_ok=True)
 

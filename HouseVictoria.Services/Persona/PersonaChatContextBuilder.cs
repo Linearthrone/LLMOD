@@ -22,11 +22,13 @@ namespace HouseVictoria.Services.Persona
 
         private readonly IMemoryService? _memoryService;
         private readonly IJournalService? _journalService;
+        private readonly bool _operationalMode;
 
-        public PersonaChatContextBuilder(IMemoryService? memoryService, IJournalService? journalService)
+        public PersonaChatContextBuilder(IMemoryService? memoryService, IJournalService? journalService, bool operationalMode = true)
         {
             _memoryService = memoryService;
             _journalService = journalService;
+            _operationalMode = operationalMode;
         }
 
         /// <summary>
@@ -42,9 +44,7 @@ namespace HouseVictoria.Services.Persona
                 var sections = new List<(double score, string text)>();
 
                 var builder = new StringBuilder();
-                builder.AppendLine(
-                    $"[Identity] You are {contact.Name}. Stay in character as {contact.Name} only. " +
-                    "Do not present yourself as Victoria or any other persona unless the user explicitly asks for roleplay.");
+                builder.AppendLine(OperationalStyleComposer.BuildIdentityLine(contact, _operationalMode));
 
                 if (keywords.Count == 0)
                     return builder.ToString().TrimEnd();
@@ -222,7 +222,7 @@ namespace HouseVictoria.Services.Persona
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"PersonaChatContextBuilder failed: {ex.Message}");
-                return $"[Identity] You are {contact.Name}. Stay in character as {contact.Name} only.";
+                return OperationalStyleComposer.BuildIdentityLine(contact, _operationalMode);
             }
         }
 

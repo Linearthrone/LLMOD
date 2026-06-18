@@ -36,29 +36,7 @@ namespace HouseVictoria.Services.AIServices
             try
             {
                 var endpoint = contact.ServerEndpoint;
-                var messages = new List<object>();
-
-                // Add system prompt if available
-                if (!string.IsNullOrEmpty(contact.SystemPrompt))
-                {
-                    messages.Add(new { role = "system", content = contact.SystemPrompt });
-                }
-
-                // Add context if provided
-                if (context != null)
-                {
-                    foreach (var msg in context)
-                    {
-                        messages.Add(new
-                        {
-                            role = msg.Role,
-                            content = msg.Content
-                        });
-                    }
-                }
-
-                // Add current message
-                messages.Add(new { role = "user", content = message });
+                var messages = BuildOllamaMessages(contact, message, context);
 
                 // Build request body with LLM parameters
                 // For Ollama API, parameters are nested in an "options" object
@@ -151,6 +129,57 @@ namespace HouseVictoria.Services.AIServices
                 });
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Builds an Ollama /api/chat message list. Some models (e.g. Qwen 3.5) require exactly one
+        /// system message at index 0; extra system roles in context must be merged, not passed through.
+        /// </summary>
+        private static List<object> BuildOllamaMessages(AIContact contact, string message, List<ChatMessage>? context)
+        {
+            var systemParts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(contact.SystemPrompt))
+                systemParts.Add(contact.SystemPrompt.Trim());
+
+            var conversation = new List<object>();
+            string? lastUserContent = null;
+
+            if (context != null)
+            {
+                foreach (var msg in context)
+                {
+                    if (string.IsNullOrWhiteSpace(msg.Content))
+                        continue;
+
+                    if (string.Equals(msg.Role, "system", StringComparison.OrdinalIgnoreCase))
+                    {
+                        systemParts.Add(msg.Content.Trim());
+                        continue;
+                    }
+
+                    var role = NormalizeOllamaRole(msg.Role);
+                    conversation.Add(new { role, content = msg.Content });
+                    if (role == "user")
+                        lastUserContent = msg.Content;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(message) && !string.Equals(lastUserContent, message, StringComparison.Ordinal))
+                conversation.Add(new { role = "user", content = message });
+
+            var messages = new List<object>();
+            if (systemParts.Count > 0)
+                messages.Add(new { role = "system", content = string.Join("\n\n", systemParts) });
+
+            messages.AddRange(conversation);
+            return messages;
+        }
+
+        private static string NormalizeOllamaRole(string? role)
+        {
+            if (string.Equals(role, "assistant", StringComparison.OrdinalIgnoreCase))
+                return "assistant";
+            return "user";
         }
 
         private const string EnhanceImagePromptSystemPrompt = "You are an expert at writing detailed, effective image generation prompts for ComfyUI and other diffusion-based image generators. " +

@@ -7,17 +7,9 @@ namespace HouseVictoria.Services.Persona
     /// </summary>
     public static class PersonaPromptComposer
     {
-        public static AIContact WithIdentity(AIContact contact)
+        public static AIContact WithIdentity(AIContact contact, bool operationalMode = false)
         {
-            var name = string.IsNullOrWhiteSpace(contact.Name) ? "Assistant" : contact.Name.Trim();
-            var guard =
-                $"You are {name}. Stay in character as {name} at all times. " +
-                $"You are NOT Victoria and NOT any other persona unless the user explicitly asks you to roleplay as someone else. " +
-                $"If you lack information, say so as {name} — do not invent Victoria's house history or autonomy work.";
-
-            var merged = string.IsNullOrWhiteSpace(contact.SystemPrompt)
-                ? guard
-                : $"{guard}\n\n{contact.SystemPrompt.Trim()}";
+            var merged = OperationalStyleComposer.MergeSystemPrompt(contact, operationalMode);
 
             return new AIContact
             {

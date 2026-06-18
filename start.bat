@@ -234,13 +234,20 @@ set "HV_REMOTE_COMPANION_ONLY="
 REM Ensure stale app instances don't keep old click-through behavior.
 taskkill /IM HouseVictoria.App.exe /F >nul 2>&1
 timeout /t 1 /nobreak >nul
-echo Building House Victoria App (Release)...
-dotnet build "%SCRIPT_DIR%\HouseVictoria.sln" -c Release
-if errorlevel 1 (
-    echo [ERROR] Release build failed. Fix errors above, then run start.bat again.
-    echo [ERROR] Will attempt to start existing exe — fixes may be missing until build succeeds.
-)
 set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Release\net8.0-windows\HouseVictoria.App.exe"
+set "DO_BUILD=0"
+if not exist "%APP_EXE%" set "DO_BUILD=1"
+if /i "%HV_FORCE_BUILD%"=="1" set "DO_BUILD=1"
+if "%DO_BUILD%"=="1" (
+    echo Building House Victoria App (Release)...
+    dotnet build "%SCRIPT_DIR%\HouseVictoria.sln" -c Release
+    if errorlevel 1 (
+        echo [ERROR] Release build failed. Fix errors above, then run start.bat again.
+        echo [ERROR] Will attempt to start existing exe — fixes may be missing until build succeeds.
+    )
+) else (
+    echo [INFO] Using existing Release build. Set HV_FORCE_BUILD=1 to rebuild.
+)
 if not exist "%APP_EXE%" set "APP_EXE=%SCRIPT_DIR%\HouseVictoria.App\bin\Debug\net8.0-windows\HouseVictoria.App.exe"
 if exist "%APP_EXE%" (
     start "" "%APP_EXE%"

@@ -45,7 +45,7 @@ namespace HouseVictoria.Core.Interfaces
         /// <summary>
         /// Gets current market data for a symbol
         /// </summary>
-        Task<MarketData?> GetMarketDataAsync(string symbol);
+        Task<MarketData?> GetMarketDataAsync(string symbol, bool forceRefresh = false);
 
         /// <summary>
         /// Runs a backtest with a strategy

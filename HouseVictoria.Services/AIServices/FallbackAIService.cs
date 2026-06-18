@@ -102,7 +102,7 @@ namespace HouseVictoria.Services.AIServices
                 ? OllamaEndpoint
                 : contact.ServerEndpoint.Trim().TrimEnd('/');
 
-            var prepared = PersonaPromptComposer.WithIdentity(WithEndpoint(contact, endpoint));
+            var prepared = PersonaPromptComposer.WithIdentity(WithEndpoint(contact, endpoint), _config.OperationalMode);
 
             if (IsOpenAIEndpoint(endpoint))
                 return await _lmStudioService.SendMessageAsync(prepared, message, context);
@@ -146,14 +146,14 @@ namespace HouseVictoria.Services.AIServices
         {
             if (ShouldUseHermes(contact))
             {
-                var prepared = PersonaPromptComposer.WithIdentity(contact);
+                var prepared = PersonaPromptComposer.WithIdentity(contact, _config.OperationalMode);
                 return await _hermesService.SendMessageAsync(prepared, message, context);
             }
 
             if (string.Equals(PrimaryLLM, "hermes", StringComparison.OrdinalIgnoreCase))
                 return await SendViaDirectLlmAsync(contact, message, context);
 
-            var forPrimary = PersonaPromptComposer.WithIdentity(WithEndpoint(contact, PrimaryEndpoint));
+            var forPrimary = PersonaPromptComposer.WithIdentity(WithEndpoint(contact, PrimaryEndpoint), _config.OperationalMode);
             return await PrimaryService.SendMessageAsync(forPrimary, message, context);
         }
 

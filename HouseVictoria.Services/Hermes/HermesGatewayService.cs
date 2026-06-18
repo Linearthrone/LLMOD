@@ -102,6 +102,7 @@ namespace HouseVictoria.Services.Hermes
                 };
 
                 ApplyHermesEnvironment(startInfo, envFile);
+                startInfo.Environment["FILE_RETRIEVAL_PATH"] = ResolveGeneratedFilesPath();
 
                 Process.Start(startInfo);
 
@@ -176,6 +177,16 @@ namespace HouseVictoria.Services.Hermes
             }
 
             return null;
+        }
+
+        private string ResolveGeneratedFilesPath()
+        {
+            var mediaPath = _config.MediaPath ?? "Media";
+            if (!Path.IsPathRooted(mediaPath))
+                mediaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, mediaPath);
+            var generated = Path.Combine(mediaPath, "GeneratedFiles");
+            Directory.CreateDirectory(generated);
+            return generated;
         }
     }
 }

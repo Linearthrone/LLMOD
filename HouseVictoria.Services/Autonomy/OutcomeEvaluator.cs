@@ -5,9 +5,7 @@ using HouseVictoria.Core.Models;
 namespace HouseVictoria.Services.Autonomy
 {
     /// <summary>
-    /// Scores how a substantive action turned out so autonomy has a feedback signal.
-    /// Cheap heuristics every time (length, required structure, novelty), with an
-    /// optional LLM self-critique blended in periodically.
+    /// Scores autonomy outcomes with anti-repetition caps and plan-step rewards.
     /// </summary>
     internal sealed class OutcomeEvaluator
     {
@@ -28,10 +26,12 @@ namespace HouseVictoria.Services.Autonomy
             string? projectId,
             string body,
             IReadOnlyList<AutonomyRecentActivity> recent,
+            IReadOnlyList<AutonomyOutcome> recentOutcomes,
+            bool planStepCompleted,
             bool useLlmCritique,
             CancellationToken cancellationToken = default)
         {
-            var (heuristic, note) = ScoreHeuristic(activity, topic, body, recent);
+            var (heuristic, note) = ScoreHeuristic(activity, topic, body, recent, recentOutcomes, planStepCompleted);
             var score = heuristic;
 
             if (useLlmCritique)
@@ -59,44 +59,58 @@ namespace HouseVictoria.Services.Autonomy
             AutonomyActivityKind activity,
             string? topic,
             string body,
-            IReadOnlyList<AutonomyRecentActivity> recent)
+            IReadOnlyList<AutonomyRecentActivity> recent,
+            IReadOnlyList<AutonomyOutcome> recentOutcomes,
+            bool planStepCompleted)
         {
             body ??= string.Empty;
             var notes = new List<string>();
             var wordCount = body.Split(new[] { ' ', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
-            // Length: reward substance, penalize thin output.
             double lengthScore = wordCount switch
             {
                 < 60 => 0.2,
                 < 200 => 0.55,
                 < 900 => 0.9,
-                _ => 0.8 // very long can be padded
+                _ => 0.8
             };
             notes.Add($"{wordCount}w");
 
-            // Structure: markdown headers / lists suggest a real deliverable.
+            if (activity == AutonomyActivityKind.Reflect && wordCount < 150)
+            {
+                lengthScore *= 0.6;
+                notes.Add("thin-reflect");
+            }
+
             var hasStructure = Regex.IsMatch(body, @"(^|\n)#{1,3}\s", RegexOptions.Multiline)
                                || Regex.IsMatch(body, @"(^|\n)\s*[-*]\s", RegexOptions.Multiline);
             double structureScore = hasStructure ? 1.0 : 0.5;
 
-            // Hollow completion notices are exactly what we want to discourage.
             var lower = body.ToLowerInvariant();
             var hollow = HollowPhrases.Any(p => lower.Contains(p)) && wordCount < 120;
             if (hollow)
                 notes.Add("hollow");
 
-            // Novelty: penalize repeating a recently touched topic.
             double noveltyScore = 1.0;
             if (!string.IsNullOrWhiteSpace(topic))
             {
                 var repeats = recent.Count(a =>
                     !string.IsNullOrWhiteSpace(a.Topic) &&
-                    string.Equals(a.Topic, topic, StringComparison.OrdinalIgnoreCase));
+                    TopicsSimilar(a.Topic, topic));
+
                 if (repeats >= 1)
                 {
-                    noveltyScore = Math.Max(0.3, 1.0 - 0.25 * repeats);
+                    noveltyScore = Math.Max(0.2, 1.0 - 0.35 * repeats);
                     notes.Add($"repeat x{repeats}");
+                }
+
+                var outcomeRepeats = recentOutcomes.Count(o =>
+                    !string.IsNullOrWhiteSpace(o.Topic) &&
+                    TopicsSimilar(o.Topic, topic));
+                if (outcomeRepeats >= 1)
+                {
+                    noveltyScore = Math.Min(noveltyScore, 0.45);
+                    notes.Add("outcome-repeat");
                 }
             }
 
@@ -104,8 +118,44 @@ namespace HouseVictoria.Services.Autonomy
             if (hollow)
                 score *= 0.5;
 
+            if (planStepCompleted)
+            {
+                score = Math.Min(1.0, score + 0.12);
+                notes.Add("plan-step");
+            }
+
+            var hasExternalRef = Regex.IsMatch(body, @"https?://|doi\.|arxiv|\.edu|metaquotes|mql4|mql5", RegexOptions.IgnoreCase);
+            if (hasExternalRef)
+            {
+                score = Math.Min(1.0, score + 0.08);
+                notes.Add("cited");
+            }
+
+            // Hard cap when repeating the same topic despite good length.
+            if (!string.IsNullOrWhiteSpace(topic) &&
+                recent.Any(a => TopicsSimilar(a.Topic, topic)))
+            {
+                score = Math.Min(score, 0.5);
+            }
+
             return (score, string.Join(", ", notes));
         }
+
+        private static bool TopicsSimilar(string? a, string? b)
+        {
+            if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))
+                return false;
+
+            if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var na = NormalizeTopic(a);
+            var nb = NormalizeTopic(b);
+            return na == nb || na.Contains(nb) || nb.Contains(na);
+        }
+
+        private static string NormalizeTopic(string s) =>
+            Regex.Replace(s.ToLowerInvariant(), @"[^a-z0-9]", string.Empty);
 
         private async Task<double?> LlmCritiqueAsync(
             AIContact contact,
@@ -139,7 +189,6 @@ namespace HouseVictoria.Services.Autonomy
             return null;
         }
 
-        /// <summary>Human-readable feedback summary fed into the next decision prompt.</summary>
         public static string BuildFeedbackHint(IReadOnlyList<AutonomyOutcome> outcomes)
         {
             if (outcomes.Count == 0)

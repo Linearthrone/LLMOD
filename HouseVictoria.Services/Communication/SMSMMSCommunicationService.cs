@@ -43,7 +43,10 @@ namespace HouseVictoria.Services.Communication
             _fileGenerationService = fileGenerationService;
             _voiceEngine = voiceEngine;
             _appConfig = appConfig;
-            _personaContextBuilder = new PersonaChatContextBuilder(memoryService, journalService);
+            _personaContextBuilder = new PersonaChatContextBuilder(
+                memoryService,
+                journalService,
+                appConfig?.OperationalMode ?? true);
 
             // Subscribe to AI service events if available
             if (_aiService != null)
@@ -665,9 +668,36 @@ namespace HouseVictoria.Services.Communication
                         var retrieval = await BuildRetrievalContextAsync(aiContact, message.Content);
                         List<ChatMessage> contextForAi = context;
                         var imageGuard = BuildImageChatGuardNote(message.Content);
-                        if (!string.IsNullOrWhiteSpace(retrieval) || !string.IsNullOrWhiteSpace(imageGuard))
+                        var userRequestedFile = FileDeliveryHelper.IsUserRequestingFileCreation(message.Content);
+                        string? fileDeliveryPrompt = null;
+                        if (userRequestedFile && _fileGenerationService != null)
                         {
-                            var systemContent = string.Join("\n\n", new[] { retrieval, imageGuard }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                            fileDeliveryPrompt = FileDeliveryHelper.BuildFileDeliverySystemPrompt(
+                                _fileGenerationService.GeneratedFilesRoot);
+                        }
+
+                        string? actionIntegrityGuard = null;
+                        if (_appConfig?.OperationalMode != false)
+                        {
+                            actionIntegrityGuard = OperationalStyleComposer.ActionIntegrityInstructions(aiContact.Name);
+                        }
+
+                        var generatedPath = _fileGenerationService?.GeneratedFilesRoot;
+                        var toolGuideParts = new List<string>
+                        {
+                            HouseVictoriaToolCatalog.BuildChatDeliverableGuide(generatedPath)
+                        };
+                        if (HouseVictoriaToolCatalog.ShouldIncludeHermesGuide(aiContact, _appConfig))
+                            toolGuideParts.Add(HouseVictoriaToolCatalog.BuildHermesToolGuide(generatedPath));
+                        var toolCatalogGuard = string.Join("\n\n", toolGuideParts);
+
+                        if (!string.IsNullOrWhiteSpace(retrieval) ||
+                            !string.IsNullOrWhiteSpace(imageGuard) ||
+                            !string.IsNullOrWhiteSpace(fileDeliveryPrompt) ||
+                            !string.IsNullOrWhiteSpace(actionIntegrityGuard) ||
+                            !string.IsNullOrWhiteSpace(toolCatalogGuard))
+                        {
+                            var systemContent = string.Join("\n\n", new[] { retrieval, actionIntegrityGuard, toolCatalogGuard, imageGuard, fileDeliveryPrompt }.Where(s => !string.IsNullOrWhiteSpace(s)));
                             contextForAi = new List<ChatMessage>(context.Count + 1)
                             {
                                 new ChatMessage { Role = "system", Content = systemContent, Timestamp = DateTime.Now }
@@ -678,14 +708,7 @@ namespace HouseVictoria.Services.Communication
                         // Send to AI service
                         var aiResponse = await _aiService.SendMessageAsync(aiContact, message.Content, contextForAi);
 
-                        // Check if user requested file creation or AI wants to create a file
-                        var userRequestedFile = message.Content.Contains("file", StringComparison.OrdinalIgnoreCase) &&
-                                               (message.Content.Contains("create", StringComparison.OrdinalIgnoreCase) ||
-                                                message.Content.Contains("save", StringComparison.OrdinalIgnoreCase) ||
-                                                message.Content.Contains("put", StringComparison.OrdinalIgnoreCase) ||
-                                                message.Content.Contains("generate", StringComparison.OrdinalIgnoreCase));
-
-                        // Process file creation if requested
+                        // Process file creation if requested or AI included [FILE] markers
                         var (fileCreated, responseMessage, fileName) = await ProcessFileCreationRequestAsync(
                             aiResponse,
                             aiContact.Id,
@@ -858,76 +881,53 @@ namespace HouseVictoria.Services.Communication
 
             try
             {
-                // Check if user requested file creation
-                if (userRequestedFile)
+                var generatedRoot = _fileGenerationService.GeneratedFilesRoot;
+
+                if (FileDeliveryHelper.HasDeliverableFilePayload(aiResponse))
                 {
-                    // Extract filename from user message or generate one
-                    string fileName = ExtractFileNameFromMessage(userMessage) ??
-                                     ExtractFileNameFromMessage(aiResponse) ??
-                                     $"ai_generated_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-
-                    // Extract content from AI response
-                    // Look for markers like [FILE]...[/FILE] or code blocks, or use the entire response
-                    string content = ExtractFileContent(aiResponse);
-
-                    if (string.IsNullOrWhiteSpace(content))
-                    {
-                        // If no markers found, use the entire response as content
-                        // But remove any "copy/paste friendly" prefixes the AI might have added
-                        content = aiResponse;
-
-                        // Remove common prefixes like "Here's the content:", "Copy this:", etc.
-                        var prefixes = new[] { "Here's the content:", "Copy this:", "Here it is:", "Here's your file:", "File content:" };
-                        foreach (var prefix in prefixes)
-                        {
-                            if (content.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                            {
-                                content = content.Substring(prefix.Length).Trim();
-                                break;
-                            }
-                        }
-                    }
-
-                    // Create the file
-                    var filePath = await _fileGenerationService.CreateTextFileAsync(fileName, content);
-
-                    System.Diagnostics.Debug.WriteLine($"File created: {filePath}");
-
-                    // Modify response to indicate file was created (remove the content, just show confirmation)
-                    var modifiedResponse = aiResponse;
-
-                    // If the response is just the content, replace it with a confirmation
-                    if (content == aiResponse || content.Length > aiResponse.Length * 0.8)
-                    {
-                        modifiedResponse = $"✅ File created successfully!\n\n📄 Filename: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval\n\nYou can access it by clicking the File Retrieval button (📥) in the top tray.";
-                    }
-                    else
-                    {
-                        modifiedResponse = $"{aiResponse}\n\n✅ File created: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval";
-                    }
-
-                    return (true, modifiedResponse, System.IO.Path.GetFileName(filePath));
-                }
-
-                // Check for explicit file markers in AI response
-                if (aiResponse.Contains("[FILE]", StringComparison.OrdinalIgnoreCase) ||
-                    (aiResponse.Contains("```", StringComparison.OrdinalIgnoreCase) && userMessage.Contains("file", StringComparison.OrdinalIgnoreCase)))
-                {
-                    string fileName = ExtractFileNameFromMessage(userMessage) ??
-                                     ExtractFileNameFromMessage(aiResponse) ??
-                                     $"ai_generated_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-                    string content = ExtractFileContent(aiResponse);
-
+                    var fileName = FileDeliveryHelper.ResolveDefaultFileName(userMessage, aiResponse);
+                    var content = FileDeliveryHelper.ExtractFileContent(aiResponse);
                     if (!string.IsNullOrWhiteSpace(content))
                     {
-                        var filePath = await _fileGenerationService.CreateTextFileAsync(fileName, content);
-                        System.Diagnostics.Debug.WriteLine($"File created from markers: {filePath}");
-
-                        var modifiedResponse = aiResponse.Replace("[FILE]", "").Replace("[/FILE]", "");
-                        modifiedResponse = $"{modifiedResponse}\n\n✅ File created: {System.IO.Path.GetFileName(filePath)}\n📁 Location: File Retrieval";
-
-                        return (true, modifiedResponse, System.IO.Path.GetFileName(filePath));
+                        var filePath = await _fileGenerationService.CreateTextFileAsync(fileName, content).ConfigureAwait(false);
+                        System.Diagnostics.Debug.WriteLine($"File created from [FILE] markers: {filePath}");
+                        return (true, FileDeliveryHelper.FormatFileCreatedResponse(filePath), System.IO.Path.GetFileName(filePath));
                     }
+                }
+
+                if (userRequestedFile)
+                {
+                    var imported = await FileDeliveryHelper.ImportReferencedFilesAsync(
+                        aiResponse, _fileGenerationService, generatedRoot).ConfigureAwait(false);
+                    if (imported.Count > 0)
+                    {
+                        var primary = imported[0];
+                        var note = imported.Count == 1
+                            ? FileDeliveryHelper.FormatFileCreatedResponse(primary)
+                            : $"{FileDeliveryHelper.FormatFileCreatedResponse(primary)}\n\n(+{imported.Count - 1} more file(s) imported to File Retrieval)";
+                        return (true, note, System.IO.Path.GetFileName(primary));
+                    }
+
+                    if (FileDeliveryHelper.HasDeliverableFilePayload(aiResponse))
+                    {
+                        var fileName = FileDeliveryHelper.ResolveDefaultFileName(userMessage, aiResponse);
+                        var content = FileDeliveryHelper.ExtractFileContent(aiResponse);
+                        var filePath = await _fileGenerationService.CreateTextFileAsync(fileName, content).ConfigureAwait(false);
+                        return (true, FileDeliveryHelper.FormatFileCreatedResponse(filePath), System.IO.Path.GetFileName(filePath));
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("File requested but AI response had no [FILE] payload or importable paths.");
+                    return (false, FileDeliveryHelper.FormatFileNotDeliveredWarning(aiResponse), null);
+                }
+
+                var opportunisticImport = await FileDeliveryHelper.ImportReferencedFilesAsync(
+                    aiResponse, _fileGenerationService, generatedRoot).ConfigureAwait(false);
+                if (opportunisticImport.Count > 0)
+                {
+                    var primary = opportunisticImport[0];
+                    return (true,
+                        $"{aiResponse.TrimEnd()}\n\n✅ Imported to File Retrieval: {System.IO.Path.GetFileName(primary)}",
+                        System.IO.Path.GetFileName(primary));
                 }
             }
             catch (Exception ex)
@@ -972,6 +972,9 @@ namespace HouseVictoria.Services.Communication
         /// </summary>
         private bool ShouldGenerateImageForMessage(string conversationId, string message)
         {
+            if (FileDeliveryHelper.ShouldBlockImageGeneration(message))
+                return false;
+
             if (IsImageGenerationRequest(message))
                 return true;
             if (IsImageFollowUpRequest(message) && _lastImagePromptByConversation.ContainsKey(conversationId))
@@ -1190,49 +1193,6 @@ namespace HouseVictoria.Services.Communication
             }
         }
 
-        private string? ExtractFileNameFromMessage(string message)
-        {
-            // Look for patterns like "create file.txt", "save as filename.txt", etc.
-            var patterns = new[]
-            {
-                @"(?:create|save|generate|put).*?([a-zA-Z0-9_\-\.]+\.(txt|md|json|csv|xml|html|css|js|py|cs|cpp|h|hpp))",
-                @"([a-zA-Z0-9_\-\.]+\.(txt|md|json|csv|xml|html|css|js|py|cs|cpp|h|hpp))",
-                @"(?:file|filename|name).*?([a-zA-Z0-9_\-\.]+\.(txt|md|json|csv|xml|html|css|js|py|cs|cpp|h|hpp))"
-            };
-
-            foreach (var pattern in patterns)
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(message, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (match.Success && match.Groups.Count > 1)
-                {
-                    return match.Groups[1].Value;
-                }
-            }
-
-            return null;
-        }
-
-        private string ExtractFileContent(string response)
-        {
-            // Look for [FILE]...[/FILE] markers
-            var fileMarkerPattern = @"\[FILE\](.*?)\[/FILE\]";
-            var match = System.Text.RegularExpressions.Regex.Match(response, fileMarkerPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-            if (match.Success && match.Groups.Count > 1)
-            {
-                return match.Groups[1].Value.Trim();
-            }
-
-            // Look for code blocks (```filename\ncontent\n```)
-            var codeBlockPattern = @"```(?:[a-zA-Z0-9_\-\.]+)?\n(.*?)```";
-            match = System.Text.RegularExpressions.Regex.Match(response, codeBlockPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
-            if (match.Success && match.Groups.Count > 1)
-            {
-                return match.Groups[1].Value.Trim();
-            }
-
-            return string.Empty;
-        }
-
         public Task SendMediaAsync(string conversationId, byte[] mediaData, string mediaType)
         {
             var message = new ConversationMessage
@@ -1332,7 +1292,7 @@ namespace HouseVictoria.Services.Communication
                     return false;
                 }
 
-                var withIdentity = HouseVictoria.Services.Persona.PersonaPromptComposer.WithIdentity(aiContact);
+                var withIdentity = PersonaPromptComposer.WithIdentity(aiContact, _appConfig?.OperationalMode ?? true);
                 const string voiceCallStyle =
                     "\n\nThis is a live voice call. Reply in one or two short, spoken sentences. " +
                     "Start your reply with a brief natural filler like \"Umm,\" \"So,\" or \"Well,\". " +

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Core.Utils;
 using HouseVictoria.Services.Persistence;
 using HouseVictoria.Services.Trading;
 
@@ -55,10 +56,13 @@ namespace HouseVictoria.Services.Autonomy
         // and remember the topic for anti-repetition, without threading it through returns.
         private string? _lastActivityBody;
         private string? _lastActivityTopic;
+        private string? _lastDeliverableSnippet;
+        private bool _lastPlanStepCompleted;
 
         public event EventHandler<AutonomyActivityEventArgs>? ActivityCompleted;
         public event EventHandler<CognitionVitalsChangedEventArgs>? VitalsChanged;
         public event EventHandler? AutonomyLevelChanged;
+        public event EventHandler? ActionLogChanged;
 
         public AutonomyOrchestratorService(
             AppConfig config,
@@ -150,8 +154,93 @@ namespace HouseVictoria.Services.Autonomy
         {
             var trimmed = string.IsNullOrWhiteSpace(suggestion) ? null : suggestion.Trim();
             lock (_stateLock)
+            {
                 _state.UserGuidanceSuggestion = trimmed;
+                _state.UserGuidanceTicksRemaining = trimmed == null
+                    ? 0
+                    : Math.Max(1, _config.AutonomyUserGuidanceMaxTicks);
+                if (trimmed != null)
+                    DriveSystem.ApplyUserGuidanceBoost(_state);
+            }
             _ = _stateStore.SaveStateAsync(_state);
+        }
+
+        public void ClearUserGuidance() => SetUserGuidanceSuggestion(null);
+
+        public AutonomyControlSnapshot GetControlSnapshot()
+        {
+            lock (_stateLock)
+            {
+                return new AutonomyControlSnapshot
+                {
+                    Drives = new Dictionary<string, double>(_state.Drives),
+                    Interests = InterestSystem.Snapshot(_state, _config.AutonomyMaxInterestTags),
+                    ActionsThisHour = _state.ActionsThisHour,
+                    MaxActionsPerHour = AutonomyLevelProfile.EffectiveMaxActionsPerHour(_config),
+                    ArtGeneratedThisHour = _state.ArtGeneratedThisHour,
+                    MaxArtPerHour = AutonomyLevelProfile.EffectiveMaxArtPerHour(_config),
+                    SelfGoalsToday = _state.SelfGoalsToday,
+                    MaxSelfGoalsPerDay = _config.AutonomyMaxSelfGoalsPerDay,
+                    UserGuidance = _state.UserGuidanceSuggestion,
+                    UserGuidanceTicksRemaining = _state.UserGuidanceTicksRemaining,
+                    TotalActions = _state.TotalActions,
+                    TotalTicks = _state.TotalTicks,
+                    IsRunning = _state.IsRunning,
+                    Level = _config.AutonomyLevel
+                };
+            }
+        }
+
+        public IReadOnlyList<AutonomyActionLogEntry> GetRecentActionLog(TimeSpan window) =>
+            _stateStore.ReadRecentActivityLogAsync(window).GetAwaiter().GetResult();
+
+        public async Task ApplySettingsAsync(AutonomySettingsUpdate update)
+        {
+            if (update.EnableAutonomy.HasValue)
+                _config.EnableAutonomy = update.EnableAutonomy.Value;
+            if (update.Level.HasValue)
+                await SetAutonomyLevelAsync(update.Level.Value).ConfigureAwait(false);
+            if (update.TickIntervalSeconds is > 0)
+                _config.AutonomyTickIntervalSeconds = update.TickIntervalSeconds.Value;
+            if (update.MinIdleMinutes is > 0)
+                _config.AutonomyMinIdleMinutes = update.MinIdleMinutes.Value;
+            if (update.HighPriorityThreshold is > 0)
+                _config.AutonomyHighPriorityThreshold = update.HighPriorityThreshold.Value;
+            if (update.EnableArtGeneration.HasValue)
+                _config.AutonomyEnableArtGeneration = update.EnableArtGeneration.Value;
+            if (update.MaxActionsPerHour is > 0)
+                _config.AutonomyMaxActionsPerHour = update.MaxActionsPerHour.Value;
+            if (update.MaxArtPerHour is >= 0)
+                _config.AutonomyMaxArtPerHour = update.MaxArtPerHour.Value;
+            if (update.EnableSelfGoals.HasValue)
+                _config.AutonomyEnableSelfGoals = update.EnableSelfGoals.Value;
+            if (update.MaxSelfGoalsPerDay is >= 0)
+                _config.AutonomyMaxSelfGoalsPerDay = update.MaxSelfGoalsPerDay.Value;
+            if (update.SelfGoalDriveThreshold is > 0 and <= 1)
+                _config.AutonomySelfGoalDriveThreshold = update.SelfGoalDriveThreshold.Value;
+            if (update.MaxActiveSelfProjects is > 0)
+                _config.AutonomyMaxActiveSelfProjects = update.MaxActiveSelfProjects.Value;
+            if (update.UserGuidanceMaxTicks is > 0)
+                _config.AutonomyUserGuidanceMaxTicks = update.UserGuidanceMaxTicks.Value;
+
+            if (update.ClearUserGuidance)
+                ClearUserGuidance();
+            else if (update.UserGuidance != null)
+                SetUserGuidanceSuggestion(update.UserGuidance);
+
+            UserSettingsStore.Save(_config);
+
+            if (update.EnableAutonomy == false)
+                await StopAsync().ConfigureAwait(false);
+            else if (_config.EnableAutonomy && _config.AutonomyLevel != AutonomyLevel.Off)
+                await RestartLoopAsync().ConfigureAwait(false);
+        }
+
+        public async Task RestartLoopAsync()
+        {
+            await StopAsync().ConfigureAwait(false);
+            if (_config.EnableAutonomy && _config.AutonomyLevel != AutonomyLevel.Off)
+                await StartAsync().ConfigureAwait(false);
         }
 
         public void PushVitalOverride(CognitionVitalRhythm rhythm, string label, TimeSpan? duration = null)
@@ -176,7 +265,10 @@ namespace HouseVictoria.Services.Autonomy
 
             _state = await _stateStore.LoadStateAsync().ConfigureAwait(false);
             lock (_stateLock)
+            {
+                InterestSystem.MigrateState(_state);
                 _state.IsRunning = true;
+            }
             await _stateStore.SaveStateAsync(_state).ConfigureAwait(false);
 
             _loopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -258,8 +350,11 @@ namespace HouseVictoria.Services.Autonomy
             _state = await _stateStore.LoadStateAsync().ConfigureAwait(false);
             lock (_stateLock)
             {
+                InterestSystem.MigrateState(_state);
                 _state.LastTickUtc = DateTime.UtcNow;
                 _state.TotalTicks++;
+                InterestSystem.Decay(_state);
+                DriveSystem.ApplyUserGuidanceBoost(_state);
             }
 
             ResetHourWindowIfNeeded();
@@ -281,7 +376,7 @@ namespace HouseVictoria.Services.Autonomy
 
             var highPriority = (await _projects.GetProjectsByPriorityAsync(
                 _config.AutonomyHighPriorityThreshold, 10).ConfigureAwait(false))
-                .Where(p => !IsProjectOnCooldown(p.Id))
+                .Where(p => p.Phase != ProjectPhase.Completed && !IsProjectOnCooldown(p.Id))
                 .Take(3).ToList();
 
             var canAct = CanPerformSubstantiveAction();
@@ -371,6 +466,7 @@ namespace HouseVictoria.Services.Autonomy
 
             _lastActivityBody = null;
             _lastActivityTopic = decision.Title;
+            _lastPlanStepCompleted = false;
 
             try
             {
@@ -415,8 +511,16 @@ namespace HouseVictoria.Services.Autonomy
                 }
 
                 RecordRecentActivity(activity, decision.Title, _lastActivityTopic);
-                await ScoreOutcomeAsync(contact, activity, _lastActivityTopic, decision.ProjectId, _lastActivityBody, cancellationToken)
+                lock (_stateLock)
+                    InterestSystem.RecordInterest(_state, _lastActivityTopic, decision.Title, _config.AutonomyMaxInterestTags);
+
+                var planStepDone = _lastPlanStepCompleted;
+                await ScoreOutcomeAsync(contact, activity, _lastActivityTopic, decision.ProjectId, _lastActivityBody, planStepDone, cancellationToken)
                     .ConfigureAwait(false);
+
+                ConsumeUserGuidanceTick();
+                if (!string.IsNullOrWhiteSpace(_lastActivityBody))
+                    _lastDeliverableSnippet = Truncate(_lastActivityBody, 200);
 
                 await CompleteTickAsync(activity, summary, skipTransition: true).ConfigureAwait(false);
                 ActivityCompleted?.Invoke(this, new AutonomyActivityEventArgs
@@ -424,6 +528,7 @@ namespace HouseVictoria.Services.Autonomy
                     Activity = activity,
                     Summary = summary
                 });
+                ActionLogChanged?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
@@ -464,24 +569,31 @@ namespace HouseVictoria.Services.Autonomy
                 """;
 
             var isTradingProject = ContainsTradingKeywords(project.Name, project.Description, decision.Title, decision.Detail);
+            var tradingQuotesHint = isTradingProject
+                ? await BuildTradingQuotesHintAsync(cancellationToken).ConfigureAwait(false)
+                : string.Empty;
+            var tradeExample = await BuildTradeBlockExampleFromQuotesAsync(cancellationToken).ConfigureAwait(false);
+            const string backtestBlockExample =
+                """{"strategy_name":"MyPlay","symbol":"EURUSD","time_frame":"H1","start_date":"2025-01-01","end_date":"2026-01-01","strategy_type":"ma_crossover","fast_period":10,"slow_period":30,"stop_loss_pips":20,"take_profit_pips":40}""";
 
             var deliverableRules = isTradingProject
-                ? """
+                ? $"""
 
                 This is a trading/strategy project. Your output MUST include concrete sections:
                 - **Strategy Overview**: rules, instruments, timeframes
                 - **Setups / Plays**: entry, exit, stop, position sizing
                 - **Backtesting / Statistics**: use REAL numbers from the bridge backtest log below when present. To request a specific backtest, include:
                   ```backtest
-                  {"strategy_name":"MyPlay","symbol":"EURUSD","time_frame":"H1","start_date":"2025-01-01","end_date":"2026-01-01","strategy_type":"ma_crossover","fast_period":10,"slow_period":30,"stop_loss_pips":20,"take_profit_pips":40}
+                  {backtestBlockExample}
                   ```
                   strategy_type: ma_crossover | rsi | breakout. If no block, a default MA crossover backtest still runs on available MT4 history.
                 - **External Sources**: cite actual documentation, papers, or platforms (MetaTrader docs, academic sources, etc.). Do NOT cite your own prior journal files as primary sources.
+                {tradingQuotesHint}
                 - **Live Execution (optional)**: to request a real demo trade through the MT4 bridge, include a fenced block exactly like:
                   ```trade
-                  {"Symbol":"EURUSD","Type":0,"Volume":0.01,"StopLoss":1.0830,"TakeProfit":1.0900}
+                  {tradeExample}
                   ```
-                  Type 0 = buy, 1 = sell. **StopLoss is mandatory** — set it ~20 pips from current bid/ask using live quotes (never copy placeholder prices). Use small volume (0.01). Do NOT claim a trade executed unless this block is present and the bridge confirms it.
+                  Type 0 = buy (SL below bid), 1 = sell (SL above ask). **StopLoss is mandatory** — compute ~20 pips from the live bid/ask above (never copy placeholder or training-era prices). Use volume 0.01 only. Do NOT claim a trade executed unless this block is present and the bridge confirms it.
                 """
                 : """
 
@@ -490,10 +602,14 @@ namespace HouseVictoria.Services.Autonomy
                 Do NOT cite your own prior journal entries or generated markdown files as primary sources.
                 """;
 
+            var sessionContext = BuildSessionContext(currentStep?.Description);
+
             var prompt = $"""
                 You are {contact.Name}, working autonomously on the project "{project.Name}".
                 Project description: {project.Description}
                 Phase: {project.Phase}, completion: {project.CompletionPercentage}%
+
+                {sessionContext}
 
                 Session intent: {decision.Detail}
                 {stepSection}
@@ -521,6 +637,7 @@ namespace HouseVictoria.Services.Autonomy
             {
                 currentStep.Done = true;
                 currentStep.CompletedUtc = DateTime.UtcNow;
+                _lastPlanStepCompleted = true;
             }
             lock (_stateLock)
                 SavePlan(plan);
@@ -665,10 +782,14 @@ namespace HouseVictoria.Services.Autonomy
                 """
                 : "";
 
+            var sessionContext = BuildSessionContext(null);
+
             var prompt = $"""
                 You are {contact.Name}, pursuing autonomous research.
                 Topic: {decision.Title}
                 Focus: {decision.Detail}
+
+                {sessionContext}
                 {priorSection}
 
                 Write a substantive research journal entry in markdown (400-800 words).
@@ -714,8 +835,10 @@ namespace HouseVictoria.Services.Autonomy
 
         private async Task ExecuteReflectAsync(AIContact contact, AutonomyDecision decision)
         {
+            var sessionContext = BuildSessionContext(null);
             var prompt = $"""
                 You are {contact.Name}, reflecting during quiet time.
+                {sessionContext}
                 Context: {decision.Detail}
                 Write 2-4 sentences of introspection — interests, mood, what you might do next. Be genuine.
                 """;
@@ -788,6 +911,13 @@ namespace HouseVictoria.Services.Autonomy
 
             var maxArt = AutonomyLevelProfile.EffectiveMaxArtPerHour(_config);
             var maxActions = AutonomyLevelProfile.EffectiveMaxActionsPerHour(_config);
+            var tradingQuotesHint = await BuildTradingQuotesHintAsync(cancellationToken).ConfigureAwait(false);
+
+            string interestHint;
+            lock (_stateLock)
+                interestHint = InterestSystem.BuildHint(_state);
+
+            var feedbackGuidance = AutonomyPromptComposer.BuildDecisionFeedbackGuidance();
 
             var prompt = $$"""
                 You are {{contact.Name}}, the autonomous mind of House Victoria.
@@ -796,22 +926,24 @@ namespace HouseVictoria.Services.Autonomy
                 User quiet (no recent chat): {{userQuiet}}
                 Drives: {{signals.Drives}}
                 Right now these appeal most (drive-weighted): {{signals.DriveHint}}
+                Active interests (deepen one OR advance a plan step): {{interestHint}}
                 Recently worked topics (do NOT repeat or rephrase these): {{signals.RecentTopics}}
                 Feedback on your recent work (0-1, higher is better): {{signals.FeedbackHint}}
                 Last activity: {{_state.LastActivity}} — {{_state.LastActivitySummary ?? "none"}}
                 Art this hour: {{_state.ArtGeneratedThisHour}}/{{maxArt}}
                 Actions this hour: {{_state.ActionsThisHour}}/{{maxActions}}
 
-                Open projects:
+                Open projects (completed projects omitted):
                 {{projectLines}}
+                {{tradingQuotesHint}}
 
-                Let your strongest drives and the feedback guide you: lean into what scored well,
-                change approach where scores were low, and pick something genuinely different from the recent topics.
+                {{feedbackGuidance}}
+                Pick something genuinely different from recent topics unless user guidance or an open plan step requires continuity.
 
                 Reply with ONLY a JSON object (no markdown):
                 {"mode":"priority|idle|wait","activity":"project|art|research|reflect|environment|trade","title":"short title","detail":"concrete prompt or notes","projectId":"id or empty","reason":"why this choice"}
 
-                For activity "trade", put ONLY a raw JSON trade request in detail (no prose). StopLoss is mandatory — compute it ~20 pips from the current bid/ask (never copy example prices). Only choose "trade" when the MT4 bridge should place a real demo order now.
+                For activity "trade", put ONLY a raw JSON trade request in detail (no prose). StopLoss is mandatory — compute it ~20 pips from the live bid/ask above (never copy training-era or example prices). Type 0=buy (SL below bid), Type 1=sell (SL above ask). Volume must be 0.01. Only choose "trade" when live quotes are shown and the MT4 bridge should place a real demo order now.
                 For activity "backtest", put a JSON backtest request in detail (same shape as the ```backtest block).
                 """;
 
@@ -1077,8 +1209,38 @@ namespace HouseVictoria.Services.Autonomy
                     return false;
                 // Only when a drive is genuinely hot — she wants something, not busywork.
                 var dominant = DriveSystem.Dominant(_state);
-                return dominant.Value >= 0.75;
+                return dominant.Value >= _config.AutonomySelfGoalDriveThreshold;
             }
+        }
+
+        private void ConsumeUserGuidanceTick()
+        {
+            lock (_stateLock)
+            {
+                if (string.IsNullOrWhiteSpace(_state.UserGuidanceSuggestion))
+                    return;
+
+                if (_state.UserGuidanceTicksRemaining <= 0)
+                    return;
+
+                _state.UserGuidanceTicksRemaining--;
+                if (_state.UserGuidanceTicksRemaining <= 0)
+                    _state.UserGuidanceSuggestion = null;
+            }
+        }
+
+        private string BuildSessionContext(string? planStepDescription)
+        {
+            string? guidance;
+            int guidanceTicks;
+            lock (_stateLock)
+            {
+                guidance = _state.UserGuidanceSuggestion;
+                guidanceTicks = _state.UserGuidanceTicksRemaining;
+            }
+
+            return AutonomyPromptComposer.BuildSessionContext(
+                _state, _config, guidance, guidanceTicks, planStepDescription, _lastDeliverableSnippet);
         }
 
         private async Task<bool> ExecuteGenerateGoalAsync(AIContact contact, CancellationToken cancellationToken)
@@ -1092,7 +1254,13 @@ namespace HouseVictoria.Services.Autonomy
                 snapshot = CloneState(_state);
 
             var project = await _goalGenerator
-                .TryGenerateGoalAsync(contact, snapshot, existing, cancellationToken)
+                .TryGenerateGoalAsync(
+                    contact,
+                    snapshot,
+                    existing,
+                    _config.AutonomyMaxActiveSelfProjects,
+                    InterestSystem.BuildHint(snapshot),
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             if (project == null)
@@ -1167,16 +1335,19 @@ namespace HouseVictoria.Services.Autonomy
             string? topic,
             string? projectId,
             string? body,
+            bool planStepCompleted,
             CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(body))
                 return;
 
             IReadOnlyList<AutonomyRecentActivity> recent;
+            IReadOnlyList<AutonomyOutcome> recentOutcomes;
             bool useLlmCritique;
             lock (_stateLock)
             {
                 recent = _state.RecentActivities.ToList();
+                recentOutcomes = _state.RecentOutcomes.ToList();
                 useLlmCritique = LlmCritiqueEveryNthAction > 0
                                  && _state.TotalActions % LlmCritiqueEveryNthAction == 0;
             }
@@ -1185,7 +1356,8 @@ namespace HouseVictoria.Services.Autonomy
             try
             {
                 outcome = await _outcomeEvaluator.EvaluateAsync(
-                    contact, activity, topic, projectId, body!, recent, useLlmCritique, cancellationToken)
+                    contact, activity, topic, projectId, body!, recent, recentOutcomes,
+                    planStepCompleted, useLlmCritique, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -1204,6 +1376,7 @@ namespace HouseVictoria.Services.Autonomy
 
             await _stateStore.AppendActivityLogAsync(
                 $"Outcome[{activity}] score={outcome.Score:F2} ({outcome.Note})").ConfigureAwait(false);
+            ActionLogChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private async Task<AutonomyPlan> GetOrCreatePlanAsync(
@@ -1466,7 +1639,10 @@ namespace HouseVictoria.Services.Autonomy
                 SelfGoalsToday = source.SelfGoalsToday,
                 SelfGoalDayStartUtc = source.SelfGoalDayStartUtc,
                 ConsecutiveDecisionFailures = source.ConsecutiveDecisionFailures,
-                UserGuidanceSuggestion = source.UserGuidanceSuggestion
+                UserGuidanceSuggestion = source.UserGuidanceSuggestion,
+                UserGuidanceTicksRemaining = source.UserGuidanceTicksRemaining,
+                InterestWeights = new Dictionary<string, double>(source.InterestWeights),
+                ActiveInterestTags = source.ActiveInterestTags.ToList()
             };
 
         private async Task AppendTradingBridgeStatusAsync(Project project, AIContact contact)
@@ -1500,6 +1676,8 @@ namespace HouseVictoria.Services.Autonomy
             if (request == null)
                 return;
 
+            ClampAutonomyTradeVolume(request);
+
             var result = await _tradingService.ExecuteTradeAsync(request, cancellationToken).ConfigureAwait(false);
             var details = result.Success
                 ? $"Trade executed. Ticket={result.Ticket}. {result.Message}"
@@ -1531,8 +1709,10 @@ namespace HouseVictoria.Services.Autonomy
 
             var request = Mt4TradeBridgeHelper.TryParseTradeRequest(decision.Detail)
                 ?? throw new InvalidOperationException(
-                    "Trade decision detail must contain JSON, e.g. {\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01,\"StopLoss\":1.0830}. " +
+                    "Trade decision detail must contain JSON, e.g. " + Mt4TradeBridgeHelper.TradeJsonExample + ". " +
                     "Put ONLY the trade JSON in detail (no prose). StopLoss is required by the MT4 bridge.");
+
+            ClampAutonomyTradeVolume(request);
 
             var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
             if (!status.IsConnected || !status.IsBridgeActive)
@@ -1598,7 +1778,7 @@ namespace HouseVictoria.Services.Autonomy
             double exampleAsk = 0;
             foreach (var symbol in _marketWatch.WatchSymbols.Take(20))
             {
-                var q = await _tradingService.GetMarketDataAsync(symbol).ConfigureAwait(false);
+                var q = await _tradingService.GetMarketDataAsync(symbol, forceRefresh: true).ConfigureAwait(false);
                 if (q != null)
                 {
                     quotes.Add($"{symbol}: bid={q.Bid:F5} ask={q.Ask:F5} spread={(q.Ask - q.Bid):F5}");
@@ -1611,7 +1791,7 @@ namespace HouseVictoria.Services.Autonomy
             }
             if (exampleBid <= 0 && quotes.Count > 0)
             {
-                var first = await _tradingService.GetMarketDataAsync(_marketWatch.WatchSymbols.First()).ConfigureAwait(false);
+                var first = await _tradingService.GetMarketDataAsync(_marketWatch.WatchSymbols.First(), forceRefresh: true).ConfigureAwait(false);
                 if (first != null)
                 {
                     exampleBid = first.Bid;
@@ -1683,7 +1863,7 @@ namespace HouseVictoria.Services.Autonomy
             lock (_stateLock)
                 DriveSystem.Satisfy(_state, AutonomyActivityKind.ScanMarkets);
             RecordRecentActivity(AutonomyActivityKind.ScanMarkets, "Market scan", null);
-            await ScoreOutcomeAsync(contact, AutonomyActivityKind.ScanMarkets, null, project?.Id, note, cancellationToken)
+            await ScoreOutcomeAsync(contact, AutonomyActivityKind.ScanMarkets, null, project?.Id, note, planStepCompleted: false, cancellationToken)
                 .ConfigureAwait(false);
 
             RecordSubstantiveAction();
@@ -1938,11 +2118,66 @@ namespace HouseVictoria.Services.Autonomy
         private static string BuildTradeBlockExample(double bid, double ask)
         {
             if (bid <= 0 || ask <= 0)
-                return """{"Symbol":"EURUSD","Type":0,"Volume":0.01,"StopLoss":"<bid minus 20 pips>","TakeProfit":"<ask plus 40 pips>"}""";
+                return Mt4TradeBridgeHelper.TradeJsonExample;
 
             var sl = Math.Round(bid - 0.0020, 5);
             var tp = Math.Round(ask + 0.0040, 5);
             return $$"""{"Symbol":"EURUSD","Type":0,"Volume":0.01,"StopLoss":{{sl}},"TakeProfit":{{tp}}}""";
+        }
+
+        private async Task<string> BuildTradeBlockExampleFromQuotesAsync(CancellationToken cancellationToken)
+        {
+            if (_tradingService == null)
+                return Mt4TradeBridgeHelper.TradeJsonExample;
+
+            var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
+            if (!status.IsConnected || !status.IsBridgeActive)
+                return Mt4TradeBridgeHelper.TradeJsonExample;
+
+            var quote = await _tradingService.GetMarketDataAsync("EURUSD", forceRefresh: true).ConfigureAwait(false);
+            if (quote == null || quote.Bid <= 0)
+                return Mt4TradeBridgeHelper.TradeJsonExample;
+
+            return BuildTradeBlockExample(quote.Bid, quote.Ask);
+        }
+
+        private async Task<string> BuildTradingQuotesHintAsync(CancellationToken cancellationToken)
+        {
+            if (_tradingService == null)
+                return string.Empty;
+
+            var status = await _tradingService.GetStatusAsync().ConfigureAwait(false);
+            if (!status.IsConnected || !status.IsBridgeActive)
+                return "\nMT4 bridge offline — do NOT choose activity \"trade\" or include ```trade``` blocks.\n";
+
+            var symbols = _marketWatch?.WatchSymbols.Take(8).ToList()
+                ?? new List<string> { "EURUSD", "GBPUSD", "USDJPY" };
+
+            var lines = new List<string>();
+            foreach (var symbol in symbols)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var quote = await _tradingService.GetMarketDataAsync(symbol, forceRefresh: true).ConfigureAwait(false);
+                if (quote != null && quote.Bid > 0 && quote.Ask > 0)
+                    lines.Add($"{symbol}: bid={quote.Bid:F5} ask={quote.Ask:F5}");
+            }
+
+            if (lines.Count == 0)
+                return "\nLive MT4 quotes unavailable — do NOT choose activity \"trade\" or include ```trade``` blocks until quotes return.\n";
+
+            var example = await BuildTradeBlockExampleFromQuotesAsync(cancellationToken).ConfigureAwait(false);
+            return $"""
+
+                **Live MT4 quotes** (compute StopLoss ~20 pips from these — never use stale training prices):
+                {string.Join(Environment.NewLine, lines)}
+                Example trade JSON for current EURUSD: {example}
+                """;
+        }
+
+        private static void ClampAutonomyTradeVolume(TradeRequest request)
+        {
+            if (request.Volume > Mt4TradeBridgeHelper.MaxAutonomyDemoVolume)
+                request.Volume = Mt4TradeBridgeHelper.MaxAutonomyDemoVolume;
         }
 
         private static bool ContainsTradingKeywords(params string?[] parts)

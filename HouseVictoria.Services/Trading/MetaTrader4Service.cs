@@ -18,8 +18,15 @@ namespace HouseVictoria.Services.Trading
         private readonly string _commandFolder = "HouseVictoria";
         private readonly string _strategyFolder = "Experts";
         private readonly Timer? _marketDataTimer;
-        private readonly Dictionary<string, MarketData> _marketDataCache = new();
+        private readonly Dictionary<string, CachedMarketData> _marketDataCache = new();
         private readonly object _lockObject = new();
+        private static readonly TimeSpan MarketDataCacheTtl = TimeSpan.FromSeconds(3);
+
+        private sealed class CachedMarketData
+        {
+            public MarketData Data { get; init; } = null!;
+            public DateTime CachedAtUtc { get; init; }
+        }
 
         public event EventHandler<TradingServiceEventArgs>? StatusChanged;
         public event EventHandler<MarketDataEventArgs>? MarketDataUpdated;
@@ -282,18 +289,22 @@ namespace HouseVictoria.Services.Trading
             }
         }
 
-        public async Task<MarketData?> GetMarketDataAsync(string symbol)
+        public async Task<MarketData?> GetMarketDataAsync(string symbol, bool forceRefresh = false)
         {
             if (!_status.IsConnected || _mt4DataPath == null)
             {
                 return null;
             }
 
-            lock (_lockObject)
+            if (!forceRefresh)
             {
-                if (_marketDataCache.TryGetValue(symbol, out var cached))
+                lock (_lockObject)
                 {
-                    return cached;
+                    if (_marketDataCache.TryGetValue(symbol, out var cached) &&
+                        DateTime.UtcNow - cached.CachedAtUtc < MarketDataCacheTtl)
+                    {
+                        return cached.Data;
+                    }
                 }
             }
 
@@ -309,7 +320,11 @@ namespace HouseVictoria.Services.Trading
                     {
                         lock (_lockObject)
                         {
-                            _marketDataCache[symbol] = marketData;
+                            _marketDataCache[symbol] = new CachedMarketData
+                            {
+                                Data = marketData,
+                                CachedAtUtc = DateTime.UtcNow
+                            };
                         }
 
                         MarketDataUpdated?.Invoke(this, new MarketDataEventArgs { Symbol = symbol, MarketData = marketData });
@@ -611,8 +626,16 @@ namespace HouseVictoria.Services.Trading
                 };
             }
 
-            var quote = await GetMarketDataAsync(request.Symbol).ConfigureAwait(false);
-            var stopCorrections = Mt4TradeBridgeHelper.SanitizeStopLossAndTakeProfit(request, quote);
+            var quote = await GetMarketDataAsync(request.Symbol, forceRefresh: true).ConfigureAwait(false);
+            if (!Mt4TradeBridgeHelper.TryPrepareTradeForExecution(request, quote, out var stopCorrections, out var prepareError))
+            {
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    Message = prepareError
+                };
+            }
+
             if (!string.IsNullOrEmpty(stopCorrections))
                 System.Diagnostics.Debug.WriteLine($"Trade stop sanity: {stopCorrections}");
 
@@ -624,7 +647,7 @@ namespace HouseVictoria.Services.Trading
                     Message =
                         "Stop-loss is required by the MT4 bridge (RequireStopLoss=true). " +
                         "Include StopLoss in the trade JSON, e.g. " +
-                        "{\"Symbol\":\"EURUSD\",\"Type\":0,\"Volume\":0.01,\"StopLoss\":1.0830}. " +
+                        Mt4TradeBridgeHelper.TradeJsonExample + ". " +
                         "Place it ~20 pips from the current bid/ask."
                 };
             }
@@ -840,7 +863,11 @@ namespace HouseVictoria.Services.Trading
 
                         lock (_lockObject)
                         {
-                            _marketDataCache[symbol] = marketData;
+                            _marketDataCache[symbol] = new CachedMarketData
+                            {
+                                Data = marketData,
+                                CachedAtUtc = DateTime.UtcNow
+                            };
                         }
 
                         MarketDataUpdated?.Invoke(this, new MarketDataEventArgs
