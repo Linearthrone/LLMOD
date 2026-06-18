@@ -22,19 +22,14 @@
 
         <!-- Header with Close Button -->
         <Border Grid.Row="0"
-                Background="#3000D4FF"
-                Padding="15,10"
-                CornerRadius="6,6,0,0"
+                Style="{StaticResource OverlayPanelHeader}"
                 MouseLeftButtonDown="Header_MouseLeftButtonDown">
-            <Border.Effect>
-                <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-            </Border.Effect>
             <Grid>
                 <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
                     <TextBlock Text="📋 Global Log Directory (GLD)"
                                FontSize="20"
                                FontWeight="Bold"
-                               Foreground="#E0F7FF"/>
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <TextBlock Text="Review inbox — select an item, then Archive when done"
                                FontSize="11"
                                Foreground="#80C4D4"
@@ -52,7 +47,7 @@
                                   Content="Show Archived"
                                   MinWidth="110" Height="28"
                                   Margin="5,0,5,0"
-                                  Foreground="#E0F7FF"
+                                  Foreground="{DynamicResource TextPrimaryBrush}"
                                   FontSize="12"
                                   Cursor="Hand"
                                   ToolTip="Include archived items so you can review or restore them">
@@ -117,7 +112,7 @@
                            Background="#4000D4FF" 
                            BorderThickness="0"
                            FontSize="18" FontWeight="Bold"
-                           Foreground="#E0F7FF"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
                            Cursor="Hand"
                            Margin="5,0,5,0"
                            Click="MinimizeButton_Click"
@@ -148,7 +143,7 @@
                            Background="#40FF3366" 
                            BorderThickness="0"
                            FontSize="16" FontWeight="Bold"
-                           Foreground="#E0F7FF"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
                            Cursor="Hand"
                            Margin="0,0,0,0"
                            Click="CloseButton_Click"
@@ -210,7 +205,7 @@
                     <TreeView x:Name="LogTreeView"
                               Background="Transparent"
                               BorderThickness="0"
-                              Foreground="#E0F7FF"
+                              Foreground="{DynamicResource TextPrimaryBrush}"
                               FontSize="13"
                               ItemsSource="{Binding Categories}"
                               SelectedItemChanged="LogTreeView_SelectedItemChanged"
@@ -306,7 +301,7 @@
                                            Text="Log Title"
                                            FontSize="18"
                                            FontWeight="Bold"
-                                           Foreground="#E0F7FF"/>
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
                             </Border>
 
                             <!-- Log Metadata -->
@@ -322,7 +317,7 @@
                                         Padding="10" 
                                         Margin="0,0,2,0">
                                     <StackPanel>
-                                        <TextBlock Text="Date/Time" FontWeight="Bold" FontSize="11" Foreground="#E0F7FF"/>
+                                        <TextBlock Text="Date/Time" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         <TextBlock x:Name="LogDateTime" Text="2026-01-04 14:32:15" FontSize="12" Foreground="#80C4D4"/>
                                     </StackPanel>
                                 </Border>
@@ -332,7 +327,7 @@
                                         Padding="10" 
                                         Margin="2,0,2,0">
                                     <StackPanel>
-                                        <TextBlock Text="Severity" FontWeight="Bold" FontSize="11" Foreground="#E0F7FF"/>
+                                        <TextBlock Text="Severity" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         <TextBlock x:Name="LogSeverity" Text="Info" FontSize="12" Foreground="#80C4D4"/>
                                     </StackPanel>
                                 </Border>
@@ -342,7 +337,7 @@
                                         Padding="10" 
                                         Margin="2,0,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="Source" FontWeight="Bold" FontSize="11" Foreground="#E0F7FF"/>
+                                        <TextBlock Text="Source" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         <TextBlock x:Name="LogSource" Text="AI Service" FontSize="12" Foreground="#80C4D4"/>
                                     </StackPanel>
                                 </Border>
@@ -354,7 +349,7 @@
                                     Padding="10" 
                                     Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Tags" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#E0F7FF"/>
+                                    <TextBlock Text="Tags" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                     <ItemsControl x:Name="LogTags">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -370,7 +365,7 @@
                                                         BorderBrush="#6000D4FF"
                                                         BorderThickness="1">
                                                     <TextBlock Text="{Binding}" 
-                                                               Foreground="#E0F7FF" 
+                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
                                                                FontSize="11"/>
                                                 </Border>
                                             </DataTemplate>
@@ -390,7 +385,7 @@
                                                Text="This is a summary of the log entry that provides a quick overview of what happened..."
                                                TextWrapping="Wrap"
                                                FontSize="12"
-                                               Foreground="#E0F7FF"/>
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Border>
 
@@ -491,7 +486,7 @@
                                                FontWeight="Bold" 
                                                FontSize="11" 
                                                Margin="0,0,0,5"
-                                               Foreground="#E0F7FF"/>
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
                                     
                                     <ScrollViewer Grid.Row="1" 
                                                 VerticalScrollBarVisibility="Auto"

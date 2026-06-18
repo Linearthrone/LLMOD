@@ -17,54 +17,41 @@
     <Grid Background="Transparent"
           IsEnabled="True"
           IsHitTestVisible="True">
-        <!-- Pull Handle at Top Edge for TopTray -->
+        <!-- Orbit pull handle -->
         <Border x:Name="PullHandle"
-                Width="300" Height="12"
+                Style="{StaticResource OrbitPullHandle}"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Top"
-                Margin="0,0,0,0"
-                Background="#2000D4FF"
-                CornerRadius="0,0,8,8"
-                Cursor="Hand"
-                BorderBrush="#4000D4FF"
-                BorderThickness="0,0,1,1"
+                Margin="0,6,0,0"
                 MouseEnter="PullHandle_MouseEnter"
                 MouseLeave="PullHandle_MouseLeave"
-                MouseLeftButtonUp="PullHandle_Click">
-            <TextBlock Text="⬇"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Foreground="#8000D4FF"
-                       FontSize="10"
-                       FontFamily="Segoe UI"/>
-        </Border>
+                MouseLeftButtonUp="PullHandle_Click"/>
 
-        <!-- Main Tray (Right Edge, Vertically Centered) -->
+        <!-- Right dock -->
         <trays:MainTray x:Name="MainTrayElement"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
-                        Margin="0,200,20,200"/>
+                        Margin="0,200,12,200"/>
 
-        <!-- Top Tray (Middle of Top) -->
+        <!-- Top command orbit -->
         <trays:TopTray x:Name="TopTrayElement"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Top"
-                        Margin="0,20,0,0"/>
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Top"
+                       Margin="24,16,24,0"/>
 
-        <!-- Cognition vitals / heart monitor (Upper Left) -->
+        <!-- Cognition vitals beacon -->
         <trays:CognitionVitalsDrawer x:Name="CognitionVitalsDrawerElement"
                                      HorizontalAlignment="Left"
                                      VerticalAlignment="Top"
-                                     Margin="16,16,0,0"
+                                     Margin="12,12,0,0"
                                      Panel.ZIndex="1001"/>
 
-        <!-- System Monitor Drawer (Left Edge) - Always on top -->
+        <!-- System instrument drawer -->
         <trays:SystemMonitorDrawer x:Name="SystemMonitorDrawerElement"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Stretch"
-                                    Panel.ZIndex="1000"/>
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Stretch"
+                                   Panel.ZIndex="1000"/>
 
-        <!-- Window Container (dynamically shown/hidden) -->
         <ContentControl x:Name="WindowContainer"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"

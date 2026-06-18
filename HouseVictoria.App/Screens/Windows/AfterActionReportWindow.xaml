@@ -22,26 +22,26 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0"
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}"
                     MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🎖️" FontSize="22" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="After Action Reports" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                        <TextBlock Text="After Action Reports" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" Width="30" Height="30" Background="#4000D4FF" BorderThickness="0"
-                                FontSize="18" FontWeight="Bold" Foreground="#E0F7FF" Cursor="Hand"
+                                FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Cursor="Hand"
                                 Margin="0,0,5,0" Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
                         <Button Content="✕" Width="30" Height="30" Background="#40FF3366" BorderThickness="0"
-                                FontSize="16" FontWeight="Bold" Foreground="#E0F7FF" Cursor="Hand"
+                                FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Cursor="Hand"
                                 Click="CloseButton_Click" ToolTip="Close"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- Toolbar -->
-            <Border Grid.Row="1" Background="#300A0E27" Padding="12,10">
+            <Border Grid.Row="1" Style="{StaticResource OverlayPanelToolbar}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -97,7 +97,7 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel Grid.Column="0">
                                                 <TextBlock Text="{Binding ProjectName}" FontSize="19" FontWeight="SemiBold"
-                                                           Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
                                                 <TextBlock Text="{Binding ProjectTypeLabel}" FontSize="11" Foreground="#7FA8C0" Margin="0,2,0,0"/>
                                             </StackPanel>
                                             <Border Grid.Column="1" Padding="12,5" CornerRadius="12" VerticalAlignment="Top"
@@ -121,19 +121,19 @@
                                             <WrapPanel>
                                                 <StackPanel Margin="0,0,28,4">
                                                     <TextBlock Text="Completion" FontSize="10" Foreground="#7FA8C0"/>
-                                                    <TextBlock Text="{Binding CompletionPercentageLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                    <TextBlock Text="{Binding CompletionPercentageLabel}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 </StackPanel>
                                                 <StackPanel Margin="0,0,28,4">
                                                     <TextBlock Text="Time invested" FontSize="10" Foreground="#7FA8C0"/>
-                                                    <TextBlock Text="{Binding TimeInvestedLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                    <TextBlock Text="{Binding TimeInvestedLabel}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 </StackPanel>
                                                 <StackPanel Margin="0,0,28,4">
                                                     <TextBlock Text="Started" FontSize="10" Foreground="#7FA8C0"/>
-                                                    <TextBlock Text="{Binding StartLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                    <TextBlock Text="{Binding StartLabel}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 </StackPanel>
                                                 <StackPanel Margin="0,0,28,4">
                                                     <TextBlock Text="Deadline" FontSize="10" Foreground="#7FA8C0"/>
-                                                    <TextBlock Text="{Binding DeadlineLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                    <TextBlock Text="{Binding DeadlineLabel}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 </StackPanel>
                                                 <StackPanel Margin="0,0,28,4">
                                                     <TextBlock Text="Completed" FontSize="10" Foreground="#7FA8C0"/>
@@ -141,7 +141,7 @@
                                                 </StackPanel>
                                                 <StackPanel Margin="0,0,28,4">
                                                     <TextBlock Text="Effort" FontSize="10" Foreground="#7FA8C0"/>
-                                                    <TextBlock Text="{Binding WorkSessionLabel}" FontSize="13" Foreground="#E0F7FF"/>
+                                                    <TextBlock Text="{Binding WorkSessionLabel}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 </StackPanel>
                                             </WrapPanel>
                                         </Border>
@@ -166,7 +166,7 @@
                                                     Command="{Binding DataContext.AcceptCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding Id}"/>
                                             <Button Content="✋ Reject &amp; Revise" Width="160" Height="36"
-                                                    Cursor="Hand" BorderThickness="0" Foreground="#E0F7FF" FontWeight="SemiBold"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold"
                                                     Background="#80FF5277"
                                                     Command="{Binding DataContext.RejectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding Id}"/>

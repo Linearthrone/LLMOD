@@ -18,7 +18,7 @@
         <Button x:Name="CollapsedPullHandle"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
-                Width="14"
+                Width="8"
                 Height="140"
                 Margin="0"
                 Command="{Binding ToggleDrawerCommand}"
@@ -28,16 +28,10 @@
                 Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
             <Button.Template>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="#2000D4FF"
-                            BorderBrush="#4000D4FF"
-                            BorderThickness="1,1,0,1"
-                            CornerRadius="0,8,8,0">
-                        <TextBlock Text="⮞"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Foreground="#8000D4FF"
-                                   FontSize="10"
-                                   FontFamily="Segoe UI"/>
+                    <Border Style="{StaticResource InstrumentPullTab}" Width="8" Height="140">
+                        <Border Width="2" Height="32" CornerRadius="1"
+                                Background="{DynamicResource PrimaryBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </ControlTemplate>
             </Button.Template>
@@ -45,14 +39,11 @@
 
         <!-- Expanded Pull Tab (Left Edge) -->
         <Border x:Name="PullTabHost"
+                Style="{StaticResource InstrumentPullTab}"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
-                Width="48"
+                Width="44"
                 Height="100"
-                Background="#2000D4FF"
-                BorderBrush="#4000D4FF"
-                BorderThickness="1,1,0,1"
-                CornerRadius="0,8,8,0"
                 Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -68,13 +59,15 @@
                         BorderThickness="0"
                         Cursor="Hand"
                         ToolTip="System health">
-                    <TextBlock Text="📊"
-                               FontSize="20"
+                    <TextBlock Text="&#xE9D9;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="16"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                 </Button>
 
-                <Separator Grid.Row="1" Margin="6,0" Background="#4000D4FF" />
+                <Separator Grid.Row="1" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}" />
 
                 <Button x:Name="ComponentsPullButton"
                         Grid.Row="2"
@@ -83,8 +76,10 @@
                         BorderThickness="0"
                         Cursor="Hand"
                         ToolTip="Components">
-                    <TextBlock Text="🧩"
-                               FontSize="20"
+                    <TextBlock Text="&#xE773;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="16"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                 </Button>
@@ -93,16 +88,17 @@
 
         <!-- Drawer Panel -->
         <Border x:Name="DrawerPanel"
-                Background="#CC0A0E27"
+                Background="#CC141820"
                 Width="330"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
-                Margin="48,40,0,40"
-                CornerRadius="6"
+                Margin="44,40,0,40"
+                CornerRadius="12"
                 Padding="10"
                 Visibility="Collapsed"
-                BorderThickness="0"
-                BorderBrush="Transparent">
+                BorderThickness="1"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                Effect="{StaticResource ObsidianShadowSoft}">
             <Grid Margin="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -111,8 +107,8 @@
 
                 <!-- Header with "House Victoria" -->
                 <TextBlock Grid.Row="0" Text="House Victoria" 
-                           Style="{StaticResource CalligraphyText}"
-                           FontSize="32"
+                           Style="{StaticResource BrandText}"
+                           FontSize="20"
                            HorizontalAlignment="Center"
                            Margin="0,0,0,8"/>
 
@@ -134,14 +130,14 @@
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="TabItem">
-                                        <Border x:Name="Border" Background="#1A2332" Padding="12,8" Margin="2,0"
-                                                BorderBrush="#00D4FF" BorderThickness="0,0,0,2"
-                                                CornerRadius="3,3,0,0">
+                                        <Border x:Name="Border" Background="{DynamicResource DarkCardBrush}" Padding="12,8" Margin="2,0"
+                                                BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="0,0,0,2"
+                                                CornerRadius="8,8,0,0">
                                             <ContentPresenter ContentSource="Header"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Border" Property="Background" Value="#0A0E27"/>
+                                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource DarkBackgroundBrush}"/>
                                                 <Setter TargetName="Border" Property="BorderThickness" Value="0,0,0,2"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>

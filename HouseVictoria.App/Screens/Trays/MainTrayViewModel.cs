@@ -42,8 +42,8 @@ namespace HouseVictoria.App.Screens.Trays
             });
             CloseTrayCommand = new RelayCommand(() => ToggleTray());
 
-            // Start expanded; user can collapse to a slim pull-tab.
-            IsExpanded = true;
+            // Start collapsed; expand via pull-tab.
+            IsExpanded = false;
         }
 
         private void ToggleTray()

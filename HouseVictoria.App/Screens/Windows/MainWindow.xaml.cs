@@ -288,41 +288,43 @@ namespace HouseVictoria.App.Screens.Windows
 
         private void SetupAutoHide()
         {
-            // Automatically enable auto-hide for top tray only
-            _autoHideEnabled = true;
-
-            // Get tray controls from the visual tree
-            if (this.FindName("TopTrayElement") is FrameworkElement topTray)
+            int delayMs = 2500;
+            try
             {
-                _topTrayAutoHide = new AutoHideBehavior(topTray, 2500, -240, HideDirection.Top);
-                _topTrayAutoHide.IsVisible = true; // Start visible
-                System.Diagnostics.Debug.WriteLine($"TopTray auto-hide initialized");
+                var appConfig = App.GetService<HouseVictoria.Core.Models.AppConfig>();
+                _autoHideEnabled = appConfig?.AutoHideTrays ?? true;
+                delayMs = appConfig?.AutoHideDelayMs ?? 2500;
+            }
+            catch
+            {
+                _autoHideEnabled = true;
             }
 
-            // Main tray should NOT auto-hide - leave it always visible
-            // Removed MainTray auto-hide setup
+            if (!_autoHideEnabled)
+            {
+                return;
+            }
+
+            if (this.FindName("TopTrayElement") is FrameworkElement topTray)
+            {
+                _topTrayAutoHide?.Dispose();
+                _topTrayAutoHide = new AutoHideBehavior(topTray, delayMs, -240, HideDirection.Top);
+                _topTrayAutoHide.IsVisible = true;
+            }
         }
 
         private void PullHandle_MouseEnter(object sender, MouseEventArgs e)
         {
             var handle = (Border)sender;
-            handle.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(80, 0, 212, 255));
-            handle.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(150, 0, 212, 255));
-            if (handle.Child is TextBlock arrow)
-            {
-                arrow.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 212, 255));
-            }
+            handle.Background = new SolidColorBrush(Color.FromArgb(180, 91, 138, 138));
+            handle.Width = 64;
         }
 
         private void PullHandle_MouseLeave(object sender, MouseEventArgs e)
         {
             var handle = (Border)sender;
-            handle.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(32, 0, 212, 255));
-            handle.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(64, 0, 212, 255));
-            if (handle.Child is TextBlock arrow)
-            {
-                arrow.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(128, 0, 212, 255));
-            }
+            handle.Background = new SolidColorBrush(Color.FromArgb(102, 91, 138, 138));
+            handle.Width = 48;
         }
 
         private void PullHandle_Click(object sender, MouseButtonEventArgs e)

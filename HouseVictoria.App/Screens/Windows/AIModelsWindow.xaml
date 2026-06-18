@@ -63,19 +63,16 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border.Effect>
-                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                </Border.Effect>
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="🤖 AI Models &amp; Personas" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                    <TextBlock Text="🤖 AI Models &amp; Personas" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
                                Background="#4000D4FF" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
@@ -106,7 +103,7 @@
                                Background="#40FF3366" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
                                ToolTip="Close">
@@ -167,10 +164,10 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="Model Name:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="0" Text="Model Name:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                             <TextBox Grid.Column="1" Text="{Binding OllamaRunCommand, UpdateSourceTrigger=PropertyChanged}" 
                                                     Background="#252F3F" BorderBrush="#4000D4FF" 
-                                                    Foreground="#E0F7FF" Padding="8" Margin="5,0"
+                                                    Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
                                                     IsEnabled="{Binding IsPullingModel, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                 <TextBox.ToolTip>
                                                     <TextBlock>
@@ -204,7 +201,7 @@
                                         <Border Background="#111827" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="8" Margin="0,10,0,0">
                                             <StackPanel>
                                                 <DockPanel Margin="0,0,0,8">
-                                                    <TextBlock Text="Command Output" FontSize="13" FontWeight="Bold" Foreground="#E0F7FF" DockPanel.Dock="Left"/>
+                                                    <TextBlock Text="Command Output" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" DockPanel.Dock="Left"/>
                                                     <TextBlock Text="Running..." 
                                                                Foreground="#80C4D4" FontSize="12" HorizontalAlignment="Right"
                                                                Visibility="{Binding IsRunningOllamaCommand, Converter={StaticResource BoolToVisibilityConverter}}"/>
@@ -213,7 +210,7 @@
                                                          Text="{Binding LoadModelLog}"
                                                          Background="#0B1220"
                                                          BorderBrush="#4000D4FF"
-                                                         Foreground="#E0F7FF"
+                                                         Foreground="{DynamicResource TextPrimaryBrush}"
                                                          FontFamily="Consolas"
                                                          FontSize="12"
                                                          Padding="8"
@@ -236,19 +233,19 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Ollama Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Ollama Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <Border Grid.Column="1" Background="#1A2332" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="4" Margin="5,0" Padding="8">
-                                        <TextBlock Text="{Binding OllamaEndpoint}" Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding OllamaEndpoint}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
                                     </Border>
                                     <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="🔍 Show Available Models" 
                                            Margin="5,0,0,0" Command="{Binding LoadAvailableModelsCommand}"/>
                                 </Grid>
-                                <TextBlock Text="Available Models:" FontSize="14" FontWeight="Bold" Foreground="#E0F7FF" Margin="0,15,0,5"/>
+                                <TextBlock Text="Available Models:" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,15,0,5"/>
                                 <ListView ItemsSource="{Binding AvailableOllamaModels}"
                                           SelectedItem="{Binding SelectedOllamaModel}"
                                           ItemContainerStyle="{StaticResource OllamaModelsListViewItem}"
                                           Background="#252F3F" BorderBrush="#4000D4FF" 
-                                          Foreground="#E0F7FF" Height="200" Margin="0,5">
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Height="200" Margin="0,5">
                                     <ListView.Resources>
                                         <Style TargetType="GridViewColumnHeader">
                                             <Setter Property="Background" Value="#1A3045"/>
@@ -310,7 +307,7 @@
                                             </Grid>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding PreviewName}" FontSize="15" FontWeight="Bold" Foreground="#E0F7FF"/>
+                                            <TextBlock Text="{Binding PreviewName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                             <TextBlock Text="{Binding PreviewRoleLabel}" FontSize="11" Foreground="#00D4FF" Margin="0,2,0,0"/>
                                             <TextBlock FontSize="11" Foreground="#80C4D4" Margin="0,2,0,0">
                                                 <Run Text="Model: "/><Run Text="{Binding NewPersonaModel}"/>
@@ -324,7 +321,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Name:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Name:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding NewPersonaName, UpdateSourceTrigger=PropertyChanged}" 
                                             Background="#252F3F" BorderBrush="#4000D4FF" 
                                             Foreground="White" Padding="8" Margin="5,0"/>
@@ -340,17 +337,17 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Role:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Role:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="5,0">
                                         <RadioButton Content="Primary (always active)" GroupName="PersonaRole"
-                                                     Foreground="#E0F7FF" Margin="0,0,14,0" VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,14,0" VerticalAlignment="Center"
                                                      IsChecked="{Binding IsRolePrimary, Mode=TwoWay}"
                                                      ToolTip="The house brain used by autonomy, journals and the remote companion. Only one persona is primary."/>
                                         <RadioButton Content="Companion" GroupName="PersonaRole"
-                                                     Foreground="#E0F7FF" Margin="0,0,14,0" VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,14,0" VerticalAlignment="Center"
                                                      IsChecked="{Binding IsRoleCompanion, Mode=TwoWay}"/>
                                         <RadioButton Content="None" GroupName="PersonaRole"
-                                                     Foreground="#E0F7FF" VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
                                                      IsChecked="{Binding IsRoleNone, Mode=TwoWay}"/>
                                     </StackPanel>
                                 </Grid>
@@ -361,7 +358,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Starter template:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Starter template:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePersonaPresets}"
                                               SelectedItem="{Binding SelectedPersonaPreset, Mode=TwoWay}"
                                               Background="#252F3F" BorderBrush="#4000D4FF" Foreground="White" Padding="8" Margin="5,0"
@@ -379,7 +376,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Model:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Model:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" 
                                             x:Name="ModelComboBox"
                                             ItemsSource="{Binding AvailableModels}" 
@@ -435,7 +432,7 @@
                                                     <ColumnDefinition Width="150"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="MCP Server:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="0" Text="MCP Server:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaMCPServer, UpdateSourceTrigger=PropertyChanged}" 
                                                         Background="#252F3F" BorderBrush="#4000D4FF" 
                                                         Foreground="White" Padding="8" Margin="5,0"/>
@@ -450,7 +447,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-<TextBlock Grid.Column="0" Text="TTS Voice:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+<TextBlock Grid.Column="0" Text="TTS Voice:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePiperVoices}"
                                             Text="{Binding NewPersonaPiperVoice, UpdateSourceTrigger=PropertyChanged}"
                                             IsEditable="True"
@@ -479,7 +476,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Portrait:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Portrait:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding NewPersonaAvatarUrl, UpdateSourceTrigger=PropertyChanged}"
                                             Background="#252F3F" BorderBrush="#4000D4FF"
                                             Foreground="White" Padding="8" Margin="5,0"/>
@@ -499,10 +496,10 @@
                                                     <ColumnDefinition Width="150"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="3D Model Path:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="0" Text="3D Model Path:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaAvatarModelPath, UpdateSourceTrigger=PropertyChanged}" 
                                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Path to avatar 3D model (.fbx, .glb) for the virtual environment" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -512,10 +509,10 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="60"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="Voice Speed:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="0" Text="Voice Speed:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <Slider Grid.Column="1" Minimum="0.1" Maximum="3.0" Value="{Binding NewPersonaAvatarVoiceSpeed, UpdateSourceTrigger=PropertyChanged}" 
                                                        TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"
-                                                       Foreground="#E0F7FF"/>
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaAvatarVoiceSpeed, StringFormat='{}{0:F1}'}" 
                                                           Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
@@ -525,10 +522,10 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="60"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="Voice Pitch:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="0" Text="Voice Pitch:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <Slider Grid.Column="1" Minimum="0.1" Maximum="3.0" Value="{Binding NewPersonaAvatarVoicePitch, UpdateSourceTrigger=PropertyChanged}" 
                                                        TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"
-                                                       Foreground="#E0F7FF"/>
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaAvatarVoicePitch, StringFormat='{}{0:F1}'}" 
                                                           Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
@@ -540,7 +537,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Description:" Foreground="#E0F7FF" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                                    <TextBlock Grid.Column="0" Text="Description:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Top" Margin="0,5,0,0"/>
                                     <TextBox Grid.Column="1" Text="{Binding NewPersonaDescription, UpdateSourceTrigger=PropertyChanged}" 
                                             Background="#252F3F" BorderBrush="#4000D4FF" 
                                             Foreground="White" Padding="8" Margin="5,0" TextWrapping="Wrap" Height="60"/>
@@ -555,22 +552,22 @@
                                                        FontSize="11" Foreground="#80C4D4" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                             <CheckBox Content="About me — global facts about the human user"
                                                       IsChecked="{Binding ShareUserBasics, Mode=TwoWay}"
-                                                      Foreground="#E0F7FF" Margin="0,4"/>
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                             <CheckBox Content="This persona's own chat memories"
                                                       IsChecked="{Binding ShareOwnMemories, Mode=TwoWay}"
-                                                      Foreground="#E0F7FF" Margin="0,4"/>
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                             <CheckBox Content="This persona's data bank"
                                                       IsChecked="{Binding ShareOwnDataBank, Mode=TwoWay}"
-                                                      Foreground="#E0F7FF" Margin="0,4"/>
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                             <CheckBox Content="House journals &amp; research (Victoria / autonomy work)"
                                                       IsChecked="{Binding ShareHouseJournals, Mode=TwoWay}"
-                                                      Foreground="#E0F7FF" Margin="0,4"/>
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                             <CheckBox Content="Other personas' memories"
                                                       IsChecked="{Binding ShareOtherPersonaMemories, Mode=TwoWay}"
-                                                      Foreground="#E0F7FF" Margin="0,4"/>
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                             <CheckBox Content="Shared / global data banks"
                                                       IsChecked="{Binding ShareSharedDataBanks, Mode=TwoWay}"
-                                                      Foreground="#E0F7FF" Margin="0,4"/>
+                                                      Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                         </StackPanel>
                                     </Border>
                                 </Expander>
@@ -580,7 +577,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="System Prompt:" Foreground="#E0F7FF" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                                    <TextBlock Grid.Column="0" Text="System Prompt:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Top" Margin="0,5,0,0"/>
                                     <Border Grid.Column="1" Background="#252F3F" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="4" Margin="5,0">
                                         <TextBox Text="{Binding NewPersonaSystemPrompt, UpdateSourceTrigger=PropertyChanged}" 
                                                 Background="Transparent" BorderThickness="0" 
@@ -606,10 +603,10 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="60"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="Temperature:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="0" Text="Temperature:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <Slider Grid.Column="1" Minimum="0" Maximum="2" Value="{Binding NewPersonaTemperature, UpdateSourceTrigger=PropertyChanged}" 
                                                        TickFrequency="0.1" IsSnapToTickEnabled="False" Margin="5,0"
-                                                       Foreground="#E0F7FF"/>
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaTemperature, StringFormat='{}{0:F2}'}" 
                                                           Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
@@ -626,7 +623,7 @@
                                                 <TextBlock Grid.Column="0" Text="Top P:" Foreground="White" VerticalAlignment="Center"/>
                                                 <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding NewPersonaTopP, UpdateSourceTrigger=PropertyChanged}" 
                                                        TickFrequency="0.05" IsSnapToTickEnabled="False" Margin="5,0"
-                                                       Foreground="#E0F7FF"/>
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaTopP, StringFormat='{}{0:F2}'}" 
                                                           Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
@@ -643,7 +640,7 @@
                                                 <TextBlock Grid.Column="0" Text="Top K:" Foreground="White" VerticalAlignment="Center"/>
                                                 <Slider Grid.Column="1" Minimum="1" Maximum="100" Value="{Binding NewPersonaTopK, UpdateSourceTrigger=PropertyChanged}" 
                                                        TickFrequency="1" IsSnapToTickEnabled="True" Margin="5,0"
-                                                       Foreground="#E0F7FF"/>
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaTopK}" 
                                                           Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
@@ -660,7 +657,7 @@
                                                 <TextBlock Grid.Column="0" Text="Repeat Penalty:" Foreground="White" VerticalAlignment="Center"/>
                                                 <Slider Grid.Column="1" Minimum="0" Maximum="2" Value="{Binding NewPersonaRepeatPenalty, UpdateSourceTrigger=PropertyChanged}" 
                                                        TickFrequency="0.1" IsSnapToTickEnabled="False" Margin="5,0"
-                                                       Foreground="#E0F7FF"/>
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaRepeatPenalty, StringFormat='{}{0:F2}'}" 
                                                           Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
@@ -676,7 +673,7 @@
                                                 <TextBlock Grid.Column="0" Text="Max Tokens:" Foreground="White" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaMaxTokens, UpdateSourceTrigger=PropertyChanged}" 
                                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Maximum tokens to generate (-1 = unlimited)" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -690,7 +687,7 @@
                                                 <TextBlock Grid.Column="0" Text="Context Length:" Foreground="White" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaContextLength, UpdateSourceTrigger=PropertyChanged}" 
                                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Size of the context window (varies by model)" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -761,7 +758,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
                                                         <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                             <Border Background="#3300D4FF" BorderBrush="#00D4FF" BorderThickness="1" CornerRadius="3"
                                                                     Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center"
                                                                     Visibility="{Binding IsPrimaryAI, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -831,7 +828,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Prompt:" Foreground="#E0F7FF" VerticalAlignment="Top" Margin="0,5,0,0"/>
+                                    <TextBlock Grid.Column="0" Text="Prompt:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Top" Margin="0,5,0,0"/>
                                     <TextBox Grid.Column="1" Text="{Binding ImageGenerationPrompt, UpdateSourceTrigger=PropertyChanged}" 
                                             Background="#252F3F" BorderBrush="#4000D4FF" 
                                             Foreground="White" Padding="8" Margin="5,0" 
@@ -844,7 +841,7 @@
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Width:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Width:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Minimum="256" Maximum="1024" Value="{Binding ImageWidth}" 
                                            TickFrequency="128" IsSnapToTickEnabled="True" Margin="5,0"/>
                                     <TextBlock Grid.Column="1" Text="{Binding ImageWidth, StringFormat='{}Width: {0}px'}" 
@@ -902,7 +899,7 @@
                                        CornerRadius="5" Padding="10" Margin="0,10,0,0"
                                        Visibility="{Binding HasGeneratedImage, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <StackPanel>
-                                        <TextBlock Text="Generated Image:" FontSize="14" FontWeight="Bold" Foreground="#E0F7FF" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Generated Image:" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
                                         <Image Source="{Binding GeneratedImagePath}" 
                                               MaxWidth="512" MaxHeight="512" 
                                               Stretch="Uniform" 

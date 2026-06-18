@@ -22,7 +22,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Border" Property="Background" Value="#5D40C7"/>
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource PrimaryLightBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Border" Property="Effect" Value="{StaticResource MaterialDesignShadowDepth3}"/>

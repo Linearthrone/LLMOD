@@ -159,7 +159,7 @@ namespace HouseVictoria.App.Screens.Trays
             set => SetProperty(ref _cognitionIntensity, value);
         }
 
-        private string _cognitionWaveColorHex = "#4FC3F7";
+        private string _cognitionWaveColorHex = "#8B7BA8";
         public string CognitionWaveColorHex
         {
             get => _cognitionWaveColorHex;

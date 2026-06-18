@@ -13,87 +13,77 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Expanded tray (icons) -->
+            <!-- Expanded dock -->
             <Border Grid.Column="0"
                     Style="{StaticResource GlassTrayContainer}"
-                    Width="90"
+                    MinWidth="72"
+                    Padding="8,10"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
                     Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid>
                     <Border Style="{StaticResource RefractionGlow}"/>
-                    <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-                            <Button Style="{StaticResource FrostedGlassButton}"
-                                    ToolTip="SMS / MMS"
-                                    Command="{Binding OpenSMSCommand}"
-                                    Margin="0,0,0,20">
-                                <TextBlock Text="💬" FontSize="28"/>
-                            </Button>
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                        <Button Style="{StaticResource DockButton}"
+                                ToolTip="SMS / MMS"
+                                Command="{Binding OpenSMSCommand}">
+                            <StackPanel>
+                                <TextBlock Text="&#xE8BD;" Style="{StaticResource Mdl2Icon}" FontSize="18"/>
+                                <TextBlock Text="Comms" Style="{StaticResource DockButtonLabel}"/>
+                            </StackPanel>
+                        </Button>
 
-                            <Button Style="{StaticResource FrostedGlassButton}"
-                                    ToolTip="AI Models &amp; Personas"
-                                    Command="{Binding OpenAIModelsCommand}"
-                                    Margin="0,0,0,20">
-                                <TextBlock Text="🤖" FontSize="28"/>
-                            </Button>
+                        <Button Style="{StaticResource DockButton}"
+                                ToolTip="AI Models &amp; Personas"
+                                Command="{Binding OpenAIModelsCommand}">
+                            <StackPanel>
+                                <TextBlock Text="&#xE99A;" Style="{StaticResource Mdl2Icon}" FontSize="18"/>
+                                <TextBlock Text="Mind" Style="{StaticResource DockButtonLabel}"/>
+                            </StackPanel>
+                        </Button>
 
-                            <Button Style="{StaticResource FrostedGlassButton}"
-                                    ToolTip="Settings"
-                                    Command="{Binding OpenSettingsCommand}"
-                                    Margin="0,0,0,20">
-                                <TextBlock Text="⚙️" FontSize="28"/>
-                            </Button>
-                        </StackPanel>
-                    </ScrollViewer>
+                        <Button Style="{StaticResource DockButton}"
+                                ToolTip="Settings"
+                                Command="{Binding OpenSettingsCommand}">
+                            <StackPanel>
+                                <TextBlock Text="&#xE713;" Style="{StaticResource Mdl2Icon}" FontSize="18"/>
+                                <TextBlock Text="System" Style="{StaticResource DockButtonLabel}"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Pull-tab (always visible) -->
+            <!-- Slim pull-tab -->
             <Border Grid.Column="1"
-                    Background="#1200D4FF"
-                    BorderBrush="#3000D4FF"
-                    BorderThickness="1"
-                    CornerRadius="8,0,0,8"
-                    Width="18"
-                    Height="210"
+                    Style="{StaticResource InstrumentPullTab}"
+                    Width="8"
+                    Height="160"
                     VerticalAlignment="Center"
                     Margin="0">
-                <!-- No Command: ToggleButton + TwoWay IsChecked already toggles IsExpanded.
-                     Adding Command would run IsExpanded = !IsExpanded after the binding
-                     updated it — net effect stays collapsed. -->
-                <ToggleButton Width="18"
-                              Height="210"
+                <ToggleButton Width="8"
+                              Height="160"
                               Padding="0"
                               BorderThickness="0"
-                              IsChecked="{Binding IsExpanded, Mode=TwoWay}">
+                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                              Background="Transparent">
                     <ToggleButton.Style>
                         <Style TargetType="ToggleButton" BasedOn="{StaticResource TrayToggleButton}">
-                            <Setter Property="ToolTip" Value="Expand tray"/>
+                            <Setter Property="Width" Value="8"/>
+                            <Setter Property="Height" Value="160"/>
+                            <Setter Property="ToolTip" Value="Expand dock"/>
                             <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="BorderThickness" Value="0"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                    <Setter Property="ToolTip" Value="Collapse tray"/>
+                                    <Setter Property="ToolTip" Value="Collapse dock"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </ToggleButton.Style>
-                    <TextBlock FontSize="14"
-                               Foreground="#A0E0F7FF"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Text" Value="◀"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                        <Setter Property="Text" Value="▶"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <Border Width="2" Height="32" CornerRadius="1"
+                            Background="{DynamicResource PrimaryBrush}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </ToggleButton>
             </Border>
         </Grid>

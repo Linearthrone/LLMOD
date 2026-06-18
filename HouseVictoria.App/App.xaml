@@ -9,6 +9,8 @@
                 <ResourceDictionary Source="Styles/MaterialDesign.xaml" />
                 <ResourceDictionary Source="Styles/MaterialDesignButtons.xaml" />
                 <ResourceDictionary Source="Styles/MaterialDesignControls.xaml" />
+                <!-- Obsidian Field design system -->
+                <ResourceDictionary Source="Styles/ObsidianField.xaml" />
                 <!-- App Custom Styles -->
                 <ResourceDictionary Source="Styles/GlassEffect.xaml" />
                 <ResourceDictionary Source="Styles/OverlayStyles.xaml" />

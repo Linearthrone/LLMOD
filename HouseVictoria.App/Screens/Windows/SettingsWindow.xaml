@@ -22,19 +22,16 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border.Effect>
-                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                </Border.Effect>
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="⚙️ Configuration Settings" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                    <TextBlock Text="⚙️ Configuration Settings" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
                                Background="#4000D4FF" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
@@ -65,7 +62,7 @@
                                Background="#40FF3366" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
                                ToolTip="Close">
@@ -137,10 +134,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MCPServerEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding MCPServerConnectionStatus}" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding MCPServerConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -180,10 +177,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="STT Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="STT Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding STTEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding STTConnectionStatus}" 
                                           Foreground="#00FF88" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -221,13 +218,13 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Provider:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Provider:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1"
                                           ItemsSource="{Binding ImageGenerationProviderOptions}"
                                           SelectedItem="{Binding ImageGenerationProvider, UpdateSourceTrigger=PropertyChanged}"
                                           Background="#252F3F"
                                           BorderBrush="#4000D4FF"
-                                          Foreground="#E0F7FF"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
                                           Padding="8"
                                           Margin="5,0"/>
                             </Grid>
@@ -236,10 +233,10 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="A2E API token:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="A2E API token:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding A2eApiToken, UpdateSourceTrigger=PropertyChanged}"
                                         Background="#252F3F" BorderBrush="#4000D4FF"
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <TextBlock Text="Bearer token from video.a2e.ai → API Token. Or set env A2E_API_TOKEN. Restart app after saving."
                                       FontSize="11" Foreground="#5A6A7A" Margin="0,3,0,8" FontStyle="Italic" TextWrapping="Wrap"/>
@@ -248,10 +245,10 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="A2E API URL:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="A2E API URL:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding A2eApiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
                                         Background="#252F3F" BorderBrush="#4000D4FF"
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <TextBlock Text="Local ComfyUI (fallback or when provider = comfyui)" FontSize="13" FontWeight="SemiBold" Foreground="#00D4FF" Margin="0,4,0,4"/>
                             <TextBlock Text="Configure the local image endpoint (typically ComfyUI on port 8188)." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
@@ -262,10 +259,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding StableDiffusionEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding StableDiffusionConnectionStatus}" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding StableDiffusionConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -295,14 +292,14 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Checkpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Checkpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1"
                                           ItemsSource="{Binding AvailableComfyUICheckpoints}"
                                           Text="{Binding ComfyUIPreferredCheckpoint, UpdateSourceTrigger=PropertyChanged}"
                                           IsEditable="True"
                                           Background="#252F3F"
                                           BorderBrush="#4000D4FF"
-                                          Foreground="#E0F7FF"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
                                           Padding="8"
                                           Margin="5,0"/>
                                 <Button Grid.Column="2" Content="Refresh" Style="{StaticResource GlassButton}"
@@ -316,10 +313,10 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Custom workflow:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Custom workflow:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding ComfyUICustomWorkflowPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <Button Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
                                        Command="{Binding BrowseComfyUICustomWorkflowPathCommand}" Width="70" Margin="5,0"/>
                             </Grid>
@@ -345,16 +342,16 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Stability Matrix:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Stability Matrix:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding StabilityMatrixPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <Button Grid.Row="0" Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
                                        Command="{Binding BrowseStabilityMatrixPathCommand}" Width="70" Margin="5,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="ComfyUI folder:" Foreground="#E0F7FF" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="ComfyUI folder:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,8,0,0"/>
                                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ComfyUIPortablePath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,8,5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,8,5,0"/>
                                 <Button Grid.Row="1" Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
                                        Command="{Binding BrowseComfyUIPortablePathCommand}" Width="70" Margin="5,8,5,0"/>
                             </Grid>
@@ -390,10 +387,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding UnrealEngineEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding UnrealConnectionStatus}" 
                                           Foreground="#00FF88" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -429,25 +426,25 @@
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#80C4D4" Margin="0,0,0,8"
                                       Text="HTTP API on this PC for text chat and optional voice (STT on PC). Bind to loopback and use Tailscale / Cloudflare Tunnel for secure remote access. Video can be added later. Restart House Victoria after enabling or changing port/token."/>
-                            <CheckBox IsChecked="{Binding RemoteCompanionEnabled}" Foreground="#E0F7FF" Margin="0,2"
+                            <CheckBox IsChecked="{Binding RemoteCompanionEnabled}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2"
                                      Content="Enable remote companion API"/>
                             <Grid Margin="0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Listen port:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Listen port:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding RemoteCompanionListenPort, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="API token:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="API token:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding RemoteCompanionApiToken, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
                                         ToolTip="Use at least 16 characters. Send as Authorization: Bearer &lt;token&gt; or X-Api-Key header."/>
                             </Grid>
                             <Grid Margin="0,4">
@@ -455,14 +452,14 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="AI contact ID:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="AI contact ID:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding RemoteCompanionAiContactId, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
                                         ToolTip="Optional. Leave empty to use the primary AI contact."/>
                             </Grid>
-                            <CheckBox IsChecked="{Binding RemoteCompanionListenOnLan}" Foreground="#E0F7FF" Margin="0,4"
+                            <CheckBox IsChecked="{Binding RemoteCompanionListenOnLan}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"
                                      Content="Listen on all interfaces (LAN) — off = loopback only (safer with a tunnel)"/>
-                            <CheckBox IsChecked="{Binding RemoteCompanionNotifyUnreal}" Foreground="#E0F7FF" Margin="0,2"
+                            <CheckBox IsChecked="{Binding RemoteCompanionNotifyUnreal}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2"
                                      Content="Notify Unreal after each reply (JSON command companion_remote_exchange)"/>
                         </StackPanel>
                     </Border>
@@ -484,10 +481,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding LmStudioEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding LmStudioConnectionStatus}" 
                                           Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding LmStudioConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -507,7 +504,7 @@
                                 </TextBlock>
                                 <StackPanel Grid.Column="3" Orientation="Horizontal">
                                     <CheckBox IsChecked="{Binding UseLmStudioAsPrimary}" 
-                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
                                              ToolTip="Use as primary LLM. Uncheck current primary before selecting another."/>
                                     <Button Content="Test" Style="{StaticResource GlassButton}" 
                                            Command="{Binding TestLmStudioConnectionCommand}" 
@@ -523,10 +520,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding OllamaEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding OllamaConnectionStatus}" 
                                           Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding OllamaConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -546,7 +543,7 @@
                                 </TextBlock>
                                 <StackPanel Grid.Column="3" Orientation="Horizontal">
                                     <CheckBox IsChecked="{Binding UseOllamaAsPrimary}" 
-                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
                                              ToolTip="Use as primary LLM. Uncheck current primary before selecting another."/>
                                     <Button Content="Test" Style="{StaticResource GlassButton}" 
                                            Command="{Binding TestOllamaConnectionCommand}" 
@@ -562,10 +559,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding AnythingLLMEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding AnythingLLMConnectionStatus}" 
                                           Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding AnythingLLMConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -585,7 +582,7 @@
                                 </TextBlock>
                                 <StackPanel Grid.Column="3" Orientation="Horizontal">
                                     <CheckBox IsChecked="{Binding UseAnythingLLMAsPrimary}" 
-                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
                                              ToolTip="Use as primary LLM. Uncheck current primary before selecting another."/>
                                     <Button Content="Test" Style="{StaticResource GlassButton}" 
                                            Command="{Binding TestAnythingLLMConnectionCommand}" 
@@ -601,10 +598,10 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="API endpoint:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="API endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding HermesEndpoint, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding HermesConnectionStatus}" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
                                           Visibility="{Binding HermesConnectionStatus, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -624,7 +621,7 @@
                                 </TextBlock>
                                 <StackPanel Grid.Column="3" Orientation="Horizontal">
                                     <CheckBox IsChecked="{Binding UseHermesAsPrimary}" 
-                                             Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                             Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
                                              ToolTip="Route all chat through Hermes (terminal, browser, MCP tools)."/>
                                     <Button Content="Test" Style="{StaticResource GlassButton}" 
                                            Command="{Binding TestHermesConnectionCommand}" 
@@ -636,10 +633,10 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="API key:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="API key:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding HermesApiKey, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
@@ -647,12 +644,12 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Model id:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Model id:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding HermesModelName, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <CheckBox Grid.Column="2" IsChecked="{Binding HermesAutoStart}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
                                          Content="Auto-start gateway"/>
                             </Grid>
                         </StackPanel>
@@ -670,12 +667,12 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Theme:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Theme:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <ComboBox Grid.Column="1" 
                                           ItemsSource="{Binding AvailableThemes}"
                                           SelectedIndex="{Binding SelectedThemeIndex, Mode=TwoWay}"
                                           DisplayMemberPath="DisplayName"
-                                          Background="#252F3F" Foreground="#E0F7FF"
+                                          Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}"
                                           Padding="8" Margin="5,0"
                                           SelectionChanged="ThemeComboBox_SelectionChanged"/>
                             </Grid>
@@ -730,16 +727,16 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Enable Overlay:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Enable Overlay:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding EnableOverlay}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Overlay Opacity:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Overlay Opacity:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <Slider Grid.Column="1" Minimum="0.1" Maximum="1.0" Value="{Binding OverlayOpacity}" 
                                        TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"/>
                             </Grid>
@@ -748,19 +745,19 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Auto-Hide Trays:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Auto-Hide Trays:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding AutoHideTrays}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Auto-Hide Delay (ms):" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Auto-Hide Delay (ms):" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding AutoHideDelayMs, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -776,7 +773,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Walk Speed:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Walk Speed:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.1" Maximum="10.0" Value="{Binding WalkSpeed}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
@@ -790,7 +787,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Run Speed:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Run Speed:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.1" Maximum="20.0" Value="{Binding RunSpeed}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
@@ -804,7 +801,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Jump Height:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Jump Height:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.1" Maximum="10.0" Value="{Binding JumpHeight}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
@@ -818,9 +815,9 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Enable Physics:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Enable Physics:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding EnablePhysicsInteraction}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -836,27 +833,27 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="File System Access:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="File System Access:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding EnableFileSystemAccess}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Network Access:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Network Access:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding EnableNetworkAccess}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="System Commands:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="System Commands:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding EnableSystemCommands}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -872,36 +869,36 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Enable Memory:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Enable Memory:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Column="1" IsChecked="{Binding EnablePersistentMemory}" 
-                                         Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                         Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Memory Path:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Memory Path:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding PersistentMemoryPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Max Entries:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Max Entries:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MemoryMaxEntries, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Importance Threshold:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Importance Threshold:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.0" Maximum="1.0" Value="{Binding MemoryImportanceThreshold}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
@@ -915,10 +912,10 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Retention Days:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Retention Days:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MemoryRetentionDays, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="#252F3F" BorderBrush="#4000D4FF" 
-                                        Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Separator Margin="0,12,0,8" Background="#4000D4FF"/>
                             <TextBlock Text="Semantic memory (Postgres + pgvector)" FontWeight="SemiBold" Foreground="#9CC7FF" Margin="0,0,0,4"/>
@@ -927,45 +924,45 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Enable pgvector:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <CheckBox Grid.Column="1" IsChecked="{Binding EnablePgVector}" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Enable pgvector:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding EnablePgVector}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Postgres connection:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Postgres connection:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding PgVectorConnectionString, UpdateSourceTrigger=PropertyChanged}"
                                         ToolTip="Host=127.0.0.1;Port=5432;Database=housevictoria;Username=...;Password=..."
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Embedding model:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Embedding model:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding OllamaEmbeddingModel, UpdateSourceTrigger=PropertyChanged}"
                                         ToolTip="Ollama model for /api/embed (e.g. nomic-embed-text). Pull with: ollama pull nomic-embed-text"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Vector dimensions:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Vector dimensions:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding EmbeddingVectorDimensions, UpdateSourceTrigger=PropertyChanged}"
                                         ToolTip="Must match the embedding model (768 for nomic-embed-text)."
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Hybrid lexical weight:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Hybrid lexical weight:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Vertical" Margin="5,0">
                                     <Slider Minimum="0" Maximum="1" Value="{Binding HybridLexicalWeight}" TickFrequency="0.05" IsSnapToTickEnabled="True"
                                            Foreground="#00D4FF" Background="#CC222222"/>
@@ -988,15 +985,15 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Enable autonomy:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <CheckBox Grid.Column="1" IsChecked="{Binding EnableAutonomy}" Foreground="#E0F7FF" VerticalAlignment="Center" Margin="5,0"/>
+                                <TextBlock Grid.Column="0" Text="Enable autonomy:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding EnableAutonomy}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Tick interval (s):" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Tick interval (s):" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="30" Maximum="600" Value="{Binding AutonomyTickIntervalSeconds}"
                                            TickFrequency="30" IsSnapToTickEnabled="True"
@@ -1010,7 +1007,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Idle before hobbies:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Idle before hobbies:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="1" Maximum="30" Value="{Binding AutonomyMinIdleMinutes}"
                                            TickFrequency="1" IsSnapToTickEnabled="True"
@@ -1024,7 +1021,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="High priority ≥:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="High priority ≥:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="1" Maximum="10" Value="{Binding AutonomyHighPriorityThreshold}"
                                            TickFrequency="1" IsSnapToTickEnabled="True"
@@ -1038,7 +1035,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Max actions/hour:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Max actions/hour:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="1" Maximum="24" Value="{Binding AutonomyMaxActionsPerHour}"
                                            TickFrequency="1" IsSnapToTickEnabled="True"
@@ -1052,7 +1049,7 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Max art/hour:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="Max art/hour:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0" Maximum="6" Value="{Binding AutonomyMaxArtPerHour}"
                                            TickFrequency="1" IsSnapToTickEnabled="True"
@@ -1066,17 +1063,17 @@
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Art on idle:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
-                                <CheckBox Grid.Column="1" IsChecked="{Binding AutonomyEnableArtGeneration}" Foreground="#E0F7FF" Margin="5,0"/>
+                                <TextBlock Grid.Column="0" Text="Art on idle:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding AutonomyEnableArtGeneration}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="AI contact id:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="0" Text="AI contact id:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding AutonomyAiContactId, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="#E0F7FF" Padding="8" Margin="5,0"/>
+                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -1086,7 +1083,7 @@
                            Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Margin="10">
                             <TextBlock Text="⚠️ Validation Error" FontSize="14" FontWeight="Bold" Foreground="#FF3366"/>
-                            <TextBlock Text="{Binding ValidationError}" Foreground="#E0F7FF" TextWrapping="Wrap" Margin="0,5,0,0">
+                            <TextBlock Text="{Binding ValidationError}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,5,0,0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="MaxHeight" Value="60"/>
@@ -1106,7 +1103,7 @@
                            Background="#3300FF88" BorderBrush="#00FF88" BorderThickness="1"
                            Visibility="{Binding ConnectionTestResult, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Margin="10">
-                            <TextBlock Text="{Binding ConnectionTestResult}" Foreground="#E0F7FF" FontSize="12" FontWeight="Bold" TextWrapping="Wrap">
+                            <TextBlock Text="{Binding ConnectionTestResult}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="MaxHeight" Value="60"/>

@@ -16,18 +16,15 @@
             </Grid.RowDefinitions>
 
             <!-- Header (matches AI Models & Personas) -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,12" CornerRadius="8,8,0,0"
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}"
                     MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border.Effect>
-                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                </Border.Effect>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="✏️ Edit System Prompt" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                        <TextBlock Text="✏️ Edit System Prompt" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                         <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="#B8E8F5" TextWrapping="Wrap">
                             <Run Text="Contact: "/>
                             <Run Text="{Binding ContactName, Mode=OneWay, FallbackValue='Unknown'}"/>
@@ -38,7 +35,7 @@
                             Background="#40FF3366"
                             BorderThickness="0"
                             FontSize="16" FontWeight="Bold"
-                            Foreground="#E0F7FF"
+                            Foreground="{DynamicResource TextPrimaryBrush}"
                             Cursor="Hand"
                             VerticalAlignment="Top"
                             Click="CloseButton_Click"
@@ -92,13 +89,13 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Text="TTS voice (Piper)" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="#E0F7FF" Margin="0,0,0,8"/>
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
                                 <ComboBox Grid.Row="1"
                                           ItemsSource="{Binding AvailablePiperVoices}"
                                           Text="{Binding PiperVoiceId, UpdateSourceTrigger=PropertyChanged}"
                                           IsEditable="True"
                                           Background="#252F3F" BorderBrush="#4000D4FF" BorderThickness="1"
-                                          Foreground="#E0F7FF" Padding="8"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Padding="8"/>
                             </Grid>
                         </Border>
 
@@ -118,10 +115,10 @@
                                         <ColumnDefinition Width="120"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="3D Model Path:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="3D Model Path:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding AvatarModelPath, UpdateSourceTrigger=PropertyChanged}"
                                              Background="#252F3F" BorderBrush="#4000D4FF" BorderThickness="1"
-                                             Foreground="#E0F7FF" Padding="8"/>
+                                             Foreground="{DynamicResource TextPrimaryBrush}" Padding="8"/>
                                 </Grid>
                                 <Grid Grid.Row="1" Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -129,7 +126,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="50"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Voice Speed:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Voice Speed:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Minimum="0.1" Maximum="3.0" Value="{Binding AvatarVoiceSpeed}"
                                             TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding AvatarVoiceSpeed, StringFormat='{}{0:F1}'}"
@@ -141,7 +138,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="50"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Voice Pitch:" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Voice Pitch:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Minimum="0.1" Maximum="3.0" Value="{Binding AvatarVoicePitch}"
                                             TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"/>
                                     <TextBlock Grid.Column="2" Text="{Binding AvatarVoicePitch, StringFormat='{}{0:F1}'}"
@@ -158,22 +155,22 @@
                             <StackPanel>
                                 <CheckBox Content="About me — global facts about the human user"
                                           IsChecked="{Binding ShareUserBasics, Mode=TwoWay}"
-                                          Foreground="#E0F7FF" Margin="0,4"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                 <CheckBox Content="This persona's own chat memories"
                                           IsChecked="{Binding ShareOwnMemories, Mode=TwoWay}"
-                                          Foreground="#E0F7FF" Margin="0,4"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                 <CheckBox Content="This persona's data bank"
                                           IsChecked="{Binding ShareOwnDataBank, Mode=TwoWay}"
-                                          Foreground="#E0F7FF" Margin="0,4"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                 <CheckBox Content="House journals &amp; research"
                                           IsChecked="{Binding ShareHouseJournals, Mode=TwoWay}"
-                                          Foreground="#E0F7FF" Margin="0,4"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                 <CheckBox Content="Other personas' memories"
                                           IsChecked="{Binding ShareOtherPersonaMemories, Mode=TwoWay}"
-                                          Foreground="#E0F7FF" Margin="0,4"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                                 <CheckBox Content="Shared / global data banks"
                                           IsChecked="{Binding ShareSharedDataBanks, Mode=TwoWay}"
-                                          Foreground="#E0F7FF" Margin="0,4"/>
+                                          Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
                             </StackPanel>
                         </Border>
 
@@ -185,7 +182,7 @@
                                  MinHeight="260"
                                  VerticalAlignment="Stretch"
                                  Background="#0B1220" BorderBrush="#4000D4FF" BorderThickness="1"
-                                 Foreground="#E0F7FF" Padding="10"
+                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="10"
                                  FontFamily="Consolas" FontSize="12"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"

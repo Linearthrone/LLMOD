@@ -21,19 +21,16 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border.Effect>
-                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                </Border.Effect>
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="🗄️ Data Bank Management" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                    <TextBlock Text="🗄️ Data Bank Management" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
                                Background="#4000D4FF" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
@@ -64,7 +61,7 @@
                                Background="#40FF3366" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
                                ToolTip="Close">
@@ -94,7 +91,7 @@
             </Border>
 
             <!-- Toolbar: Create Button, Search, and Filters -->
-            <Border Grid.Row="1" Background="#300A0E27" Padding="10">
+            <Border Grid.Row="1" Style="{StaticResource OverlayPanelToolbar}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -103,12 +100,12 @@
                     
                     <!-- Search and Refresh -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="#E0F7FF" Margin="0,0,10,0"/>
+                        <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,10,0"/>
                         <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" 
                                 Width="250" Margin="0,0,10,0"
                                 Background="#252F3F" 
                                 BorderBrush="#4000D4FF" 
-                                Foreground="#E0F7FF" Padding="8"/>
+                                Foreground="{DynamicResource TextPrimaryBrush}" Padding="8"/>
                         <Button Content="🔄 Refresh" Style="{StaticResource GlassButton}" 
                                Command="{Binding RefreshCommand}" Width="100"/>
                     </StackPanel>
@@ -137,7 +134,7 @@
                         </Grid.RowDefinitions>
                         
                         <TextBlock Grid.Row="0" Text="Data Banks" FontSize="16" FontWeight="Bold" 
-                                  Foreground="#E0F7FF" Margin="0,0,0,10"/>
+                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
                         
                         <ScrollViewer Grid.Row="1"
                                       Style="{StaticResource ModernScrollViewer}"
@@ -219,26 +216,26 @@
                         <TextBlock Grid.Row="0" 
                                   Text="{Binding SelectedDataBankName, StringFormat='{}Data Entries: {0}', FallbackValue='Select a data bank to view entries'}" 
                                   FontSize="16" FontWeight="Bold" 
-                                  Foreground="#E0F7FF" Margin="0,0,0,10"/>
+                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
                         
                         <!-- Entry search / filters -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
-                            <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="#E0F7FF" Margin="0,0,8,0"/>
+                            <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
                             <TextBox Text="{Binding EntrySearchQuery, UpdateSourceTrigger=PropertyChanged}"
                                      Width="220"
                                      Background="#252F3F" 
                                      BorderBrush="#4000D4FF" 
-                                     Foreground="#E0F7FF" Padding="8" Margin="0,0,12,0"/>
-                            <TextBlock Text="Category:" VerticalAlignment="Center" Foreground="#E0F7FF" Margin="0,0,8,0"/>
+                                     Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="0,0,12,0"/>
+                            <TextBlock Text="Category:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
                             <ComboBox ItemsSource="{Binding AvailableCategories}"
                                       SelectedItem="{Binding SelectedCategory}"
                                       Width="160" Margin="0,0,12,0"
-                                      Background="#252F3F" Foreground="#E0F7FF" BorderBrush="#4000D4FF"/>
-                            <TextBlock Text="Min Importance:" VerticalAlignment="Center" Foreground="#E0F7FF" Margin="0,0,8,0"/>
+                                      Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
+                            <TextBlock Text="Min Importance:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
                             <Slider Minimum="0" Maximum="1"
                                     Value="{Binding MinimumImportance, UpdateSourceTrigger=PropertyChanged}"
                                     Width="120" Margin="0,0,8,0"/>
-                            <TextBlock Text="{Binding MinimumImportance, StringFormat={}{0:F2}}" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding MinimumImportance, StringFormat={}{0:F2}}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
@@ -274,7 +271,7 @@
                                                               FontSize="14" FontWeight="Bold" Foreground="White"/>
                                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                                                         <TextBlock Text="{Binding Category, TargetNullValue='Uncategorized'}" FontSize="11" Foreground="#00D4FF" Margin="0,0,10,0"/>
-                                                        <TextBlock Text="{Binding Importance, StringFormat='{}Imp: {0:F2}'}" FontSize="11" Foreground="#E0F7FF" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding Importance, StringFormat='{}Imp: {0:F2}'}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,10,0"/>
                                                         <TextBlock Text="{Binding TagsDisplay}" FontSize="11" Foreground="#CCCCCC" TextTrimming="CharacterEllipsis" MaxWidth="240"/>
                                                     </StackPanel>
                                                     <TextBlock Grid.Column="0" 

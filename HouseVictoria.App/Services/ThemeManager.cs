@@ -8,13 +8,15 @@ namespace HouseVictoria.App.Services
     public static class ThemeManager
     {
         public const string ThemeIndexKey = "ThemeIndex";
-        private const int ThemeDictMergeIndex = 5; // Index after MaterialDesign, Buttons, Controls, GlassEffect, OverlayStyles
+        private const int ThemeDictMergeIndex = 6; // After MaterialDesign, Buttons, Controls, ObsidianField, GlassEffect, OverlayStyles
 
         /// <summary>
         /// Available theme display names for the dropdown.
         /// </summary>
         public static readonly IReadOnlyList<ThemeInfo> Themes = new[]
         {
+            new ThemeInfo("ObsidianFieldDark", "Obsidian Field (Dark)", false),
+            new ThemeInfo("ObsidianFieldLight", "Obsidian Field (Light)", true),
             new ThemeInfo("CyanBlueDark", "Cyan Blue (Dark)", false),
             new ThemeInfo("EmeraldDark", "Emerald (Dark)", false),
             new ThemeInfo("AmberDark", "Amber (Dark)", false),

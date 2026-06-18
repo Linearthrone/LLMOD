@@ -4,155 +4,86 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
-             d:DesignHeight="100" d:DesignWidth="1400">
+             d:DesignHeight="72" d:DesignWidth="1200">
 
-    <Border Style="{StaticResource GlassTrayContainer}" Width="1400" Height="100">
+    <Border Style="{StaticResource GlassTrayContainer}"
+            MaxWidth="1400"
+            MinWidth="640"
+            Height="72"
+            HorizontalAlignment="Center">
         <Grid>
-            <!-- Subtle light refraction glow -->
             <Border Style="{StaticResource RefractionGlow}"/>
-            <!-- Content -->
-            <Grid Margin="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="8,4">
+                    <!-- Context ingest -->
+                    <Border Style="{StaticResource ContextWell}"
+                            Width="220"
+                            Height="52"
+                            AllowDrop="True"
+                            Drop="DataBankBox_Drop"
+                            DragEnter="DataBankBox_DragEnter"
+                            DragLeave="DataBankBox_DragLeave"
+                            Margin="4,0,12,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE8B7;" Style="{StaticResource Mdl2Icon}" FontSize="16" Margin="0,0,8,0"/>
+                            <TextBlock Text="Drop context here"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
 
-                <!-- Drag and Drop Box - Centered (matches app holographic theme) -->
-                <Border Grid.Column="1"
-                        Width="300"
-                        Height="80"
-                        AllowDrop="True"
-                        Drop="DataBankBox_Drop"
-                        DragEnter="DataBankBox_DragEnter"
-                        DragLeave="DataBankBox_DragLeave"
-                        HorizontalAlignment="Center"
-                        CornerRadius="8"
-                        Padding="15"
-                        Cursor="Hand">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Setter Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#300A0E27" Offset="0"/>
-                                        <GradientStop Color="#30141B2E" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                            <Setter Property="BorderBrush">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#6000D4FF" Offset="0"/>
-                                        <GradientStop Color="#4000D4FF" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect Color="#00D4FF" BlurRadius="8" ShadowDepth="0" Opacity="0.3"/>
-                                </Setter.Value>
-                            </Setter>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                <GradientStop Color="#400A0E27" Offset="0"/>
-                                                <GradientStop Color="#40141B2E" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Setter Property="BorderBrush">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                <GradientStop Color="#8000D4FF" Offset="0"/>
-                                                <GradientStop Color="#6000D4FF" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Setter Property="Effect">
-                                        <Setter.Value>
-                                            <DropShadowEffect Color="#00D4FF" BlurRadius="12" ShadowDepth="0" Opacity="0.5"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <TextBlock Text="📁 Drop Context Data Here"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               FontSize="14"
-                               Foreground="#E0F7FF"
-                               FontStyle="Italic"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap"/>
-                </Border>
+                    <Rectangle Width="1" Height="36" Fill="{DynamicResource BorderSubtleBrush}" Margin="0,8,8,8"/>
 
-                <!-- File Retrieval Button -->
-                <Button Grid.Column="2"
-                        Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="File Retrieval"
-                        x:Name="FileRetrievalButton"
-                        Click="FileRetrievalButton_Click"
-                        Margin="10,0,5,0">
-                    <TextBlock Text="📥" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
+                    <Button Style="{StaticResource DockButton}" ToolTip="File Retrieval"
+                            x:Name="FileRetrievalButton" Click="FileRetrievalButton_Click">
+                        <StackPanel>
+                            <TextBlock Text="&#xE896;" Style="{StaticResource Mdl2Icon}" FontSize="16"/>
+                            <TextBlock Text="Files" Style="{StaticResource DockButtonLabel}"/>
+                        </StackPanel>
+                    </Button>
 
-                <!-- Global Log Directory Button -->
-                <Button Grid.Column="3"
-                        Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Global Log Directory"
-                        x:Name="GLDButton"
-                        Click="GLDButton_Click"
-                        Margin="5,0,5,0">
-                    <TextBlock Text="📋" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
+                    <Button Style="{StaticResource DockButton}" ToolTip="Global Log Directory"
+                            x:Name="GLDButton" Click="GLDButton_Click">
+                        <StackPanel>
+                            <TextBlock Text="&#xE8FD;" Style="{StaticResource Mdl2Icon}" FontSize="16"/>
+                            <TextBlock Text="Logs" Style="{StaticResource DockButtonLabel}"/>
+                        </StackPanel>
+                    </Button>
 
-                <!-- Journals Button -->
-                <Button Grid.Column="4"
-                        Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Journals"
-                        Command="{Binding OpenJournalsCommand}"
-                        Margin="5,0,5,0">
-                    <TextBlock Text="📓" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
+                    <Button Style="{StaticResource DockButton}" ToolTip="Journals"
+                            Command="{Binding OpenJournalsCommand}">
+                        <StackPanel>
+                            <TextBlock Text="&#xE736;" Style="{StaticResource Mdl2Icon}" FontSize="16"/>
+                            <TextBlock Text="Journal" Style="{StaticResource DockButtonLabel}"/>
+                        </StackPanel>
+                    </Button>
 
-                <!-- Projects Button -->
-                <Button Grid.Column="5"
-                        Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Open Projects Board"
-                        Command="{Binding OpenProjectsCommand}"
-                        Margin="5,0,5,0">
-                    <TextBlock Text="📊" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
+                    <Button Style="{StaticResource DockButton}" ToolTip="Projects Board"
+                            Command="{Binding OpenProjectsCommand}">
+                        <StackPanel>
+                            <TextBlock Text="&#xE9D2;" Style="{StaticResource Mdl2Icon}" FontSize="16"/>
+                            <TextBlock Text="Projects" Style="{StaticResource DockButtonLabel}"/>
+                        </StackPanel>
+                    </Button>
 
-                <!-- After Action Reports Button -->
-                <Button Grid.Column="6"
-                        Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="After Action Reports"
-                        Command="{Binding OpenAfterActionReportsCommand}"
-                        Margin="5,0,5,0">
-                    <TextBlock Text="🎖️" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
+                    <Button Style="{StaticResource DockButton}" ToolTip="After Action Reports"
+                            Command="{Binding OpenAfterActionReportsCommand}">
+                        <StackPanel>
+                            <TextBlock Text="&#xE7EE;" Style="{StaticResource Mdl2Icon}" FontSize="16"/>
+                            <TextBlock Text="AAR" Style="{StaticResource DockButtonLabel}"/>
+                        </StackPanel>
+                    </Button>
 
-                <!-- Data Bank Management Button -->
-                <Button Grid.Column="7"
-                        Style="{StaticResource FrostedGlassButton}"
-                        ToolTip="Data Bank Management"
-                        Command="{Binding OpenDataBankManagementCommand}"
-                        Margin="5,0,10,0">
-                    <TextBlock Text="🗄️" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
-            </Grid>
+                    <Button Style="{StaticResource DockButton}" ToolTip="Data Bank Management"
+                            Command="{Binding OpenDataBankManagementCommand}">
+                        <StackPanel>
+                            <TextBlock Text="&#xE968;" Style="{StaticResource Mdl2Icon}" FontSize="16"/>
+                            <TextBlock Text="Data" Style="{StaticResource DockButtonLabel}"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
     </Border>
 

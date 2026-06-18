@@ -59,11 +59,23 @@ namespace HouseVictoria.App
                     System.Diagnostics.Debug.WriteLine("Services initialized successfully");
                     LoggingHelper.WriteToStartupLog("Services initialized successfully");
 
-                    // Apply color scheme from config
+                    // Apply color scheme from config (migrate legacy default to Obsidian Field)
                     var appConfig = ServiceProvider?.GetService<AppConfig>();
-                    if (appConfig != null && !string.IsNullOrWhiteSpace(appConfig.ColorScheme))
+                    if (appConfig != null)
                     {
-                        ThemeManager.ApplyTheme(appConfig.ColorScheme);
+                        if (string.Equals(appConfig.ColorScheme, "CyanBlueDark", StringComparison.OrdinalIgnoreCase))
+                        {
+                            appConfig.ColorScheme = "ObsidianFieldDark";
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(appConfig.ColorScheme))
+                        {
+                            ThemeManager.ApplyTheme(appConfig.ColorScheme);
+                        }
+                        else
+                        {
+                            ThemeManager.ApplyTheme("ObsidianFieldDark");
+                        }
                     }
 
                     // Load persisted primary/secondary persona selections and migrate the legacy
@@ -480,7 +492,7 @@ namespace HouseVictoria.App
                 A2eApiToken = config["A2eApiToken"] ?? string.Empty,
                 A2eApiBaseUrl = string.IsNullOrWhiteSpace(config["A2eApiBaseUrl"]) ? "https://video.a2e.ai" : (config["A2eApiBaseUrl"] ?? "https://video.a2e.ai"),
                 StableDiffusionEndpoint = config["StableDiffusionEndpoint"] ?? "http://localhost:8188",
-                ColorScheme = config["ColorScheme"] ?? "CyanBlueDark",
+                ColorScheme = config["ColorScheme"] ?? "ObsidianFieldDark",
                 StabilityMatrixPath = config["StabilityMatrixPath"] ?? string.Empty,
                 ComfyUIPortablePath = config["ComfyUIPortablePath"] ?? string.Empty,
                 ComfyUICustomWorkflowPath = config["ComfyUICustomWorkflowPath"] ?? string.Empty,

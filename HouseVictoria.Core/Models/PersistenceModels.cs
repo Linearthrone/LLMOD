@@ -114,7 +114,7 @@ namespace HouseVictoria.Core.Models
         /// <summary>Preferred ComfyUI checkpoint for image generation. Leave empty for automatic selection.</summary>
         public string ComfyUIPreferredCheckpoint { get; set; } = "sd_xl_base_1.0.safetensors";
         /// <summary>Color scheme/theme ID (e.g. CyanBlueDark, EmeraldLight). See ThemeManager.Themes for available values.</summary>
-        public string ColorScheme { get; set; } = "CyanBlueDark";
+        public string ColorScheme { get; set; } = "ObsidianFieldDark";
         public string MT4DataPath { get; set; } = "C:\\Program Files\\MetaTrader 4";
         public string DataBankPath { get; set; } = "Data/Databanks";
         public string LogsPath { get; set; } = "Logs";

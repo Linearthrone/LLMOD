@@ -757,7 +757,7 @@ namespace HouseVictoria.App.Screens.Windows
             ComfyUICustomWorkflowPath = appConfig.ComfyUICustomWorkflowPath ?? string.Empty;
             ComfyUIPreferredCheckpoint = string.IsNullOrWhiteSpace(appConfig.ComfyUIPreferredCheckpoint) ? "sd_xl_base_1.0.safetensors" : appConfig.ComfyUIPreferredCheckpoint;
             AddComfyUICheckpointIfMissing(ComfyUIPreferredCheckpoint);
-            SelectedThemeIndex = ThemeManager.GetThemeIndexById(appConfig.ColorScheme ?? "CyanBlueDark");
+            SelectedThemeIndex = ThemeManager.GetThemeIndexById(appConfig.ColorScheme ?? "ObsidianFieldDark");
             foreach (var t in ThemeManager.Themes)
                 AvailableThemes.Add(t);
             EnableOverlay = appConfig.EnableOverlay;
@@ -1924,7 +1924,7 @@ v_models:
                         ComfyUICustomWorkflowPath = importedConfig.ComfyUICustomWorkflowPath ?? string.Empty;
                         ComfyUIPreferredCheckpoint = string.IsNullOrWhiteSpace(importedConfig.ComfyUIPreferredCheckpoint) ? "sd_xl_base_1.0.safetensors" : importedConfig.ComfyUIPreferredCheckpoint;
                         AddComfyUICheckpointIfMissing(ComfyUIPreferredCheckpoint);
-                        SelectedThemeIndex = ThemeManager.GetThemeIndexById(importedConfig.ColorScheme ?? "CyanBlueDark");
+                        SelectedThemeIndex = ThemeManager.GetThemeIndexById(importedConfig.ColorScheme ?? "ObsidianFieldDark");
                         EnableOverlay = importedConfig.EnableOverlay;
                         OverlayOpacity = importedConfig.OverlayOpacity;
                         AutoHideTrays = importedConfig.AutoHideTrays;
@@ -2202,7 +2202,7 @@ v_models:
                 ComfyUICustomWorkflowPath = defaults.ComfyUICustomWorkflowPath ?? string.Empty;
                 ComfyUIPreferredCheckpoint = defaults.ComfyUIPreferredCheckpoint;
                 AddComfyUICheckpointIfMissing(ComfyUIPreferredCheckpoint);
-                SelectedThemeIndex = ThemeManager.GetThemeIndexById(defaults.ColorScheme ?? "CyanBlueDark");
+                SelectedThemeIndex = ThemeManager.GetThemeIndexById(defaults.ColorScheme ?? "ObsidianFieldDark");
                 EnableOverlay = defaults.EnableOverlay;
                 OverlayOpacity = defaults.OverlayOpacity;
                 AutoHideTrays = defaults.AutoHideTrays;

@@ -12,7 +12,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
 
-    <Border Background="Transparent">
+    <Border Style="{StaticResource OverlayPanelShell}" Background="Transparent">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -20,81 +20,19 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border.Effect>
-                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                </Border.Effect>
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="[Target] Projects &amp; Goals" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                    <TextBlock Text="Projects &amp; Goals" Style="{StaticResource OverlayPanelTitle}"/>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="−" 
-                               Width="30" Height="30" 
-                               Background="#4000D4FF" 
-                               BorderThickness="0"
-                               FontSize="18" FontWeight="Bold"
-                               Foreground="#E0F7FF"
-                               Cursor="Hand"
-                               Margin="0,0,5,0"
-                               Click="MinimizeButton_Click"
-                               ToolTip="Minimize to Tray">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#6000D4FF"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <Button Content="✕" 
-                               Width="30" Height="30" 
-                               Background="#40FF3366" 
-                               BorderThickness="0"
-                               FontSize="16" FontWeight="Bold"
-                               Foreground="#E0F7FF"
-                               Cursor="Hand"
-                               Click="CloseButton_Click"
-                               ToolTip="Close">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#60FF3366"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                        <Button Content="−" Style="{StaticResource OverlayMinimizeButton}"
+                               Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
+                        <Button Content="✕" Style="{StaticResource OverlayCloseButton}"
+                               Click="CloseButton_Click" ToolTip="Close"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Toolbar: Create Button and Filters -->
-            <Border Grid.Row="1" Background="#300A0E27" Padding="10">
+            <Border Grid.Row="1" Style="{StaticResource OverlayPanelToolbar}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -103,19 +41,19 @@
                     
                     <!-- Filters and Sort -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="Filter:" VerticalAlignment="Center" Foreground="#E0F7FF" Margin="0,0,10,0"/>
+                        <TextBlock Text="Filter:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,10,0"/>
                         <ComboBox ItemsSource="{Binding FilterTypes}" SelectedItem="{Binding SelectedFilterType}" 
                                  DisplayMemberPath="Name" SelectedValuePath="Value"
                                  Width="150" Margin="0,0,10,0" 
-                                 Background="#252F3F" Foreground="#E0F7FF" BorderBrush="#4000D4FF"/>
+                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
                         <ComboBox ItemsSource="{Binding FilterPhases}" SelectedItem="{Binding SelectedFilterPhase}" 
                                  DisplayMemberPath="Name" SelectedValuePath="Value"
                                  Width="150" Margin="0,0,10,0" 
-                                 Background="#252F3F" Foreground="#E0F7FF" BorderBrush="#4000D4FF"/>
+                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
                         <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSortOption}" 
                                  DisplayMemberPath="Name" SelectedValuePath="Value"
                                  Width="180" Margin="0,0,10,0" 
-                                 Background="#252F3F" Foreground="#E0F7FF" BorderBrush="#4000D4FF"/>
+                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
                         <Button Content="🔄 Refresh" Style="{StaticResource GlassButton}" 
                                Command="{Binding RefreshCommand}" Width="100"/>
                     </StackPanel>
@@ -153,13 +91,13 @@
                                            Background="{Binding PriorityColor, FallbackValue=#888888}"
                                            VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Priority, FallbackValue=5}" FontSize="20" 
-                                                   FontWeight="Bold" Foreground="#E0F7FF"
+                                                   FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
 
                                     <!-- Project Info -->
                                     <StackPanel Grid.Column="1" Margin="15,0">
-                                        <TextBlock Text="{Binding Name, FallbackValue='Project Name'}" FontSize="16" FontWeight="Bold" Foreground="#E0F7FF"/>
+                                        <TextBlock Text="{Binding Name, FallbackValue='Project Name'}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         <TextBlock Text="{Binding Description, FallbackValue=''}" FontSize="12" Foreground="#CCCCCC" 
                                                   TextWrapping="Wrap" Margin="0,5,0,0"
                                                   x:Name="DescriptionText">
@@ -200,7 +138,7 @@
                                     <!-- Progress Bar -->
                                     <StackPanel Grid.Column="2" Width="150" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding CompletionPercentage, StringFormat='{}{0}%', FallbackValue='0%'}" 
-                                                  FontSize="12" Foreground="#E0F7FF" HorizontalAlignment="Center"/>
+                                                  FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
                                         <ProgressBar Value="{Binding CompletionPercentage, Mode=OneWay, FallbackValue=0}" Maximum="100" 
                                                    Height="8" Margin="0,5,0,0"
                                                    Foreground="#4CAF50" Background="#222222"/>

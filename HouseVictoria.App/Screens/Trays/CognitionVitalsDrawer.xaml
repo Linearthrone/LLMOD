@@ -13,25 +13,25 @@
         <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
         <Style x:Key="ControlLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Foreground" Value="#80C4D4"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="Margin" Value="0,6,0,2"/>
         </Style>
         <Style x:Key="ControlInput" TargetType="TextBox">
             <Setter Property="MinHeight" Value="24"/>
             <Setter Property="Padding" Value="6,3"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Foreground" Value="#E0F7FF"/>
-            <Setter Property="Background" Value="#1A152535"/>
-            <Setter Property="BorderBrush" Value="#4000D4FF"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource DarkInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style x:Key="MiniButton" TargetType="Button">
             <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="Background" Value="#3320B2FF"/>
-            <Setter Property="BorderBrush" Value="#6000D4FF"/>
+            <Setter Property="Background" Value="#221C2230"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Foreground" Value="#E0F7FF"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Setter Property="FontSize" Value="10"/>
         </Style>
     </UserControl.Resources>
@@ -42,7 +42,7 @@
         <Button x:Name="CollapsedPullHandle"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
-                Width="14"
+                Width="8"
                 Height="72"
                 Margin="0,8,0,0"
                 Command="{Binding ExpandFromHandleCommand}"
@@ -53,16 +53,10 @@
                 Visibility="{Binding IsHandleMode, Converter={StaticResource BoolToVisibilityConverter}}">
             <Button.Template>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="#2000D4FF"
-                            BorderBrush="#4000D4FF"
-                            BorderThickness="1,1,0,1"
-                            CornerRadius="0,8,8,0">
-                        <TextBlock Text="⮞"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Foreground="#8000D4FF"
-                                   FontSize="10"
-                                   FontFamily="Segoe UI"/>
+                    <Border Style="{StaticResource InstrumentPullTab}" Width="8" Height="72">
+                        <Border Width="2" Height="24" CornerRadius="1"
+                                Background="{DynamicResource AutonomyAccentBrush}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </ControlTemplate>
             </Button.Template>
@@ -72,10 +66,10 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Width="132"
-                Background="#CC0A0E27"
-                BorderBrush="#4000D4FF"
+                Background="#CC141820"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
-                CornerRadius="0,8,8,0"
+                CornerRadius="0,12,12,0"
                 Padding="6"
                 Cursor="Hand"
                 ToolTip="Click: open vitals · Double-click: hide to handle"
@@ -100,18 +94,19 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Width="340"
-                Background="#CC0A0E27"
-                CornerRadius="6"
+                Background="#CC141820"
+                CornerRadius="12"
                 Padding="10"
-                BorderBrush="#4000D4FF"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
+                Effect="{StaticResource ObsidianShadowSoft}"
                 Visibility="Collapsed">
             <TabControl SelectedIndex="{Binding SelectedTabIndex}"
                         Background="Transparent"
                         BorderThickness="0">
                 <TabControl.Resources>
                     <Style TargetType="TabItem">
-                        <Setter Property="Foreground" Value="#E0F7FF"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                         <Setter Property="FontSize" Value="11"/>
                         <Setter Property="Padding" Value="10,4"/>
                     </Style>
@@ -149,7 +144,7 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="Autonomy" FontSize="14" Foreground="#F48FB1" FontWeight="Bold"/>
+                                        <TextBlock Text="Autonomy" FontSize="14" Foreground="{DynamicResource AutonomyAccentBrush}" FontWeight="Bold"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                                             <Button Command="{Binding CycleAutonomyLevelCommand}"
                                                     Style="{StaticResource MiniButton}"
@@ -208,7 +203,7 @@
                 <TabItem Header="Control">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
                         <StackPanel>
-                            <TextBlock Text="Autonomy &amp; Cognition" FontSize="14" Foreground="#F48FB1" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Autonomy &amp; Cognition" FontSize="14" Foreground="{DynamicResource AutonomyAccentBrush}" FontWeight="Bold" Margin="0,0,0,6"/>
 
                             <CheckBox Content="Enable autonomy loop"
                                       IsChecked="{Binding EnableAutonomy}"

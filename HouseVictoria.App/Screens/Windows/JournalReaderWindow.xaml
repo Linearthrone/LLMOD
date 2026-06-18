@@ -7,168 +7,136 @@
         mc:Ignorable="d"
         Title="Journal" Height="900" Width="800"
         WindowStartupLocation="CenterOwner"
-        Background="#1A1208">
+        Style="{StaticResource OverlayWindow}"
+        Background="Transparent">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
 
-    <!-- Leather-bound journal shell -->
-    <Border Margin="20" CornerRadius="4" Padding="18">
-        <Border.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#4A3020" Offset="0"/>
-                <GradientStop Color="#2E1E12" Offset="0.5"/>
-                <GradientStop Color="#3D2818" Offset="1"/>
-            </LinearGradientBrush>
-        </Border.Background>
-        <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="8" Opacity="0.6"/>
-        </Border.Effect>
+    <Border Style="{StaticResource OverlayPanelShell}" Margin="16">
+        <Border Style="{StaticResource GlassPanel}" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+                <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding StatusLabel}" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <Button Content="Conclude" Command="{Binding ConcludeCommand}"
+                                    Visibility="{Binding CanConclude, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Style="{StaticResource GlassButton}" Padding="12,6" Margin="0,0,8,0"/>
+                            <Button Content="✕" Style="{StaticResource OverlayCloseButton}" Click="CloseButton_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-            <!-- Spine / header on leather -->
-            <Border Grid.Row="0" Padding="8,12,8,16" BorderBrush="#6B4423" BorderThickness="0,0,0,1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock Text="{Binding Title}" FontFamily="Georgia" FontSize="26" FontWeight="Bold"
-                                   Foreground="#F5E6D3" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding StatusLabel}" FontFamily="Georgia" FontSize="12"
-                                   Foreground="#A89070" Margin="0,4,0,0" FontStyle="Italic"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                        <Button Content="Conclude" Command="{Binding ConcludeCommand}"
-                                Visibility="{Binding CanConclude, Converter={StaticResource BoolToVisibilityConverter}}"
-                                Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
-                                Background="#5C4033" Foreground="#F5E6D3" BorderBrush="#8B6914" BorderThickness="1"
-                                FontFamily="Georgia" FontSize="12"/>
-                        <Button Content="✕" Width="28" Height="28" Click="CloseButton_Click"
-                                Background="#40FF3366" Foreground="#F5E6D3" BorderThickness="0" Cursor="Hand"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="16">
+                    <Border CornerRadius="8" Padding="32,28"
+                            Background="#FF1A1814"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Preface" FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource PrimaryLightBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Why I chose to pursue this" FontSize="11"
+                                       Foreground="{DynamicResource TextHintBrush}" FontStyle="Italic" Margin="0,0,0,12"/>
+                            <TextBlock Text="{Binding Preface}" FontSize="15"
+                                       Foreground="#D4C8B8" TextWrapping="Wrap" LineHeight="24"
+                                       Margin="0,0,0,32"/>
 
-            <!-- White pages -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
-                <Border Background="#FFFEF7" CornerRadius="2" Padding="40,36"
-                        BorderBrush="#E8E0D0" BorderThickness="1">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.15" Direction="270"/>
-                    </Border.Effect>
-                    <StackPanel>
-                        <!-- Preface -->
-                        <TextBlock Text="Preface" FontFamily="Georgia" FontSize="14" FontWeight="Bold"
-                                   Foreground="#5C4033" Margin="0,0,0,8"/>
-                        <TextBlock Text="Why I chose to pursue this" FontFamily="Georgia" FontSize="11"
-                                   Foreground="#887766" FontStyle="Italic" Margin="0,0,0,12"/>
-                        <TextBlock Text="{Binding Preface}" FontFamily="Georgia" FontSize="15"
-                                   Foreground="#2C2416" TextWrapping="Wrap" LineHeight="24"
-                                   Margin="0,0,0,32"/>
+                            <Border Height="1" Background="{DynamicResource BorderSubtleBrush}" Margin="0,0,0,28" Opacity="0.6"/>
 
-                        <Border Height="1" Background="#E0D8C8" Margin="0,0,0,28"/>
-
-                        <!-- Pages / entries -->
-                        <ItemsControl ItemsSource="{Binding Pages}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,0,28">
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                            <TextBlock Text="{Binding KindLabel}" FontFamily="Georgia" FontSize="11"
-                                                       Foreground="#8B6914" FontWeight="SemiBold" Margin="0,0,12,0"/>
-                                            <TextBlock Text="{Binding DateLabel}" FontFamily="Georgia" FontSize="11"
-                                                       Foreground="#998877" FontStyle="Italic"/>
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding Title}" FontFamily="Georgia" FontSize="17"
-                                                   FontWeight="SemiBold" Foreground="#2C2416" TextWrapping="Wrap"
-                                                   Margin="0,0,0,10"/>
-                                        <TextBlock Text="{Binding Body}" FontFamily="Georgia" FontSize="14"
-                                                   Foreground="#3A3020" TextWrapping="Wrap" LineHeight="22"/>
-
-                                        <!-- External sources only (not our generated files) -->
-                                        <StackPanel Margin="0,14,0,0"
-                                                    Visibility="{Binding HasReferences, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <TextBlock Text="External sources" FontFamily="Georgia" FontSize="11"
-                                                       Foreground="#6B5344" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                            <ItemsControl ItemsSource="{Binding References}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding DisplayLine}" FontFamily="Georgia" FontSize="12"
-                                                                   Foreground="#5C4838" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-
-                                        <Border Height="1" Background="#F0EBE0" Margin="0,20,0,0"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <!-- Generated research files appendix -->
-                        <StackPanel Visibility="{Binding HasGeneratedFiles, Converter={StaticResource BoolToVisibilityConverter}}"
-                                    Margin="0,8,0,28">
-                            <Border Height="2" Background="#5C4033" Margin="0,0,0,16" Opacity="0.25"/>
-                            <TextBlock Text="Generated Research Files" FontFamily="Georgia" FontSize="16" FontWeight="Bold"
-                                       Foreground="#5C4033" Margin="0,0,0,6"/>
-                            <TextBlock Text="All files produced during this journal thread" FontFamily="Georgia" FontSize="11"
-                                       Foreground="#887766" FontStyle="Italic" Margin="0,0,0,12"/>
-                            <ItemsControl ItemsSource="{Binding GeneratedFiles}">
+                            <ItemsControl ItemsSource="{Binding Pages}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Margin="0,0,0,8">
-                                            <Button HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
-                                                    Cursor="Hand" FontFamily="Georgia" FontSize="13" Foreground="#0066AA"
-                                                    Padding="0,2"
-                                                    Command="{Binding DataContext.OpenLinkedFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding FilePath}">
-                                                <TextBlock Text="{Binding DisplayName}" TextDecorations="Underline"/>
-                                            </Button>
-                                            <TextBlock Text="{Binding Subtitle}" FontFamily="Georgia" FontSize="10"
-                                                       Foreground="#998877" FontStyle="Italic" Margin="0,0,0,0"/>
+                                        <StackPanel Margin="0,0,0,28">
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding KindLabel}" FontSize="11"
+                                                           Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,12,0"/>
+                                                <TextBlock Text="{Binding DateLabel}" FontSize="11"
+                                                           Foreground="{DynamicResource TextHintBrush}" FontStyle="Italic"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="17"
+                                                       FontWeight="SemiBold" Foreground="#E8E0D4" TextWrapping="Wrap"
+                                                       Margin="0,0,0,10"/>
+                                            <TextBlock Text="{Binding Body}" FontSize="14"
+                                                       Foreground="#D4C8B8" TextWrapping="Wrap" LineHeight="22"/>
+
+                                            <StackPanel Margin="0,14,0,0"
+                                                        Visibility="{Binding HasReferences, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="External sources" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                                <ItemsControl ItemsSource="{Binding References}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding DisplayLine}" FontSize="12"
+                                                                       Foreground="#B8A898" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+
+                                            <Border Height="1" Background="{DynamicResource BorderSubtleBrush}" Margin="0,20,0,0" Opacity="0.4"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
 
-                        <!-- Conclusion -->
-                        <StackPanel Visibility="{Binding HasConclusion, Converter={StaticResource BoolToVisibilityConverter}}"
-                                    Margin="0,12,0,0">
-                            <Border Height="2" Background="#5C4033" Margin="0,0,0,20" Opacity="0.3"/>
-                            <TextBlock Text="Conclusion" FontFamily="Georgia" FontSize="16" FontWeight="Bold"
-                                       Foreground="#5C4033" Margin="0,0,0,12"/>
-                            <TextBlock Text="Summary of findings" FontFamily="Georgia" FontSize="11"
-                                       Foreground="#887766" FontStyle="Italic" Margin="0,0,0,8"/>
-                            <TextBlock Text="{Binding ConclusionSummary}" FontFamily="Georgia" FontSize="14"
-                                       Foreground="#2C2416" TextWrapping="Wrap" LineHeight="22" Margin="0,0,0,20"/>
-                            <TextBlock Text="Implications" FontFamily="Georgia" FontSize="11"
-                                       Foreground="#887766" FontStyle="Italic" Margin="0,0,0,8"/>
-                            <TextBlock Text="{Binding ConclusionImplications}" FontFamily="Georgia" FontSize="14"
-                                       Foreground="#2C2416" TextWrapping="Wrap" LineHeight="22"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </ScrollViewer>
+                            <StackPanel Visibility="{Binding HasGeneratedFiles, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Margin="0,8,0,28">
+                                <Border Height="1" Background="{DynamicResource PrimaryBrush}" Margin="0,0,0,16" Opacity="0.35"/>
+                                <TextBlock Text="Generated Research Files" FontSize="16" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6"/>
+                                <TextBlock Text="All files produced during this journal thread" FontSize="11"
+                                           Foreground="{DynamicResource TextHintBrush}" FontStyle="Italic" Margin="0,0,0,12"/>
+                                <ItemsControl ItemsSource="{Binding GeneratedFiles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,8">
+                                                <Button HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0"
+                                                        Cursor="Hand" FontSize="13" Foreground="{DynamicResource PrimaryLightBrush}"
+                                                        Padding="0,2"
+                                                        Command="{Binding DataContext.OpenLinkedFileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding FilePath}">
+                                                    <TextBlock Text="{Binding DisplayName}" TextDecorations="Underline"/>
+                                                </Button>
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="10"
+                                                           Foreground="{DynamicResource TextHintBrush}" FontStyle="Italic"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
 
-            <!-- Bottom leather trim -->
-            <Border Grid.Row="2" Height="8" Margin="0,8,0,0" CornerRadius="0,0,2,2">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#3D2818" Offset="0"/>
-                        <GradientStop Color="#2E1E12" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
-        </Grid>
+                            <StackPanel Visibility="{Binding HasConclusion, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Margin="0,12,0,0">
+                                <Border Height="1" Background="{DynamicResource PrimaryBrush}" Margin="0,0,0,20" Opacity="0.35"/>
+                                <TextBlock Text="Conclusion" FontSize="16" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+                                <TextBlock Text="Summary of findings" FontSize="11"
+                                           Foreground="{DynamicResource TextHintBrush}" FontStyle="Italic" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding ConclusionSummary}" FontSize="14"
+                                           Foreground="#D4C8B8" TextWrapping="Wrap" LineHeight="22" Margin="0,0,0,20"/>
+                                <TextBlock Text="Implications" FontSize="11"
+                                           Foreground="{DynamicResource TextHintBrush}" FontStyle="Italic" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding ConclusionImplications}" FontSize="14"
+                                           Foreground="#D4C8B8" TextWrapping="Wrap" LineHeight="22"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </Grid>
+        </Border>
     </Border>
 </Window>

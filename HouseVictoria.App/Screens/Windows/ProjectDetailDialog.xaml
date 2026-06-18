@@ -25,12 +25,13 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" Background="#CCe94560" Padding="15,10">
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}">
                 <Grid>
                     <StackPanel>
-                        <TextBlock Text="{Binding ProjectName, StringFormat='📋 {0}'}" FontSize="20" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding ProjectTypePhase, FallbackValue=''}" FontSize="12" Foreground="#FFE0E0" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ProjectName}" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ProjectTypePhase, FallbackValue=''}" FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Grid>
             </Border>

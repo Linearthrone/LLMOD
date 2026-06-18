@@ -17,19 +17,16 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="#3000D4FF" Padding="15,10" CornerRadius="6,6,0,0" MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border.Effect>
-                    <DropShadowEffect Color="#00D4FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                </Border.Effect>
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" Foreground="#E0F7FF"/>
+                    <TextBlock Text="{Binding TitleText}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
                                Background="#4000D4FF" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
@@ -60,7 +57,7 @@
                                Background="#40FF3366" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
-                               Foreground="#E0F7FF"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
                                ToolTip="Close">
@@ -111,7 +108,7 @@
                             <Grid>
                                 <Image x:Name="LocalPreviewImage" Stretch="UniformToFill"/>
                                 <TextBlock Text="{Binding LocalPreviewStatusText}"
-                                          Foreground="#E0F7FF"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
                                           FontSize="11"
                                           VerticalAlignment="Bottom"
                                           Background="#80000000"
@@ -132,7 +129,7 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CallStatusText}" Foreground="#E0F7FF" FontSize="14" FontWeight="SemiBold" Margin="0,0,12,0"/>
+                        <TextBlock Text="{Binding CallStatusText}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="14" FontWeight="SemiBold" Margin="0,0,12,0"/>
                         <TextBlock Text="{Binding CallDurationText}" Foreground="#9CC7FF" FontSize="14"/>
                     </StackPanel>
 
