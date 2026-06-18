@@ -29,12 +29,10 @@
                         <TextBlock Text="Journals" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="−" Width="30" Height="30" Background="#4000D4FF" BorderThickness="0"
-                                FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Cursor="Hand"
-                                Margin="0,0,5,0" Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
-                        <Button Content="✕" Width="30" Height="30" Background="#40FF3366" BorderThickness="0"
-                                FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Cursor="Hand"
-                                Click="CloseButton_Click" ToolTip="Close"/>
+                        <Button Content="−" Style="{StaticResource OverlayMinimizeButton}"
+                               Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
+                        <Button Content="✕" Style="{StaticResource OverlayCloseButton}"
+                               Click="CloseButton_Click" ToolTip="Close"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -49,7 +47,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                  Width="280" Height="32" Margin="0,0,10,0"
-                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"
+                                 Background="{DynamicResource DarkInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"
                                  Padding="8,4" VerticalContentAlignment="Center">
                             <TextBox.Style>
                                 <Style TargetType="TextBox">
@@ -123,7 +121,7 @@
                                             <TextBlock Text="{Binding EntryCount, StringFormat='{}{0} entries'}"
                                                        FontSize="11" Foreground="#A89070" Margin="0,0,12,0"/>
                                             <TextBlock Text="{Binding UpdatedLabel}" FontSize="11" Foreground="#887766" Margin="0,0,12,0"/>
-                                            <TextBlock Text="{Binding ProjectName}" FontSize="11" Foreground="#00D4FF"
+                                            <TextBlock Text="{Binding ProjectName}" FontSize="11" Foreground="{DynamicResource PrimaryBrush}"
                                                        Visibility="{Binding HasProject, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </StackPanel>
                                     </StackPanel>

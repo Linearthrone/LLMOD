@@ -32,7 +32,7 @@
                                Foreground="{DynamicResource TextPrimaryBrush}"/>
                     <TextBlock Text="Review inbox — select an item, then Archive when done"
                                FontSize="11"
-                               Foreground="#80C4D4"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                Margin="0,2,0,0"/>
                 </StackPanel>
 
@@ -109,7 +109,7 @@
 
                     <Button Content="−" 
                            Width="30" Height="30" 
-                           Background="#4000D4FF" 
+                           Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
                            BorderThickness="0"
                            FontSize="18" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimaryBrush}"
@@ -117,30 +117,10 @@
                            Margin="5,0,5,0"
                            Click="MinimizeButton_Click"
                            ToolTip="Minimize to Tray">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                   CornerRadius="6">
-                                                <ContentPresenter HorizontalAlignment="Center" 
-                                                                 VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#6000D4FF"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
                     </Button>
                     <Button Content="✕" 
                            Width="30" Height="30" 
-                           Background="#40FF3366" 
+                           Style="{StaticResource OverlayCloseButton}" Background="#33B86B6B" 
                            BorderThickness="0"
                            FontSize="16" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimaryBrush}"
@@ -148,26 +128,6 @@
                            Margin="0,0,0,0"
                            Click="CloseButton_Click"
                            ToolTip="Close">
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                                   CornerRadius="6">
-                                                <ContentPresenter HorizontalAlignment="Center" 
-                                                                 VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#60FF3366"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
                     </Button>
                 </StackPanel>
             </Grid>
@@ -214,7 +174,7 @@
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                <TextBlock Foreground="#00D4FF" 
+                                <TextBlock Foreground="{DynamicResource PrimaryBrush}" 
                                           VerticalAlignment="Center"
                                           Margin="5,0,0,0">
                                     <TextBlock.Style>
@@ -262,7 +222,7 @@
                          Width="5" 
                          HorizontalAlignment="Center" 
                          VerticalAlignment="Stretch" 
-                         Background="#4000D4FF"
+                         Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A"
                          ShowsPreview="True"/>
 
             <!-- Log Details - Right Panel -->
@@ -276,7 +236,7 @@
                                    VerticalAlignment="Center"
                                    FontSize="16"
                                    FontStyle="Italic"
-                                   Foreground="#80C4D4"/>
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
 
                         <Grid x:Name="LogDetailsPanel" Visibility="Collapsed" Margin="10">
                             <Grid.RowDefinitions>
@@ -291,7 +251,7 @@
 
                             <!-- Log Title -->
                             <Border Grid.Row="0" 
-                                    Background="#4000D4FF" 
+                                    Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
                                     Padding="10" 
                                     CornerRadius="5" 
                                     Margin="0,0,0,10"
@@ -318,7 +278,7 @@
                                         Margin="0,0,2,0">
                                     <StackPanel>
                                         <TextBlock Text="Date/Time" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                        <TextBlock x:Name="LogDateTime" Text="2026-01-04 14:32:15" FontSize="12" Foreground="#80C4D4"/>
+                                        <TextBlock x:Name="LogDateTime" Text="2026-01-04 14:32:15" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                     </StackPanel>
                                 </Border>
 
@@ -328,7 +288,7 @@
                                         Margin="2,0,2,0">
                                     <StackPanel>
                                         <TextBlock Text="Severity" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                        <TextBlock x:Name="LogSeverity" Text="Info" FontSize="12" Foreground="#80C4D4"/>
+                                        <TextBlock x:Name="LogSeverity" Text="Info" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                     </StackPanel>
                                 </Border>
 
@@ -338,7 +298,7 @@
                                         Margin="2,0,0,0">
                                     <StackPanel>
                                         <TextBlock Text="Source" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                        <TextBlock x:Name="LogSource" Text="AI Service" FontSize="12" Foreground="#80C4D4"/>
+                                        <TextBlock x:Name="LogSource" Text="AI Service" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -358,7 +318,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="#4000D4FF" 
+                                                <Border Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
                                                         Padding="8,4" 
                                                         Margin="0,0,5,5" 
                                                         CornerRadius="3"
@@ -380,7 +340,7 @@
                                     Padding="10" 
                                     Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Summary" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#00D4FF"/>
+                                    <TextBlock Text="Summary" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="{DynamicResource PrimaryBrush}"/>
                                     <TextBlock x:Name="LogSummary" 
                                                Text="This is a summary of the log entry that provides a quick overview of what happened..."
                                                TextWrapping="Wrap"
@@ -397,7 +357,7 @@
                                     Margin="0,0,0,10"
                                     Visibility="Collapsed">
                                 <StackPanel>
-                                    <TextBlock Text="Linked Files" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#00D4FF"/>
+                                    <TextBlock Text="Linked Files" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="{DynamicResource PrimaryBrush}"/>
                                     <ItemsControl x:Name="LogLinkedFiles">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -425,7 +385,7 @@
                                     Margin="0,0,0,10"
                                     Visibility="Collapsed">
                                 <StackPanel>
-                                    <TextBlock Text="Image Preview" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="#00D4FF"/>
+                                    <TextBlock Text="Image Preview" FontWeight="Bold" FontSize="11" Margin="0,0,0,5" Foreground="{DynamicResource PrimaryBrush}"/>
                                     <ScrollViewer MaxHeight="320"
                                                   VerticalScrollBarVisibility="Auto"
                                                   HorizontalScrollBarVisibility="Disabled"
@@ -442,7 +402,7 @@
                                                             Padding="4"
                                                             CornerRadius="5"
                                                             Background="#2000D4FF"
-                                                            BorderBrush="#4000D4FF"
+                                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
                                                             BorderThickness="1">
                                                         <StackPanel>
                                                             <Border CornerRadius="4" ClipToBounds="True" Cursor="Hand">
@@ -456,7 +416,7 @@
                                                                        RenderOptions.BitmapScalingMode="HighQuality"/>
                                                             </Border>
                                                             <TextBlock Text="{Binding DisplayName}"
-                                                                       Foreground="#80C4D4"
+                                                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                                                        FontSize="10"
                                                                        MaxWidth="320"
                                                                        TextTrimming="CharacterEllipsis"
@@ -502,7 +462,7 @@
                                                  Background="Transparent"
                                                  FontFamily="Consolas"
                                                  FontSize="11"
-                                                 Foreground="#80C4D4"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                                  VerticalScrollBarVisibility="Disabled"
                                                  HorizontalScrollBarVisibility="Disabled"/>
                                     </ScrollViewer>

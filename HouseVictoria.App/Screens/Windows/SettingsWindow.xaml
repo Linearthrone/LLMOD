@@ -5,13 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
         mc:Ignorable="d"
-        Title="Settings" Height="1000" Width="1200"
+        Title="Settings" Height="900" Width="1280"
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
-        <converters:TabIndexVisibilityConverter x:Key="TabIndexVisibilityConverter"/>
+        <converters:SettingsCategoryVisibilityConverter x:Key="SettingsCategoryVisibilityConverter"/>
+        <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
     </Window.Resources>
 
     <Border Background="Transparent">
@@ -19,113 +20,130 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Header -->
             <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="⚙️ Configuration Settings" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="36" Height="36" CornerRadius="10"
+                                Background="#181E28"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                Margin="0,0,12,0">
+                            <TextBlock Text="&#xE713;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="16"
+                                       Foreground="{DynamicResource PrimaryLightBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Field Configuration"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Obsidian overlay control surface"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </StackPanel>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
-                               Background="#4000D4FF" 
+                               Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
-                               ToolTip="Minimize to Tray">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#6000D4FF"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                               ToolTip="Minimize to Tray"/>
                         <Button Content="✕" 
                                Width="30" Height="30" 
-                               Background="#40FF3366" 
+                               Style="{StaticResource OverlayCloseButton}" Background="#33B86B6B" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
-                               ToolTip="Close">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#60FF3366"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                               ToolTip="Close"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Settings Categories (scrollable) -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10">
-                <StackPanel>
-                    <Border Style="{StaticResource Card}" Margin="0,5">
-                        <StackPanel>
-                            <TextBlock Text="🗂️ Settings Categories" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
-                            <Separator Margin="0,5" Background="#1A2332"/>
-                            <TabControl SelectedIndex="{Binding SelectedSettingsTabIndex}" Margin="0,2,0,0">
-                                <TabItem Header="All"/>
-                                <TabItem Header="Core"/>
-                                <TabItem Header="Image"/>
-                                <TabItem Header="Remote"/>
-                                <TabItem Header="Memory"/>
-                                <TabItem Header="Autonomy"/>
-                                <TabItem Header="UI"/>
-                                <TabItem Header="Advanced"/>
-                            </TabControl>
-                        </StackPanel>
-                    </Border>
+            <!-- Master-detail body -->
+            <Grid Grid.Row="1" Margin="12,8,12,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="250"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
+                <Border Grid.Column="0"
+                        Background="#CC10141A"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="10"
+                        Margin="0,0,10,0">
+                    <DockPanel LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="MODULES"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Margin="4,2,0,10"/>
+                        <ListBox ItemsSource="{Binding SettingsNavItems}"
+                                 SelectedItem="{Binding SelectedNavItem, Mode=TwoWay}"
+                                 Style="{StaticResource SettingsNavList}"
+                                 ItemContainerStyle="{StaticResource SettingsNavItem}"/>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Column="1"
+                        Background="#CC10141A"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Padding="18,14"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="0,0,0,1">
+                            <StackPanel>
+                                <TextBlock Text="{Binding SelectedNavItem.Title, FallbackValue=Settings}"
+                                           Style="{StaticResource SettingsHeroTitle}"/>
+                                <TextBlock Text="{Binding SelectedNavItem.Subtitle, FallbackValue=Select a module on the left.}"
+                                           Style="{StaticResource SettingsHeroSubtitle}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="1"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="16,12">
+                            <StackPanel>
                     <!-- SMS/MMS Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=connect}">
                         <StackPanel>
-                            <TextBlock Text="📱 SMS/MMS Communication" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="📱 SMS/MMS Communication" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Configure SMS and MMS settings" FontSize="12" Foreground="#80C4D4"/>
+                            <TextBlock Text="Configure SMS and MMS settings" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </StackPanel>
                     </Border>
 
                     <!-- MCP Server Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=intelligence}">
                         <StackPanel>
-                            <TextBlock Text="🔌 MCP Server" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🔌 MCP Server" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -136,7 +154,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MCPServerEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding MCPServerConnectionStatus}" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -163,10 +181,10 @@
                     </Border>
 
                     <!-- TTS / STT Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=connect}">
                         <StackPanel>
-                            <TextBlock Text="🎙 Speech-to-Text" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🎙 Speech-to-Text" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <TextBlock Text="Used for chat dictation and the remote companion app. Voice calls use the built-in streaming engine (no STT server needed)."
                                       FontSize="11" Foreground="#5A6A7A" Margin="0,0,0,8" TextWrapping="Wrap"/>
@@ -179,7 +197,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="STT Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding STTEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding STTConnectionStatus}" 
                                           Foreground="#00FF88" 
@@ -207,10 +225,10 @@
                     </Border>
 
                     <!-- Image Generation Endpoint (ComfyUI) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|2'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=creativity}">
                         <StackPanel>
-                            <TextBlock Text="🎨 Image Generation" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🎨 Image Generation" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <TextBlock Text="Default: A2E cloud (text-to-image). Choose ComfyUI only when you want local Stability Matrix / ComfyUI." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid Margin="0,5">
@@ -222,8 +240,8 @@
                                 <ComboBox Grid.Column="1"
                                           ItemsSource="{Binding ImageGenerationProviderOptions}"
                                           SelectedItem="{Binding ImageGenerationProvider, UpdateSourceTrigger=PropertyChanged}"
-                                          Background="#252F3F"
-                                          BorderBrush="#4000D4FF"
+                                          Background="{DynamicResource DarkInputBrush}"
+                                          BorderBrush="{DynamicResource BorderSubtleBrush}"
                                           Foreground="{DynamicResource TextPrimaryBrush}"
                                           Padding="8"
                                           Margin="5,0"/>
@@ -235,7 +253,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="A2E API token:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding A2eApiToken, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF"
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <TextBlock Text="Bearer token from video.a2e.ai → API Token. Or set env A2E_API_TOKEN. Restart app after saving."
@@ -247,10 +265,10 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="A2E API URL:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding A2eApiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF"
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
-                            <TextBlock Text="Local ComfyUI (fallback or when provider = comfyui)" FontSize="13" FontWeight="SemiBold" Foreground="#00D4FF" Margin="0,4,0,4"/>
+                            <TextBlock Text="Local ComfyUI (fallback or when provider = comfyui)" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,4,0,4"/>
                             <TextBlock Text="Configure the local image endpoint (typically ComfyUI on port 8188)." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -261,7 +279,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding StableDiffusionEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding StableDiffusionConnectionStatus}" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -297,8 +315,8 @@
                                           ItemsSource="{Binding AvailableComfyUICheckpoints}"
                                           Text="{Binding ComfyUIPreferredCheckpoint, UpdateSourceTrigger=PropertyChanged}"
                                           IsEditable="True"
-                                          Background="#252F3F"
-                                          BorderBrush="#4000D4FF"
+                                          Background="{DynamicResource DarkInputBrush}"
+                                          BorderBrush="{DynamicResource BorderSubtleBrush}"
                                           Foreground="{DynamicResource TextPrimaryBrush}"
                                           Padding="8"
                                           Margin="5,0"/>
@@ -315,7 +333,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Custom workflow:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding ComfyUICustomWorkflowPath, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <Button Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
                                        Command="{Binding BrowseComfyUICustomWorkflowPathCommand}" Width="70" Margin="5,0"/>
@@ -326,10 +344,10 @@
                     </Border>
 
                     <!-- Stability Matrix & ComfyUI (image/video generation) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|2'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=creativity}">
                         <StackPanel>
-                            <TextBlock Text="🖼️ Stability Matrix &amp; ComfyUI" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🖼️ Stability Matrix &amp; ComfyUI" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <TextBlock Text="Start Stability Matrix and ComfyUI portable for image and video generation. Set the endpoint above to http://localhost:8188 when using ComfyUI." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid Margin="0,5">
@@ -344,13 +362,13 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Stability Matrix:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding StabilityMatrixPath, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <Button Grid.Row="0" Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
                                        Command="{Binding BrowseStabilityMatrixPathCommand}" Width="70" Margin="5,0"/>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="ComfyUI folder:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,8,0,0"/>
                                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ComfyUIPortablePath, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,8,5,0"/>
                                 <Button Grid.Row="1" Grid.Column="2" Content="Browse" Style="{StaticResource GlassButton}" 
                                        Command="{Binding BrowseComfyUIPortablePathCommand}" Width="70" Margin="5,8,5,0"/>
@@ -364,21 +382,11 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Tools Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|6'}">
-                        <StackPanel>
-                            <TextBlock Text="🛠️ Tools" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
-                            <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Configure available AI tools and functions" FontSize="12" Foreground="#80C4D4"/>
-                        </StackPanel>
-                    </Border>
-
                     <!-- Virtual Environment Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=presence}">
                         <StackPanel>
-                            <TextBlock Text="🌐 Virtual Environment (Unreal Engine)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🌐 Virtual Environment (Unreal Engine)" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -389,7 +397,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding UnrealEngineEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding UnrealConnectionStatus}" 
                                           Foreground="#00FF88" 
@@ -414,17 +422,17 @@
                                        Width="80" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                             </Grid>
                             <TextBlock Text="Configure avatar locomotion, physical interactions, and virtual world settings" 
-                                      FontSize="12" Foreground="#80C4D4" Margin="0,5,0,0"/>
+                                      FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Remote companion: phone → PC (text + audio); TLS at edge (tunnel). Restart app after changing. -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|3'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=connect}">
                         <StackPanel>
-                            <TextBlock Text="📱 Remote companion (phone → PC)" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="📱 Remote companion (phone → PC)" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#80C4D4" Margin="0,0,0,8"
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"
                                       Text="HTTP API on this PC for text chat and optional voice (STT on PC). Bind to loopback and use Tailscale / Cloudflare Tunnel for secure remote access. Video can be added later. Restart House Victoria after enabling or changing port/token."/>
                             <CheckBox IsChecked="{Binding RemoteCompanionEnabled}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2"
                                      Content="Enable remote companion API"/>
@@ -435,7 +443,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Listen port:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding RemoteCompanionListenPort, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,4">
                                 <Grid.ColumnDefinitions>
@@ -444,7 +452,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="API token:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding RemoteCompanionApiToken, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
                                         ToolTip="Use at least 16 characters. Send as Authorization: Bearer &lt;token&gt; or X-Api-Key header."/>
                             </Grid>
                             <Grid Margin="0,4">
@@ -454,7 +462,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="AI contact ID:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding RemoteCompanionAiContactId, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
                                         ToolTip="Optional. Leave empty to use the primary AI contact."/>
                             </Grid>
                             <CheckBox IsChecked="{Binding RemoteCompanionListenOnLan}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"
@@ -465,15 +473,15 @@
                     </Border>
 
                     <!-- LLM Servers: LM Studio, Ollama, Anything LLM (single block, one primary) -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|1'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=intelligence}">
                         <StackPanel>
-                            <TextBlock Text="🧠 LLM Servers" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🧠 LLM Servers" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <TextBlock Text="Configure LM Studio, Ollama, Anything LLM, and Hermes Agent. Only one can be primary. Hermes provides terminal, browser, and MCP tools. When Hermes is primary, Ollama should still run as the LLM backend for Hermes." 
-                                      FontSize="11" Foreground="#80C4D4" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                      FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <!-- LM Studio -->
-                            <TextBlock Text="LM Studio" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                            <TextBlock Text="LM Studio" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,5,0,2"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -483,7 +491,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding LmStudioEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding LmStudioConnectionStatus}" 
                                           Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -512,7 +520,7 @@
                                 </StackPanel>
                             </Grid>
                             <!-- Ollama -->
-                            <TextBlock Text="Ollama" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Ollama" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,8,0,2"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -522,7 +530,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding OllamaEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding OllamaConnectionStatus}" 
                                           Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -551,7 +559,7 @@
                                 </StackPanel>
                             </Grid>
                             <!-- Anything LLM -->
-                            <TextBlock Text="Anything LLM" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Anything LLM" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,8,0,2"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -561,7 +569,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding AnythingLLMEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding AnythingLLMConnectionStatus}" 
                                           Foreground="#00FF88" VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -590,7 +598,7 @@
                                 </StackPanel>
                             </Grid>
                             <!-- Hermes Agent -->
-                            <TextBlock Text="Hermes Agent (tools + orchestration)" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <TextBlock Text="Hermes Agent (tools + orchestration)" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,8,0,2"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -600,7 +608,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="API endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding HermesEndpoint, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <TextBlock Grid.Column="2" Text="{Binding HermesConnectionStatus}" 
                                           VerticalAlignment="Center" Margin="5,0" FontWeight="Bold"
@@ -635,7 +643,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="API key:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding HermesApiKey, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,2">
@@ -646,7 +654,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Model id:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding HermesModelName, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                 <CheckBox Grid.Column="2" IsChecked="{Binding HermesAutoStart}" 
                                          Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
@@ -656,12 +664,12 @@
                     </Border>
 
                     <!-- Color Scheme -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|5'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=interface}">
                         <StackPanel>
-                            <TextBlock Text="🎨 Color Scheme" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🎨 Color Scheme" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Choose a color theme for the app. The preview shows how the selected theme will look." FontSize="12" Foreground="#80C4D4" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <TextBlock Text="Choose a color theme for the app. The preview shows how the selected theme will look." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -672,11 +680,11 @@
                                           ItemsSource="{Binding AvailableThemes}"
                                           SelectedIndex="{Binding SelectedThemeIndex, Mode=TwoWay}"
                                           DisplayMemberPath="DisplayName"
-                                          Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}"
+                                          Background="{DynamicResource DarkInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
                                           Padding="8" Margin="5,0"
                                           SelectionChanged="ThemeComboBox_SelectionChanged"/>
                             </Grid>
-                            <TextBlock Text="Preview" FontSize="12" Foreground="#80C4D4" Margin="0,10,0,5"/>
+                            <TextBlock Text="Preview" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,10,0,5"/>
                             <Border x:Name="ThemePreviewBorder" 
                                     MinHeight="140" CornerRadius="6" Padding="12"
                                     BorderThickness="1" Margin="0,0,0,5"
@@ -717,10 +725,10 @@
                     </Border>
 
                     <!-- Overlay Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|5'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=interface}">
                         <StackPanel>
-                            <TextBlock Text="🖥️ Overlay Settings" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🖥️ Overlay Settings" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -756,17 +764,17 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Auto-Hide Delay (ms):" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding AutoHideDelayMs, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
 
                     <!-- Locomotion Settings -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|6'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=advanced}">
                         <StackPanel>
-                            <TextBlock Text="🚶 Locomotion Settings" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🚶 Locomotion Settings" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -777,9 +785,9 @@
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.1" Maximum="10.0" Value="{Binding WalkSpeed}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
                                     <TextBlock Text="{Binding WalkSpeed, StringFormat='Speed: {0:F1}'}" 
-                                             Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -791,9 +799,9 @@
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.1" Maximum="20.0" Value="{Binding RunSpeed}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
                                     <TextBlock Text="{Binding RunSpeed, StringFormat='Speed: {0:F1}'}" 
-                                             Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -805,9 +813,9 @@
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.1" Maximum="10.0" Value="{Binding JumpHeight}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
                                     <TextBlock Text="{Binding JumpHeight, StringFormat='Height: {0:F1}'}" 
-                                             Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -823,10 +831,10 @@
                     </Border>
 
                     <!-- Tools Configuration -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|6'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=system}">
                         <StackPanel>
-                            <TextBlock Text="🛠️ Tools Configuration" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="🛠️ Tools Configuration" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -862,7 +870,7 @@
                     <Border Style="{StaticResource Card}" Margin="0,5"
                             Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|4'}">
                         <StackPanel>
-                            <TextBlock Text="💾 Persistent Memory Configuration" FontSize="16" FontWeight="Bold" Foreground="#00D4FF"/>
+                            <TextBlock Text="💾 Persistent Memory Configuration" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -880,7 +888,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Memory Path:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding PersistentMemoryPath, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
@@ -890,7 +898,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Max Entries:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MemoryMaxEntries, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
@@ -902,9 +910,9 @@
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="0.0" Maximum="1.0" Value="{Binding MemoryImportanceThreshold}" 
                                            TickFrequency="0.1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
                                     <TextBlock Text="{Binding MemoryImportanceThreshold, StringFormat='Threshold: {0:F2}'}" 
-                                             Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -914,10 +922,10 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Retention Days:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MemoryRetentionDays, UpdateSourceTrigger=PropertyChanged}" 
-                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
-                            <Separator Margin="0,12,0,8" Background="#4000D4FF"/>
+                            <Separator Margin="0,12,0,8" Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A"/>
                             <TextBlock Text="Semantic memory (Postgres + pgvector)" FontWeight="SemiBold" Foreground="#9CC7FF" Margin="0,0,0,4"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -935,7 +943,7 @@
                                 <TextBlock Grid.Column="0" Text="Postgres connection:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding PgVectorConnectionString, UpdateSourceTrigger=PropertyChanged}"
                                         ToolTip="Host=127.0.0.1;Port=5432;Database=housevictoria;Username=...;Password=..."
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -945,7 +953,7 @@
                                 <TextBlock Grid.Column="0" Text="Embedding model:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding OllamaEmbeddingModel, UpdateSourceTrigger=PropertyChanged}"
                                         ToolTip="Ollama model for /api/embed (e.g. nomic-embed-text). Pull with: ollama pull nomic-embed-text"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -955,7 +963,7 @@
                                 <TextBlock Grid.Column="0" Text="Vector dimensions:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding EmbeddingVectorDimensions, UpdateSourceTrigger=PropertyChanged}"
                                         ToolTip="Must match the embedding model (768 for nomic-embed-text)."
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
@@ -965,21 +973,21 @@
                                 <TextBlock Grid.Column="0" Text="Hybrid lexical weight:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Vertical" Margin="5,0">
                                     <Slider Minimum="0" Maximum="1" Value="{Binding HybridLexicalWeight}" TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
-                                    <TextBlock Text="{Binding HybridLexicalWeight, StringFormat='Lexical weight: {0:F2} (vector = 1 − this)'}" Foreground="#80C4D4" FontSize="11"/>
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
+                                    <TextBlock Text="{Binding HybridLexicalWeight, StringFormat='Lexical weight: {0:F2} (vector = 1 − this)'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
                     </Border>
 
                     <!-- Autonomy loop -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|4|5|1'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=autonomy}">
                         <StackPanel>
                             <TextBlock Text="🫀 Autonomy &amp; cognition vitals" FontSize="16" FontWeight="Bold" Foreground="#F48FB1"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Background loop and heart-monitor rhythm in System Monitor → Cognition tab."
-                                       FontSize="11" Foreground="#80C4D4" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <TextBlock Text="Background loop and heart-monitor rhythm in the left instrument stack → Vitals tab."
+                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -999,7 +1007,7 @@
                                            TickFrequency="30" IsSnapToTickEnabled="True"
                                            Foreground="#F48FB1" Background="#CC222222"/>
                                     <TextBlock Text="{Binding AutonomyTickIntervalSeconds, StringFormat='Every {0} seconds'}"
-                                               Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -1013,7 +1021,7 @@
                                            TickFrequency="1" IsSnapToTickEnabled="True"
                                            Foreground="#B388FF" Background="#CC222222"/>
                                     <TextBlock Text="{Binding AutonomyMinIdleMinutes, StringFormat={}{0} min without chat}"
-                                               Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -1027,7 +1035,7 @@
                                            TickFrequency="1" IsSnapToTickEnabled="True"
                                            Foreground="#FF4081" Background="#CC222222"/>
                                     <TextBlock Text="{Binding AutonomyHighPriorityThreshold, StringFormat='Project priority {0}+'}"
-                                               Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -1039,9 +1047,9 @@
                                 <StackPanel Grid.Column="1" Margin="5,0">
                                     <Slider Minimum="1" Maximum="24" Value="{Binding AutonomyMaxActionsPerHour}"
                                            TickFrequency="1" IsSnapToTickEnabled="True"
-                                           Foreground="#00D4FF" Background="#CC222222"/>
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
                                     <TextBlock Text="{Binding AutonomyMaxActionsPerHour, StringFormat='{}{0} per hour'}"
-                                               Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -1055,7 +1063,7 @@
                                            TickFrequency="1" IsSnapToTickEnabled="True"
                                            Foreground="#F48FB1" Background="#CC222222"/>
                                     <TextBlock Text="{Binding AutonomyMaxArtPerHour, StringFormat='{}{0} ComfyUI runs/hour'}"
-                                               Foreground="#80C4D4" FontSize="11" Margin="0,3,0,0"/>
+                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,5">
@@ -1073,78 +1081,58 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="AI contact id:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding AutonomyAiContactId, UpdateSourceTrigger=PropertyChanged}"
-                                        Background="#252F3F" BorderBrush="#4000D4FF" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
+                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- Validation Error Display -->
-                    <Border Style="{StaticResource Card}" Margin="0,5" Background="#33FF3366" BorderBrush="#FF3366" BorderThickness="1"
-                           Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Margin="10">
-                            <TextBlock Text="⚠️ Validation Error" FontSize="14" FontWeight="Bold" Foreground="#FF3366"/>
-                            <TextBlock Text="{Binding ValidationError}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,5,0,0">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="MaxHeight" Value="60"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="MaxHeight" Value="300"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Connection Test Result Display -->
-                    <Border Style="{StaticResource Card}" Margin="0,5" 
-                           Background="#3300FF88" BorderBrush="#00FF88" BorderThickness="1"
-                           Visibility="{Binding ConnectionTestResult, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Margin="10">
-                            <TextBlock Text="{Binding ConnectionTestResult}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="MaxHeight" Value="60"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="MaxHeight" Value="300"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Action Buttons -->
-                    <Border Style="{StaticResource Card}" Margin="0,5">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,10">
-                                <Button Style="{StaticResource GlassButton}" 
-                                       Content="🔄 Reset" 
-                                       Command="{Binding ResetToDefaultsCommand}"
-                                       Width="120" Height="35" Margin="0,0,10,0"
-                                       ToolTip="Reset all settings to default values"/>
-                                <Button Style="{StaticResource GlassButton}" 
-                                       Content="📥 Import" 
-                                       Command="{Binding ImportSettingsCommand}"
-                                       Width="120" Height="35" Margin="0,0,10,0"/>
-                                <Button Style="{StaticResource GlassButton}" 
-                                       Content="📤 Export" 
-                                       Command="{Binding ExportSettingsCommand}"
-                                       Width="120" Height="35" Margin="0,0,10,0"/>
-                                <Button Style="{StaticResource GlassButton}" 
-                                       Content="💾 Save Settings" 
-                                       Click="SaveButton_Click"
-                                       Width="200" Height="35"
-                                       IsEnabled="{Binding IsValid}"/>
                             </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Sticky footer -->
+            <Border Grid.Row="2" Style="{StaticResource SettingsFooterBar}" Margin="12,8,12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Card}" Margin="0,0,12,4" Padding="8,6"
+                                Background="#33FF3366" BorderBrush="#FF3366" BorderThickness="1"
+                                Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="{Binding ValidationError}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" FontSize="11"/>
+                        </Border>
+                        <Border Style="{StaticResource Card}" Margin="0,0,12,0" Padding="8,6"
+                                Background="#3300FF88" BorderBrush="#00FF88" BorderThickness="1"
+                                Visibility="{Binding ConnectionTestResult, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="{Binding ConnectionTestResult}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource GlassButton}" 
+                               Content="Reset" 
+                               Command="{Binding ResetToDefaultsCommand}"
+                               Width="100" Height="34" Margin="0,0,8,0"
+                               ToolTip="Reset all settings to default values"/>
+                        <Button Style="{StaticResource GlassButton}" 
+                               Content="Import" 
+                               Command="{Binding ImportSettingsCommand}"
+                               Width="100" Height="34" Margin="0,0,8,0"/>
+                        <Button Style="{StaticResource GlassButton}" 
+                               Content="Export" 
+                               Command="{Binding ExportSettingsCommand}"
+                               Width="100" Height="34" Margin="0,0,8,0"/>
+                        <Button Style="{StaticResource GlassButton}" 
+                               Content="Save Configuration" 
+                               Click="SaveButton_Click"
+                               Width="180" Height="34"
+                               IsEnabled="{Binding IsValid}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 

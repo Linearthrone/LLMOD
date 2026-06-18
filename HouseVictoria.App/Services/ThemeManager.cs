@@ -8,7 +8,7 @@ namespace HouseVictoria.App.Services
     public static class ThemeManager
     {
         public const string ThemeIndexKey = "ThemeIndex";
-        private const int ThemeDictMergeIndex = 6; // After MaterialDesign, Buttons, Controls, ObsidianField, GlassEffect, OverlayStyles
+        private const int ThemeDictMergeIndex = 8;
 
         /// <summary>
         /// Available theme display names for the dropdown.

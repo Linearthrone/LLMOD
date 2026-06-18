@@ -40,9 +40,18 @@ namespace HouseVictoria.App.Screens.Trays
         private DateTime _lastTradingVitalsPollUtc = DateTime.MinValue;
         private int _selectedTabIndex;
 
-        public CognitionVitalsDrawerViewModel(System.Windows.Controls.Border drawerPanel)
+        private readonly bool _managesDrawerPanel;
+
+        public bool ManagesDrawerPanel
+        {
+            get => _managesDrawerPanel;
+            init => _managesDrawerPanel = value;
+        }
+
+        public CognitionVitalsDrawerViewModel(System.Windows.Controls.Border drawerPanel, bool managesDrawerPanel = true)
         {
             _drawerPanel = drawerPanel ?? throw new ArgumentNullException(nameof(drawerPanel));
+            _managesDrawerPanel = managesDrawerPanel;
             _dispatcher = drawerPanel.Dispatcher;
             ActionLogLines = new ObservableCollection<AutonomyLogLineViewModel>();
 
@@ -124,9 +133,12 @@ namespace HouseVictoria.App.Screens.Trays
                 if (!SetProperty(ref _collapseState, value))
                     return;
 
-                _drawerPanel.Visibility = value == VitalsDrawerCollapseState.Open
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
+                if (_managesDrawerPanel)
+                {
+                    _drawerPanel.Visibility = value == VitalsDrawerCollapseState.Open
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                }
 
                 OnPropertyChanged(nameof(IsHandleMode));
                 OnPropertyChanged(nameof(IsPulseMode));

@@ -1,0 +1,539 @@
+<UserControl x:Class="HouseVictoria.App.Screens.Trays.InstrumentStackDrawer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
+             xmlns:controls="clr-namespace:HouseVictoria.App.Controls"
+             mc:Ignorable="d"
+             d:DesignHeight="800" d:DesignWidth="400"
+             Unloaded="Control_Unloaded">
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Border x:Name="VitalsDrawerStub" Visibility="Collapsed"/>
+
+        <Grid x:Name="RootGrid"
+              Background="Transparent"
+              MouseDown="RootGrid_MouseDown">
+
+            <!-- Pulse widget (top-left, vitals collapsed state) -->
+            <Border x:Name="PulseWidget"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Width="132"
+                    Background="#CC141820"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="0,12,12,0"
+                    Padding="6"
+                    Cursor="Hand"
+                    ToolTip="Click: open vitals · Double-click: hide to handle"
+                    Visibility="{Binding Vitals.IsPulseMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                    MouseLeftButtonDown="PulseWidget_MouseLeftButtonDown">
+                <StackPanel>
+                    <controls:CognitionVitalsControl Margin="0,0,0,2"
+                                                       WaveHeight="40"
+                                                       Rhythm="{Binding Vitals.CognitionRhythm}"
+                                                       BeatsPerMinute="{Binding Vitals.CognitionBpm}"
+                                                       Intensity="{Binding Vitals.CognitionIntensity}"
+                                                       WaveColorHex="{Binding Vitals.CognitionWaveColorHex}"/>
+                    <TextBlock Text="{Binding Vitals.CognitionRhythmDescription}"
+                               FontSize="9"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Vitals handle (fully collapsed) -->
+            <Button HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Width="8"
+                    Height="72"
+                    Margin="0,8,0,0"
+                    Command="{Binding ExpandFromHandleCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    ToolTip="Show cognition pulse"
+                    Visibility="{Binding Vitals.IsHandleMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Style="{StaticResource InstrumentPullTab}" Width="8" Height="72">
+                            <Border Width="2" Height="24" CornerRadius="1"
+                                    Background="{DynamicResource AutonomyAccentBrush}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <!-- Collapsed pull handle (system drawer closed) -->
+            <Button x:Name="CollapsedPullHandle"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Width="8"
+                    Height="140"
+                    Margin="0"
+                    Command="{Binding System.ToggleDrawerCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    ToolTip="Open instrument stack"
+                    Visibility="{Binding System.IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Style="{StaticResource InstrumentPullTab}" Width="8" Height="140">
+                            <Border Width="2" Height="32" CornerRadius="1"
+                                    Background="{DynamicResource PrimaryBrush}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <!-- Expanded pull tab (system drawer open) -->
+            <Border x:Name="PullTabHost"
+                    Style="{StaticResource InstrumentPullTab}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Width="44"
+                    Height="140"
+                    Visibility="{Binding System.IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Button Grid.Row="0"
+                            Command="{Binding OpenVitalsTabCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            ToolTip="Vitals">
+                        <TextBlock Text="&#xE95E;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+
+                    <Separator Grid.Row="1" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}"/>
+
+                    <Button Grid.Row="2"
+                            Command="{Binding System.OpenSystemHealthCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            ToolTip="System health">
+                        <TextBlock Text="&#xE9D9;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+
+                    <Separator Grid.Row="3" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}"/>
+
+                    <Button Grid.Row="4"
+                            Command="{Binding System.OpenComponentsCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            ToolTip="Components">
+                        <TextBlock Text="&#xE773;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Unified drawer panel -->
+            <Border x:Name="DrawerPanel"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    Width="340"
+                    Margin="44,40,0,40"
+                    Background="#CC141820"
+                    CornerRadius="12"
+                    Padding="10"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    Effect="{StaticResource ObsidianShadowSoft}"
+                    Visibility="Collapsed">
+                <TabControl SelectedIndex="{Binding System.SelectedTabIndex}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemContainerStyle="{StaticResource InstrumentTabItemStyle}">
+
+                    <!-- Tab 0: Vitals -->
+                    <TabItem Header="Vitals">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
+                            <StackPanel>
+                                <Border Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="0,0,0,8"
+                                        Cursor="Hand"
+                                        ToolTip="Collapse to pulse"
+                                        MouseLeftButtonDown="DrawerHeaderPulse_MouseLeftButtonDown">
+                                    <StackPanel>
+                                        <controls:CognitionVitalsControl Margin="0,0,0,4"
+                                                                           WaveHeight="56"
+                                                                           Rhythm="{Binding Vitals.CognitionRhythm}"
+                                                                           BeatsPerMinute="{Binding Vitals.CognitionBpm}"
+                                                                           Intensity="{Binding Vitals.CognitionIntensity}"
+                                                                           WaveColorHex="{Binding Vitals.CognitionWaveColorHex}"/>
+                                        <TextBlock Text="{Binding Vitals.CognitionRhythmDescription}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap"
+                                                   TextAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Autonomy" FontSize="14" Foreground="{DynamicResource AutonomyAccentBrush}" FontWeight="Bold"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Button Command="{Binding Vitals.CycleAutonomyLevelCommand}"
+                                                        Style="{StaticResource InstrumentMiniButton}"
+                                                        MinWidth="52"
+                                                        Margin="0,0,6,0"
+                                                        ToolTip="Cycle Off → Low → Mid → Full">
+                                                    <TextBlock Text="{Binding Vitals.AutonomyLevelLabel}" FontWeight="SemiBold"/>
+                                                </Button>
+                                                <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                         Fill="{Binding Vitals.CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
+                                                <TextBlock Text="{Binding Vitals.AutonomyStatusText}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="Guidance (if stuck or fixated)" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Text="{Binding Vitals.AutonomySuggestion, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource InstrumentControlInput}"
+                                                     AcceptsReturn="False"
+                                                     VerticalContentAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Command="{Binding Vitals.ApplyAutonomySuggestionCommand}"
+                                                    Style="{StaticResource InstrumentMiniButton}"
+                                                    Margin="6,0,0,0"
+                                                    Content="Apply"/>
+                                            <Button Grid.Column="2"
+                                                    Command="{Binding Vitals.ClearGuidanceCommand}"
+                                                    Style="{StaticResource InstrumentMiniButton}"
+                                                    Margin="4,0,0,0"
+                                                    Content="Clear"/>
+                                        </Grid>
+                                        <TextBlock Text="{Binding Vitals.GuidanceStatus}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                                        <TextBlock Text="Current activity" Style="{StaticResource InstrumentControlLabel}" Margin="0,10,0,2"/>
+                                        <TextBlock Text="{Binding Vitals.CurrentActivityElapsed}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{Binding Vitals.CurrentActivityDescription}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+
+                                        <TextBlock Text="Last activity" Style="{StaticResource InstrumentControlLabel}" Margin="0,10,0,2"/>
+                                        <TextBlock Text="{Binding Vitals.PreviousActivityDescription}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <Run Text="Duration: "/>
+                                            <Run Text="{Binding Vitals.PreviousActivityDuration}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Tab 1: Control -->
+                    <TabItem Header="Control">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
+                            <StackPanel>
+                                <TextBlock Text="Autonomy &amp; Cognition" FontSize="14" Foreground="{DynamicResource AutonomyAccentBrush}" FontWeight="Bold" Margin="0,0,0,6"/>
+
+                                <CheckBox Content="Enable autonomy loop"
+                                          IsChecked="{Binding Vitals.EnableAutonomy}"
+                                          Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                        <TextBlock Text="Tick interval (sec)" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.TickIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Min idle (min)" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.MinIdleMinutes, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Priority threshold" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.HighPriorityThreshold, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Max actions / hour" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.MaxActionsPerHour, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Max art / hour" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.MaxArtPerHour, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                        <CheckBox Content="Art generation" IsChecked="{Binding Vitals.EnableArtGeneration}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,6,0,4"/>
+                                        <CheckBox Content="Self-initiated goals" IsChecked="{Binding Vitals.EnableSelfGoals}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Self-goals / day" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.MaxSelfGoalsPerDay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Self-goal drive threshold" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.SelfGoalDriveThreshold, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Max active self-projects" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.MaxActiveSelfProjects, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                        <TextBlock Text="Guidance auto-clear (ticks)" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBox Text="{Binding Vitals.UserGuidanceMaxTicks, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource InstrumentControlInput}"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                    <Button Command="{Binding Vitals.SaveAutonomySettingsCommand}" Style="{StaticResource InstrumentMiniButton}" Content="Save settings" Margin="0,0,6,0"/>
+                                    <Button Command="{Binding Vitals.RestartAutonomyCommand}" Style="{StaticResource InstrumentMiniButton}" Content="Restart loop" Margin="0,0,6,0"/>
+                                    <Button Command="{Binding Vitals.CycleAutonomyLevelCommand}" Style="{StaticResource InstrumentMiniButton}" Content="{Binding Vitals.AutonomyLevelLabel, StringFormat=Level: {0}}"/>
+                                </StackPanel>
+
+                                <Border Style="{StaticResource Card}" Margin="0,6,0,6" Padding="8">
+                                    <StackPanel>
+                                        <TextBlock Text="Live state" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{Binding Vitals.DrivesSummary}" FontSize="10" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="Interests" Style="{StaticResource InstrumentControlLabel}"/>
+                                        <TextBlock Text="{Binding Vitals.InterestsSummary}" FontSize="10" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding Vitals.BudgetSummary}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Vitals.ActionLogHeader}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="1" Command="{Binding Vitals.RefreshActionLogCommand}" Style="{StaticResource InstrumentMiniButton}" Content="Refresh"/>
+                                </Grid>
+
+                                <Border Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4" MaxHeight="220">
+                                    <ListBox ItemsSource="{Binding Vitals.ActionLogLines}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,2">
+                                                    <TextBlock Text="{Binding Timestamp}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                                <TextBlock Text="Rolling 24-hour window from activity.log" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Tab 2: Health -->
+                    <TabItem Header="Health">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5"
+                                      VerticalAlignment="Stretch">
+                            <StackPanel>
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="System Uptime" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding System.SystemUptime}" FontSize="18" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="CPU" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding System.CPUUsage}" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding System.CPUTemperature}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding System.CPUUsageValue}" Maximum="100" Height="8"
+                                                     Foreground="{DynamicResource PrimaryBrush}" Background="{DynamicResource DarkInputBrush}" Margin="0,5,0,0"/>
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0">
+                                            <Run Text="Fan: "/><Run Text="{Binding System.CPUFanSpeed}"/><Run Text=" RPM"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="GPU" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding System.GPUVendor}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Visibility="{Binding System.GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        </Grid>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding System.GPUUsage}" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding System.GPUTemperature}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding System.GPUUsageValue}" Maximum="100" Height="8"
+                                                     Foreground="{DynamicResource PrimaryBrush}" Background="{DynamicResource DarkInputBrush}" Margin="0,5,0,0"
+                                                     Visibility="{Binding System.GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0">
+                                            <Run Text="Fan: "/><Run Text="{Binding System.GPUFanSpeed}"/>
+                                        </TextBlock>
+                                        <TextBlock Text="GPU monitoring not available" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"
+                                                   Visibility="{Binding System.GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5">
+                                    <StackPanel>
+                                        <TextBlock Text="RAM" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <TextBlock Text="{Binding System.RAMUsage}" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding System.RAMUsagePercentage}" Maximum="100" Height="8"
+                                                     Foreground="{DynamicResource PrimaryBrush}" Background="{DynamicResource DarkInputBrush}" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Tab 3: Components -->
+                    <TabItem Header="Components">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5"
+                                      VerticalAlignment="Stretch"
+                                      VerticalContentAlignment="Stretch">
+                            <StackPanel Margin="0,5">
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="#4CAF50">
+                                    <StackPanel>
+                                        <TextBlock Text="Primary AI" FontSize="14" Foreground="#4CAF50" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}"
+                                                     Fill="{Binding System.PrimaryAIStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding System.PrimaryAIStatusText}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="{DynamicResource PrimaryBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Virtual Environment" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}"
+                                                     Fill="{Binding System.VirtualEnvironmentStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding System.VirtualEnvironmentStatusText}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        </Grid>
+                                        <TextBlock Text="{Binding System.VirtualEnvironmentDetails}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,5"/>
+                                        <Border Background="{DynamicResource DarkCardBrush}" Padding="5" Margin="0,5,0,5" CornerRadius="3"
+                                                Visibility="{Binding System.VirtualEnvironmentIsConnected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <TextBlock Text="Scene Info" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,0,0,3"/>
+                                                <TextBlock Text="{Binding System.VirtualEnvironmentSceneName}" FontSize="10" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,2"/>
+                                                <TextBlock Text="{Binding System.VirtualEnvironmentSceneDetails}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <Button Content="{Binding System.VirtualEnvironmentConnectButtonText}"
+                                                    Style="{StaticResource GlassButton}"
+                                                    Command="{Binding System.VirtualEnvironmentConnectCommand}"
+                                                    Width="100" Height="28" FontSize="11" Margin="0,0,5,0"/>
+                                            <Button Content="Disconnect" Style="{StaticResource GlassButton}"
+                                                    Command="{Binding System.VirtualEnvironmentDisconnectCommand}"
+                                                    IsEnabled="{Binding System.VirtualEnvironmentIsConnected}"
+                                                    Width="80" Height="28" FontSize="11" Margin="0,0,5,0"/>
+                                            <Button Content="Controls" Style="{StaticResource GlassButton}"
+                                                    Command="{Binding System.VirtualEnvironmentOpenControlsCommand}"
+                                                    IsEnabled="{Binding System.VirtualEnvironmentIsConnected}"
+                                                    Width="70" Height="28" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Separator Margin="0,8,0,8" Background="{DynamicResource DarkInputBrush}"/>
+
+                                <TextBlock Text="Server Status" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <ItemsControl ItemsSource="{Binding System.ServerStatuses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource Card}" Margin="0,2">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}"
+                                                             Fill="{Binding StatusColor}" Width="24" Height="24" Margin="0,4,8,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,5,0">
+                                                        <Button Command="{Binding StartCommand}" Style="{StaticResource GlassButton}"
+                                                                Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Start"
+                                                                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">▶️</Button>
+                                                        <Button Command="{Binding RestartCommand}" Style="{StaticResource GlassButton}"
+                                                                Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Restart"
+                                                                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">🔄</Button>
+                                                        <Button Command="{Binding StopCommand}" Style="{StaticResource GlassButton}"
+                                                                Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Stop"
+                                                                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">⏸️</Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Button Style="{StaticResource GlassButton}"
+                                        Content="Shutdown All Servers"
+                                        Command="{Binding System.ShutdownAllCommand}"
+                                        Margin="0,10,0,0"
+                                        Foreground="#FF3366"
+                                        BorderBrush="#FF3366">
+                                    <Button.Background>
+                                        <SolidColorBrush Color="#FF3366" Opacity="0.2"/>
+                                    </Button.Background>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

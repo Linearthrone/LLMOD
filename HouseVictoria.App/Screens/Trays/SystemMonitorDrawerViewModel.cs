@@ -20,6 +20,9 @@ namespace HouseVictoria.App.Screens.Trays
         private readonly System.Windows.Controls.Border _drawerPanel;
         private readonly Dispatcher _dispatcher;
 
+        private readonly int _healthTabIndex;
+        private readonly int _componentsTabIndex;
+
         private bool _isDrawerOpen;
         public bool IsDrawerOpen
         {
@@ -223,11 +226,17 @@ namespace HouseVictoria.App.Screens.Trays
         public ICommand VirtualEnvironmentDisconnectCommand { get; }
         public ICommand VirtualEnvironmentOpenControlsCommand { get; }
 
-        public SystemMonitorDrawerViewModel(ISystemMonitorService systemMonitorService, System.Windows.Controls.Border drawerPanel)
+        public SystemMonitorDrawerViewModel(
+            ISystemMonitorService systemMonitorService,
+            System.Windows.Controls.Border drawerPanel,
+            int healthTabIndex = 0,
+            int componentsTabIndex = 1)
         {
             _systemMonitorService = systemMonitorService ?? throw new ArgumentNullException(nameof(systemMonitorService));
             _drawerPanel = drawerPanel ?? throw new ArgumentNullException(nameof(drawerPanel));
             _dispatcher = drawerPanel.Dispatcher;
+            _healthTabIndex = healthTabIndex;
+            _componentsTabIndex = componentsTabIndex;
 
             // Try to get VirtualEnvironmentService and AppConfig from DI
             try
@@ -246,24 +255,24 @@ namespace HouseVictoria.App.Screens.Trays
             ToggleDrawerCommand = new RelayCommand(() => IsDrawerOpen = !IsDrawerOpen);
             OpenSystemHealthCommand = new RelayCommand(() =>
             {
-                if (IsDrawerOpen && SelectedTabIndex == 0)
+                if (IsDrawerOpen && SelectedTabIndex == _healthTabIndex)
                 {
                     IsDrawerOpen = false;
                     return;
                 }
 
-                SelectedTabIndex = 0;
+                SelectedTabIndex = _healthTabIndex;
                 IsDrawerOpen = true;
             });
             OpenComponentsCommand = new RelayCommand(() =>
             {
-                if (IsDrawerOpen && SelectedTabIndex == 1)
+                if (IsDrawerOpen && SelectedTabIndex == _componentsTabIndex)
                 {
                     IsDrawerOpen = false;
                     return;
                 }
 
-                SelectedTabIndex = 1;
+                SelectedTabIndex = _componentsTabIndex;
                 IsDrawerOpen = true;
             });
             ShutdownAllCommand = new RelayCommand(async () => await ShutdownAllServersAsync());

@@ -93,7 +93,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Left: Scene Info and Avatars -->
-                <Border Grid.Column="0" BorderBrush="#4000D4FF" BorderThickness="0,0,1,0" Margin="10,10,0,10">
+                <Border Grid.Column="0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Margin="10,10,0,10">
                     <ScrollViewer Style="{StaticResource ModernScrollViewer}">
                         <StackPanel>
                             <!-- Scene Information -->

@@ -421,14 +421,9 @@ namespace HouseVictoria.App.Screens.Windows
                             var rect = new Rect(p2, new Size(TopTrayElement.ActualWidth, TopTrayElement.ActualHeight));
                             if (rect.Contains(pt)) return true;
                         }
-                        if (CognitionVitalsDrawerElement != null && CognitionVitalsDrawerElement.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p3)
+                        if (InstrumentStackDrawerElement != null && InstrumentStackDrawerElement.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p3)
                         {
-                            var rect = new Rect(p3, new Size(CognitionVitalsDrawerElement.ActualWidth, CognitionVitalsDrawerElement.ActualHeight));
-                            if (rect.Contains(pt)) return true;
-                        }
-                        if (SystemMonitorDrawerElement != null && SystemMonitorDrawerElement.TransformToAncestor(this).Transform(new Point(0, 0)) is Point p3b)
-                        {
-                            var rect = new Rect(p3b, new Size(SystemMonitorDrawerElement.ActualWidth, SystemMonitorDrawerElement.ActualHeight));
+                            var rect = new Rect(p3, new Size(InstrumentStackDrawerElement.ActualWidth, InstrumentStackDrawerElement.ActualHeight));
                             if (rect.Contains(pt)) return true;
                         }
                         if (WindowContainer != null && WindowContainer.Visibility == Visibility.Visible
@@ -458,8 +453,7 @@ namespace HouseVictoria.App.Screens.Windows
                             if (current == PullHandle ||
                                 current == MainTrayElement ||
                                 current == TopTrayElement ||
-                                current == CognitionVitalsDrawerElement ||
-                                current == SystemMonitorDrawerElement ||
+                                current == InstrumentStackDrawerElement ||
                                 current == WindowContainer)
                             {
                                 return true;

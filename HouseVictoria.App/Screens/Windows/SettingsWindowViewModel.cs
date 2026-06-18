@@ -35,6 +35,37 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _selectedSettingsTabIndex, value);
         }
 
+        public ObservableCollection<SettingsNavItem> SettingsNavItems { get; } = new();
+
+        private SettingsNavItem? _selectedNavItem;
+        public SettingsNavItem? SelectedNavItem
+        {
+            get => _selectedNavItem;
+            set
+            {
+                if (SetProperty(ref _selectedNavItem, value) && value != null)
+                    SelectedSettingsCategory = value.Id;
+            }
+        }
+
+        private string _selectedSettingsCategory = "connect";
+        public string SelectedSettingsCategory
+        {
+            get => _selectedSettingsCategory;
+            set => SetProperty(ref _selectedSettingsCategory, value);
+        }
+
+        private string _selectedLlmProviderEditor = "ollama";
+        /// <summary>Which LLM provider panel is shown in Intelligence settings.</summary>
+        public string SelectedLlmProviderEditor
+        {
+            get => _selectedLlmProviderEditor;
+            set => SetProperty(ref _selectedLlmProviderEditor, value);
+        }
+
+        public IReadOnlyList<string> LlmProviderEditorOptions { get; } =
+            new[] { "ollama", "lmstudio", "anythingllm", "hermes" };
+
         // LLM Server Settings
         private string _lmStudioEndpoint = string.Empty;
         public string LmStudioEndpoint
@@ -806,10 +837,28 @@ namespace HouseVictoria.App.Screens.Windows
             StartKokoroCommand = new RelayCommand(async () => await StartKokoroAsync());
             StopKokoroCommand = new RelayCommand(async () => await StopKokoroAsync());
 
+            SelectedLlmProviderEditor = PrimaryLLM;
+            InitializeSettingsNavigation();
+            SelectedNavItem = SettingsNavItems.Count > 0 ? SettingsNavItems[0] : null;
+
             ValidateSettings();
 
             _ = RefreshKokoroStatusAsync();
             _ = RefreshComfyUICheckpointsAsync();
+        }
+
+        private void InitializeSettingsNavigation()
+        {
+            SettingsNavItems.Clear();
+            SettingsNavItems.Add(new SettingsNavItem("connect", "Connect", "Speech, SMS, and remote companion links", "\uE703"));
+            SettingsNavItems.Add(new SettingsNavItem("intelligence", "Intelligence", "LLM backends, MCP tools, and orchestration", "\uE95E"));
+            SettingsNavItems.Add(new SettingsNavItem("creativity", "Creativity", "Image generation and local ComfyUI stack", "\uE91F"));
+            SettingsNavItems.Add(new SettingsNavItem("presence", "Presence", "Unreal virtual environment bridge", "\uE8B7"));
+            SettingsNavItems.Add(new SettingsNavItem("memory", "Memory", "Persistent recall and vector search", "\uE7C3"));
+            SettingsNavItems.Add(new SettingsNavItem("autonomy", "Autonomy", "Background loop and cognition vitals", "\uE9D9"));
+            SettingsNavItems.Add(new SettingsNavItem("interface", "Interface", "Theme, overlay, and shell behavior", "\uE771"));
+            SettingsNavItems.Add(new SettingsNavItem("system", "System", "Tool permissions and agent capabilities", "\uE90F"));
+            SettingsNavItems.Add(new SettingsNavItem("advanced", "Advanced", "Locomotion, backups, and diagnostics", "\uE946"));
         }
 
         private void ValidateSettings()

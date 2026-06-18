@@ -45,15 +45,15 @@
                         <ComboBox ItemsSource="{Binding FilterTypes}" SelectedItem="{Binding SelectedFilterType}" 
                                  DisplayMemberPath="Name" SelectedValuePath="Value"
                                  Width="150" Margin="0,0,10,0" 
-                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
+                                 Background="{DynamicResource DarkInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"/>
                         <ComboBox ItemsSource="{Binding FilterPhases}" SelectedItem="{Binding SelectedFilterPhase}" 
                                  DisplayMemberPath="Name" SelectedValuePath="Value"
                                  Width="150" Margin="0,0,10,0" 
-                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
+                                 Background="{DynamicResource DarkInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"/>
                         <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSortOption}" 
                                  DisplayMemberPath="Name" SelectedValuePath="Value"
                                  Width="180" Margin="0,0,10,0" 
-                                 Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
+                                 Background="{DynamicResource DarkInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"/>
                         <Button Content="🔄 Refresh" Style="{StaticResource GlassButton}" 
                                Command="{Binding RefreshCommand}" Width="100"/>
                     </StackPanel>
@@ -113,7 +113,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                            <TextBlock Text="{Binding TypeString, FallbackValue='Other'}" FontSize="11" Foreground="#00D4FF" Margin="0,0,10,0"/>
+                                            <TextBlock Text="{Binding TypeString, FallbackValue='Other'}" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,10,0"/>
                                             <TextBlock Text="{Binding PhaseString, FallbackValue='Planning'}" FontSize="11" Foreground="#4CAF50" Margin="0,0,10,0"/>
                                             <TextBlock Text="{Binding Deadline, StringFormat='{}Due: {0:MMM dd}', FallbackValue='Due: N/A'}" 
                                                       FontSize="11" Foreground="#888888"/>

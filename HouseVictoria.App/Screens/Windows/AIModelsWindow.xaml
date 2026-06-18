@@ -28,24 +28,24 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="RowBorder" Property="Background" Value="#1E4A63"/>
+                                <Setter TargetName="RowBorder" Property="Background" Value="#221C2230"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="RowBorder" Property="Background" Value="#0D3D5C"/>
+                                <Setter TargetName="RowBorder" Property="Background" Value="#331C2230"/>
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="True"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="RowBorder" Property="Background" Value="#0A3552"/>
+                                <Setter TargetName="RowBorder" Property="Background" Value="#441C2230"/>
                             </MultiTrigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="True"/>
                                     <Condition Property="Selector.IsSelectionActive" Value="False"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="RowBorder" Property="Background" Value="#0F3A52"/>
+                                <Setter TargetName="RowBorder" Property="Background" Value="#331C2230"/>
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -69,7 +69,7 @@
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
-                               Background="#4000D4FF" 
+                               Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
@@ -77,56 +77,16 @@
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
                                ToolTip="Minimize to Tray">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#6000D4FF"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
                         </Button>
                         <Button Content="✕" 
                                Width="30" Height="30" 
-                               Background="#40FF3366" 
+                               Style="{StaticResource OverlayCloseButton}" Background="#33B86B6B" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
                                ToolTip="Close">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#60FF3366"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -151,12 +111,12 @@
                     <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=LoadModel}">
                         <Border Style="{StaticResource Card}" Margin="0,5">
                             <StackPanel>
-                                <TextBlock Text="📥 Ollama model control and availability" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
+                                <TextBlock Text="📥 Ollama model control and availability" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,10"/>
                                 
                                 <!-- Ollama Run Section -->
-                                <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,15">
+                                <Border Style="{StaticResource OverlayPanelToolbar}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,15">
                                     <StackPanel>
-                                        <TextBlock Text="🚀 Download New Model" FontSize="14" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,8"/>
+                                        <TextBlock Text="🚀 Download New Model" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,8"/>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="150"/>
@@ -166,7 +126,7 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="Model Name:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                             <TextBox Grid.Column="1" Text="{Binding OllamaRunCommand, UpdateSourceTrigger=PropertyChanged}" 
-                                                    Background="#252F3F" BorderBrush="#4000D4FF" 
+                                                    Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                                     Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"
                                                     IsEnabled="{Binding IsPullingModel, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                                                 <TextBox.ToolTip>
@@ -184,7 +144,7 @@
                                                    IsEnabled="{Binding IsRunningOllamaCommand}"/>
                                         </Grid>
                                         <TextBlock Text="{Binding PullModelStatus}" 
-                                                  Foreground="#80C4D4" FontSize="12" Margin="0,5,0,0"
+                                                  Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" Margin="0,5,0,0"
                                                   TextWrapping="Wrap"
                                                   Visibility="{Binding PullModelStatus, Converter={StaticResource BoolToVisibilityConverter}}">
                                             <TextBlock.Style>
@@ -198,18 +158,18 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <Border Background="#111827" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="8" Margin="0,10,0,0">
+                                        <Border Background="#111827" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="8" Margin="0,10,0,0">
                                             <StackPanel>
                                                 <DockPanel Margin="0,0,0,8">
                                                     <TextBlock Text="Command Output" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" DockPanel.Dock="Left"/>
                                                     <TextBlock Text="Running..." 
-                                                               Foreground="#80C4D4" FontSize="12" HorizontalAlignment="Right"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" HorizontalAlignment="Right"
                                                                Visibility="{Binding IsRunningOllamaCommand, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                 </DockPanel>
                                                 <TextBox x:Name="LoadModelLogTextBox"
                                                          Text="{Binding LoadModelLog}"
                                                          Background="#0B1220"
-                                                         BorderBrush="#4000D4FF"
+                                                         BorderBrush="{DynamicResource BorderSubtleBrush}"
                                                          Foreground="{DynamicResource TextPrimaryBrush}"
                                                          FontFamily="Consolas"
                                                          FontSize="12"
@@ -234,7 +194,7 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Ollama Endpoint:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                    <Border Grid.Column="1" Background="#1A2332" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="4" Margin="5,0" Padding="8">
+                                    <Border Grid.Column="1" Background="#1A2332" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4" Margin="5,0" Padding="8">
                                         <TextBlock Text="{Binding OllamaEndpoint}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
                                     </Border>
                                     <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="🔍 Show Available Models" 
@@ -244,7 +204,7 @@
                                 <ListView ItemsSource="{Binding AvailableOllamaModels}"
                                           SelectedItem="{Binding SelectedOllamaModel}"
                                           ItemContainerStyle="{StaticResource OllamaModelsListViewItem}"
-                                          Background="#252F3F" BorderBrush="#4000D4FF" 
+                                          Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                           Foreground="{DynamicResource TextPrimaryBrush}" Height="200" Margin="0,5">
                                     <ListView.Resources>
                                         <Style TargetType="GridViewColumnHeader">
@@ -271,7 +231,7 @@
                                     </ListView.View>
                                 </ListView>
                                 <TextBlock Text="{Binding SelectedModel, StringFormat='Selected: {0}'}" 
-                                          Foreground="#80C4D4" FontSize="12" Margin="0,5,0,0"/>
+                                          Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" Margin="0,5,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -288,10 +248,10 @@
                                       Padding="0,5,0,8">
                             <Border Style="{StaticResource Card}" Margin="0,5">
                                 <StackPanel>
-                                <TextBlock Text="{Binding PersonaFormTitle}" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
+                                <TextBlock Text="{Binding PersonaFormTitle}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,10"/>
 
                                 <!-- Live preview card -->
-                                <Border Background="#1A00D4FF" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                                <Border Background="#1A00D4FF" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
@@ -299,7 +259,7 @@
                                         </Grid.ColumnDefinitions>
                                         <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" Background="#2A3A4A" Margin="0,0,12,0" ClipToBounds="True">
                                             <Grid>
-                                                <TextBlock Text="{Binding PreviewInitial}" FontSize="20" FontWeight="Bold" Foreground="#00D4FF"
+                                                <TextBlock Text="{Binding PreviewInitial}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                            Visibility="{Binding HasPreviewPortrait, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
                                                 <Image Source="{Binding PreviewPortrait}" Stretch="UniformToFill"
@@ -308,8 +268,8 @@
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding PreviewName}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                            <TextBlock Text="{Binding PreviewRoleLabel}" FontSize="11" Foreground="#00D4FF" Margin="0,2,0,0"/>
-                                            <TextBlock FontSize="11" Foreground="#80C4D4" Margin="0,2,0,0">
+                                            <TextBlock Text="{Binding PreviewRoleLabel}" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" Margin="0,2,0,0"/>
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0">
                                                 <Run Text="Model: "/><Run Text="{Binding NewPersonaModel}"/>
                                             </TextBlock>
                                         </StackPanel>
@@ -323,7 +283,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Name:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding NewPersonaName, UpdateSourceTrigger=PropertyChanged}" 
-                                            Background="#252F3F" BorderBrush="#4000D4FF" 
+                                            Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                             Foreground="White" Padding="8" Margin="5,0"/>
                                 </Grid>
                                 <!-- Inline name validation -->
@@ -361,7 +321,7 @@
                                     <TextBlock Grid.Column="0" Text="Starter template:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePersonaPresets}"
                                               SelectedItem="{Binding SelectedPersonaPreset, Mode=TwoWay}"
-                                              Background="#252F3F" BorderBrush="#4000D4FF" Foreground="White" Padding="8" Margin="5,0"
+                                              Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" Foreground="White" Padding="8" Margin="5,0"
                                               ToolTip="Seeds the system prompt and sampling parameters. Choose Custom to keep your own values.">
                                         <ComboBox.ItemContainerStyle>
                                             <Style TargetType="ComboBoxItem">
@@ -382,7 +342,7 @@
                                             ItemsSource="{Binding AvailableModels}" 
                                             Text="{Binding NewPersonaModel, UpdateSourceTrigger=PropertyChanged}"
                                             SelectionChanged="ModelComboBox_SelectionChanged"
-                                            Background="#252F3F" BorderBrush="#4000D4FF" 
+                                            Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                             Foreground="White" Padding="8" Margin="5,0"
                                             IsEditable="True"
                                             IsEnabled="{Binding IsPullingModel, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
@@ -423,9 +383,9 @@
                                 <!-- Advanced: MCP endpoint (auto-generated; override only if needed) -->
                                 <Expander Margin="0,5" IsExpanded="False">
                                     <Expander.Header>
-                                        <TextBlock Text="🔌 Advanced (MCP endpoint)" FontSize="13" FontWeight="Bold" Foreground="#00D4FF"/>
+                                        <TextBlock Text="🔌 Advanced (MCP endpoint)" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                                     </Expander.Header>
-                                    <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,5">
+                                    <Border Style="{StaticResource OverlayPanelToolbar}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,5">
                                         <StackPanel>
                                             <Grid Margin="0,2">
                                                 <Grid.ColumnDefinitions>
@@ -434,7 +394,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="MCP Server:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaMCPServer, UpdateSourceTrigger=PropertyChanged}" 
-                                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                                         Foreground="White" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Per-persona MCP endpoint. Leave as-is unless you run a dedicated server for this persona." 
@@ -451,7 +411,7 @@
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePiperVoices}"
                                             Text="{Binding NewPersonaPiperVoice, UpdateSourceTrigger=PropertyChanged}"
                                             IsEditable="True"
-                                            Background="#252F3F" BorderBrush="#4000D4FF" 
+                                            Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                             Foreground="White" Padding="8" Margin="5,0">
                                         <ComboBox.ItemContainerStyle>
                                             <Style TargetType="ComboBoxItem">
@@ -478,7 +438,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Portrait:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding NewPersonaAvatarUrl, UpdateSourceTrigger=PropertyChanged}"
-                                            Background="#252F3F" BorderBrush="#4000D4FF"
+                                            Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"
                                             Foreground="White" Padding="8" Margin="5,0"/>
                                     <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="Browse…"
                                             Margin="5,0,0,0" Command="{Binding BrowsePortraitCommand}"/>
@@ -487,9 +447,9 @@
                                 <!-- Avatar Settings (virtual environment) -->
                                 <Expander Margin="0,10,0,5" IsExpanded="False">
                                     <Expander.Header>
-                                        <TextBlock Text="👤 Avatar Settings (Virtual Environment)" FontSize="14" FontWeight="Bold" Foreground="#00D4FF"/>
+                                        <TextBlock Text="👤 Avatar Settings (Virtual Environment)" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                                     </Expander.Header>
-                                    <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,5">
+                                    <Border Style="{StaticResource OverlayPanelToolbar}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,5">
                                         <StackPanel>
                                             <Grid Margin="0,5">
                                                 <Grid.ColumnDefinitions>
@@ -498,7 +458,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="3D Model Path:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaAvatarModelPath, UpdateSourceTrigger=PropertyChanged}" 
-                                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Path to avatar 3D model (.fbx, .glb) for the virtual environment" 
@@ -514,7 +474,7 @@
                                                        TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaAvatarVoiceSpeed, StringFormat='{}{0:F1}'}" 
-                                                          Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                          Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
                                             <Grid Margin="0,5">
                                                 <Grid.ColumnDefinitions>
@@ -527,7 +487,7 @@
                                                        TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="5,0"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaAvatarVoicePitch, StringFormat='{}{0:F1}'}" 
-                                                          Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                          Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
                                         </StackPanel>
                                     </Border>
@@ -539,17 +499,17 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Description:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Top" Margin="0,5,0,0"/>
                                     <TextBox Grid.Column="1" Text="{Binding NewPersonaDescription, UpdateSourceTrigger=PropertyChanged}" 
-                                            Background="#252F3F" BorderBrush="#4000D4FF" 
+                                            Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                             Foreground="White" Padding="8" Margin="5,0" TextWrapping="Wrap" Height="60"/>
                                 </Grid>
                                 <Expander Margin="0,10,0,5" IsExpanded="True">
                                     <Expander.Header>
-                                        <TextBlock Text="🔒 Shared knowledge (what this persona may see in chat)" FontSize="14" FontWeight="Bold" Foreground="#00D4FF"/>
+                                        <TextBlock Text="🔒 Shared knowledge (what this persona may see in chat)" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                                     </Expander.Header>
-                                    <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="12" Margin="0,5">
+                                    <Border Style="{StaticResource OverlayPanelToolbar}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="12" Margin="0,5">
                                         <StackPanel>
                                             <TextBlock Text="Companions only see basics about you plus their own memories by default. Check boxes to share more."
-                                                       FontSize="11" Foreground="#80C4D4" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                             <CheckBox Content="About me — global facts about the human user"
                                                       IsChecked="{Binding ShareUserBasics, Mode=TwoWay}"
                                                       Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4"/>
@@ -578,7 +538,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="System Prompt:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Top" Margin="0,5,0,0"/>
-                                    <Border Grid.Column="1" Background="#252F3F" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="4" Margin="5,0">
+                                    <Border Grid.Column="1" Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4" Margin="5,0">
                                         <TextBox Text="{Binding NewPersonaSystemPrompt, UpdateSourceTrigger=PropertyChanged}" 
                                                 Background="Transparent" BorderThickness="0" 
                                                 Foreground="White" Padding="8" 
@@ -592,9 +552,9 @@
                                 <!-- LLM Parameters Section -->
                                 <Expander Margin="0,10,0,5" IsExpanded="False">
                                     <Expander.Header>
-                                        <TextBlock Text="⚙️ LLM Parameters (Advanced)" FontSize="14" FontWeight="Bold" Foreground="#00D4FF"/>
+                                        <TextBlock Text="⚙️ LLM Parameters (Advanced)" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                                     </Expander.Header>
-                                    <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,5">
+                                    <Border Style="{StaticResource OverlayPanelToolbar}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,5">
                                         <StackPanel>
                                             <!-- Temperature -->
                                             <Grid Margin="0,5">
@@ -608,7 +568,7 @@
                                                        TickFrequency="0.1" IsSnapToTickEnabled="False" Margin="5,0"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaTemperature, StringFormat='{}{0:F2}'}" 
-                                                          Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                          Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
                                             <TextBlock Text="Controls randomness (0.0 = focused, 2.0 = creative)" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -625,7 +585,7 @@
                                                        TickFrequency="0.05" IsSnapToTickEnabled="False" Margin="5,0"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaTopP, StringFormat='{}{0:F2}'}" 
-                                                          Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                          Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
                                             <TextBlock Text="Nucleus sampling - controls diversity via probability" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -642,7 +602,7 @@
                                                        TickFrequency="1" IsSnapToTickEnabled="True" Margin="5,0"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaTopK}" 
-                                                          Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                          Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
                                             <TextBlock Text="Limits sampling to top K most likely tokens" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -659,7 +619,7 @@
                                                        TickFrequency="0.1" IsSnapToTickEnabled="False" Margin="5,0"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding NewPersonaRepeatPenalty, StringFormat='{}{0:F2}'}" 
-                                                          Foreground="#80C4D4" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                                          Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                             </Grid>
                                             <TextBlock Text="Penalizes repetition (higher = less repetition)" 
                                                       FontSize="10" Foreground="#5A6A7A" Margin="155,0,0,5"/>
@@ -672,7 +632,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="Max Tokens:" Foreground="White" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaMaxTokens, UpdateSourceTrigger=PropertyChanged}" 
-                                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Maximum tokens to generate (-1 = unlimited)" 
@@ -686,7 +646,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Grid.Column="0" Text="Context Length:" Foreground="White" VerticalAlignment="Center"/>
                                                 <TextBox Grid.Column="1" Text="{Binding NewPersonaContextLength, UpdateSourceTrigger=PropertyChanged}" 
-                                                        Background="#252F3F" BorderBrush="#4000D4FF" 
+                                                        Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                                             </Grid>
                                             <TextBlock Text="Size of the context window (varies by model)" 
@@ -742,7 +702,7 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="📖 AI Contact Book" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="📖 AI Contact Book" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
                                     <Button Grid.Column="1" Style="{StaticResource GlassButton}" Content="📥 Restore Backup"
                                             Command="{Binding RestorePersonaCommand}"
                                             ToolTip="Import a persona backup (.zip) from another machine or model"/>
@@ -762,10 +722,10 @@
                                                             <Border Background="#3300D4FF" BorderBrush="#00D4FF" BorderThickness="1" CornerRadius="3"
                                                                     Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center"
                                                                     Visibility="{Binding IsPrimaryAI, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                                <TextBlock Text="PRIMARY" FontSize="9" FontWeight="Bold" Foreground="#00D4FF"/>
+                                                                <TextBlock Text="PRIMARY" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                                                             </Border>
                                                         </StackPanel>
-                                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#80C4D4" Margin="0,2,0,0"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                                                         <TextBlock FontSize="11" Foreground="#5A6A7A" Margin="0,2,0,0">
                                                             <Run Text="Model: "/>
                                                             <Run Text="{Binding ModelName}"/>
@@ -820,7 +780,7 @@
                     <StackPanel Visibility="{Binding CurrentView, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=ImageGeneration}">
                         <Border Style="{StaticResource Card}" Margin="0,5">
                             <StackPanel>
-                                <TextBlock Text="🎨 AI Image Generation" FontSize="16" FontWeight="Bold" Foreground="#00D4FF" Margin="0,0,0,10"/>
+                                <TextBlock Text="🎨 AI Image Generation" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,10"/>
                                 
                                 <!-- Image Generation Prompt -->
                                 <Grid Margin="0,5">
@@ -830,7 +790,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Prompt:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Top" Margin="0,5,0,0"/>
                                     <TextBox Grid.Column="1" Text="{Binding ImageGenerationPrompt, UpdateSourceTrigger=PropertyChanged}" 
-                                            Background="#252F3F" BorderBrush="#4000D4FF" 
+                                            Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                             Foreground="White" Padding="8" Margin="5,0" 
                                             TextWrapping="Wrap" Height="100" AcceptsReturn="True"/>
                                 </Grid>
@@ -845,7 +805,7 @@
                                     <Slider Grid.Column="1" Minimum="256" Maximum="1024" Value="{Binding ImageWidth}" 
                                            TickFrequency="128" IsSnapToTickEnabled="True" Margin="5,0"/>
                                     <TextBlock Grid.Column="1" Text="{Binding ImageWidth, StringFormat='{}Width: {0}px'}" 
-                                              Foreground="#80C4D4" VerticalAlignment="Top" Margin="5,25,0,0"/>
+                                              Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Top" Margin="5,25,0,0"/>
                                 </Grid>
 
                                 <Grid Margin="0,10">
@@ -857,7 +817,7 @@
                                     <Slider Grid.Column="1" Minimum="256" Maximum="1024" Value="{Binding ImageHeight}" 
                                            TickFrequency="128" IsSnapToTickEnabled="True" Margin="5,0"/>
                                     <TextBlock Grid.Column="1" Text="{Binding ImageHeight, StringFormat='{}Height: {0}px'}" 
-                                              Foreground="#80C4D4" VerticalAlignment="Top" Margin="5,25,0,0"/>
+                                              Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Top" Margin="5,25,0,0"/>
                                 </Grid>
 
                                 <!-- Generate Button -->
@@ -895,7 +855,7 @@
                                 </TextBlock>
 
                                 <!-- Generated Image Preview -->
-                                <Border Background="#300A0E27" BorderBrush="#4000D4FF" BorderThickness="1" 
+                                <Border Style="{StaticResource OverlayPanelToolbar}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" 
                                        CornerRadius="5" Padding="10" Margin="0,10,0,0"
                                        Visibility="{Binding HasGeneratedImage, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <StackPanel>

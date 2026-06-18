@@ -12,7 +12,7 @@
          <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
     </Window.Resources>
 
-    <Border Background="Transparent">
+    <Border Style="{StaticResource OverlayPanelShell}" Background="Transparent">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -23,69 +23,12 @@
             <!-- Header -->
             <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="🗄️ Data Bank Management" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <TextBlock Text="🗄️ Data Bank Management" Style="{StaticResource OverlayPanelTitle}"/>
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Content="−" 
-                               Width="30" Height="30" 
-                               Background="#4000D4FF" 
-                               BorderThickness="0"
-                               FontSize="18" FontWeight="Bold"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               Cursor="Hand"
-                               Margin="0,0,5,0"
-                               Click="MinimizeButton_Click"
-                               ToolTip="Minimize to Tray">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#6000D4FF"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <Button Content="✕" 
-                               Width="30" Height="30" 
-                               Background="#40FF3366" 
-                               BorderThickness="0"
-                               FontSize="16" FontWeight="Bold"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               Cursor="Hand"
-                               Click="CloseButton_Click"
-                               ToolTip="Close">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#60FF3366"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                        <Button Content="−" Style="{StaticResource OverlayMinimizeButton}"
+                               Click="MinimizeButton_Click" ToolTip="Minimize to Tray"/>
+                        <Button Content="✕" Style="{StaticResource OverlayCloseButton}"
+                               Click="CloseButton_Click" ToolTip="Close"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -103,8 +46,8 @@
                         <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,10,0"/>
                         <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" 
                                 Width="250" Margin="0,0,10,0"
-                                Background="#252F3F" 
-                                BorderBrush="#4000D4FF" 
+                                Background="{DynamicResource DarkInputBrush}" 
+                                BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="8"/>
                         <Button Content="🔄 Refresh" Style="{StaticResource GlassButton}" 
                                Command="{Binding RefreshCommand}" Width="100"/>
@@ -119,14 +62,14 @@
             </Border>
 
             <!-- Data Banks List -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="2" Background="{DynamicResource DarkBackgroundBrush}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="3*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Left: Data Bank List -->
-                <Border Grid.Column="0" BorderBrush="#4000D4FF" BorderThickness="0,0,1,0" Margin="10,10,0,10">
+                <Border Grid.Column="0" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Margin="10,10,0,10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -134,13 +77,11 @@
                         </Grid.RowDefinitions>
                         
                         <TextBlock Grid.Row="0" Text="Data Banks" FontSize="16" FontWeight="Bold" 
-                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+                                  Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,10"/>
                         
                         <ScrollViewer Grid.Row="1"
                                       Style="{StaticResource ModernScrollViewer}"
-                                      VerticalScrollBarVisibility="Disabled"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      PanningMode="None">
+                                      VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding FilteredDataBanks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -154,16 +95,16 @@
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock Text="{Binding Name, FallbackValue='Data Bank Name'}" 
-                                                              FontSize="14" FontWeight="Bold" Foreground="White"/>
+                                                              FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                     <TextBlock Text="{Binding Description, FallbackValue=''}" 
-                                                              FontSize="11" Foreground="#CCCCCC" 
+                                                              FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" 
                                                               TextWrapping="Wrap" Margin="0,2,0,0"
                                                               MaxHeight="40" TextTrimming="CharacterEllipsis"/>
                                                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                                         <TextBlock Text="{Binding EntryCount, StringFormat='{}Entries: {0}', FallbackValue='Entries: 0'}" 
-                                                                  FontSize="10" Foreground="#888888" Margin="0,0,10,0"/>
+                                                                  FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,10,0"/>
                                                         <TextBlock Text="{Binding LastModified, StringFormat='{}Modified: {0:MMM dd}', FallbackValue=''}" 
-                                                                  FontSize="10" Foreground="#888888"/>
+                                                                  FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                     </StackPanel>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -186,7 +127,7 @@
                         </ScrollViewer>
                         
                         <TextBlock Text="No data banks found. Create a new data bank to get started." 
-                                  FontSize="12" Foreground="#888888" 
+                                  FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" 
                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                   TextAlignment="Center">
                             <TextBlock.Style>
@@ -216,21 +157,21 @@
                         <TextBlock Grid.Row="0" 
                                   Text="{Binding SelectedDataBankName, StringFormat='{}Data Entries: {0}', FallbackValue='Select a data bank to view entries'}" 
                                   FontSize="16" FontWeight="Bold" 
-                                  Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+                                  Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,10"/>
                         
                         <!-- Entry search / filters -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
                             <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
                             <TextBox Text="{Binding EntrySearchQuery, UpdateSourceTrigger=PropertyChanged}"
                                      Width="220"
-                                     Background="#252F3F" 
-                                     BorderBrush="#4000D4FF" 
+                                     Background="{DynamicResource DarkInputBrush}" 
+                                     BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                      Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="0,0,12,0"/>
                             <TextBlock Text="Category:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
                             <ComboBox ItemsSource="{Binding AvailableCategories}"
                                       SelectedItem="{Binding SelectedCategory}"
                                       Width="160" Margin="0,0,12,0"
-                                      Background="#252F3F" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="#4000D4FF"/>
+                                      Background="{DynamicResource DarkInputBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"/>
                             <TextBlock Text="Min Importance:" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
                             <Slider Minimum="0" Maximum="1"
                                     Value="{Binding MinimumImportance, UpdateSourceTrigger=PropertyChanged}"
@@ -254,9 +195,7 @@
                         
                         <ScrollViewer Grid.Row="3"
                                       Style="{StaticResource ModernScrollViewer}"
-                                      VerticalScrollBarVisibility="Disabled"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      PanningMode="None">
+                                      VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding SelectedDataBankEntries}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -268,17 +207,17 @@
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock Text="{Binding Title, FallbackValue='Entry title'}" 
-                                                              FontSize="14" FontWeight="Bold" Foreground="White"/>
+                                                              FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                                                        <TextBlock Text="{Binding Category, TargetNullValue='Uncategorized'}" FontSize="11" Foreground="#00D4FF" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding Category, TargetNullValue='Uncategorized'}" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,10,0"/>
                                                         <TextBlock Text="{Binding Importance, StringFormat='{}Imp: {0:F2}'}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,10,0"/>
-                                                        <TextBlock Text="{Binding TagsDisplay}" FontSize="11" Foreground="#CCCCCC" TextTrimming="CharacterEllipsis" MaxWidth="240"/>
+                                                        <TextBlock Text="{Binding TagsDisplay}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="240"/>
                                                     </StackPanel>
                                                     <TextBlock Grid.Column="0" 
                                                               Text="{Binding Content, FallbackValue='Entry content'}" 
-                                                              FontSize="12" Foreground="White" 
+                                                              FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" 
                                                               TextWrapping="Wrap" MaxHeight="140"/>
-                                                    <TextBlock Text="{Binding AttachmentSummary}" FontSize="11" Foreground="#CCCCCC" Margin="0,4,0,0">
+                                                    <TextBlock Text="{Binding AttachmentSummary}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -291,7 +230,7 @@
                                                         </TextBlock.Style>
                                                     </TextBlock>
                                                     <TextBlock Text="{Binding LastModified, StringFormat='{}Updated: {0:MMM dd, HH:mm}'}"
-                                                              FontSize="10" Foreground="#888888" Margin="0,6,0,0"/>
+                                                              FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"/>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                     <Button Style="{StaticResource GlassButton}" 
@@ -313,7 +252,7 @@
                         </ScrollViewer>
                         
                         <TextBlock Text="No entries in this data bank." 
-                                  FontSize="12" Foreground="#888888" 
+                                  FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" 
                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                   Grid.Row="3">
                             <TextBlock.Style>

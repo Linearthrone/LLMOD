@@ -23,7 +23,7 @@
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
-                               Background="#4000D4FF" 
+                               Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
                                BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
@@ -31,56 +31,16 @@
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
                                ToolTip="Minimize to Tray">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#6000D4FF"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
                         </Button>
                         <Button Content="✕" 
                                Width="30" Height="30" 
-                               Background="#40FF3366" 
+                               Style="{StaticResource OverlayCloseButton}" Background="#33B86B6B" 
                                BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
                                ToolTip="Close">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="6">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#60FF3366"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -88,7 +48,7 @@
 
             <!-- Video Area -->
             <Grid Grid.Row="1" Margin="12">
-                <Border Background="#1B2230" CornerRadius="12" BorderBrush="#4000D4FF" BorderThickness="1">
+                <Border Background="#1B2230" CornerRadius="12" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                     <Grid>
                         <TextBlock Text="{Binding RemoteVideoStatusText}"
                                   Foreground="#B0C4DE"
@@ -103,7 +63,7 @@
                                 Margin="12"
                                 Background="#283045"
                                 CornerRadius="10"
-                                BorderBrush="#4000D4FF"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
                                 BorderThickness="1">
                             <Grid>
                                 <Image x:Name="LocalPreviewImage" Stretch="UniformToFill"/>
@@ -121,7 +81,7 @@
             </Grid>
 
             <!-- Controls -->
-            <Border Grid.Row="2" Background="#300A0E27" Padding="12">
+            <Border Grid.Row="2" Style="{StaticResource OverlayPanelToolbar}" Padding="12">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>

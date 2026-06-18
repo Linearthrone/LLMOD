@@ -239,7 +239,7 @@ set "DO_BUILD=0"
 if not exist "%APP_EXE%" set "DO_BUILD=1"
 if /i "%HV_FORCE_BUILD%"=="1" set "DO_BUILD=1"
 if "%DO_BUILD%"=="1" (
-    echo Building House Victoria App (Release)...
+    echo Building House Victoria App ^(Release^)...
     dotnet build "%SCRIPT_DIR%\HouseVictoria.sln" -c Release
     if errorlevel 1 (
         echo [ERROR] Release build failed. Fix errors above, then run start.bat again.

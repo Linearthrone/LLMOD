@@ -39,18 +39,11 @@
                        VerticalAlignment="Top"
                        Margin="24,16,24,0"/>
 
-        <!-- Cognition vitals beacon -->
-        <trays:CognitionVitalsDrawer x:Name="CognitionVitalsDrawerElement"
-                                     HorizontalAlignment="Left"
-                                     VerticalAlignment="Top"
-                                     Margin="12,12,0,0"
-                                     Panel.ZIndex="1001"/>
-
-        <!-- System instrument drawer -->
-        <trays:SystemMonitorDrawer x:Name="SystemMonitorDrawerElement"
-                                   HorizontalAlignment="Left"
-                                   VerticalAlignment="Stretch"
-                                   Panel.ZIndex="1000"/>
+        <!-- Unified instrument stack (vitals + systems) -->
+        <trays:InstrumentStackDrawer x:Name="InstrumentStackDrawerElement"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Stretch"
+                                      Panel.ZIndex="1000"/>
 
         <ContentControl x:Name="WindowContainer"
                         HorizontalAlignment="Stretch"

@@ -11,6 +11,8 @@
                 <ResourceDictionary Source="Styles/MaterialDesignControls.xaml" />
                 <!-- Obsidian Field design system -->
                 <ResourceDictionary Source="Styles/ObsidianField.xaml" />
+                <ResourceDictionary Source="Styles/InstrumentStackStyles.xaml" />
+                <ResourceDictionary Source="Styles/SettingsShellStyles.xaml" />
                 <!-- App Custom Styles -->
                 <ResourceDictionary Source="Styles/GlassEffect.xaml" />
                 <ResourceDictionary Source="Styles/OverlayStyles.xaml" />
