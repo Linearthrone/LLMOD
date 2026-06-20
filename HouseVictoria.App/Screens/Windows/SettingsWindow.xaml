@@ -230,7 +230,7 @@
                         <StackPanel>
                             <TextBlock Text="🎨 Image Generation" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Default: A2E cloud (text-to-image). Choose ComfyUI only when you want local Stability Matrix / ComfyUI." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <TextBlock Text="Select a provider, then configure credentials and endpoints in the panel below." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -240,13 +240,20 @@
                                 <ComboBox Grid.Column="1"
                                           ItemsSource="{Binding ImageGenerationProviderOptions}"
                                           SelectedItem="{Binding ImageGenerationProvider, UpdateSourceTrigger=PropertyChanged}"
-                                          Background="{DynamicResource DarkInputBrush}"
-                                          BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                          Foreground="{DynamicResource TextPrimaryBrush}"
-                                          Padding="8"
+                                          Style="{StaticResource SettingsProviderPicker}"
                                           Margin="5,0"/>
                             </Grid>
-                            <Grid Margin="0,8,0,0">
+                            <Border Background="#121820"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="14"
+                                    Margin="0,10,0,0"
+                                    MinHeight="180">
+                                <StackPanel>
+                            <StackPanel Visibility="{Binding ImageGenerationProvider, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=a2e}">
+                            <TextBlock Text="A2E Cloud" Style="{StaticResource SettingsSectionTitle}"/>
+                            <Grid Margin="0,5,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
                                     <ColumnDefinition Width="*"/>
@@ -268,8 +275,10 @@
                                         Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
-                            <TextBlock Text="Local ComfyUI (fallback or when provider = comfyui)" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,4,0,4"/>
-                            <TextBlock Text="Configure the local image endpoint (typically ComfyUI on port 8188)." FontSize="12" Foreground="#CCCCCC" Margin="0,0,0,5"/>
+                            </StackPanel>
+                            <StackPanel Visibility="{Binding ImageGenerationProvider, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=comfyui}">
+                            <TextBlock Text="Local ComfyUI" Style="{StaticResource SettingsSectionTitle}"/>
+                            <TextBlock Text="Configure the local image endpoint (typically ComfyUI on port 8188)." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -340,6 +349,9 @@
                             </Grid>
                             <TextBlock Text="Optional: Path to custom workflow JSON (ComfyUI API format). Use placeholders {{positive}}, {{negative}}, {{width}}, {{height}}, {{seed}}, {{filename_prefix}}."
                                       FontSize="11" Foreground="#5A6A7A" Margin="0,3,0,0" FontStyle="Italic" TextWrapping="Wrap"/>
+                            </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -478,10 +490,30 @@
                         <StackPanel>
                             <TextBlock Text="🧠 LLM Servers" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
-                            <TextBlock Text="Configure LM Studio, Ollama, Anything LLM, and Hermes Agent. Only one can be primary. Hermes provides terminal, browser, and MCP tools. When Hermes is primary, Ollama should still run as the LLM backend for Hermes." 
-                                      FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <TextBlock Text="Pick a provider, then configure its endpoint in the panel below. Only one provider can be primary at a time." 
+                                      FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Provider:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding LlmProviderEditorOptions}"
+                                          SelectedItem="{Binding SelectedLlmProviderEditor, UpdateSourceTrigger=PropertyChanged}"
+                                          Style="{StaticResource SettingsProviderPicker}"
+                                          Margin="5,0"/>
+                            </Grid>
+                            <Border Background="#121820"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="14"
+                                    MinHeight="200">
+                                <StackPanel>
                             <!-- LM Studio -->
-                            <TextBlock Text="LM Studio" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,5,0,2"/>
+                            <StackPanel Visibility="{Binding SelectedLlmProviderEditor, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=lmstudio}">
+                            <TextBlock Text="LM Studio" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -519,8 +551,10 @@
                                            Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                                 </StackPanel>
                             </Grid>
+                            </StackPanel>
                             <!-- Ollama -->
-                            <TextBlock Text="Ollama" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <StackPanel Visibility="{Binding SelectedLlmProviderEditor, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=ollama}">
+                            <TextBlock Text="Ollama" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -558,8 +592,10 @@
                                            Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                                 </StackPanel>
                             </Grid>
+                            </StackPanel>
                             <!-- Anything LLM -->
-                            <TextBlock Text="Anything LLM" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <StackPanel Visibility="{Binding SelectedLlmProviderEditor, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=anythingllm}">
+                            <TextBlock Text="Anything LLM" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -597,8 +633,10 @@
                                            Width="60" Margin="5,0" IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBoolConverter}}"/>
                                 </StackPanel>
                             </Grid>
+                            </StackPanel>
                             <!-- Hermes Agent -->
-                            <TextBlock Text="Hermes Agent (tools + orchestration)" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,8,0,2"/>
+                            <StackPanel Visibility="{Binding SelectedLlmProviderEditor, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=hermes}">
+                            <TextBlock Text="Hermes Agent (tools + orchestration)" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                             <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -660,6 +698,9 @@
                                          Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="5,0"
                                          Content="Auto-start gateway"/>
                             </Grid>
+                            </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -867,8 +908,8 @@
                     </Border>
 
                     <!-- Persistent Memory Configuration -->
-                    <Border Style="{StaticResource Card}" Margin="0,5"
-                            Visibility="{Binding SelectedSettingsTabIndex, Converter={StaticResource TabIndexVisibilityConverter}, ConverterParameter='0|4'}">
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=memory}">
                         <StackPanel>
                             <TextBlock Text="💾 Persistent Memory Configuration" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
                             <Separator Margin="0,5" Background="#1A2332"/>
@@ -977,6 +1018,35 @@
                                     <TextBlock Text="{Binding HybridLexicalWeight, StringFormat='Lexical weight: {0:F2} (vector = 1 − this)'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"/>
                                 </StackPanel>
                             </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Advanced: configuration vault -->
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=advanced}">
+                        <StackPanel>
+                            <TextBlock Text="Configuration vault" Style="{StaticResource SettingsSectionTitle}"/>
+                            <TextBlock Text="Export a portable snapshot of all endpoints, themes, and autonomy settings. Import merges values from a saved JSON file. Reset restores factory defaults."
+                                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Style="{StaticResource GlassButton}" Content="Import snapshot"
+                                        Command="{Binding ImportSettingsCommand}" Height="36" Margin="0,0,6,0"/>
+                                <Button Grid.Column="1" Style="{StaticResource GlassButton}" Content="Export snapshot"
+                                        Command="{Binding ExportSettingsCommand}" Height="36" Margin="3,0"/>
+                                <Button Grid.Column="2" Style="{StaticResource GlassButton}" Content="Reset to defaults"
+                                        Command="{Binding ResetToDefaultsCommand}" Height="36" Margin="6,0,0,0"/>
+                            </Grid>
+                            <Separator Margin="0,14" Background="{DynamicResource BorderSubtleBrush}"/>
+                            <TextBlock Text="Diagnostics" Style="{StaticResource SettingsSectionTitle}"/>
+                            <TextBlock Text="{Binding PrimaryLLM, StringFormat='Primary LLM: {0}'}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,2"/>
+                            <TextBlock Text="{Binding PersistentMemoryPath, StringFormat='Memory store: {0}'}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
 
