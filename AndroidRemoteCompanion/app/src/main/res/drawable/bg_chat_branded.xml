@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/hv_background" />
+        </shape>
+    </item>
+    <item
+        android:width="280dp"
+        android:height="280dp"
+        android:gravity="center">
+        <bitmap
+            android:alpha="36"
+            android:gravity="center"
+            android:src="@drawable/house_victoria_seal" />
+    </item>
+    <item android:drawable="@drawable/bg_mesh" />
+</layer-list>

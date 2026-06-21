@@ -1,6 +1,7 @@
 param(
-    [string]$Text = "This is a test of the House Victoria text to speech service.",
-    [string]$OutputPath = "Media\Test-TTS.wav"
+    [string]$Text = "This is a test of the House Victoria Chatterbox text to speech service.",
+    [string]$OutputPath = "Media/Test-TTS.wav",
+    [string]$Voice = "default"
 )
 
 Set-StrictMode -Version Latest
@@ -8,39 +9,36 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== House Victoria TTS Smoke Test ==="
 
-# Resolve repo root based on script location
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 Write-Host "Repo root: $repoRoot"
 
-# Load App.config to get TTSEndpoint
 $appConfigPath = Join-Path $repoRoot "HouseVictoria.App\App.config"
-if (-not (Test-Path $appConfigPath)) {
-    Write-Warning "App.config not found at $appConfigPath. Falling back to default TTS endpoint http://localhost:5000"
-    $ttsEndpoint = "http://localhost:5000"
-} else {
+$ttsEndpoint = "http://localhost:8881"
+if (Test-Path $appConfigPath) {
     [xml]$configXml = Get-Content $appConfigPath
     $settings = $configXml.configuration.appSettings.add
     $ttsSetting = $settings | Where-Object { $_.key -eq "TTSEndpoint" }
-    $ttsEndpoint = if ($ttsSetting -and $ttsSetting.value) { $ttsSetting.value } else { "http://localhost:5000" }
+    if ($ttsSetting -and $ttsSetting.value) {
+        $ttsEndpoint = $ttsSetting.value
+    }
 }
 
 $ttsEndpoint = $ttsEndpoint.TrimEnd("/")
 Write-Host "Using TTSEndpoint: $ttsEndpoint"
 
 try {
-    # Health check
     Write-Host "Checking TTS health at $ttsEndpoint/health ..."
-    $healthResponse = Invoke-WebRequest -UseBasicParsing -Uri "$ttsEndpoint/health" -TimeoutSec 5
+    $healthResponse = Invoke-WebRequest -UseBasicParsing -Uri "$ttsEndpoint/health" -TimeoutSec 10
     Write-Host "Health status: $($healthResponse.StatusCode)"
 } catch {
-    Write-Warning "Health check failed: $($_.Exception.Message). Continuing with synthesis attempt."
+    Write-Warning "Health check failed: $($_.Exception.Message). Is Chatterbox running? Run install.bat then start.bat."
 }
 
 try {
-    Write-Host "Requesting synthesis..."
-    $body = @{ text = $Text } | ConvertTo-Json -Depth 3
-    $response = Invoke-WebRequest -UseBasicParsing -Uri "$ttsEndpoint/" -Method Post -ContentType "application/json" -Body $body -TimeoutSec 30
+    Write-Host "Requesting synthesis (voice=$Voice)..."
+    $body = @{ text = $Text; voice = $Voice } | ConvertTo-Json -Depth 3
+    $response = Invoke-WebRequest -UseBasicParsing -Uri "$ttsEndpoint/" -Method Post -ContentType "application/json" -Body $body -TimeoutSec 120
     if (-not $response.Content) {
         throw "TTS response had no content."
     }
@@ -59,4 +57,3 @@ try {
     Write-Error "TTS smoke test failed: $($_.Exception.Message)"
     exit 1
 }
-

@@ -38,6 +38,28 @@ namespace HouseVictoria.Services.Communication
             @"(?<relpath>(?:docs|Media|Data|GeneratedFiles)[/\\][^\s""'<>|]+?\.(?:md|txt|json|csv|html|xml|py|cs|pdf))",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        private static readonly Regex ExplicitImageRequestPattern = new(
+            @"(generate|create|make|send|show)\s+(?:me\s+)?(?:an?\s+)?(image|picture|photo)|" +
+            @"\b(draw|paint|sketch|render)\b|" +
+            @"\b(picture|photo|image)\s+of\b|" +
+            @"\b(send|show)\s+(?:me\s+)?(?:an?\s+)?(picture|photo|image)\b|" +
+            @"\bstable diffusion\b",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex CasualVisualIntentPattern = new(
+            @"\b(send|show|give|make|create|generate|draw|paint|want|need|get|another|more|again)\b",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex AiImageDeliveryClaimPattern = new(
+            @"\b(I('ve|\s+have)?\s+(sent|uploaded|attached|delivered|shared)|here('s| is)\s+(your|the|an?))\s+(?:you\s+)?(?:an?\s+)?(image|picture|photo|selfie|portrait)\b|" +
+            @"\b(generating|creating|making|drawing|rendering|working on|about to send)\b.{0,60}\b(image|picture|photo|selfie|portrait|drawing)\b",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex AiFileDeliveredClaimPattern = new(
+            @"\b(I('ve|\s+have)?\s+(sent|saved|created|written|uploaded|delivered|put|placed|added)|here('s| is)\s+(your|the))\s+(?:you\s+)?(?:the\s+)?(file|document|paper|report|markdown)\b|" +
+            @"\b(saved|placed|put)\s+(?:it\s+)?(?:in|to|into)\s+(?:the\s+)?(file\s+retrieval|retrieval\s+folder|generated\s*files?)\b",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         public static bool IsUserAskingAboutExistingFile(string? message)
         {
             if (string.IsNullOrWhiteSpace(message))
@@ -80,9 +102,81 @@ namespace HouseVictoria.Services.Communication
             return openParens >= 3 && message.Contains("(I ", StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool HasExplicitImageGenerationIntent(string? message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+
+            var m = message.Trim();
+            return m.Contains("draw", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("generate image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("generate an image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("generate a picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("create image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("create an image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("create a picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("make an image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("make a picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("send me a picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("send me an image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("send me a photo", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("send a picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("show me a picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("picture of", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("image of", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("photo of", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("stable diffusion", StringComparison.OrdinalIgnoreCase)
+                || ExplicitImageRequestPattern.IsMatch(m);
+        }
+
+        public static bool HasCasualVisualImageIntent(string? message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+
+            var m = message.Trim();
+            var wantsVisual = m.Contains("picture", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("photo", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("image", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("drawing", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("portrait", StringComparison.OrdinalIgnoreCase)
+                || m.Contains("selfie", StringComparison.OrdinalIgnoreCase);
+            if (!wantsVisual)
+                return false;
+
+            return CasualVisualIntentPattern.IsMatch(m);
+        }
+
+        /// <summary>
+        /// True when the user message should trigger real image generation (not a text-only roleplay reply).
+        /// </summary>
+        public static bool ShouldAttemptImageGeneration(string? message, bool isFollowUpWithPriorPrompt = false)
+        {
+            if (ShouldBlockImageGeneration(message))
+                return false;
+
+            if (HasExplicitImageGenerationIntent(message))
+                return true;
+
+            if (isFollowUpWithPriorPrompt)
+                return true;
+
+            return HasCasualVisualImageIntent(message);
+        }
+
+        public static bool AiPromisesOrClaimsImageDelivery(string? aiResponse) =>
+            !string.IsNullOrWhiteSpace(aiResponse) && AiImageDeliveryClaimPattern.IsMatch(aiResponse);
+
+        public static bool AiClaimsFileDelivered(string? aiResponse) =>
+            !string.IsNullOrWhiteSpace(aiResponse) && AiFileDeliveredClaimPattern.IsMatch(aiResponse);
+
         public static bool ShouldBlockImageGeneration(string? message)
         {
             if (string.IsNullOrWhiteSpace(message))
+                return false;
+
+            // Explicit image requests win over incidental "file" / "research paper" wording in the same message.
+            if (HasExplicitImageGenerationIntent(message))
                 return false;
 
             if (IsUserRequestingFileCreation(message) || IsUserAskingAboutExistingFile(message))

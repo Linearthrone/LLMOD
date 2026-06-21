@@ -53,7 +53,7 @@ namespace HouseVictoria.Core.Interfaces
         /// <summary>System prompt (persona identity + voice-call style guidance).</summary>
         public string SystemPrompt { get; set; } = string.Empty;
 
-        /// <summary>Kokoro voice id (e.g. af_nicole). Null/empty uses engine default.</summary>
+        /// <summary>Chatterbox reference voice id (wav stem). Null/empty uses engine default.</summary>
         public string? Voice { get; set; }
 
         /// <summary>Speech playback speed.</summary>

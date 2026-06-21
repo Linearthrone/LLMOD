@@ -776,7 +776,21 @@ namespace HouseVictoria.Services.Communication
 
                         // If she promised to "give a moment" / "be right back" / follow up,
                         // schedule a delayed follow-up so she actually delivers instead of going silent.
-                        TryScheduleFollowUp(aiContact, message.ConversationId, responseMessage);
+                        var needsImageCatchUp = ShouldCatchUpImageGeneration(
+                            message.ConversationId, message.Content, aiResponse);
+                        if (!needsImageCatchUp)
+                        {
+                            TryScheduleFollowUp(aiContact, message.ConversationId, responseMessage, message.Content);
+                        }
+
+                        // Text path: persona may claim an image is coming — run real generation if we skipped the fast path.
+                        await TryDeliverCatchUpImageAsync(
+                            aiContact,
+                            conversation,
+                            message.ConversationId,
+                            message.Content,
+                            aiResponse,
+                            context).ConfigureAwait(false);
                     }
                     catch (TaskCanceledException ex)
                     {
@@ -929,6 +943,12 @@ namespace HouseVictoria.Services.Communication
                         $"{aiResponse.TrimEnd()}\n\n✅ Imported to File Retrieval: {System.IO.Path.GetFileName(primary)}",
                         System.IO.Path.GetFileName(primary));
                 }
+
+                if (FileDeliveryHelper.AiClaimsFileDelivered(aiResponse))
+                {
+                    System.Diagnostics.Debug.WriteLine("AI claimed a file was delivered but no [FILE] payload or importable path was found.");
+                    return (false, FileDeliveryHelper.FormatFileNotDeliveredWarning(aiResponse), null);
+                }
             }
             catch (Exception ex)
             {
@@ -941,30 +961,8 @@ namespace HouseVictoria.Services.Communication
         /// <summary>
         /// Detects if the user is asking for image generation.
         /// </summary>
-        private static bool IsImageGenerationRequest(string message)
-        {
-            if (string.IsNullOrWhiteSpace(message)) return false;
-            var m = message.Trim();
-            return m.Contains("draw", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("generate image", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("generate an image", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("generate a picture", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("create image", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("create an image", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("create a picture", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("make an image", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("make a picture", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("send me a picture", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("send me an image", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("send me a photo", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("send a picture", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("show me a picture", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("picture of", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("image of", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("photo of", StringComparison.OrdinalIgnoreCase) ||
-                   m.Contains("stable diffusion", StringComparison.OrdinalIgnoreCase) ||
-                   System.Text.RegularExpressions.Regex.IsMatch(m, @"(generate|create|make|send|show)\s+(?:me\s+)?(?:an?\s+)?(image|picture|photo)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        }
+        private static bool IsImageGenerationRequest(string message) =>
+            FileDeliveryHelper.HasExplicitImageGenerationIntent(message);
 
         /// <summary>
         /// Broader intent check so casual requests ("I want a picture of…") still trigger generation
@@ -972,27 +970,129 @@ namespace HouseVictoria.Services.Communication
         /// </summary>
         private bool ShouldGenerateImageForMessage(string conversationId, string message)
         {
-            if (FileDeliveryHelper.ShouldBlockImageGeneration(message))
-                return false;
+            var isFollowUp = IsImageFollowUpRequest(message)
+                && _lastImagePromptByConversation.ContainsKey(conversationId);
+            return FileDeliveryHelper.ShouldAttemptImageGeneration(message, isFollowUp);
+        }
 
-            if (IsImageGenerationRequest(message))
+        private bool ShouldCatchUpImageGeneration(string conversationId, string userMessage, string aiResponse)
+        {
+            var isFollowUp = IsImageFollowUpRequest(userMessage)
+                && _lastImagePromptByConversation.ContainsKey(conversationId);
+            if (FileDeliveryHelper.ShouldAttemptImageGeneration(userMessage, isFollowUp))
                 return true;
-            if (IsImageFollowUpRequest(message) && _lastImagePromptByConversation.ContainsKey(conversationId))
-                return true;
-            if (string.IsNullOrWhiteSpace(message))
-                return false;
-            var m = message.Trim();
-            var wantsVisual = m.Contains("picture", StringComparison.OrdinalIgnoreCase)
-                || m.Contains("photo", StringComparison.OrdinalIgnoreCase)
-                || m.Contains("image", StringComparison.OrdinalIgnoreCase)
-                || m.Contains("drawing", StringComparison.OrdinalIgnoreCase)
-                || m.Contains("portrait", StringComparison.OrdinalIgnoreCase)
-                || m.Contains("selfie", StringComparison.OrdinalIgnoreCase);
-            if (!wantsVisual)
-                return false;
-            return System.Text.RegularExpressions.Regex.IsMatch(m,
-                @"\b(send|show|give|make|create|generate|draw|paint|want|need|get|another|more|again)\b",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            return FileDeliveryHelper.AiPromisesOrClaimsImageDelivery(aiResponse);
+        }
+
+        private async Task TryDeliverCatchUpImageAsync(
+            AIContact aiContact,
+            Conversation conversation,
+            string conversationId,
+            string userMessage,
+            string aiResponse,
+            List<ChatMessage> context)
+        {
+            if (_aiService == null || !ShouldCatchUpImageGeneration(conversationId, userMessage, aiResponse))
+                return;
+
+            var queued = _imageGenerationLock.CurrentCount == 0;
+            await PublishIncomingTextAsync(
+                conversation,
+                conversationId,
+                queued
+                    ? "🎨 Queued — finishing your previous image, then starting this one…"
+                    : "🎨 Generating your image now… this can take up to a minute.").ConfigureAwait(false);
+
+            await _imageGenerationLock.WaitAsync().ConfigureAwait(false);
+            ImageGenerationResult imageResult;
+            try
+            {
+                imageResult = await ProcessImageGenerationRequestAsync(aiContact, userMessage, conversationId).ConfigureAwait(false);
+            }
+            finally
+            {
+                _imageGenerationLock.Release();
+            }
+
+            await PublishImageGenerationOutcomeAsync(conversation, conversationId, aiContact, context, imageResult).ConfigureAwait(false);
+        }
+
+        private async Task PublishImageGenerationOutcomeAsync(
+            Conversation conversation,
+            string conversationId,
+            AIContact aiContact,
+            List<ChatMessage> context,
+            ImageGenerationResult imageResult)
+        {
+            if (imageResult.Success && imageResult.ImageBytes != null && !string.IsNullOrWhiteSpace(imageResult.ChatFilePath))
+            {
+                context.Add(new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = imageResult.Message,
+                    Timestamp = DateTime.Now,
+                    ModelUsed = aiContact.ModelName
+                });
+
+                var imageBytes = imageResult.ImageBytes;
+                var imageResponseMsg = new ConversationMessage
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ConversationId = conversationId,
+                    Content = imageResult.Message,
+                    Direction = MessageDirection.Incoming,
+                    Type = MessageType.Image,
+                    FilePath = imageResult.ChatFilePath,
+                    MediaType = "image/png",
+                    MediaData = imageBytes.Length <= 10 * 1024 * 1024 ? imageBytes : null,
+                    Timestamp = DateTime.Now
+                };
+
+                if (!_messages.ContainsKey(conversationId))
+                    _messages[conversationId] = new List<ConversationMessage>();
+                if (!_messages[conversationId].Any(m => m.Id == imageResponseMsg.Id))
+                    _messages[conversationId].Add(imageResponseMsg);
+                if (_persistenceService is DatabasePersistenceService dbImg)
+                {
+                    try { await dbImg.SaveMessageAsync(imageResponseMsg).ConfigureAwait(false); }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error saving image response message: {ex.Message}"); }
+                }
+
+                conversation.LastMessageAt = imageResponseMsg.Timestamp;
+                MessageReceived?.Invoke(this, new MessageReceivedEventArgs { Message = imageResponseMsg, ConversationId = conversationId });
+                if (context.Count > 20)
+                    context.RemoveRange(0, context.Count - 20);
+                return;
+            }
+
+            context.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Content = imageResult.Message,
+                Timestamp = DateTime.Now,
+                ModelUsed = aiContact.ModelName
+            });
+            var errMsg = new ConversationMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                ConversationId = conversationId,
+                Content = imageResult.Message,
+                Direction = MessageDirection.Incoming,
+                Type = MessageType.Text,
+                Timestamp = DateTime.Now
+            };
+            if (!_messages.ContainsKey(conversationId))
+                _messages[conversationId] = new List<ConversationMessage>();
+            _messages[conversationId].Add(errMsg);
+            if (_persistenceService is DatabasePersistenceService dbErr)
+            {
+                try { await dbErr.SaveMessageAsync(errMsg).ConfigureAwait(false); } catch { }
+            }
+            conversation.LastMessageAt = errMsg.Timestamp;
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs { Message = errMsg, ConversationId = conversationId });
+            if (context.Count > 20)
+                context.RemoveRange(0, context.Count - 20);
         }
 
         private static bool IsImageFollowUpRequest(string message)
@@ -1370,19 +1470,25 @@ namespace HouseVictoria.Services.Communication
         }
 
         /// <summary>
-        /// Picks a Kokoro voice for the engine. A persona's PiperVoiceId is normally a Piper
-        /// model name (e.g. en_US-amy-medium), so only reuse it when it matches the Kokoro id
-        /// pattern (e.g. af_nicole); otherwise fall back to the configured default.
+        /// Picks a Chatterbox reference voice (wav stem) for the streaming engine.
+        /// Legacy Kokoro ids (af_nicole) and Piper model names map to the configured default.
         /// </summary>
         private string ResolveEngineVoice(AIContact aiContact)
         {
-            var pv = aiContact.PiperVoiceId;
-            if (!string.IsNullOrWhiteSpace(pv) &&
-                System.Text.RegularExpressions.Regex.IsMatch(pv, "^[a-z]{2}_[a-z]+$"))
+            var voice = aiContact.CallVoiceId;
+            if (string.IsNullOrWhiteSpace(voice))
+                voice = aiContact.PiperVoiceId;
+
+            if (!string.IsNullOrWhiteSpace(voice))
             {
-                return pv;
+                if (System.Text.RegularExpressions.Regex.IsMatch(voice, "^[a-z]{2}_[a-z]+$"))
+                    return _appConfig?.VoiceEngineVoice ?? "default";
+                if (voice.Contains('-'))
+                    return _appConfig?.VoiceEngineVoice ?? "default";
+                return voice;
             }
-            return _appConfig?.VoiceEngineVoice ?? "af_nicole";
+
+            return _appConfig?.VoiceEngineVoice ?? "default";
         }
 
         /// <summary>
@@ -1623,7 +1729,7 @@ namespace HouseVictoria.Services.Communication
             return FollowUpCues.Any(cue => lower.Contains(cue));
         }
 
-        private void TryScheduleFollowUp(AIContact aiContact, string conversationId, string promiseText)
+        private void TryScheduleFollowUp(AIContact aiContact, string conversationId, string promiseText, string? lastUserMessage = null)
         {
             if (_aiService == null || string.IsNullOrWhiteSpace(conversationId))
                 return;
@@ -1642,7 +1748,7 @@ namespace HouseVictoria.Services.Communication
             {
                 try
                 {
-                    await DeliverFollowUpAsync(aiContact, conversationId, promiseText, promiseTime).ConfigureAwait(false);
+                    await DeliverFollowUpAsync(aiContact, conversationId, promiseText, promiseTime, lastUserMessage).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -1656,7 +1762,7 @@ namespace HouseVictoria.Services.Communication
             });
         }
 
-        private async Task DeliverFollowUpAsync(AIContact aiContact, string conversationId, string promiseText, DateTime promiseTime)
+        private async Task DeliverFollowUpAsync(AIContact aiContact, string conversationId, string promiseText, DateTime promiseTime, string? lastUserMessage = null)
         {
             if (_aiService == null)
                 return;
@@ -1669,6 +1775,38 @@ namespace HouseVictoria.Services.Communication
             if (_messages.TryGetValue(conversationId, out var existing) &&
                 existing.Any(m => m.Direction == MessageDirection.Outgoing && m.Timestamp > promiseTime))
             {
+                return;
+            }
+
+            var userMessage = lastUserMessage;
+            if (string.IsNullOrWhiteSpace(userMessage) &&
+                _chatContexts.TryGetValue(conversationId, out var ctxForUser))
+            {
+                userMessage = ctxForUser.LastOrDefault(m => string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase))?.Content;
+            }
+
+            var conversation = _conversations.FirstOrDefault(c => c.Id == conversationId);
+            if (conversation != null &&
+                !string.IsNullOrWhiteSpace(userMessage) &&
+                ShouldCatchUpImageGeneration(conversationId, userMessage, promiseText))
+            {
+                if (_messages.TryGetValue(conversationId, out var afterPromise) &&
+                    afterPromise.Any(m => m.Type == MessageType.Image && m.Timestamp > promiseTime))
+                {
+                    return;
+                }
+
+                var context = _chatContexts.TryGetValue(conversationId, out var imageCtx)
+                    ? imageCtx
+                    : new List<ChatMessage>();
+
+                await TryDeliverCatchUpImageAsync(
+                    aiContact,
+                    conversation,
+                    conversationId,
+                    userMessage,
+                    promiseText,
+                    context).ConfigureAwait(false);
                 return;
             }
 

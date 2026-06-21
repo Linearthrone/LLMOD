@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
 using System.Runtime.InteropServices;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
@@ -126,6 +127,30 @@ namespace HouseVictoria.App.Screens.Windows
 
             // Ensure fully visible on screen (accounts for taskbar, multi-monitor)
             WindowHelper.EnsureWindowFitsOnScreen(this);
+
+            ApplyChatSealBackground();
+        }
+
+        private void ApplyChatSealBackground()
+        {
+            var sealPath = MediaBrandingPaths.ChatSealPath;
+            if (string.IsNullOrEmpty(sealPath) || ChatSealBackground == null)
+                return;
+
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(sealPath, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                ChatSealBackground.Source = bitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load chat seal background: {ex.Message}");
+            }
         }
 
 

@@ -483,10 +483,9 @@ namespace HouseVictoria.App
                 HermesAutoStart = !bool.TryParse(config["HermesAutoStart"], out var hermesAuto) || hermesAuto,
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
-                TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8880",
+                TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8881",
                 STTEndpoint = config["STTEndpoint"],
-                PiperDataDir = config["PiperDataDir"] ?? "Media/PiperVoices",
-                PiperDefaultModel = config["PiperDefaultModel"] ?? "en_US-amy-medium",
+                ChatterboxVoicesDir = config["ChatterboxVoicesDir"] ?? "Media/ChatterboxVoices",
                 UseWindowsTTSFallback = !bool.TryParse(config["UseWindowsTTSFallback"], out var noWinTts) || noWinTts,
                 ImageGenerationProvider = string.IsNullOrWhiteSpace(config["ImageGenerationProvider"]) ? "a2e" : (config["ImageGenerationProvider"] ?? "a2e"),
                 A2eApiToken = config["A2eApiToken"] ?? string.Empty,
@@ -549,8 +548,11 @@ namespace HouseVictoria.App
                 VoiceEngineDirectory = config["VoiceEngineDirectory"] ?? string.Empty,
                 VoiceEnginePython = config["VoiceEnginePython"] ?? string.Empty,
                 VoiceEngineScript = string.IsNullOrWhiteSpace(config["VoiceEngineScript"]) ? "speech_to_speech.py" : config["VoiceEngineScript"]!,
-                VoiceEngineVoice = string.IsNullOrWhiteSpace(config["VoiceEngineVoice"]) ? "af_nicole" : config["VoiceEngineVoice"]!,
+                VoiceEngineVoice = string.IsNullOrWhiteSpace(config["VoiceEngineVoice"]) ? "default" : config["VoiceEngineVoice"]!,
                 VoiceEngineShowConsole = !bool.TryParse(config["VoiceEngineShowConsole"], out var vesc) || vesc,
+                VoiceEngineInputGain = float.TryParse(config["VoiceEngineInputGain"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var veg) && veg > 0 ? veg : 4f,
+                VoiceEngineSilenceThreshold = float.TryParse(config["VoiceEngineSilenceThreshold"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var vest) && vest > 0 ? vest : 0.003f,
+                ChatMicRecordingGain = float.TryParse(config["ChatMicRecordingGain"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var cmrg) && cmrg > 0 ? cmrg : 4f,
                 RefreshIntervalMs = int.TryParse(config["RefreshIntervalMs"], out var refreshMs) && refreshMs > 0 ? refreshMs : 1000,
                 OverlayOpacity = double.TryParse(config["OverlayOpacity"], out var overlayOpacity) ? overlayOpacity : 0.85,
                 AutoHideDelayMs = int.TryParse(config["AutoHideDelayMs"], out var autoHideDelay) && autoHideDelay >= 0 ? autoHideDelay : 3000,
@@ -572,53 +574,27 @@ namespace HouseVictoria.App
             if (userSettings != null)
                 HouseVictoria.Core.Utils.UserSettingsStore.MergeInto(appConfig, userSettings);
 
-            // Resolve relative paths to absolute paths
+            // Resolve relative paths to absolute paths (prefer repo root so Debug/Release share one Data folder)
             var appDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
-            appConfig.DataBankPath = System.IO.Path.IsPathRooted(appConfig.DataBankPath)
-                ? appConfig.DataBankPath
-                : System.IO.Path.Combine(appDirectory, appConfig.DataBankPath);
-            appConfig.LogsPath = System.IO.Path.IsPathRooted(appConfig.LogsPath)
-                ? appConfig.LogsPath
-                : System.IO.Path.Combine(appDirectory, appConfig.LogsPath);
+            appConfig.DataBankPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.DataBankPath);
+            appConfig.LogsPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.LogsPath);
+            appConfig.PersistentMemoryPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.PersistentMemoryPath);
+            appConfig.AutonomyDataPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.AutonomyDataPath);
             appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath)
                 ? appConfig.MediaPath
-                : System.IO.Path.Combine(appDirectory, appConfig.MediaPath);
-            appConfig.AutonomyDataPath = System.IO.Path.IsPathRooted(appConfig.AutonomyDataPath)
-                ? appConfig.AutonomyDataPath
-                : System.IO.Path.Combine(appDirectory, appConfig.AutonomyDataPath);
-            // Piper voices: resolve relative path; prefer Media\PiperVoices next to app or under a parent that contains Media
-            var piperDataDirRelative = appConfig.PiperDataDir;
-            if (!System.IO.Path.IsPathRooted(appConfig.PiperDataDir))
+                : System.IO.Path.Combine(HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataRoot(appDirectory), appConfig.MediaPath);
+            if (!System.IO.Path.IsPathRooted(appConfig.ChatterboxVoicesDir))
             {
-                var combined = System.IO.Path.Combine(appDirectory, appConfig.PiperDataDir);
-                if (System.IO.Directory.Exists(combined))
-                    appConfig.PiperDataDir = System.IO.Path.GetFullPath(combined);
-                else
-                {
-                    var dir = appDirectory;
-                    while (!string.IsNullOrEmpty(dir))
-                    {
-                        var mediaDir = System.IO.Path.Combine(dir, "Media");
-                        if (System.IO.Directory.Exists(mediaDir))
-                        {
-                            appConfig.PiperDataDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(dir, appConfig.PiperDataDir));
-                            break;
-                        }
-                        var parent = System.IO.Path.GetDirectoryName(dir);
-                        if (parent == dir) break;
-                        dir = parent;
-                    }
-                    if (!System.IO.Path.IsPathRooted(appConfig.PiperDataDir))
-                        appConfig.PiperDataDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(appDirectory, appConfig.PiperDataDir));
-                }
-                // If resolved path still doesn't exist, try current directory (e.g. when run from repo root)
-                if (!System.IO.Directory.Exists(appConfig.PiperDataDir) && !string.IsNullOrEmpty(piperDataDirRelative))
-                {
-                    var currentDirPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(Environment.CurrentDirectory, piperDataDirRelative));
-                    if (System.IO.Directory.Exists(currentDirPath))
-                        appConfig.PiperDataDir = currentDirPath;
-                }
+                var dataRoot = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataRoot(appDirectory);
+                appConfig.ChatterboxVoicesDir = System.IO.Path.GetFullPath(
+                    System.IO.Path.Combine(dataRoot, appConfig.ChatterboxVoicesDir));
             }
+            else
+            {
+                appConfig.ChatterboxVoicesDir = System.IO.Path.GetFullPath(appConfig.ChatterboxVoicesDir);
+            }
+            if (!System.IO.Directory.Exists(appConfig.ChatterboxVoicesDir))
+                System.IO.Directory.CreateDirectory(appConfig.ChatterboxVoicesDir);
 
             // Resolve pgvector connection string relative parts if needed (leave as-is if absolute)
             if (!string.IsNullOrWhiteSpace(appConfig.PgVectorConnectionString) && appConfig.PgVectorConnectionString.Contains("|DataDirectory|"))

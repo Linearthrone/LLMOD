@@ -425,7 +425,7 @@
                                             </Style>
                                         </ComboBox.ItemContainerStyle>
                                         <ComboBox.ToolTip>
-                                            <TextBlock>Voice used during streaming voice calls (Kokoro, built into the on-device engine).</TextBlock>
+                                            <TextBlock>Voice used during streaming voice calls (Chatterbox Turbo reference clip in Media/ChatterboxVoices).</TextBlock>
                                         </ComboBox.ToolTip>
                                     </ComboBox>
                                 </Grid>

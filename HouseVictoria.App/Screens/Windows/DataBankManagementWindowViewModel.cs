@@ -337,7 +337,6 @@ namespace HouseVictoria.App.Screens.Windows
 
                 if (result == true && dialog.CreatedDataBank != null)
                 {
-                    await _memoryService.AddDataBankAsync(dialog.CreatedDataBank);
                     await LoadDataBanksAsync();
 
                     // Select the newly created bank
@@ -375,7 +374,6 @@ namespace HouseVictoria.App.Screens.Windows
 
                 if (result == true && dialog.CreatedDataBank != null)
                 {
-                    await _memoryService.AddDataBankAsync(dialog.CreatedDataBank);
                     await LoadDataBanksAsync();
 
                     // Reselect the edited bank

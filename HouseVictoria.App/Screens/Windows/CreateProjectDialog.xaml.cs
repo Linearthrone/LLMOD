@@ -30,6 +30,12 @@ namespace HouseVictoria.App.Screens.Windows
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            if (ViewModel == null)
+            {
+                MessageBox.Show("Dialog failed to initialize.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             var project = await ViewModel.SaveProjectAsync();
             if (project != null)
             {

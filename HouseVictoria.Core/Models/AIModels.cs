@@ -1,3 +1,6 @@
+using Newtonsoft.Json;
+using System.Text.RegularExpressions;
+
 namespace HouseVictoria.Core.Models
 {
     /// <summary>
@@ -46,9 +49,34 @@ namespace HouseVictoria.Core.Models
         public string? DataPath { get; set; } // Path to store this persona's data
 
         /// <summary>
-        /// Piper TTS voice/model ID (e.g., en_US-lessac-medium). Used when this AI contact speaks during calls.
+        /// Chatterbox Turbo reference voice id (wav stem in Media/ChatterboxVoices). Used during voice calls.
         /// </summary>
-        public string? PiperVoiceId { get; set; }
+        [JsonProperty("CallVoiceId")]
+        public string? CallVoiceId { get; set; }
+
+        /// <summary>Legacy JSON field; maps old Piper/Kokoro ids to <see cref="CallVoiceId"/> on load.</summary>
+        [JsonProperty("PiperVoiceId")]
+        public string? PiperVoiceId
+        {
+            get => CallVoiceId;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    return;
+                if (string.IsNullOrWhiteSpace(CallVoiceId))
+                    CallVoiceId = MapLegacyVoiceId(value);
+            }
+        }
+
+        private static string MapLegacyVoiceId(string legacy)
+        {
+            var trimmed = legacy.Trim();
+            if (Regex.IsMatch(trimmed, "^[a-z]{2}_[a-z]+$"))
+                return "default";
+            if (trimmed.Contains('-'))
+                return "default";
+            return trimmed;
+        }
 
         // Avatar settings (for virtual environment / embodied AI)
         /// <summary>Path to 3D avatar model file (e.g., .fbx, .glb) for the virtual environment.</summary>

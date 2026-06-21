@@ -105,6 +105,14 @@ namespace HouseVictoria.Services.Voice
                 if (session.Temperature > 0)
                     psi.EnvironmentVariables["LLM_TEMPERATURE"] = session.Temperature.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture);
 
+                if (_config.VoiceEngineInputGain > 0)
+                    psi.EnvironmentVariables["INPUT_GAIN"] = _config.VoiceEngineInputGain.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture);
+                if (_config.VoiceEngineSilenceThreshold > 0)
+                    psi.EnvironmentVariables["SILENCE_THRESHOLD"] = _config.VoiceEngineSilenceThreshold.ToString("0.000#", System.Globalization.CultureInfo.InvariantCulture);
+
+                if (!string.IsNullOrWhiteSpace(_config.TTSEndpoint))
+                    psi.EnvironmentVariables["CHATTERBOX_TTS_URL"] = _config.TTSEndpoint.TrimEnd('/');
+
                 var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
                 process.Exited += (_, _) => Debug.WriteLine("VoiceEngine: process exited.");
 

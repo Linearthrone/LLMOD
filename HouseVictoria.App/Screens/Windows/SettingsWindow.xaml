@@ -224,6 +224,62 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Microphone sensitivity (voice calls + chat dictation) -->
+                    <Border Style="{StaticResource SettingsSectionCard}"
+                            Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=connect}">
+                        <StackPanel>
+                            <TextBlock Text="🎤 Microphone Sensitivity" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
+                            <Separator Margin="0,5" Background="#1A2332"/>
+                            <TextBlock Text="Tune how easily the app hears you. Voice call settings apply when you start a new call. Chat mic gain applies to push-to-record in messages."
+                                      FontSize="11" Foreground="#5A6A7A" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Voice call gain:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
+                                           ToolTip="Boosts microphone input during streaming voice calls. Increase if you have to speak loudly."/>
+                                <StackPanel Grid.Column="1" Margin="5,0">
+                                    <Slider Minimum="1" Maximum="10" Value="{Binding VoiceEngineInputGain}"
+                                           TickFrequency="1" IsSnapToTickEnabled="True"
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
+                                    <TextBlock Text="{Binding VoiceEngineInputGain, StringFormat='Gain: {0:F0}× (default 4)'}"
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Voice sensitivity:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
+                                           ToolTip="How loud speech must be to trigger recording. Lower values pick up quieter speech."/>
+                                <StackPanel Grid.Column="1" Margin="5,0">
+                                    <Slider Minimum="0.001" Maximum="0.015" Value="{Binding VoiceEngineSilenceThreshold}"
+                                           TickFrequency="0.001" IsSnapToTickEnabled="True"
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
+                                    <TextBlock Text="{Binding VoiceEngineSilenceThreshold, StringFormat='Threshold: {0:F3} (lower = more sensitive)'}"
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Chat mic gain:" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
+                                           ToolTip="Amplifies push-to-talk recordings in chat before speech-to-text."/>
+                                <StackPanel Grid.Column="1" Margin="5,0">
+                                    <Slider Minimum="1" Maximum="10" Value="{Binding ChatMicRecordingGain}"
+                                           TickFrequency="1" IsSnapToTickEnabled="True"
+                                           Foreground="{DynamicResource PrimaryBrush}" Background="#CC222222"/>
+                                    <TextBlock Text="{Binding ChatMicRecordingGain, StringFormat='Gain: {0:F0}× (default 4)'}"
+                                             Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Image Generation Endpoint (ComfyUI) -->
                     <Border Style="{StaticResource SettingsSectionCard}"
                             Visibility="{Binding SelectedSettingsCategory, Converter={StaticResource SettingsCategoryVisibilityConverter}, ConverterParameter=creativity}">

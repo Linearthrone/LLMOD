@@ -92,11 +92,11 @@ namespace HouseVictoria.Core.Models
 
         public string MCPServerEndpoint { get; set; } = "http://localhost:8080";
         public string UnrealEngineEndpoint { get; set; } = "ws://localhost:8888";
-        public string TTSEndpoint { get; set; } = "http://localhost:8880";
+        public string TTSEndpoint { get; set; } = "http://localhost:8881";
         public string? STTEndpoint { get; set; }
-        public string PiperDataDir { get; set; } = "Media/PiperVoices";
-        public string PiperDefaultModel { get; set; } = "en_US-amy-medium";
-        /// <summary>When Kokoro/Piper HTTP synthesis fails, use System.Speech (Microsoft voices). Set false to avoid wrong-voice fallback; requires app restart.</summary>
+        /// <summary>Folder of Chatterbox reference clips (Media/ChatterboxVoices/*.wav).</summary>
+        public string ChatterboxVoicesDir { get; set; } = "Media/ChatterboxVoices";
+        /// <summary>When Chatterbox HTTP synthesis fails, use System.Speech (Microsoft voices). Set false to avoid wrong-voice fallback; requires app restart.</summary>
         public bool UseWindowsTTSFallback { get; set; } = true;
         /// <summary>Image provider: <c>a2e</c> (cloud, default when token set) or <c>comfyui</c> (local Stability Matrix / ComfyUI only).</summary>
         public string ImageGenerationProvider { get; set; } = "a2e";
@@ -254,9 +254,15 @@ namespace HouseVictoria.Core.Models
         public string VoiceEnginePython { get; set; } = string.Empty;
         /// <summary>Engine entry script (relative to the engine directory).</summary>
         public string VoiceEngineScript { get; set; } = "speech_to_speech.py";
-        /// <summary>Default Kokoro voice id used when a persona has no compatible voice set.</summary>
-        public string VoiceEngineVoice { get; set; } = "af_nicole";
+        /// <summary>Default Chatterbox reference voice (wav stem) when a persona has no voice set.</summary>
+        public string VoiceEngineVoice { get; set; } = "default";
         /// <summary>Show the engine's console window during calls (useful for live transcripts/diagnostics).</summary>
         public bool VoiceEngineShowConsole { get; set; } = true;
+        /// <summary>Microphone boost for the streaming voice engine (1 = none, 4–6 typical for quiet mics).</summary>
+        public float VoiceEngineInputGain { get; set; } = 4f;
+        /// <summary>Speech detection threshold for the streaming voice engine (lower = more sensitive).</summary>
+        public float VoiceEngineSilenceThreshold { get; set; } = 0.003f;
+        /// <summary>Amplification applied to chat push-to-talk recordings before STT (1 = none).</summary>
+        public float ChatMicRecordingGain { get; set; } = 4f;
     }
 }

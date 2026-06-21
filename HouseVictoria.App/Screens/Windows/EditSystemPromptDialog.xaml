@@ -70,7 +70,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="TTS voice (Piper)" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Grid.Row="0" Text="TTS voice (Chatterbox)" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
                                 <ComboBox Grid.Row="1"
                                           ItemsSource="{Binding AvailablePiperVoices}"

@@ -66,42 +66,26 @@ function Stop-ByPort {
 }
 
 #
-# Kokoro TTS (port 8880)
+# Chatterbox Turbo TTS (port 8881)
 #
 try {
-    $kokoroScript = Join-Path $scriptDir "stop-kokoro.ps1"
-    if (Test-Path $kokoroScript) {
-        Write-Host "Stopping Kokoro TTS via stop-kokoro.ps1..."
-        & $kokoroScript
+    $chatterboxScript = Join-Path $scriptDir "stop-chatterbox.ps1"
+    if (Test-Path $chatterboxScript) {
+        Write-Host "Stopping Chatterbox TTS via stop-chatterbox.ps1..."
+        & $chatterboxScript
         Write-Host
     } else {
-        Stop-ByPort -Port 8880 -Label "Kokoro TTS"
+        Stop-ByPort -Port 8881 -Label "Chatterbox TTS"
         Write-Host
     }
 } catch {
-    Write-Host "Error while stopping Kokoro TTS: $_"
+    Write-Host "Error while stopping Chatterbox TTS: $_"
     Write-Host
 }
 
 #
-# Piper TTS (port 5000) and STT server (port 8000) - reuse existing scripts
+# STT server (port 8000)
 #
-try {
-    $piperScript = Join-Path $scriptDir "stop-piper.ps1"
-    if (Test-Path $piperScript) {
-        Write-Host "Stopping Piper TTS via stop-piper.ps1..."
-        & $piperScript
-        Write-Host
-    } else {
-        Write-Host "stop-piper.ps1 not found; falling back to port-based stop."
-        Stop-ByPort -Port 5000 -Label "Piper TTS"
-        Write-Host
-    }
-} catch {
-    Write-Host "Error while stopping Piper TTS: $_"
-    Write-Host
-}
-
 try {
     $sttScript = Join-Path $scriptDir "stop-stt.ps1"
     if (Test-Path $sttScript) {

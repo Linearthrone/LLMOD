@@ -791,12 +791,12 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 _availablePiperVoices.Clear();
-                foreach (var v in HouseVictoria.Services.Voice.VoiceCatalog.GetKokoroVoices())
+                foreach (var v in HouseVictoria.Services.Voice.VoiceCatalog.GetCallVoices(_appConfig?.ChatterboxVoicesDir))
                     _availablePiperVoices.Add(v);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading Kokoro voices: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading Chatterbox voices: {ex.Message}");
             }
             await Task.CompletedTask;
         }
@@ -883,7 +883,7 @@ namespace HouseVictoria.App.Screens.Windows
                     Id = personaId,
                     Name = personaName,
                     ModelName = NewPersonaModel.Trim(),
-                    PiperVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim(),
+                    CallVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim(),
                     SystemPrompt = systemPrompt,
                     KnowledgeSharing = BuildNewPersonaKnowledgeSharing(),
                     Description = NewPersonaDescription?.Trim(),
@@ -1266,7 +1266,7 @@ namespace HouseVictoria.App.Screens.Windows
             NewPersonaMCPServer = string.IsNullOrWhiteSpace(contact.MCPServerEndpoint)
                 ? _appConfig.MCPServerEndpoint
                 : contact.MCPServerEndpoint;
-            NewPersonaPiperVoice = contact.PiperVoiceId ?? string.Empty;
+            NewPersonaPiperVoice = contact.CallVoiceId ?? contact.PiperVoiceId ?? string.Empty;
             NewPersonaAvatarUrl = contact.AvatarUrl ?? string.Empty;
             NewPersonaAvatarModelPath = contact.AvatarModelPath ?? string.Empty;
             NewPersonaAvatarVoiceSpeed = contact.AvatarVoiceSpeed;
@@ -1342,7 +1342,7 @@ namespace HouseVictoria.App.Screens.Windows
 
                 contact.Name = trimmedName;
                 contact.ModelName = NewPersonaModel.Trim();
-                contact.PiperVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim();
+                contact.CallVoiceId = string.IsNullOrWhiteSpace(NewPersonaPiperVoice) ? null : NewPersonaPiperVoice.Trim();
                 contact.SystemPrompt = string.IsNullOrWhiteSpace(NewPersonaSystemPrompt)
                     ? contact.SystemPrompt
                     : NewPersonaSystemPrompt.Trim();

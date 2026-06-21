@@ -226,6 +226,25 @@ if "!COMFYUI_STARTED!" == "0" (
 )
 echo.
 
+REM --- Chatterbox Turbo TTS (port 8881) ---
+echo Starting Chatterbox TTS...
+if not exist "%SCRIPT_DIR%\ChatterboxServer\chatterbox_server.py" (
+    echo [INFO] ChatterboxServer\chatterbox_server.py not found. Skipping.
+) else if not exist "%MCP_PATH%\.venv\Scripts\python.exe" (
+    echo [INFO] MCP venv missing. Run install.bat. Skipping Chatterbox.
+) else (
+    netstat -an | findstr /C:":8881" | findstr /C:"LISTENING" >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] Chatterbox TTS already on port 8881. Skipping.
+    ) else (
+        if not exist "%SCRIPT_DIR%\Media" mkdir "%SCRIPT_DIR%\Media"
+        powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\.ps1 scripts\start-chatterbox.ps1" -ScriptDir "%SCRIPT_DIR%"
+        timeout /t 2 /nobreak >nul
+        echo [OK] Chatterbox TTS - http://localhost:8881
+    )
+)
+echo.
+
 REM --- House Victoria App ---
 echo Starting House Victoria App...
 REM Ensure normal app launches are never forced into headless remote-only mode
@@ -262,7 +281,7 @@ echo.
 
 echo === Services ===
 echo   Ollama: http://localhost:11434  ^| MCP: http://localhost:8080
-echo   Kokoro TTS: http://localhost:%KOKORO_PORT%  ^| Piper TTS: http://localhost:5000  ^| STT: http://localhost:%STT_PORT%/transcribe
+echo   Chatterbox TTS: http://localhost:8881  ^| STT: http://localhost:%STT_PORT%/transcribe
 echo   ComfyUI: http://localhost:8188 (if started)
 echo   App: House Victoria
 echo.

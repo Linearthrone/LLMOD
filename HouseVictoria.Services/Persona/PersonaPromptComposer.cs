@@ -29,7 +29,7 @@ namespace HouseVictoria.Services.Persona
                 IsPrimaryAI = contact.IsPrimaryAI,
                 Role = contact.Role,
                 DataPath = contact.DataPath,
-                PiperVoiceId = contact.PiperVoiceId,
+                CallVoiceId = contact.CallVoiceId,
                 AvatarModelPath = contact.AvatarModelPath,
                 AvatarVoiceSpeed = contact.AvatarVoiceSpeed,
                 AvatarVoicePitch = contact.AvatarVoicePitch,

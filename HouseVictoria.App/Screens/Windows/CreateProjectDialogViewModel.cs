@@ -190,26 +190,28 @@ namespace HouseVictoria.App.Screens.Windows
 
         private void ValidateForm()
         {
-            _validationError = null;
-
             if (string.IsNullOrWhiteSpace(_projectName?.Trim()))
             {
-                _validationError = "Project name is required.";
+                ValidationError = "Project name is required.";
+                OnPropertyChanged(nameof(IsValid));
                 return;
             }
 
             if (_deadline < _startDate)
             {
-                _validationError = "Deadline must be on or after the start date.";
+                ValidationError = "Deadline must be on or after the start date.";
+                OnPropertyChanged(nameof(IsValid));
                 return;
             }
 
             if (_priority < 1 || _priority > 10)
             {
-                _validationError = "Priority must be between 1 and 10.";
+                ValidationError = "Priority must be between 1 and 10.";
+                OnPropertyChanged(nameof(IsValid));
                 return;
             }
 
+            ValidationError = null;
             OnPropertyChanged(nameof(IsValid));
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }
@@ -249,6 +251,8 @@ namespace HouseVictoria.App.Screens.Windows
                 ValidateForm();
                 if (!IsValid)
                 {
+                    if (string.IsNullOrWhiteSpace(ValidationError))
+                        ValidationError = "Please fix the highlighted fields before saving.";
                     return null;
                 }
 

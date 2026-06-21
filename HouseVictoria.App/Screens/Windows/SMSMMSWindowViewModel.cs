@@ -1505,6 +1505,8 @@ namespace HouseVictoria.App.Screens.Windows
                     return;
                 }
 
+                audioData = AmplifyWavPcm(audioData, App.GetService<AppConfig>()?.ChatMicRecordingGain ?? 4f);
+
                 var aiService = App.GetService<IAIService>();
                 if (aiService == null)
                 {
@@ -1545,6 +1547,25 @@ namespace HouseVictoria.App.Screens.Windows
                 System.Diagnostics.Debug.WriteLine($"Error stopping audio recording: {ex.Message}\n{ex.StackTrace}");
                 MessageBox.Show($"Error processing recording: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>Amplify 16-bit PCM WAV payload so quiet mics transcribe reliably.</summary>
+        private static byte[] AmplifyWavPcm(byte[] wavBytes, float gain)
+        {
+            if (wavBytes.Length <= 44 || gain <= 1f)
+                return wavBytes;
+
+            var result = (byte[])wavBytes.Clone();
+            for (var i = 44; i + 1 < result.Length; i += 2)
+            {
+                var sample = (short)(result[i] | (result[i + 1] << 8));
+                var amplified = (int)(sample * gain);
+                amplified = Math.Clamp(amplified, short.MinValue, short.MaxValue);
+                result[i] = (byte)(amplified & 0xFF);
+                result[i + 1] = (byte)((amplified >> 8) & 0xFF);
+            }
+
+            return result;
         }
     }
 

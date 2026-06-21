@@ -92,9 +92,9 @@ python -m pip install --upgrade pip -q
 echo Installing MCP and dependencies...
 pip install -e . -q
 if errorlevel 1 ( echo [ERROR] pip install -e . failed. & exit /b 1 )
-REM Ensure piper CLI dependency is available to avoid runtime errors
+REM Ensure pathvalidate for MCP tooling
 pip install pathvalidate -q
-if errorlevel 1 ( echo [WARN] Failed to install pathvalidate. Piper CLI may not work correctly. )
+if errorlevel 1 ( echo [WARN] Failed to install pathvalidate. ) 
 echo [OK] MCP Server dependencies installed.
 
 REM Optional: STT server (faster-whisper) in same venv
@@ -104,12 +104,12 @@ if exist "%SCRIPT_DIR%\STTServer\requirements.txt" (
     if errorlevel 1 ( echo [WARN] STT deps failed. Later: pip install -r STTServer\requirements.txt ) else ( echo [OK] STT deps installed. )
 )
 
-REM Optional: Piper server uses same venv (piper-tts already in MCP deps)
-if exist "%SCRIPT_DIR%\PiperServer\requirements.txt" (
-    pip install -r "%SCRIPT_DIR%\PiperServer\requirements.txt" -q 2>nul
+REM Chatterbox Turbo TTS server (GPU recommended; first run downloads model weights)
+if exist "%SCRIPT_DIR%\ChatterboxServer\requirements.txt" (
+    echo Installing Chatterbox TTS dependencies...
+    pip install -r "%SCRIPT_DIR%\ChatterboxServer\requirements.txt" -q
+    if errorlevel 1 ( echo [WARN] Chatterbox deps failed. Later: pip install -r ChatterboxServer\requirements.txt ) else ( echo [OK] Chatterbox TTS deps installed. )
 )
-
-REM Kokoro TTS: not on PyPI. Use Docker (docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu) or clone https://github.com/remsky/Kokoro-FastAPI into Kokoro-FastAPI and run start-cpu.ps1.
 
 if not exist "data" mkdir data
 if not exist "data\banks" mkdir data\banks
@@ -133,13 +133,11 @@ if not exist ".env" (
 cd /d "%SCRIPT_DIR%"
 
 if not exist "Media" mkdir Media
-if not exist "Media\PiperVoices" mkdir Media\PiperVoices
-echo [OK] Media\PiperVoices ready. Add Piper .onnx voice files here if needed.
-
-if not exist "Media\Kokoro" mkdir Media\Kokoro
-echo [OK] Media\Kokoro ready (optional; Kokoro-FastAPI clone uses its own model path).
+if not exist "Media" mkdir Media
+if not exist "Media\ChatterboxVoices" mkdir Media\ChatterboxVoices
+echo [OK] Media\ChatterboxVoices ready. Add reference .wav clips here (see README).
 echo.
 
 echo === Install complete ===
-echo Run start.bat to start Ollama, MCP Server, Kokoro TTS, Piper TTS, STT, and the app.
+echo Run start.bat to start Ollama, MCP Server, Chatterbox TTS, STT, and the app.
 echo.

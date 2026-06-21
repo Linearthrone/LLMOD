@@ -1,4 +1,5 @@
 using System.Windows;
+using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 
 namespace HouseVictoria.App.Screens.Windows
@@ -14,7 +15,9 @@ namespace HouseVictoria.App.Screens.Windows
 
             try
             {
-                ViewModel = new CreateDataBankDialogViewModel(existingBank);
+                var memoryService = App.GetService<IMemoryService>()
+                    ?? throw new InvalidOperationException("Memory service is not available.");
+                ViewModel = new CreateDataBankDialogViewModel(existingBank, memoryService);
                 DataContext = ViewModel;
             }
             catch (Exception ex)
@@ -26,6 +29,12 @@ namespace HouseVictoria.App.Screens.Windows
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            if (ViewModel == null)
+            {
+                MessageBox.Show("Dialog failed to initialize.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             var bank = await ViewModel.SaveDataBankAsync();
             if (bank != null)
             {
@@ -45,6 +54,7 @@ namespace HouseVictoria.App.Screens.Windows
     public class CreateDataBankDialogViewModel : HelperClasses.ObservableObject
     {
         private readonly DataBank? _existingBank;
+        private readonly IMemoryService _memoryService;
 
         private string _name = string.Empty;
         private string? _description;
@@ -74,9 +84,10 @@ namespace HouseVictoria.App.Screens.Windows
             private set => SetProperty(ref _validationError, value);
         }
 
-        public CreateDataBankDialogViewModel(DataBank? existingBank = null)
+        public CreateDataBankDialogViewModel(DataBank? existingBank, IMemoryService memoryService)
         {
             _existingBank = existingBank;
+            _memoryService = memoryService ?? throw new ArgumentNullException(nameof(memoryService));
             if (_existingBank != null)
             {
                 _name = _existingBank.Name ?? string.Empty;
@@ -114,9 +125,11 @@ namespace HouseVictoria.App.Screens.Windows
 
                 if (_existingBank == null)
                 {
+                    bank.Id = string.IsNullOrWhiteSpace(bank.Id) ? Guid.NewGuid().ToString() : bank.Id;
                     bank.CreatedAt = DateTime.Now;
                 }
 
+                await _memoryService.AddDataBankAsync(bank);
                 return bank;
             }
             catch (Exception ex)

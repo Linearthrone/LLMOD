@@ -240,7 +240,7 @@ namespace HouseVictoria.App.Screens.Windows
         }
 
         private bool _useWindowsTTSFallback = true;
-        /// <summary>When Kokoro/Piper fails, use Microsoft System.Speech. Disable to avoid unexpected voices (no speech until Kokoro works). Takes effect after app restart.</summary>
+        /// <summary>When Chatterbox HTTP synthesis fails, use Microsoft System.Speech. Disable to avoid unexpected voices (no speech until Chatterbox works). Takes effect after app restart.</summary>
         public bool UseWindowsTTSFallback
         {
             get => _useWindowsTTSFallback;
@@ -253,6 +253,43 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _sttEndpoint;
             set { if (SetProperty(ref _sttEndpoint, value ?? string.Empty)) ValidateSettings(); }
+        }
+
+        // Voice call / microphone sensitivity
+        private float _voiceEngineInputGain = 4f;
+        /// <summary>Microphone boost for streaming voice calls (1 = none; try 6+ for quiet mics).</summary>
+        public float VoiceEngineInputGain
+        {
+            get => _voiceEngineInputGain;
+            set
+            {
+                if (SetProperty(ref _voiceEngineInputGain, Math.Clamp(value, 1f, 10f)))
+                    ValidateSettings();
+            }
+        }
+
+        private float _voiceEngineSilenceThreshold = 0.003f;
+        /// <summary>How loud speech must be to start recording during voice calls (lower = more sensitive).</summary>
+        public float VoiceEngineSilenceThreshold
+        {
+            get => _voiceEngineSilenceThreshold;
+            set
+            {
+                if (SetProperty(ref _voiceEngineSilenceThreshold, Math.Clamp(value, 0.001f, 0.02f)))
+                    ValidateSettings();
+            }
+        }
+
+        private float _chatMicRecordingGain = 4f;
+        /// <summary>Amplification for chat push-to-talk recordings before STT.</summary>
+        public float ChatMicRecordingGain
+        {
+            get => _chatMicRecordingGain;
+            set
+            {
+                if (SetProperty(ref _chatMicRecordingGain, Math.Clamp(value, 1f, 10f)))
+                    ValidateSettings();
+            }
         }
 
         // Virtual Environment Settings
@@ -702,11 +739,11 @@ namespace HouseVictoria.App.Screens.Windows
             set => SetProperty(ref _sttConnectionStatus, value);
         }
 
-        private string _kokoroTTSStatus = "—";
-        public string KokoroTTSStatus
+        private string _chatterboxTTSStatus = "—";
+        public string ChatterboxTTSStatus
         {
-            get => _kokoroTTSStatus;
-            set => SetProperty(ref _kokoroTTSStatus, value);
+            get => _chatterboxTTSStatus;
+            set => SetProperty(ref _chatterboxTTSStatus, value);
         }
 
         private string? _unrealConnectionStatus;
@@ -744,8 +781,8 @@ namespace HouseVictoria.App.Screens.Windows
         public ICommand ImportSettingsCommand { get; }
         public ICommand ExportSettingsCommand { get; }
         public ICommand ResetToDefaultsCommand { get; }
-        public ICommand StartKokoroCommand { get; }
-        public ICommand StopKokoroCommand { get; }
+        public ICommand StartChatterboxCommand { get; }
+        public ICommand StopChatterboxCommand { get; }
 
         public SettingsWindowViewModel(AppConfig appConfig)
         {
@@ -764,6 +801,9 @@ namespace HouseVictoria.App.Screens.Windows
             TTSEndpoint = appConfig.TTSEndpoint;
             UseWindowsTTSFallback = appConfig.UseWindowsTTSFallback;
             STTEndpoint = appConfig.STTEndpoint ?? string.Empty;
+            VoiceEngineInputGain = appConfig.VoiceEngineInputGain > 0 ? appConfig.VoiceEngineInputGain : 4f;
+            VoiceEngineSilenceThreshold = appConfig.VoiceEngineSilenceThreshold > 0 ? appConfig.VoiceEngineSilenceThreshold : 0.003f;
+            ChatMicRecordingGain = appConfig.ChatMicRecordingGain > 0 ? appConfig.ChatMicRecordingGain : 4f;
             UnrealEngineEndpoint = appConfig.UnrealEngineEndpoint;
             RemoteCompanionEnabled = appConfig.RemoteCompanionEnabled;
             RemoteCompanionListenPort = appConfig.RemoteCompanionListenPort > 0 ? appConfig.RemoteCompanionListenPort : 17890;
@@ -834,8 +874,8 @@ namespace HouseVictoria.App.Screens.Windows
             ImportSettingsCommand = new RelayCommand(() => ImportSettings());
             ExportSettingsCommand = new RelayCommand(() => ExportSettings());
             ResetToDefaultsCommand = new RelayCommand(() => ResetToDefaults());
-            StartKokoroCommand = new RelayCommand(async () => await StartKokoroAsync());
-            StopKokoroCommand = new RelayCommand(async () => await StopKokoroAsync());
+            StartChatterboxCommand = new RelayCommand(async () => await StartChatterboxAsync());
+            StopChatterboxCommand = new RelayCommand(async () => await StopChatterboxAsync());
 
             SelectedLlmProviderEditor = PrimaryLLM;
             InitializeSettingsNavigation();
@@ -843,7 +883,7 @@ namespace HouseVictoria.App.Screens.Windows
 
             ValidateSettings();
 
-            _ = RefreshKokoroStatusAsync();
+            _ = RefreshChatterboxStatusAsync();
             _ = RefreshComfyUICheckpointsAsync();
         }
 
@@ -983,6 +1023,30 @@ namespace HouseVictoria.App.Screens.Windows
             if (MemoryImportanceThreshold < 0.0 || MemoryImportanceThreshold > 1.0)
             {
                 _validationError = "Memory importance threshold must be between 0.0 and 1.0";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (VoiceEngineInputGain < 1f || VoiceEngineInputGain > 10f)
+            {
+                _validationError = "Voice call mic gain must be between 1 and 10";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (VoiceEngineSilenceThreshold < 0.001f || VoiceEngineSilenceThreshold > 0.02f)
+            {
+                _validationError = "Voice call sensitivity must be between 0.001 and 0.02";
+                OnPropertyChanged(nameof(ValidationError));
+                OnPropertyChanged(nameof(IsValid));
+                return;
+            }
+
+            if (ChatMicRecordingGain < 1f || ChatMicRecordingGain > 10f)
+            {
+                _validationError = "Chat mic gain must be between 1 and 10";
                 OnPropertyChanged(nameof(ValidationError));
                 OnPropertyChanged(nameof(IsValid));
                 return;
@@ -1259,9 +1323,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 var baseUrl = TTSEndpoint.TrimEnd('/');
-                var paths = baseUrl.Contains(":8880", StringComparison.OrdinalIgnoreCase)
-                    ? new[] { "/health", "/api/health", "/v1/voices", "/" }
-                    : new[] { "/health", "/api/health", "/" };
+                var paths = new[] { "/health", "/api/health", "/v1/voices", "/" };
 
                 string? okPath = null;
                 foreach (var path in paths)
@@ -1284,17 +1346,12 @@ namespace HouseVictoria.App.Screens.Windows
                 if (okPath != null)
                 {
                     TTSConnectionStatus = "✓ Connected";
-                    var kokoroHint = baseUrl.Contains(":8880", StringComparison.OrdinalIgnoreCase)
-                        ? " Synthesis is POST /v1/audio/speech; if speech sounds like Windows TTS, check startup.log for Kokoro HTTP errors or disable Windows fallback in Settings."
-                        : string.Empty;
-                    ConnectionTestResult = $"TTS: ✓ Reachable (GET {okPath}).{kokoroHint}";
+                    ConnectionTestResult = $"TTS: ✓ Reachable (GET {okPath}). Synthesis is POST / with JSON {{\"text\",\"voice\"}}.";
                 }
                 else
                 {
                     TTSConnectionStatus = "✗ Failed";
-                    ConnectionTestResult = baseUrl.Contains(":8880", StringComparison.OrdinalIgnoreCase)
-                        ? "TTS: ✗ No OK response from /health, /api/health, /v1/voices, or /. Start Kokoro or fix the endpoint."
-                        : "TTS: ✗ No OK response from /health, /api/health, or /. Fix TTSEndpoint or start your TTS server.";
+                    ConnectionTestResult = "TTS: ✗ No OK response from /health, /api/health, /v1/voices, or /. Start Chatterbox or fix TTSEndpoint.";
                 }
             }
             catch (Exception ex)
@@ -1351,62 +1408,81 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
-        private async Task RefreshKokoroStatusAsync()
+        private async Task RefreshChatterboxStatusAsync()
         {
             try
             {
-                var monitor = App.ServiceProvider?.GetService<ISystemMonitorService>();
-                if (monitor == null)
-                {
-                    KokoroTTSStatus = "—";
-                    return;
-                }
-                var status = await monitor.GetServerStatusAsync("Kokoro TTS");
-                KokoroTTSStatus = status.IsRunning ? "● Running (port 8880)" : "○ Stopped";
+                var endpoint = (TTSEndpoint ?? _appConfig.TTSEndpoint ?? "http://localhost:8881").TrimEnd('/');
+                var response = await _httpClient.GetAsync($"{endpoint}/health");
+                ChatterboxTTSStatus = response.IsSuccessStatusCode
+                    ? "● Running (port 8881)"
+                    : "○ Stopped";
             }
             catch
             {
-                KokoroTTSStatus = "—";
+                ChatterboxTTSStatus = "○ Stopped";
             }
         }
 
-        private async Task StartKokoroAsync()
+        private async Task StartChatterboxAsync()
         {
             try
             {
-                var monitor = App.ServiceProvider?.GetService<ISystemMonitorService>();
-                if (monitor != null)
+                var repoRoot = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataRoot(
+                    System.AppContext.BaseDirectory);
+                var script = System.IO.Path.Combine(repoRoot, ".ps1 scripts", "start-chatterbox.ps1");
+                if (!System.IO.File.Exists(script))
                 {
-                    await monitor.StartServerAsync("Kokoro TTS");
-                    await Task.Delay(800);
-                    await RefreshKokoroStatusAsync();
-                    if (TTSEndpoint?.Contains("8880") == true)
-                        _ = TestTTSConnectionAsync();
+                    ChatterboxTTSStatus = "Error: start-chatterbox.ps1 not found";
+                    return;
                 }
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" -ScriptDir \"{repoRoot}\"",
+                    WorkingDirectory = repoRoot,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                System.Diagnostics.Process.Start(psi);
+                await Task.Delay(3000).ConfigureAwait(false);
+                await RefreshChatterboxStatusAsync().ConfigureAwait(false);
+                _ = TestTTSConnectionAsync();
             }
             catch (Exception ex)
             {
-                KokoroTTSStatus = "Error: " + ex.Message;
+                ChatterboxTTSStatus = "Error: " + ex.Message;
             }
         }
 
-        private async Task StopKokoroAsync()
+        private async Task StopChatterboxAsync()
         {
             try
             {
-                var monitor = App.ServiceProvider?.GetService<ISystemMonitorService>();
-                if (monitor != null)
+                var repoRoot = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataRoot(
+                    System.AppContext.BaseDirectory);
+                var script = System.IO.Path.Combine(repoRoot, ".ps1 scripts", "stop-chatterbox.ps1");
+                if (System.IO.File.Exists(script))
                 {
-                    await monitor.StopServerAsync("Kokoro TTS");
-                    await Task.Delay(500);
-                    await RefreshKokoroStatusAsync();
-                    if (TTSEndpoint?.Contains("8880") == true)
-                        TTSConnectionStatus = "✗ Failed";
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "powershell",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\"",
+                        WorkingDirectory = repoRoot,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    System.Diagnostics.Process.Start(psi)?.WaitForExit(5000);
                 }
+
+                await Task.Delay(1000).ConfigureAwait(false);
+                await RefreshChatterboxStatusAsync().ConfigureAwait(false);
+                TTSConnectionStatus = "✗ Failed";
             }
             catch (Exception ex)
             {
-                KokoroTTSStatus = "Error: " + ex.Message;
+                ChatterboxTTSStatus = "Error: " + ex.Message;
             }
         }
 
@@ -1949,6 +2025,9 @@ v_models:
                         TTSEndpoint = importedConfig.TTSEndpoint;
                         UseWindowsTTSFallback = importedConfig.UseWindowsTTSFallback;
                         STTEndpoint = importedConfig.STTEndpoint ?? string.Empty;
+                        VoiceEngineInputGain = importedConfig.VoiceEngineInputGain > 0 ? importedConfig.VoiceEngineInputGain : 4f;
+                        VoiceEngineSilenceThreshold = importedConfig.VoiceEngineSilenceThreshold > 0 ? importedConfig.VoiceEngineSilenceThreshold : 0.003f;
+                        ChatMicRecordingGain = importedConfig.ChatMicRecordingGain > 0 ? importedConfig.ChatMicRecordingGain : 4f;
                         UnrealEngineEndpoint = importedConfig.UnrealEngineEndpoint;
                         RemoteCompanionEnabled = importedConfig.RemoteCompanionEnabled;
                         RemoteCompanionListenPort = importedConfig.RemoteCompanionListenPort > 0 ? importedConfig.RemoteCompanionListenPort : 17890;
@@ -2035,6 +2114,9 @@ v_models:
                         TTSEndpoint = TTSEndpoint,
                         UseWindowsTTSFallback = UseWindowsTTSFallback,
                         STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint,
+                        VoiceEngineInputGain = VoiceEngineInputGain,
+                        VoiceEngineSilenceThreshold = VoiceEngineSilenceThreshold,
+                        ChatMicRecordingGain = ChatMicRecordingGain,
                         UnrealEngineEndpoint = UnrealEngineEndpoint,
                         RemoteCompanionEnabled = RemoteCompanionEnabled,
                         RemoteCompanionListenPort = RemoteCompanionListenPort,
@@ -2117,6 +2199,9 @@ v_models:
                 _appConfig.TTSEndpoint = TTSEndpoint;
                 _appConfig.UseWindowsTTSFallback = UseWindowsTTSFallback;
                 _appConfig.STTEndpoint = string.IsNullOrWhiteSpace(STTEndpoint) ? null : STTEndpoint;
+                _appConfig.VoiceEngineInputGain = VoiceEngineInputGain;
+                _appConfig.VoiceEngineSilenceThreshold = VoiceEngineSilenceThreshold;
+                _appConfig.ChatMicRecordingGain = ChatMicRecordingGain;
                 _appConfig.UnrealEngineEndpoint = UnrealEngineEndpoint;
                 _appConfig.RemoteCompanionEnabled = RemoteCompanionEnabled;
                 _appConfig.RemoteCompanionListenPort = RemoteCompanionListenPort;
@@ -2227,6 +2312,9 @@ v_models:
                 TTSEndpoint = defaults.TTSEndpoint;
                 UseWindowsTTSFallback = defaults.UseWindowsTTSFallback;
                 STTEndpoint = defaults.STTEndpoint ?? string.Empty;
+                VoiceEngineInputGain = defaults.VoiceEngineInputGain;
+                VoiceEngineSilenceThreshold = defaults.VoiceEngineSilenceThreshold;
+                ChatMicRecordingGain = defaults.ChatMicRecordingGain;
                 UnrealEngineEndpoint = defaults.UnrealEngineEndpoint;
                 RemoteCompanionEnabled = defaults.RemoteCompanionEnabled;
                 RemoteCompanionListenPort = defaults.RemoteCompanionListenPort > 0 ? defaults.RemoteCompanionListenPort : 17890;

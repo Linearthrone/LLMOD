@@ -1,6 +1,7 @@
 using System.Text.Json;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Core.Utils;
 
 namespace HouseVictoria.Services.ProjectManagement
 {
@@ -31,7 +32,7 @@ namespace HouseVictoria.Services.ProjectManagement
             {
                 var appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
                              ?? AppDomain.CurrentDomain.BaseDirectory;
-                basePath = Path.Combine(appDir, basePath);
+                basePath = AppDataRootResolver.ResolveDataPath(appDir, basePath);
             }
 
             Directory.CreateDirectory(basePath);
@@ -74,9 +75,11 @@ namespace HouseVictoria.Services.ProjectManagement
                         _projectArtifacts[kv.Key] = kv.Value;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                SeedDefaultProjects();
+                System.Diagnostics.Debug.WriteLine($"PersistentProjectManagementService: failed to load {_storePath}: {ex.Message}");
+                if (_projects.Count == 0)
+                    SeedDefaultProjects();
             }
         }
 

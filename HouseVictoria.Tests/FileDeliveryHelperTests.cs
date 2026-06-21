@@ -73,4 +73,28 @@ public class FileDeliveryHelperTests
     {
         Assert.False(FileDeliveryHelper.ShouldBlockImageGeneration("draw me a picture of a cat"));
     }
+
+    [Fact]
+    public void ShouldBlockImageGeneration_allows_image_when_file_word_also_present()
+    {
+        Assert.False(FileDeliveryHelper.ShouldBlockImageGeneration("make an image file of a sunset"));
+    }
+
+    [Fact]
+    public void ShouldAttemptImageGeneration_detects_casual_selfie_request()
+    {
+        Assert.True(FileDeliveryHelper.ShouldAttemptImageGeneration("I want a selfie of you smiling"));
+    }
+
+    [Fact]
+    public void AiPromisesOrClaimsImageDelivery_detects_deferred_generation()
+    {
+        Assert.True(FileDeliveryHelper.AiPromisesOrClaimsImageDelivery("(smiles) I'm generating a picture of the garden for you now."));
+    }
+
+    [Fact]
+    public void AiClaimsFileDelivered_detects_false_success()
+    {
+        Assert.True(FileDeliveryHelper.AiClaimsFileDelivered("I've saved the report to File Retrieval for you."));
+    }
 }

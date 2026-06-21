@@ -121,7 +121,7 @@ namespace HouseVictoria.App.Screens.Windows
             Contact = contact;
             ContactName = contact.Name ?? "Unknown";
             SystemPrompt = contact.SystemPrompt ?? string.Empty;
-            PiperVoiceId = contact.PiperVoiceId ?? string.Empty;
+            PiperVoiceId = contact.CallVoiceId ?? contact.PiperVoiceId ?? string.Empty;
             AvatarModelPath = contact.AvatarModelPath ?? string.Empty;
             AvatarVoiceSpeed = contact.AvatarVoiceSpeed;
             AvatarVoicePitch = contact.AvatarVoicePitch;
@@ -166,7 +166,7 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 AvailablePiperVoices.Clear();
-                foreach (var v in HouseVictoria.Services.Voice.VoiceCatalog.GetKokoroVoices())
+                foreach (var v in HouseVictoria.Services.Voice.VoiceCatalog.GetCallVoices())
                     AvailablePiperVoices.Add(v);
             }
             catch { }

@@ -40,7 +40,15 @@
             
             <!-- Inner Screen Container -->
             <Border Background="{DynamicResource DarkBackgroundBrush}" CornerRadius="26" ClipToBounds="True">
-            
+            <Grid>
+                <Image x:Name="ChatSealBackground"
+                       Stretch="Uniform"
+                       Opacity="0.14"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Margin="24"
+                       IsHitTestVisible="False"/>
+
             <!-- Top Notch/Punch Hole Area -->
         <Grid>
             <Grid.RowDefinitions>
@@ -1146,6 +1154,7 @@
                         </Button>
                     </Grid>
                 </Border>
+            </Grid>
             </Grid>
         </Border>
         </Border>

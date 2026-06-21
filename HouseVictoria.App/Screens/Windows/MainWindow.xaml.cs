@@ -198,29 +198,71 @@ namespace HouseVictoria.App.Screens.Windows
 
                 bool iconLoaded = false;
 
-                // Try to load PNG and convert to icon
+                // Prefer branding icon from Media/Icons,Logos
                 try
                 {
-                    var pngUri = new Uri("pack://application:,,,/HouseVictoria.App;component/Resources/SYSICO.png", UriKind.Absolute);
-                    var bitmapImage = new BitmapImage();
-                    bitmapImage.BeginInit();
-                    bitmapImage.UriSource = pngUri;
-                    bitmapImage.DecodePixelWidth = 32;
-                    bitmapImage.DecodePixelHeight = 32;
-                    bitmapImage.EndInit();
-                    bitmapImage.Freeze();
-
-                    var icon = CreateIconFromPngSource(bitmapImage);
-                    if (icon != null)
+                    var brandingIconPath = HelperClasses.MediaBrandingPaths.TrayIconPath;
+                    if (!string.IsNullOrEmpty(brandingIconPath))
                     {
-                        _notifyIcon.Icon = icon;
-                        iconLoaded = true;
-                        System.Diagnostics.Debug.WriteLine("Icon loaded from PNG successfully");
+                        System.Drawing.Icon? loadedIcon = null;
+                        try
+                        {
+                            using var brandingIcon = new System.Drawing.Icon(brandingIconPath);
+                            loadedIcon = (System.Drawing.Icon)brandingIcon.Clone();
+                        }
+                        catch
+                        {
+                            // Some branding files use .ico extension but are raster images.
+                            var bitmapImage = new BitmapImage();
+                            bitmapImage.BeginInit();
+                            bitmapImage.UriSource = new Uri(brandingIconPath, UriKind.Absolute);
+                            bitmapImage.DecodePixelWidth = 32;
+                            bitmapImage.DecodePixelHeight = 32;
+                            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmapImage.EndInit();
+                            bitmapImage.Freeze();
+                            loadedIcon = CreateIconFromPngSource(bitmapImage);
+                        }
+
+                        if (loadedIcon != null)
+                        {
+                            _notifyIcon.Icon = loadedIcon;
+                            iconLoaded = true;
+                            System.Diagnostics.Debug.WriteLine($"Tray icon loaded from {brandingIconPath}");
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"PNG icon loading failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Branding tray icon loading failed: {ex.Message}");
+                }
+
+                // Fallback: embedded PNG
+                if (!iconLoaded)
+                {
+                    try
+                    {
+                        var pngUri = new Uri("pack://application:,,,/HouseVictoria.App;component/Resources/SYSICO.png", UriKind.Absolute);
+                        var bitmapImage = new BitmapImage();
+                        bitmapImage.BeginInit();
+                        bitmapImage.UriSource = pngUri;
+                        bitmapImage.DecodePixelWidth = 32;
+                        bitmapImage.DecodePixelHeight = 32;
+                        bitmapImage.EndInit();
+                        bitmapImage.Freeze();
+
+                        var icon = CreateIconFromPngSource(bitmapImage);
+                        if (icon != null)
+                        {
+                            _notifyIcon.Icon = icon;
+                            iconLoaded = true;
+                            System.Diagnostics.Debug.WriteLine("Icon loaded from PNG successfully");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"PNG icon loading failed: {ex.Message}");
+                    }
                 }
 
                 // Fallback methods if PNG fails
