@@ -966,7 +966,7 @@
                                         Background="{DynamicResource DarkInputBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" 
                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="8" Margin="5,0"/>
                             </Grid>
-                            <Separator Margin="0,12,0,8" Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A"/>
+                            <Separator Margin="0,12,0,8" Background="#335B8A8A"/>
                             <TextBlock Text="Semantic memory (Postgres + pgvector)" FontWeight="SemiBold" Foreground="#9CC7FF" Margin="0,0,0,4"/>
                             <Grid Margin="0,5">
                                 <Grid.ColumnDefinitions>

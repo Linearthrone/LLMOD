@@ -48,7 +48,8 @@
         </Style>
     </Window.Resources>
 
-    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+    <Border Style="{StaticResource OverlayPanelShell}" Margin="12">
+        <Border Style="{StaticResource GlassPanel}" Padding="0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -56,12 +57,10 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Opacity="0.9" Padding="15,12"
-                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}" MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <StackPanel>
-                    <TextBlock Text="✋ Send Back for Revision" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="{Binding ProjectName}" FontSize="12" Foreground="#E0E0F0" Margin="0,2,0,0"/>
+                    <TextBlock Text="Send Back for Revision" Style="{StaticResource OverlayPanelTitle}"/>
+                    <TextBlock Text="{Binding ProjectName}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -139,17 +138,17 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Footer -->
-            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+            <Border Grid.Row="2" Style="{StaticResource OverlayDialogFooter}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource GlassButton}" Content="✋ Send Back"
-                            Width="140" Height="35" Margin="0,0,10,0"
+                    <Button Style="{StaticResource GlassButton}" Content="Send Back"
+                            Width="120" Height="34" Margin="0,0,10,0"
                             Click="SubmitButton_Click"/>
-                    <Button Style="{StaticResource GlassButton}" Content="❌ Cancel"
-                            Width="120" Height="35"
+                    <Button Style="{StaticResource OverlayCloseButton}" Content="Cancel"
+                            Width="100" Height="34"
                             Click="CancelButton_Click"/>
                 </StackPanel>
             </Border>
         </Grid>
+        </Border>
     </Border>
 </Window>

@@ -11,58 +11,55 @@
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         
-        <!-- Override ComboBox to ensure gray background -->
         <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
-            <Setter Property="Background" Value="#383838"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource DarkInputBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
         </Style>
         
-        <!-- Override DatePicker to ensure gray background -->
         <Style TargetType="DatePicker" BasedOn="{StaticResource MaterialDesignDatePicker}">
-            <Setter Property="Background" Value="#383838"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource DarkInputBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         
-        <!-- Calendar styles for DatePicker dark theme -->
         <Style TargetType="Calendar">
-            <Setter Property="Background" Value="#383838"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource DarkSurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style TargetType="CalendarDayButton">
-            <Setter Property="Background" Value="#383838"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#B0BEC5"/>
+            <Setter Property="Background" Value="{DynamicResource DarkInputBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#9575CD"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                 </Trigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#673AB7"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
                 </Trigger>
                 <Trigger Property="IsToday" Value="True">
-                    <Setter Property="BorderBrush" Value="#673AB7"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryLightBrush}"/>
                     <Setter Property="BorderThickness" Value="2"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style TargetType="CalendarItem">
-            <Setter Property="Background" Value="#383838"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource DarkSurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
         <Style TargetType="CalendarButton">
-            <Setter Property="Background" Value="#383838"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource DarkInputBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#673AB7"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
     </Window.Resources>
-    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+    <Border Style="{StaticResource OverlayPanelShell}" Margin="12">
+        <Border Style="{StaticResource GlassPanel}" Padding="0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -71,8 +68,8 @@
             </Grid.RowDefinitions>
 
             <!-- Header -->
-            <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Opacity="0.85" Padding="15,10">
-                <TextBlock Text="📋 Create New Project/Goal" FontSize="18" FontWeight="Bold" Foreground="White"/>
+            <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}">
+                <TextBlock Text="Create Project / Goal" Style="{StaticResource OverlayPanelTitle}"/>
             </Border>
 
             <!-- Content Area -->
@@ -83,10 +80,9 @@
                             <ColumnDefinition Width="150"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Name:" FontSize="14" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="Name:" Style="{StaticResource OverlayFieldLabel}"/>
                         <TextBox Grid.Column="1" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" 
-                                Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
-                                Foreground="White" Padding="8" Margin="10,0,0,0"/>
+                                Style="{StaticResource OverlayFieldInput}" Margin="10,0,0,0"/>
                     </Grid>
 
                     <!-- Type -->
@@ -274,16 +270,17 @@
             </StackPanel>
 
             <!-- Footer Buttons -->
-            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+            <Border Grid.Row="2" Style="{StaticResource OverlayDialogFooter}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource GlassButton}" Content="💾 Save" 
-                           Width="120" Height="35" Margin="0,0,10,0"
+                    <Button Style="{StaticResource GlassButton}" Content="Save" 
+                           Width="120" Height="34" Margin="0,0,10,0"
                            Click="SaveButton_Click"/>
-                    <Button Style="{StaticResource GlassButton}" Content="❌ Cancel" 
-                           Width="120" Height="35"
+                    <Button Style="{StaticResource OverlayCloseButton}" Content="Cancel" 
+                           Width="120" Height="34"
                            Click="CancelButton_Click"/>
                 </StackPanel>
             </Border>
         </Grid>
+        </Border>
     </Border>
 </Window>

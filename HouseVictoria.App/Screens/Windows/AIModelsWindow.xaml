@@ -10,9 +10,9 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
-        <!-- Row text #E0F7FF: hover/selection backgrounds must be darker for contrast -->
+        <!-- Row text {DynamicResource TextPrimaryBrush}: hover/selection backgrounds must be darker for contrast -->
         <Style x:Key="OllamaModelsListViewItem" TargetType="ListViewItem">
-            <Setter Property="Foreground" Value="#E0F7FF"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="4,4"/>
@@ -251,7 +251,7 @@
                                 <TextBlock Text="{Binding PersonaFormTitle}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,10"/>
 
                                 <!-- Live preview card -->
-                                <Border Background="#1A00D4FF" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                                <Border Background="#1A5B8A8A" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
@@ -326,7 +326,7 @@
                                         <ComboBox.ItemContainerStyle>
                                             <Style TargetType="ComboBoxItem">
                                                 <Setter Property="Background" Value="#252F3F"/>
-                                                <Setter Property="Foreground" Value="#E0F7FF"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                                             </Style>
                                         </ComboBox.ItemContainerStyle>
                                     </ComboBox>
@@ -349,7 +349,7 @@
                                         <ComboBox.ItemContainerStyle>
                                             <Style TargetType="ComboBoxItem">
                                                 <Setter Property="Background" Value="#252F3F"/>
-                                                <Setter Property="Foreground" Value="#E0F7FF"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                                                 <Style.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
                                                         <Setter Property="Background" Value="#4000D4FF"/>
@@ -416,7 +416,7 @@
                                         <ComboBox.ItemContainerStyle>
                                             <Style TargetType="ComboBoxItem">
                                                 <Setter Property="Background" Value="#252F3F"/>
-                                                <Setter Property="Foreground" Value="#E0F7FF"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                                                 <Style.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
                                                         <Setter Property="Background" Value="#4000D4FF"/>
@@ -719,7 +719,7 @@
                                                     <StackPanel Grid.Column="0">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                                            <Border Background="#3300D4FF" BorderBrush="#00D4FF" BorderThickness="1" CornerRadius="3"
+                                                            <Border Background="#335B8A8A" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1" CornerRadius="3"
                                                                     Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center"
                                                                     Visibility="{Binding IsPrimaryAI, Converter={StaticResource BoolToVisibilityConverter}}">
                                                                 <TextBlock Text="PRIMARY" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>

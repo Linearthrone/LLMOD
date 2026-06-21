@@ -73,7 +73,7 @@
                                         </LinearGradientBrush>
                                     </Border.Background>
                                     <Border.BorderBrush>
-                                        <SolidColorBrush Color="#5000D4FF"/>
+                                        <SolidColorBrush Color="#505B8A8A"/>
                                     </Border.BorderBrush>
                                     <Border.BorderThickness>1</Border.BorderThickness>
                                     <Border.Effect>

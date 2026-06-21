@@ -9,13 +9,14 @@
                 <ResourceDictionary Source="Styles/MaterialDesign.xaml" />
                 <ResourceDictionary Source="Styles/MaterialDesignButtons.xaml" />
                 <ResourceDictionary Source="Styles/MaterialDesignControls.xaml" />
-                <!-- Obsidian Field design system -->
+                <!-- Obsidian Field design system (base styles must load before dependents) -->
                 <ResourceDictionary Source="Styles/ObsidianField.xaml" />
-                <ResourceDictionary Source="Styles/InstrumentStackStyles.xaml" />
-                <ResourceDictionary Source="Styles/SettingsShellStyles.xaml" />
-                <!-- App Custom Styles -->
                 <ResourceDictionary Source="Styles/GlassEffect.xaml" />
                 <ResourceDictionary Source="Styles/OverlayStyles.xaml" />
+                <ResourceDictionary Source="Styles/InstrumentStackStyles.xaml" />
+                <ResourceDictionary Source="Styles/SettingsShellStyles.xaml" />
+                <ResourceDictionary Source="Styles/ChatShellStyles.xaml" />
+                <ResourceDictionary Source="Styles/OverlayDialogStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!-- Converters -->
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>

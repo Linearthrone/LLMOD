@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HouseVictoria.App\HouseVictoria.App.csproj" />
     <ProjectReference Include="..\HouseVictoria.Core\HouseVictoria.Core.csproj" />
     <ProjectReference Include="..\HouseVictoria.Services\HouseVictoria.Services.csproj" />
   </ItemGroup>

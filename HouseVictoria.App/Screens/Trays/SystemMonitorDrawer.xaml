@@ -144,7 +144,7 @@
                                     </ControlTemplate>
                                 </Setter.Value>
                             </Setter>
-                            <Setter Property="Foreground" Value="#E0F7FF"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                             <Setter Property="FontSize" Value="12"/>
                         </Style>
                     </TabControl.Resources>
@@ -158,24 +158,24 @@
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,5">
                                     <StackPanel>
                                         <TextBlock Text="System Uptime" FontSize="12" Foreground="#80C4D4" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="{Binding SystemUptime}" FontSize="18" Foreground="#E0F7FF" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SystemUptime}" FontSize="18" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
 
                                 <!-- CPU Metrics -->
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,5">
                                     <StackPanel>
-                                        <TextBlock Text="CPU" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <TextBlock Text="CPU" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
                                         <Grid Margin="0,5">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding CPUUsage}" FontSize="16" Foreground="#E0F7FF"/>
+                                            <TextBlock Grid.Column="0" Text="{Binding CPUUsage}" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding CPUTemperature}" FontSize="14" Foreground="#80C4D4"/>
                                         </Grid>
                                         <ProgressBar Value="{Binding CPUUsageValue}" Maximum="100" Height="8" 
-                                                     Foreground="#00D4FF" Background="#1A2332" Margin="0,5,0,0"/>
+                                                     Foreground="{DynamicResource PrimaryBrush}" Background="#1A2332" Margin="0,5,0,0"/>
                                         <TextBlock FontSize="12" Foreground="#80C4D4" Margin="0,2,0,0">
                                             <Run Text="Fan: "/><Run Text="{Binding CPUFanSpeed}"/><Run Text=" RPM"/>
                                         </TextBlock>
@@ -190,7 +190,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="GPU" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="0" Text="GPU" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
                                             <TextBlock Grid.Column="1" Text="{Binding GPUVendor}" FontSize="10" Foreground="#80C4D4" 
                                                       Visibility="{Binding GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </Grid>
@@ -199,11 +199,11 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding GPUUsage}" FontSize="16" Foreground="#E0F7FF"/>
+                                            <TextBlock Grid.Column="0" Text="{Binding GPUUsage}" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                             <TextBlock Grid.Column="1" Text="{Binding GPUTemperature}" FontSize="14" Foreground="#80C4D4"/>
                                         </Grid>
                                         <ProgressBar Value="{Binding GPUUsageValue}" Maximum="100" Height="8" 
-                                                     Foreground="#00D4FF" Background="#1A2332" Margin="0,5,0,0"
+                                                     Foreground="{DynamicResource PrimaryBrush}" Background="#1A2332" Margin="0,5,0,0"
                                                      Visibility="{Binding GPUMetricsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         <TextBlock FontSize="12" Foreground="#80C4D4" Margin="0,2,0,0">
                                             <Run Text="Fan: "/><Run Text="{Binding GPUFanSpeed}"/>
@@ -216,12 +216,12 @@
                                 <!-- RAM Metrics -->
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,5">
                                     <StackPanel>
-                                        <TextBlock Text="RAM" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <TextBlock Text="RAM" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
                                         <Grid Margin="0,5">
-                                            <TextBlock Text="{Binding RAMUsage}" FontSize="16" Foreground="#E0F7FF"/>
+                                            <TextBlock Text="{Binding RAMUsage}" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         </Grid>
                                         <ProgressBar Value="{Binding RAMUsagePercentage}" Maximum="100" Height="8" 
-                                                     Foreground="#00D4FF" Background="#1A2332" Margin="0,5,0,0"/>
+                                                     Foreground="{DynamicResource PrimaryBrush}" Background="#1A2332" Margin="0,5,0,0"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -245,15 +245,15 @@
                                             </Grid.ColumnDefinitions>
                                             <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
                                                      Fill="{Binding PrimaryAIStatusColor}" Width="30" Height="30" Margin="0,4,8,0"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding PrimaryAIStatusText}" FontSize="12" Foreground="#E0F7FF"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding PrimaryAIStatusText}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
 
                                 <!-- Virtual Environment Status -->
-                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="#00D4FF">
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,5" BorderBrush="{DynamicResource PrimaryBrush}">
                                     <StackPanel>
-                                        <TextBlock Text="Virtual Environment" FontSize="14" Foreground="#00D4FF" FontWeight="Bold"/>
+                                        <TextBlock Text="Virtual Environment" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold"/>
                                         <Grid Margin="0,5">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -267,8 +267,8 @@
                                         <Border Background="#CC0A0E27" Padding="5" Margin="0,5,0,5" CornerRadius="3" 
                                                Visibility="{Binding VirtualEnvironmentIsConnected, Converter={StaticResource BoolToVisibilityConverter}}">
                                             <StackPanel>
-                                                <TextBlock Text="Scene Info" FontSize="11" Foreground="#00D4FF" FontWeight="Bold" Margin="0,0,0,3"/>
-                                                <TextBlock Text="{Binding VirtualEnvironmentSceneName}" FontSize="10" Foreground="#E0F7FF" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Scene Info" FontSize="11" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,0,0,3"/>
+                                                <TextBlock Text="{Binding VirtualEnvironmentSceneName}" FontSize="10" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,2"/>
                                                 <TextBlock Text="{Binding VirtualEnvironmentSceneDetails}" FontSize="9" Foreground="#80C4D4"/>
                                             </StackPanel>
                                         </Border>
@@ -292,7 +292,7 @@
                                 <Separator Margin="0,8,0,8" Background="#1A2332"/>
 
                                 <!-- Server Status -->
-                                <TextBlock Text="Server Status" FontSize="14" Foreground="#00D4FF" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <TextBlock Text="Server Status" FontSize="14" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,0,0,5"/>
                                 <ItemsControl ItemsSource="{Binding ServerStatuses}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -305,7 +305,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Ellipse Grid.Column="0" Style="{StaticResource StatusIndicator}" 
                                                              Fill="{Binding StatusColor}" Width="24" Height="24" Margin="0,4,8,0"/>
-                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" Foreground="#E0F7FF" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,5,0">
                                                         <Button Command="{Binding StartCommand}" Style="{StaticResource GlassButton}"
                                                                 Width="24" Height="24" Padding="0" Margin="2,0" ToolTip="Start"

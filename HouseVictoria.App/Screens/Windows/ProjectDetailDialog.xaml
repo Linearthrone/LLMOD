@@ -17,7 +17,8 @@
             <Setter Property="Foreground" Value="White"/>
         </Style>
     </Window.Resources>
-    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
+    <Border Style="{StaticResource OverlayPanelShell}" Margin="12">
+        <Border Style="{StaticResource GlassPanel}" Padding="0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -41,13 +42,13 @@
                        Style="{StaticResource MaterialDesignTabControl}">
                 <TabControl.Resources>
                     <Style TargetType="TabItem" BasedOn="{StaticResource MaterialDesignTabItem}">
-                        <Setter Property="Background" Value="#CC222222"/>
-                        <Setter Property="Foreground" Value="White"/>
-                        <Setter Property="BorderBrush" Value="#CC444444"/>
+                        <Setter Property="Background" Value="{DynamicResource DarkInputBrush}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#CC333333"/>
-                                <Setter Property="Foreground" Value="#e94560"/>
+                                <Setter Property="Background" Value="{DynamicResource DarkSurfaceBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryLightBrush}"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -440,7 +441,7 @@
             </TabControl>
 
             <!-- Footer Buttons -->
-            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
+            <Border Grid.Row="2" Style="{StaticResource OverlayDialogFooter}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -467,5 +468,6 @@
                 </Grid>
             </Border>
         </Grid>
+        </Border>
     </Border>
 </Window>

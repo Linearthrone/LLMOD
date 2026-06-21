@@ -53,7 +53,7 @@
                                   ToolTip="Include archived items so you can review or restore them">
                         <ToggleButton.Style>
                             <Style TargetType="ToggleButton">
-                                <Setter Property="Background" Value="#3000D4FF"/>
+                                <Setter Property="Background" Value="#305B8A8A"/>
                                 <Setter Property="BorderThickness" Value="0"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
@@ -69,10 +69,10 @@
                                 </Setter>
                                 <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#5000D4FF"/>
+                                        <Setter Property="Background" Value="#505B8A8A"/>
                                     </Trigger>
                                     <Trigger Property="IsChecked" Value="True">
-                                        <Setter Property="Background" Value="#8000D4FF"/>
+                                        <Setter Property="Background" Value="#505B8A8A"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -208,7 +208,7 @@
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="#4000D4FF"/>
-                                    <Setter Property="Foreground" Value="#E0F7FF"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>

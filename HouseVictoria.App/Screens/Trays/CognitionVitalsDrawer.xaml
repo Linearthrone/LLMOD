@@ -155,7 +155,7 @@
                                             </Button>
                                             <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center"
                                                      Fill="{Binding CognitionWaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
-                                            <TextBlock Text="{Binding AutonomyStatusText}" FontSize="11" Foreground="#E0F7FF"/>
+                                            <TextBlock Text="{Binding AutonomyStatusText}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         </StackPanel>
                                     </Grid>
 
@@ -184,11 +184,11 @@
                                     <TextBlock Text="{Binding GuidanceStatus}" FontSize="10" Foreground="#607080" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
                                     <TextBlock Text="Current activity" Style="{StaticResource ControlLabel}" Margin="0,10,0,2"/>
-                                    <TextBlock Text="{Binding CurrentActivityElapsed}" FontSize="12" Foreground="#00D4FF" Margin="0,0,0,4"/>
-                                    <TextBlock Text="{Binding CurrentActivityDescription}" FontSize="12" Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding CurrentActivityElapsed}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding CurrentActivityDescription}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
 
                                     <TextBlock Text="Last activity" Style="{StaticResource ControlLabel}" Margin="0,10,0,2"/>
-                                    <TextBlock Text="{Binding PreviousActivityDescription}" FontSize="12" Foreground="#E0F7FF" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding PreviousActivityDescription}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
                                     <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="#607080">
                                         <Run Text="Duration: "/>
                                         <Run Text="{Binding PreviousActivityDuration}"/>
@@ -207,7 +207,7 @@
 
                             <CheckBox Content="Enable autonomy loop"
                                       IsChecked="{Binding EnableAutonomy}"
-                                      Foreground="#E0F7FF" FontSize="11" Margin="0,0,0,4"/>
+                                      Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,4"/>
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -227,8 +227,8 @@
                                     <TextBox Text="{Binding MaxArtPerHour, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                    <CheckBox Content="Art generation" IsChecked="{Binding EnableArtGeneration}" Foreground="#E0F7FF" FontSize="11" Margin="0,6,0,4"/>
-                                    <CheckBox Content="Self-initiated goals" IsChecked="{Binding EnableSelfGoals}" Foreground="#E0F7FF" FontSize="11" Margin="0,0,0,4"/>
+                                    <CheckBox Content="Art generation" IsChecked="{Binding EnableArtGeneration}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,6,0,4"/>
+                                    <CheckBox Content="Self-initiated goals" IsChecked="{Binding EnableSelfGoals}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" Margin="0,0,0,4"/>
                                     <TextBlock Text="Self-goals / day" Style="{StaticResource ControlLabel}"/>
                                     <TextBox Text="{Binding MaxSelfGoalsPerDay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ControlInput}"/>
                                     <TextBlock Text="Self-goal drive threshold" Style="{StaticResource ControlLabel}"/>
@@ -248,7 +248,7 @@
 
                             <Border Style="{StaticResource Card}" Margin="0,6,0,6" Padding="8">
                                 <StackPanel>
-                                    <TextBlock Text="Live state" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBlock Text="Live state" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                     <TextBlock Text="{Binding DrivesSummary}" FontSize="10" Foreground="#C4D4E0" TextWrapping="Wrap"/>
                                     <TextBlock Text="Interests" Style="{StaticResource ControlLabel}"/>
                                     <TextBlock Text="{Binding InterestsSummary}" FontSize="10" Foreground="#C4D4E0" TextWrapping="Wrap"/>
@@ -261,7 +261,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding ActionLogHeader}" FontSize="12" Foreground="#00D4FF" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding ActionLogHeader}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold"/>
                                 <Button Grid.Column="1" Command="{Binding RefreshActionLogCommand}" Style="{StaticResource MiniButton}" Content="Refresh"/>
                             </Grid>
 

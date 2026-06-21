@@ -5,73 +5,59 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:HouseVictoria.App.Converters"
         mc:Ignorable="d"
-        Title="Create Data Bank" Height="360" Width="700" MinHeight="360" MinWidth="700"
+        Title="Create Data Bank" Height="380" Width="720" MinHeight="360" MinWidth="640"
         Style="{StaticResource OverlayWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
-    <Border Style="{StaticResource GlassPanel}" Background="#CC1a1a2e">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Border Style="{StaticResource OverlayPanelShell}" Margin="12">
+        <Border Style="{StaticResource GlassPanel}" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Opacity="0.85" Padding="15,10">
-                <TextBlock Text="🗄️ Create Data Bank" FontSize="18" FontWeight="Bold" Foreground="White"/>
-            </Border>
+                <Border Grid.Row="0" Style="{StaticResource OverlayPanelHeader}">
+                    <TextBlock Text="Create Data Bank" Style="{StaticResource OverlayPanelTitle}"/>
+                </Border>
 
-            <!-- Content Area -->
-            <StackPanel Grid.Row="1" Margin="20">
-                    <!-- Name -->
-                    <Grid Margin="0,0,0,15">
+                <StackPanel Grid.Row="1" Margin="20,16">
+                    <Grid Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="140"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Name:" FontSize="14" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                        <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" 
-                                Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
-                                Foreground="White" Padding="8" Margin="10,0,0,0"/>
+                        <TextBlock Grid.Column="0" Text="Name" Style="{StaticResource OverlayFieldLabel}"/>
+                        <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                Style="{StaticResource OverlayFieldInput}" Margin="10,0,0,0"/>
                     </Grid>
-
-                    <!-- Description -->
-                    <Grid Margin="0,0,0,15">
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="140"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Description:" FontSize="14" FontWeight="Bold" Foreground="White" VerticalAlignment="Top" Margin="0,8,0,0"/>
-                        <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
-                                Background="{StaticResource DarkInputBrush}" BorderBrush="#B0BEC5" BorderThickness="1"
-                                Foreground="White" Padding="8" Margin="10,0,0,0"
-                                TextWrapping="Wrap" AcceptsReturn="True"
-                                VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                Height="120"/>
+                        <TextBlock Grid.Column="0" Text="Description" Style="{StaticResource OverlayFieldLabel}" VerticalAlignment="Top" Margin="0,8,0,0"/>
+                        <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                Style="{StaticResource OverlayFieldInput}" Margin="10,0,0,0"
+                                TextWrapping="Wrap" AcceptsReturn="True" Height="120"
+                                VerticalScrollBarVisibility="Auto"/>
                     </Grid>
-
-                    <!-- Validation Error -->
-                    <TextBlock Text="{Binding ValidationError}" 
-                             Foreground="#FF6B6B" FontSize="12" 
-                             Margin="0,10,0,0"
-                             TextWrapping="Wrap"
-                             Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}"/>
-            </StackPanel>
-
-            <!-- Footer Buttons -->
-            <Border Grid.Row="2" Background="#CC222222" Padding="15,10">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource GlassButton}" Content="💾 Save" 
-                           Width="120" Height="35" Margin="0,0,10,0"
-                           Click="SaveButton_Click"/>
-                    <Button Style="{StaticResource GlassButton}" Content="❌ Cancel" 
-                           Width="120" Height="35"
-                           Click="CancelButton_Click"/>
+                    <TextBlock Text="{Binding ValidationError}" Foreground="{DynamicResource ErrorBrush}" FontSize="12"
+                               TextWrapping="Wrap" Visibility="{Binding ValidationError, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 </StackPanel>
-            </Border>
-        </Grid>
+
+                <Border Grid.Row="2" Style="{StaticResource OverlayDialogFooter}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource GlassButton}" Content="Save" Width="100" Height="34" Margin="0,0,8,0"
+                               Click="SaveButton_Click"/>
+                        <Button Style="{StaticResource OverlayCloseButton}" Content="Cancel" Width="100" Height="34"
+                               Click="CancelButton_Click"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
     </Border>
 </Window>

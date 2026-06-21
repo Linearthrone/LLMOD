@@ -26,61 +26,23 @@
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Content="−" 
                                Width="30" Height="30" 
-                               Background="#CC444444" 
-                               BorderBrush="#CC666666" 
-                               BorderThickness="1"
+                               Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
+                               BorderThickness="0"
                                FontSize="18" FontWeight="Bold"
-                               Foreground="White"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Margin="0,0,5,0"
                                Click="MinimizeButton_Click"
-                               ToolTip="Minimize to Tray">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       BorderBrush="{TemplateBinding BorderBrush}"
-                                                       BorderThickness="{TemplateBinding BorderThickness}"
-                                                       CornerRadius="3">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                               ToolTip="Minimize to Tray"/>
                         <Button Content="✕" 
                                Width="30" Height="30" 
-                               Background="#CCCC0000" 
-                               BorderBrush="#CCFF0000" 
-                               BorderThickness="1"
+                               Style="{StaticResource OverlayCloseButton}" Background="#33B86B6B" 
+                               BorderThickness="0"
                                FontSize="16" FontWeight="Bold"
-                               Foreground="White"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                Cursor="Hand"
                                Click="CloseButton_Click"
-                               ToolTip="Close">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       BorderBrush="{TemplateBinding BorderBrush}"
-                                                       BorderThickness="{TemplateBinding BorderThickness}"
-                                                       CornerRadius="3">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                     VerticalAlignment="Center"/>
-                                                </Border>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                        </Button>
+                               ToolTip="Close"/>
                     </StackPanel>
                 </Grid>
             </Border>
