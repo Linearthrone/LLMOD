@@ -113,7 +113,7 @@ namespace HouseVictoria.App.Screens.Windows
 
                     var entry = selectedItem.LogEntry;
                     ViewModel.NotifyLogEntrySelected(entry.Id);
-                    ViewModel.SelectLogEntryAsync(entry).ConfigureAwait(false);
+                    _ = ViewModel.SelectLogEntryAsync(entry);
 
                     if (logTitle != null) logTitle.Text = entry.Title;
                     if (logDateTime != null) logDateTime.Text = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss");
@@ -152,7 +152,7 @@ namespace HouseVictoria.App.Screens.Windows
                     if (logTags != null)
                     {
                         logTags.Items.Clear();
-                        foreach (var tag in entry.Tags)
+                        foreach (var tag in entry.Tags ?? Enumerable.Empty<string>())
                         {
                             logTags.Items.Add(tag);
                         }
@@ -246,14 +246,27 @@ namespace HouseVictoria.App.Screens.Windows
                    ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase);
         }
 
-        private void GlobalLogDirectoryWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void GlobalLogDirectoryWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _savedWidth = Width;
             _savedHeight = Height;
             _savedLeft = Left;
             _savedTop = Top;
 
-            // Ensure window fits on screen (preserves XAML sizes, adjusts if off-screen or too large)
+            try
+            {
+                await ViewModel.InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GLD load error: {ex}");
+                MessageBox.Show(
+                    $"Global Log Directory could not load the review inbox:\n\n{ex.Message}",
+                    "Global Log Directory",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
             {
                 try

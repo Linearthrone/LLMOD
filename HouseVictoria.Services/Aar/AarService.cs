@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Services.Persistence;
+using HouseVictoria.Services.ProjectManagement;
 
 namespace HouseVictoria.Services.Aar
 {
@@ -19,6 +20,7 @@ namespace HouseVictoria.Services.Aar
         };
 
         private readonly string _storePath;
+        private readonly string _autonomyRoot;
         private readonly IProjectManagementService _projects;
         private readonly IAIService? _aiService;
         private readonly IMemoryService? _memory;
@@ -53,6 +55,7 @@ namespace HouseVictoria.Services.Aar
 
             Directory.CreateDirectory(basePath);
             _storePath = Path.Combine(basePath, "aar.json");
+            _autonomyRoot = basePath;
             LoadFromDisk();
 
             _projects.MilestoneReached += OnMilestoneReached;
@@ -131,7 +134,13 @@ namespace HouseVictoria.Services.Aar
                 return null;
 
             var logs = await _projects.GetProjectLogsAsync(projectId).ConfigureAwait(false);
-            var artifacts = await _projects.GetArtifactsAsync(projectId).ConfigureAwait(false);
+            var contact = await ResolveContactAsync(project.AssignedAIId).ConfigureAwait(false);
+            var artifacts = (await ProjectDeliverableMaterializer.EnsureCompletionBundleAsync(
+                _autonomyRoot,
+                _projects,
+                project,
+                logs,
+                contact?.Id ?? project.AssignedAIId ?? "system").ConfigureAwait(false)).ToList();
 
             var completedAt = project.LastModifiedAt ?? DateTime.Now;
             var timeInvested = completedAt - project.StartDate;
@@ -139,13 +148,14 @@ namespace HouseVictoria.Services.Aar
                 timeInvested = TimeSpan.Zero;
 
             var completionLevel = DetermineCompletionLevel(project.CompletionPercentage, completedAt, project.Deadline);
-            var contact = await ResolveContactAsync(project.AssignedAIId).ConfigureAwait(false);
 
             var (summary, goal, outcome) = await GenerateNarrativeAsync(project, logs, completionLevel, contact).ConfigureAwait(false);
 
-            var deliverable = artifacts
+            var fileArtifacts = artifacts
+                .Where(a => !string.IsNullOrWhiteSpace(a.FilePath))
                 .OrderByDescending(a => a.CreatedAt)
-                .FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.FilePath));
+                .ToList();
+            var deliverable = fileArtifacts.FirstOrDefault(a => File.Exists(a.FilePath));
 
             var report = new AfterActionReport
             {
@@ -162,14 +172,14 @@ namespace HouseVictoria.Services.Aar
                 CompletedAt = completedAt,
                 TimeInvested = timeInvested,
                 WorkSessionCount = logs.Count,
-                IsDeliverable = deliverable != null,
+                IsDeliverable = deliverable != null && File.Exists(deliverable.FilePath),
                 DeliverableName = deliverable?.Name,
                 DeliverablePath = deliverable?.FilePath,
-                DeliverablePaths = artifacts
-                    .Where(a => !string.IsNullOrWhiteSpace(a.FilePath))
+                DeliverablePaths = fileArtifacts
                     .Select(a => a.FilePath)
-                    .Distinct()
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
+                WorkExcerpt = ProjectDeliverableMaterializer.PickWorkExcerpt(logs),
                 ContactId = contact?.Id ?? project.AssignedAIId,
                 Status = AarStatus.Pending
             };
@@ -187,6 +197,87 @@ namespace HouseVictoria.Services.Aar
 
             RaiseChanged(report);
             return Clone(report);
+        }
+
+        public async Task RefreshPendingDeliverablesAsync()
+        {
+            List<AfterActionReport> pending;
+            await _lock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                pending = _reports
+                    .Where(r => r.Status == AarStatus.Pending)
+                    .Select(Clone)
+                    .ToList();
+            }
+            finally
+            {
+                _lock.Release();
+            }
+
+            if (pending.Count == 0)
+                return;
+
+            var changed = false;
+            foreach (var report in pending)
+            {
+                var project = await _projects.GetProjectAsync(report.ProjectId).ConfigureAwait(false);
+                if (project == null)
+                    continue;
+
+                var logs = await _projects.GetProjectLogsAsync(report.ProjectId).ConfigureAwait(false);
+                var contact = await ResolveContactAsync(report.ContactId ?? project.AssignedAIId).ConfigureAwait(false);
+                var artifacts = await ProjectDeliverableMaterializer.EnsureCompletionBundleAsync(
+                    _autonomyRoot,
+                    _projects,
+                    project,
+                    logs,
+                    contact?.Id ?? report.ContactId ?? "system").ConfigureAwait(false);
+
+                var fileArtifacts = artifacts
+                    .Where(a => !string.IsNullOrWhiteSpace(a.FilePath) && File.Exists(a.FilePath))
+                    .OrderByDescending(a => a.CreatedAt)
+                    .ToList();
+
+                var primary = fileArtifacts.FirstOrDefault();
+                report.IsDeliverable = primary != null;
+                report.DeliverableName = primary?.Name;
+                report.DeliverablePath = primary?.FilePath;
+                report.DeliverablePaths = fileArtifacts.Select(a => a.FilePath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                report.WorkExcerpt = ProjectDeliverableMaterializer.PickWorkExcerpt(logs);
+                changed = true;
+
+                await _lock.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    var stored = _reports.FirstOrDefault(r => r.Id == report.Id);
+                    if (stored == null || stored.Status != AarStatus.Pending)
+                        continue;
+
+                    stored.IsDeliverable = report.IsDeliverable;
+                    stored.DeliverableName = report.DeliverableName;
+                    stored.DeliverablePath = report.DeliverablePath;
+                    stored.DeliverablePaths = report.DeliverablePaths;
+                    stored.WorkExcerpt = report.WorkExcerpt;
+                }
+                finally
+                {
+                    _lock.Release();
+                }
+            }
+
+            if (changed)
+            {
+                await _lock.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    await PersistAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    _lock.Release();
+                }
+            }
         }
 
         public async Task AcceptAsync(string reportId)

@@ -23,5 +23,8 @@ namespace HouseVictoria.Core.Interfaces
 
         /// <summary>Reject the report: record feedback, reopen the project with new settings, clear it.</summary>
         Task RejectAsync(string reportId, AarRejectionFeedback feedback);
+
+        /// <summary>Backfill file deliverables and excerpts on pending reports from project logs.</summary>
+        Task RefreshPendingDeliverablesAsync();
     }
 }

@@ -215,7 +215,14 @@ namespace HouseVictoria.Services.Logging
             {
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Error in RefreshLogsAsync: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Stack trace: {ex.StackTrace}");
-                throw; // Re-throw to let caller know something went wrong
+            }
+        }
+
+        public Task<Dictionary<string, LogCategory>> PeekLogCategoriesAsync()
+        {
+            lock (_refreshLock)
+            {
+                return Task.FromResult(new Dictionary<string, LogCategory>(_categories));
             }
         }
 
@@ -345,6 +352,9 @@ namespace HouseVictoria.Services.Logging
                 or ".md" or ".txt" or ".json" or ".yaml" or ".yml" or ".xml" or ".csv";
         }
 
+        private const int MaxReviewInboxJournalEntries = 400;
+        private const int MaxInboxContentChars = 6000;
+
         private async Task LoadAutonomyJournalAsync(string autonomyDir)
         {
             var journalPath = Path.Combine(autonomyDir, "journal.jsonl");
@@ -353,7 +363,7 @@ namespace HouseVictoria.Services.Logging
 
             try
             {
-                var lines = await File.ReadAllLinesAsync(journalPath).ConfigureAwait(false);
+                var lines = await ReadTailLinesAsync(journalPath, MaxReviewInboxJournalEntries).ConfigureAwait(false);
                 foreach (var line in lines)
                 {
                     if (string.IsNullOrWhiteSpace(line))
@@ -375,11 +385,15 @@ namespace HouseVictoria.Services.Logging
                     if (journal == null)
                         continue;
 
-                    var body = journal.Body ?? journal.Summary;
-                    var linked = journal.LinkedFilePaths
+                    var body = journal.Body ?? journal.Summary ?? string.Empty;
+                    var linked = (journal.LinkedFilePaths ?? new List<string>())
                         .Where(p => !string.IsNullOrWhiteSpace(p))
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList();
+
+                    var inboxContent = body.Length > MaxInboxContentChars
+                        ? body[..MaxInboxContentChars] + "\n\n… [truncated in inbox — open linked file or journal for full text]"
+                        : body;
 
                     var entry = new LogEntry
                     {
@@ -387,7 +401,7 @@ namespace HouseVictoria.Services.Logging
                         Category = "Autonomy",
                         SubCategory = journal.Activity.ToString(),
                         Title = $"{journal.Activity}: {TruncateTitle(journal.Summary, 80)}",
-                        Content = body,
+                        Content = inboxContent,
                         Summary = TruncateTitle(body, 200),
                         Timestamp = journal.Timestamp,
                         Severity = LogSeverity.Info,
@@ -403,6 +417,24 @@ namespace HouseVictoria.Services.Logging
             {
                 System.Diagnostics.Debug.WriteLine($"LoggingService: Error loading autonomy journal: {ex.Message}");
             }
+        }
+
+        private static async Task<List<string>> ReadTailLinesAsync(string path, int maxLines)
+        {
+            if (maxLines <= 0)
+                return new List<string>();
+
+            var buffer = new LinkedList<string>();
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+            {
+                buffer.AddLast(line);
+                while (buffer.Count > maxLines)
+                    buffer.RemoveFirst();
+            }
+
+            return buffer.ToList();
         }
 
         private Task LoadAutonomyArtInboxAsync(string autonomyDir)

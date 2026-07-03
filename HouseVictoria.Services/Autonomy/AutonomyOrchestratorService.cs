@@ -4,6 +4,7 @@ using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
 using HouseVictoria.Core.Utils;
 using HouseVictoria.Services.Persistence;
+using HouseVictoria.Services.ProjectManagement;
 using HouseVictoria.Services.Trading;
 
 namespace HouseVictoria.Services.Autonomy
@@ -94,6 +95,7 @@ namespace HouseVictoria.Services.Autonomy
             Directory.CreateDirectory(_autonomyRoot);
             Directory.CreateDirectory(Path.Combine(_autonomyRoot, "Art"));
             Directory.CreateDirectory(Path.Combine(_autonomyRoot, "Research"));
+            Directory.CreateDirectory(Path.Combine(_autonomyRoot, "Deliverables"));
             _stateStore = new AutonomyStateStore(_autonomyRoot);
 
             _planner = new AutonomyPlanner(aiService);
@@ -623,6 +625,24 @@ namespace HouseVictoria.Services.Autonomy
             var note = await _aiService.SendMessageAsync(contact, prompt, null).ConfigureAwait(false);
             _lastActivityBody = note;
             _lastActivityTopic = project.Name;
+
+            string? deliverablePath = null;
+            try
+            {
+                deliverablePath = await ProjectDeliverableMaterializer.SaveSessionDeliverableAsync(
+                    _autonomyRoot,
+                    _projects,
+                    project,
+                    note.Trim(),
+                    currentStep?.Description,
+                    contact.Id,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Autonomy] deliverable save failed: {ex.Message}");
+            }
+
             await _projects.AddLogEntryAsync(project.Id, new ProjectLog
             {
                 ProjectId = project.Id,
@@ -664,7 +684,8 @@ namespace HouseVictoria.Services.Autonomy
                 $"{decision.Title} — {decision.Reason}",
                 note.Trim(),
                 project.Id,
-                project.Name).ConfigureAwait(false);
+                project.Name,
+                deliverablePath ?? string.Empty).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Project work on '{project.Name}': {note}").ConfigureAwait(false);
 
@@ -815,6 +836,23 @@ namespace HouseVictoria.Services.Autonomy
                 ProjectType.Research,
                 "Topics to investigate and personal R&D notes.").ConfigureAwait(false);
 
+            string? deliverablePath = null;
+            try
+            {
+                deliverablePath = await ProjectDeliverableMaterializer.SaveSessionDeliverableAsync(
+                    _autonomyRoot,
+                    _projects,
+                    researchProject,
+                    body.Trim(),
+                    decision.Title,
+                    contact.Id,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Autonomy] research deliverable save failed: {ex.Message}");
+            }
+
             await _projects.AddLogEntryAsync(researchProject.Id, new ProjectLog
             {
                 ProjectId = researchProject.Id,
@@ -828,7 +866,8 @@ namespace HouseVictoria.Services.Autonomy
                 $"{decision.Title} — {decision.Reason}",
                 body.Trim(),
                 researchProject.Id,
-                researchProject.Name).ConfigureAwait(false);
+                researchProject.Name,
+                deliverablePath ?? string.Empty).ConfigureAwait(false);
 
             await AppendAutonomyMemoryAsync(contact, $"Research on '{decision.Title}': {Truncate(body, 500)}").ConfigureAwait(false);
         }

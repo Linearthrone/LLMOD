@@ -63,6 +63,11 @@ namespace HouseVictoria.Core.Interfaces
         Task RefreshLogsAsync();
 
         /// <summary>
+        /// Returns the category tree from the last refresh without triggering another scan.
+        /// </summary>
+        Task<Dictionary<string, LogCategory>> PeekLogCategoriesAsync();
+
+        /// <summary>
         /// Get unread log count
         /// </summary>
         Task<int> GetUnreadCountAsync();

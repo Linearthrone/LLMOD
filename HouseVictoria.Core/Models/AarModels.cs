@@ -50,6 +50,9 @@ namespace HouseVictoria.Core.Models
         public string? DeliverablePath { get; set; }
         public List<string> DeliverablePaths { get; set; } = new();
 
+        /// <summary>Preview of the latest substantive work log (when narrative alone is not enough).</summary>
+        public string? WorkExcerpt { get; set; }
+
         public AarStatus Status { get; set; } = AarStatus.Pending;
         public string? ContactId { get; set; }
 

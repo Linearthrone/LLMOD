@@ -73,6 +73,7 @@ namespace HouseVictoria.App.Screens.Windows
             IsLoading = true;
             try
             {
+                await _aarService.RefreshPendingDeliverablesAsync().ConfigureAwait(true);
                 var pending = await _aarService.GetPendingReportsAsync().ConfigureAwait(true);
                 Reports.Clear();
                 foreach (var report in pending)
@@ -197,11 +198,25 @@ namespace HouseVictoria.App.Screens.Windows
             OnTimeLabel = report.WasOnTime ? "On time" : "Past deadline";
             OnTimeColor = report.WasOnTime ? "#4DD0A0" : "#FF8A80";
 
-            HasDeliverable = report.IsDeliverable && !string.IsNullOrWhiteSpace(report.DeliverablePath);
+            var paths = report.DeliverablePaths
+                .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (paths.Count == 0 && !string.IsNullOrWhiteSpace(report.DeliverablePath) && File.Exists(report.DeliverablePath))
+                paths.Add(report.DeliverablePath);
+
+            HasDeliverable = paths.Count > 0;
+            DeliverablePath = paths.FirstOrDefault() ?? string.Empty;
             DeliverableName = string.IsNullOrWhiteSpace(report.DeliverableName)
-                ? "Open deliverable"
+                ? (paths.Count > 0 ? Path.GetFileName(paths[0]) : "Open deliverable")
                 : report.DeliverableName;
-            DeliverablePath = report.DeliverablePath ?? string.Empty;
+            DeliverableItems = paths
+                .Select(p => new AarDeliverableItemViewModel(Path.GetFileName(p), p))
+                .ToList();
+            HasMultipleDeliverables = DeliverableItems.Count > 1;
+
+            WorkExcerpt = report.WorkExcerpt ?? string.Empty;
+            HasWorkExcerpt = !string.IsNullOrWhiteSpace(WorkExcerpt);
         }
 
         public string Id { get; }
@@ -227,5 +242,21 @@ namespace HouseVictoria.App.Screens.Windows
         public bool HasDeliverable { get; }
         public string DeliverableName { get; }
         public string DeliverablePath { get; }
+        public IReadOnlyList<AarDeliverableItemViewModel> DeliverableItems { get; }
+        public bool HasMultipleDeliverables { get; }
+        public string WorkExcerpt { get; }
+        public bool HasWorkExcerpt { get; }
+    }
+
+    public sealed class AarDeliverableItemViewModel
+    {
+        public AarDeliverableItemViewModel(string name, string path)
+        {
+            Name = name;
+            Path = path;
+        }
+
+        public string Name { get; }
+        public string Path { get; }
     }
 }
