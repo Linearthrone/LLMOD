@@ -16,6 +16,9 @@
 # Mono auto generated files
 mono_crash.*
 
+# Agent / local publish output (dotnet publish -o _build_*)
+_build_*/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
