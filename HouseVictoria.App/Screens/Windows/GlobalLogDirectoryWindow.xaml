@@ -169,9 +169,6 @@
                               FontSize="13"
                               ItemsSource="{Binding Categories}"
                               SelectedItemChanged="LogTreeView_SelectedItemChanged"
-                              VirtualizingPanel.IsVirtualizing="True"
-                              VirtualizingPanel.VirtualizationMode="Recycling"
-                              ScrollViewer.CanContentScroll="True"
                               Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                     <TreeView.ItemTemplate>
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
@@ -203,7 +200,8 @@
                     </TreeView.ItemTemplate>
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem">
-                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                            <!-- Do not two-way bind IsExpanded: it races with inbox refresh and throws on the UI thread. -->
+                            <Setter Property="IsExpanded" Value="False"/>
                             <Setter Property="Foreground" Value="White"/>
                             <Style.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
@@ -225,7 +223,7 @@
                          Width="5" 
                          HorizontalAlignment="Center" 
                          VerticalAlignment="Stretch" 
-                         Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A"
+                         Background="#335B8A8A"
                          ShowsPreview="True"/>
 
             <!-- Log Details - Right Panel -->
@@ -254,7 +252,7 @@
 
                             <!-- Log Title -->
                             <Border Grid.Row="0" 
-                                    Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
+                                    Background="#335B8A8A" 
                                     Padding="10" 
                                     CornerRadius="5" 
                                     Margin="0,0,0,10"
@@ -321,7 +319,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Style="{StaticResource OverlayMinimizeButton}" Background="#335B8A8A" 
+                                                <Border Background="#335B8A8A" 
                                                         Padding="8,4" 
                                                         Margin="0,0,5,5" 
                                                         CornerRadius="3"

@@ -2,7 +2,7 @@
   "FileVersion": 3,
   "Version": 1,
   "VersionName": "1.0.0",
-  "EngineVersion": "5.7.0",
+  "EngineVersion": "5.8.0",
   "FriendlyName": "House Victoria Bridge (reference only)",
   "Description": "Blueprint helpers to parse House Victoria WebSocket messages (plain control lines + JSON companion payloads). Pair with your WebSocket server implementation.",
   "Category": "Integration",

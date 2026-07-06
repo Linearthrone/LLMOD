@@ -147,6 +147,7 @@ namespace HouseVictoria.App
                     StartRemoteCompanionHost();
                     StartAarService();
                     StartAutonomyLoop();
+                    StartVictoriaEmbodiment();
                 }
                 catch (Exception ex)
                 {
@@ -213,6 +214,34 @@ namespace HouseVictoria.App
             }
         }
 
+        private void StartVictoriaEmbodiment()
+        {
+            try
+            {
+                var embodiment = ServiceProvider?.GetService<IVictoriaEmbodimentService>();
+                var appConfig = ServiceProvider?.GetService<AppConfig>();
+                if (embodiment == null || appConfig == null || !appConfig.EnableVictoriaEmbodiment)
+                    return;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await embodiment.StartAsync().ConfigureAwait(false);
+                        LoggingHelper.WriteToStartupLog("Victoria embodiment bridge started.");
+                    }
+                    catch (Exception ex)
+                    {
+                        LoggingHelper.WriteToStartupLog($"Victoria embodiment failed to start: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LoggingHelper.WriteToStartupLog($"Victoria embodiment setup error: {ex.Message}");
+            }
+        }
+
         private void StartRemoteCompanionHost()
         {
             try
@@ -246,10 +275,12 @@ namespace HouseVictoria.App
 
             LoggingHelper.WriteExceptionToLog(e.Exception, "UnhandledExceptions.log");
 
-            // Show error to user
-            MessageBox.Show($"An error occurred: {e.Exception.Message}\n\nDetails have been logged.", "Application Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(
+                $"An error occurred: {e.Exception.Message}\n\nDetails have been logged.",
+                "Application Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
 
-            // Mark as handled to prevent app crash, but log it
             e.Handled = true;
         }
 
@@ -391,10 +422,16 @@ namespace HouseVictoria.App
                     sp.GetService<IFileGenerationService>(),
                     sp.GetService<IJournalService>(),
                     sp.GetService<IVoiceCallEngineService>(),
-                    sp.GetService<AppConfig>()));
+                    sp.GetService<AppConfig>(),
+                    sp.GetService<IVictoriaEmbodimentService>()));
             services.AddSingleton<IMCPService, MCPService>();
             services.AddSingleton<IProjectManagementService, HouseVictoria.Services.ProjectManagement.PersistentProjectManagementService>();
             services.AddSingleton<IVirtualEnvironmentService, UnrealEnvironmentService>();
+            services.AddSingleton<IVictoriaEmbodimentService>(sp =>
+                new HouseVictoria.Services.VirtualEnvironment.VictoriaEmbodimentService(
+                    sp.GetRequiredService<IVirtualEnvironmentService>(),
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetService<IPersistenceService>()));
             services.AddSingleton<HouseVictoria.Services.CovasBridge.OpenAICompatibleBridge>(sp =>
                 new HouseVictoria.Services.CovasBridge.OpenAICompatibleBridge(
                     sp.GetRequiredService<IAIService>(),
@@ -463,7 +500,8 @@ namespace HouseVictoria.App
                 sp.GetService<IMemoryService>(),
                 sp.GetService<IVirtualEnvironmentService>(),
                 sp.GetRequiredService<AppConfig>(),
-                sp.GetService<IPersonaContext>()));
+                sp.GetService<IPersonaContext>(),
+                sp.GetService<IVictoriaEmbodimentService>()));
 
             ServiceProvider = services.BuildServiceProvider();
         }
@@ -517,6 +555,9 @@ namespace HouseVictoria.App
                 RemoteCompanionAiContactId = config["RemoteCompanionAiContactId"] ?? string.Empty,
                 RemoteCompanionListenOnLan = bool.TryParse(config["RemoteCompanionListenOnLan"], out var rclan) && rclan,
                 RemoteCompanionNotifyUnreal = bool.TryParse(config["RemoteCompanionNotifyUnreal"], out var rcnu) && rcnu,
+                EnableVictoriaEmbodiment = !bool.TryParse(config["EnableVictoriaEmbodiment"], out var eve) || eve,
+                VictoriaUnrealAvatarId = string.IsNullOrWhiteSpace(config["VictoriaUnrealAvatarId"]) ? "victoria" : config["VictoriaUnrealAvatarId"]!,
+                NotifyUnrealAfterDesktopChat = !bool.TryParse(config["NotifyUnrealAfterDesktopChat"], out var nudc) || nudc,
                 EnableAutonomy = !bool.TryParse(config["EnableAutonomy"], out var enableAutonomy) || enableAutonomy,
                 AutonomyLevel = Enum.TryParse<AutonomyLevel>(config["AutonomyLevel"], true, out var autonomyLevel)
                     ? autonomyLevel
@@ -579,7 +620,10 @@ namespace HouseVictoria.App
             appConfig.DataBankPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.DataBankPath);
             appConfig.LogsPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.LogsPath);
             appConfig.PersistentMemoryPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.PersistentMemoryPath);
+            HouseVictoria.Core.Utils.AppDataRootResolver.TryMigrateShadowDataFolder(appDirectory, "Data/Memory");
             appConfig.AutonomyDataPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.AutonomyDataPath);
+            HouseVictoria.Core.Utils.AppDataRootResolver.TryMigrateShadowDataFolder(appDirectory, "Data/Autonomy");
+            HouseVictoria.Core.Utils.AppDataRootResolver.TryMigrateShadowDataFolder(appDirectory, "Data/Databanks");
             appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath)
                 ? appConfig.MediaPath
                 : System.IO.Path.Combine(HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataRoot(appDirectory), appConfig.MediaPath);

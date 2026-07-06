@@ -1,0 +1,53 @@
+{
+  "ScannerRunning": true,
+  "BridgeActive": true,
+  "WatchSymbols": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCAD",
+    "USDCHF",
+    "NZDUSD",
+    "EURGBP",
+    "EURJPY",
+    "GBPJPY",
+    "XAUUSD",
+    "XAGUSD",
+    "US30",
+    "US500",
+    "NAS100"
+  ],
+  "PendingAlertCount": 1,
+  "LastQuoteScanUtc": "2026-07-03T13:34:22.3450901Z",
+  "LastTechnicalScanUtc": "2026-07-03T13:34:27.4632333Z",
+  "MarketWatchProjectId": "f7f74578-1c3e-4362-9ab1-7b115276d49b",
+  "MarketWatchProjectName": "MT4 Market Watch",
+  "PendingAlerts": [
+    {
+      "RaisedUtc": "2026-07-03T13:28:52.3787888Z",
+      "Symbol": "AUDUSD",
+      "AlertType": "technical_macd_crossover",
+      "Bid": 0.69365,
+      "Ask": 0.69384,
+      "SpreadPips": 0,
+      "MovePips": 0,
+      "Direction": "long",
+      "SuggestedStrategy": "macd",
+      "IndicatorValue": null,
+      "Message": "[H1] MACD crossed above signal line"
+    }
+  ],
+  "RecentTechnicalSignals": [
+    {
+      "Symbol": "AUDUSD",
+      "TimeFrame": 60,
+      "BarTime": "2026-07-03T04:00:00Z",
+      "SignalType": "macd_crossover",
+      "Direction": "long",
+      "SuggestedStrategy": "macd",
+      "IndicatorValue": null,
+      "Message": "MACD crossed above signal line"
+    }
+  ]
+}

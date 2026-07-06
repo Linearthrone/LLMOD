@@ -25,6 +25,7 @@ namespace HouseVictoria.Services.Communication
         private readonly IFileGenerationService? _fileGenerationService;
         private readonly IVoiceCallEngineService? _voiceEngine;
         private readonly AppConfig? _appConfig;
+        private readonly IVictoriaEmbodimentService? _embodiment;
         private readonly PersonaChatContextBuilder _personaContextBuilder;
         /// <summary>Serialize image jobs — A2E/ComfyUI fail when many run at once.</summary>
         private readonly SemaphoreSlim _imageGenerationLock = new(1, 1);
@@ -35,7 +36,7 @@ namespace HouseVictoria.Services.Communication
         public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
         public event EventHandler<CallStateChangedEventArgs>? CallStateChanged;
 
-        public SMSMMSCommunicationService(IAIService? aiService = null, IPersistenceService? persistenceService = null, IMemoryService? memoryService = null, IFileGenerationService? fileGenerationService = null, IJournalService? journalService = null, IVoiceCallEngineService? voiceEngine = null, AppConfig? appConfig = null)
+        public SMSMMSCommunicationService(IAIService? aiService = null, IPersistenceService? persistenceService = null, IMemoryService? memoryService = null, IFileGenerationService? fileGenerationService = null, IJournalService? journalService = null, IVoiceCallEngineService? voiceEngine = null, AppConfig? appConfig = null, IVictoriaEmbodimentService? embodiment = null)
         {
             _aiService = aiService;
             _persistenceService = persistenceService;
@@ -43,6 +44,7 @@ namespace HouseVictoria.Services.Communication
             _fileGenerationService = fileGenerationService;
             _voiceEngine = voiceEngine;
             _appConfig = appConfig;
+            _embodiment = embodiment;
             _personaContextBuilder = new PersonaChatContextBuilder(
                 memoryService,
                 journalService,
@@ -791,6 +793,14 @@ namespace HouseVictoria.Services.Communication
                             message.Content,
                             aiResponse,
                             context).ConfigureAwait(false);
+
+                        if (_embodiment != null && _appConfig?.NotifyUnrealAfterDesktopChat == true)
+                        {
+                            _ = _embodiment.OnChatExchangeAsync(
+                                aiContact.Id,
+                                message.Content,
+                                aiResponse);
+                        }
                     }
                     catch (TaskCanceledException ex)
                     {

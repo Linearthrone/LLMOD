@@ -4,9 +4,11 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Services.Autonomy;
 
 namespace HouseVictoria.Services.Logging
 {
@@ -23,6 +25,7 @@ namespace HouseVictoria.Services.Logging
         private readonly HashSet<string> _archivedLogIds = new();
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly object _refreshLock = new object();
+        private readonly SemaphoreSlim _refreshGate = new(1, 1);
         private bool _isRefreshing = false;
 
         /// <inheritdoc />
@@ -65,7 +68,11 @@ namespace HouseVictoria.Services.Logging
 
                 try
                 {
-                    await RefreshLogsAsync();
+                    await RefreshLogsAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: GetLogCategoriesAsync refresh failed: {ex.Message}");
                 }
                 finally
                 {
@@ -186,35 +193,44 @@ namespace HouseVictoria.Services.Logging
 
         public async Task RefreshLogsAsync()
         {
+            await _refreshGate.WaitAsync().ConfigureAwait(false);
             try
             {
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Starting RefreshLogsAsync at {DateTime.Now}");
-
-                _categories.Clear();
-                _allEntries.Clear();
-
-                // GLD is a review inbox — not a dump of Serilog/sidecar/activity logs.
-                await LoadAutonomyReviewInboxAsync().ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadAutonomyReviewInboxAsync - {_allEntries.Count} entries");
-
-                await LoadUserRequestedGeneratedFilesAsync().ConfigureAwait(false);
-                System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadUserRequestedGeneratedFilesAsync - {_allEntries.Count} entries");
-
-                foreach (var entry in _allEntries.Values)
+                try
                 {
-                    entry.IsRead = _readLogIds.Contains(entry.Id);
-                    entry.IsArchived = _archivedLogIds.Contains(entry.Id);
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: Starting RefreshLogsAsync at {DateTime.Now}");
+
+                    _categories.Clear();
+                    _allEntries.Clear();
+
+                    // GLD is a review inbox — not a dump of Serilog/sidecar/activity logs.
+                    await LoadAutonomyReviewInboxAsync().ConfigureAwait(false);
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadAutonomyReviewInboxAsync - {_allEntries.Count} entries");
+
+                    await LoadUserRequestedGeneratedFilesAsync().ConfigureAwait(false);
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: After LoadUserRequestedGeneratedFilesAsync - {_allEntries.Count} entries");
+
+                    foreach (var entry in _allEntries.Values)
+                    {
+                        entry.IsRead = _readLogIds.Contains(entry.Id);
+                        entry.IsArchived = _archivedLogIds.Contains(entry.Id);
+                    }
+
+                    RebuildInboxCategories();
+
+                    _lastRefresh = DateTime.Now;
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: Refresh complete - {_categories.Count} categories, {_allEntries.Count} entries");
                 }
-
-                RebuildInboxCategories();
-
-                _lastRefresh = DateTime.Now;
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Refresh complete - {_categories.Count} categories, {_allEntries.Count} entries");
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: Error in RefreshLogsAsync: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"LoggingService: Stack trace: {ex.StackTrace}");
+                    throw;
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Error in RefreshLogsAsync: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"LoggingService: Stack trace: {ex.StackTrace}");
+                _refreshGate.Release();
             }
         }
 
@@ -363,26 +379,16 @@ namespace HouseVictoria.Services.Logging
 
             try
             {
-                var lines = await ReadTailLinesAsync(journalPath, MaxReviewInboxJournalEntries).ConfigureAwait(false);
-                foreach (var line in lines)
+                var entries = await AutonomyJournalFile.ReadTailEntriesAsync(
+                    journalPath,
+                    MaxReviewInboxJournalEntries).ConfigureAwait(false);
+
+                foreach (var journal in entries)
                 {
-                    if (string.IsNullOrWhiteSpace(line))
-                        continue;
-
-                    AutonomyJournalEntry? journal;
-                    try
-                    {
-                        journal = JsonSerializer.Deserialize<AutonomyJournalEntry>(line, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
                     if (journal == null)
+                        continue;
+
+                    if (ShouldSkipInboxJournalEntry(journal))
                         continue;
 
                     var body = journal.Body ?? journal.Summary ?? string.Empty;
@@ -400,7 +406,7 @@ namespace HouseVictoria.Services.Logging
                         Id = $"autonomy_journal_{journal.Id}",
                         Category = "Autonomy",
                         SubCategory = journal.Activity.ToString(),
-                        Title = $"{journal.Activity}: {TruncateTitle(journal.Summary, 80)}",
+                        Title = $"{journal.Activity}: {TruncateTitle(journal.Summary ?? string.Empty, 80)}",
                         Content = inboxContent,
                         Summary = TruncateTitle(body, 200),
                         Timestamp = journal.Timestamp,
@@ -419,22 +425,20 @@ namespace HouseVictoria.Services.Logging
             }
         }
 
-        private static async Task<List<string>> ReadTailLinesAsync(string path, int maxLines)
+        private static bool ShouldSkipInboxJournalEntry(AutonomyJournalEntry journal)
         {
-            if (maxLines <= 0)
-                return new List<string>();
-
-            var buffer = new LinkedList<string>();
-            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(stream);
-            while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+            // Routine autonomy failures are logged for audit but clutter the human review inbox.
+            if (journal.Activity is AutonomyActivityKind.RunBacktest or AutonomyActivityKind.ExecuteTrade)
             {
-                buffer.AddLast(line);
-                while (buffer.Count > maxLines)
-                    buffer.RemoveFirst();
+                var summary = journal.Summary ?? string.Empty;
+                if (summary.Contains("failed", StringComparison.OrdinalIgnoreCase)
+                    || summary.Contains("error", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
             }
 
-            return buffer.ToList();
+            return false;
         }
 
         private Task LoadAutonomyArtInboxAsync(string autonomyDir)
@@ -453,7 +457,7 @@ namespace HouseVictoria.Services.Logging
 
                     var journalId = $"autonomy_journal_art_{ComputeStableHash(filePath)}";
                     if (_allEntries.ContainsKey(journalId) ||
-                        _allEntries.Values.Any(e => e.LinkedFilePaths.Contains(filePath, StringComparer.OrdinalIgnoreCase)))
+                        _allEntries.Values.Any(e => (e.LinkedFilePaths ?? new List<string>()).Contains(filePath, StringComparer.OrdinalIgnoreCase)))
                     {
                         continue;
                     }

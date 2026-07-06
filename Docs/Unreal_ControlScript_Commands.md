@@ -18,6 +18,13 @@ Messages are a **single UTF-8 line** (no JSON). The first whitespace-delimited t
 | `move_avatar` | `move_avatar {id} x y z rotY` | |
 | `animate_avatar` | `animate_avatar {id} Idle` | `Idle` should match a montage/state in your Animation BP. |
 | `get_avatar_state` | `get_avatar_state {id}` | |
+| `focus_avatar` | `focus_avatar victoria` | Select the in-scene MetaHuman pawn (no spawn). |
+| `set_locomotion` | `set_locomotion victoria 1.0 2.0` | Walk/run speed from House Victoria Settings. |
+| `wander` | `wander victoria 120` | Idle roam for `{seconds}` (autonomy + chat walk intent). |
+| `look_at` | `look_at victoria 0 0 1` | Head/eyes toward world direction or offset. |
+| `touch_interact` | `touch_interact victoria door_01 touch` | Physics grab / use / overlap on tagged actor. Target uses `_` for spaces. |
+
+**Victoria embodiment** (desktop chat + remote companion) also sends `companion_remote_exchange` JSON plus `animate_avatar victoria Talk` and `LipSync_Talking` on each reply when connected. See [MyProject_Victoria_Setup.md](./MyProject_Victoria_Setup.md).
 
 ## 2) JSON (remote companion → Unreal)
 

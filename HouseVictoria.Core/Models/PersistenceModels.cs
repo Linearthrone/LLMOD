@@ -182,6 +182,15 @@ namespace HouseVictoria.Core.Models
         /// <summary>After each remote reply, send a JSON command to Unreal (see Docs/Unreal_Protocol.md).</summary>
         public bool RemoteCompanionNotifyUnreal { get; set; }
 
+        /// <summary>When true, connect to Unreal on startup and route Victoria chat to the embodied avatar.</summary>
+        public bool EnableVictoriaEmbodiment { get; set; } = true;
+
+        /// <summary>Unreal avatar id for the in-scene MetaHuman (e.g. victoria for BP_MHC_Victoria).</summary>
+        public string VictoriaUnrealAvatarId { get; set; } = "victoria";
+
+        /// <summary>After desktop SMS/chat replies, notify Unreal (talk + inferred walk/see/touch).</summary>
+        public bool NotifyUnrealAfterDesktopChat { get; set; } = true;
+
         // Autonomy (background agent loop)
         public bool EnableAutonomy { get; set; } = true;
         /// <summary>Runtime autonomy intensity (Off / Low / Mid / Full).</summary>

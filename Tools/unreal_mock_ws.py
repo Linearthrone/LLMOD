@@ -26,7 +26,18 @@ async def handler(ws):
                 raw = raw.decode("utf-8", errors="replace")
             # House Victoria virtual-environment UI sends plain text (e.g. "status", "get_scene_info").
             if isinstance(raw, str) and not raw.lstrip().startswith("{"):
-                logger.info("Plain text command: %s", raw[:200])
+                cmd = raw.strip()
+                logger.info("Plain text command: %s", cmd[:200])
+                if cmd.startswith("touch_interact"):
+                    logger.info("  -> touch handler")
+                elif cmd.startswith("wander"):
+                    logger.info("  -> walk/wander handler")
+                elif cmd.startswith(("look_at", "capture_scene", "get_scene_info")):
+                    logger.info("  -> see handler")
+                elif cmd.startswith(("focus_avatar", "set_locomotion")):
+                    logger.info("  -> embodiment setup")
+                elif cmd.startswith("animate_avatar"):
+                    logger.info("  -> talk/anim handler")
                 await ws.send(
                     json.dumps(
                         {

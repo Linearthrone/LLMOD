@@ -18,6 +18,12 @@ namespace HouseVictoria.Core.Interfaces
         Task<string> MoveAvatarAsync(string avatarId, float x, float y, float z, float rotationY);
         Task<string> AnimateAvatarAsync(string avatarId, string animationName);
         Task<Dictionary<string, object>> GetAvatarStateAsync(string avatarId);
+        Task<string> SendJsonCommandAsync(object command);
+        Task<string> FocusAvatarAsync(string avatarId);
+        Task<string> SetLocomotionAsync(string avatarId, double walkSpeed, double runSpeed);
+        Task<string> LookAtAsync(string avatarId, float x, float y, float z);
+        Task<string> TouchInteractAsync(string avatarId, string target, string interaction = "touch");
+        Task<string> CompanionExchangeAsync(string user, string assistant, string? correlationId = null);
         event EventHandler<VirtualEnvironmentEventArgs>? StatusChanged;
         event EventHandler<SceneUpdateEventArgs>? SceneUpdated;
     }

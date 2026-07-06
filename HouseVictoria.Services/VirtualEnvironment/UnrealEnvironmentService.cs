@@ -373,12 +373,52 @@ namespace HouseVictoria.Services.VirtualEnvironment
         public async Task<Dictionary<string, object>> GetAvatarStateAsync(string avatarId)
         {
             var response = await SendCommandAsync($"get_avatar_state {avatarId}");
-            // Parse response into dictionary
             return new Dictionary<string, object>
             {
                 { "AvatarId", avatarId },
                 { "State", response }
             };
+        }
+
+        public Task<string> SendJsonCommandAsync(object command)
+        {
+            var json = JsonSerializer.Serialize(command);
+            return SendCommandAsync(json);
+        }
+
+        public Task<string> FocusAvatarAsync(string avatarId) =>
+            SendCommandAsync($"focus_avatar {avatarId}");
+
+        public Task<string> SetLocomotionAsync(string avatarId, double walkSpeed, double runSpeed) =>
+            SendCommandAsync($"set_locomotion {avatarId} {walkSpeed.ToString(System.Globalization.CultureInfo.InvariantCulture)} {runSpeed.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+        public Task<string> LookAtAsync(string avatarId, float x, float y, float z) =>
+            SendCommandAsync($"look_at {avatarId} {x.ToString(System.Globalization.CultureInfo.InvariantCulture)} {y.ToString(System.Globalization.CultureInfo.InvariantCulture)} {z.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+        public Task<string> TouchInteractAsync(string avatarId, string target, string interaction = "touch")
+        {
+            var safeTarget = target.Replace(' ', '_');
+            var safeInteraction = string.IsNullOrWhiteSpace(interaction) ? "touch" : interaction;
+            return SendCommandAsync($"touch_interact {avatarId} {safeTarget} {safeInteraction}");
+        }
+
+        public Task<string> CompanionExchangeAsync(string user, string assistant, string? correlationId = null)
+        {
+            var payload = new
+            {
+                type = "command",
+                payload = new
+                {
+                    name = "companion_remote_exchange",
+                    args = new
+                    {
+                        user,
+                        assistant,
+                        correlation_id = correlationId ?? Guid.NewGuid().ToString("N")
+                    }
+                }
+            };
+            return SendJsonCommandAsync(payload);
         }
     }
 }

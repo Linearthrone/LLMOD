@@ -19,6 +19,7 @@ namespace HouseVictoria.App.Screens.Windows
         private bool _selectedIsArchived;
         private bool _showArchived;
         private string? _loadError;
+        private int _refreshGeneration;
 
         public void NotifyLogEntrySelected(string logId)
         {
@@ -55,11 +56,7 @@ namespace HouseVictoria.App.Screens.Windows
             private set => SetProperty(ref _loadError, value);
         }
 
-        public ObservableCollection<LogCategoryViewModel> Categories
-        {
-            get => _categories;
-            set => RunOnUi(() => SetProperty(ref _categories, value));
-        }
+        public ObservableCollection<LogCategoryViewModel> Categories => _categories;
 
         public LogEntry? SelectedLogEntry
         {
@@ -100,6 +97,8 @@ namespace HouseVictoria.App.Screens.Windows
 
         private async Task RefreshLogsAsync()
         {
+            var generation = Interlocked.Increment(ref _refreshGeneration);
+
             await RunOnUiAsync(() =>
             {
                 IsLoading = true;
@@ -109,9 +108,21 @@ namespace HouseVictoria.App.Screens.Windows
             try
             {
                 await _loggingService.RefreshLogsAsync().ConfigureAwait(false);
+                if (generation != _refreshGeneration)
+                    return;
+
                 var categories = await _loggingService.PeekLogCategoriesAsync().ConfigureAwait(false);
+                if (generation != _refreshGeneration)
+                    return;
+
                 var tree = BuildCategoryTree(categories);
-                await RunOnUiAsync(() => Categories = tree).ConfigureAwait(true);
+                await RunOnUiAsync(() =>
+                {
+                    if (generation != _refreshGeneration)
+                        return;
+
+                    ReplaceCategories(tree);
+                }).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -119,21 +130,37 @@ namespace HouseVictoria.App.Screens.Windows
                 System.Diagnostics.Debug.WriteLine($"GLD Error refreshing logs: {ex}");
                 await RunOnUiAsync(() =>
                 {
+                    if (generation != _refreshGeneration)
+                        return;
+
                     LoadError = message;
-                    Categories = new ObservableCollection<LogCategoryViewModel>
+                    ReplaceCategories(new[]
                     {
                         new LogCategoryViewModel
                         {
                             Name = $"Error Loading Review Inbox: {message}",
                             Tag = "error"
                         }
-                    };
+                    });
                 }).ConfigureAwait(true);
             }
             finally
             {
-                await RunOnUiAsync(() => IsLoading = false).ConfigureAwait(true);
+                await RunOnUiAsync(() =>
+                {
+                    if (generation != _refreshGeneration)
+                        return;
+
+                    IsLoading = false;
+                }).ConfigureAwait(true);
             }
+        }
+
+        private void ReplaceCategories(IEnumerable<LogCategoryViewModel> nodes)
+        {
+            _categories.Clear();
+            foreach (var node in nodes)
+                _categories.Add(node);
         }
 
         private static ObservableCollection<LogCategoryViewModel> BuildCategoryTree(
@@ -158,8 +185,7 @@ namespace HouseVictoria.App.Screens.Windows
                     Name = category.DisplayName,
                     Tag = category.Name,
                     UnreadCount = category.UnreadCount,
-                    TotalCount = category.TotalCount,
-                    IsExpanded = true
+                    TotalCount = category.TotalCount
                 };
 
                 foreach (var subCategory in category.SubCategories.Values.OrderBy(sc => sc.Name))
@@ -169,8 +195,7 @@ namespace HouseVictoria.App.Screens.Windows
                         Name = $"{subCategory.DisplayName} ({subCategory.TotalCount})",
                         Tag = $"{category.Name}_{subCategory.Name}",
                         UnreadCount = subCategory.UnreadCount,
-                        TotalCount = subCategory.TotalCount,
-                        IsExpanded = false
+                        TotalCount = subCategory.TotalCount
                     };
 
                     foreach (var entry in subCategory.Entries.OrderByDescending(e => e.Timestamp))
@@ -192,15 +217,18 @@ namespace HouseVictoria.App.Screens.Windows
             return categoryViewModels;
         }
 
-        private static LogCategoryViewModel CreateEntryNode(LogEntry entry) =>
-            new()
+        private static LogCategoryViewModel CreateEntryNode(LogEntry entry)
+        {
+            var title = string.IsNullOrWhiteSpace(entry.Title) ? "(untitled)" : entry.Title;
+            return new LogCategoryViewModel
             {
                 Name = entry.IsArchived
-                    ? $"[archived] {entry.Title} - {entry.Timestamp:MM/dd HH:mm}"
-                    : $"{entry.Title} - {entry.Timestamp:MM/dd HH:mm}",
+                    ? $"[archived] {title} - {entry.Timestamp:MM/dd HH:mm}"
+                    : $"{title} - {entry.Timestamp:MM/dd HH:mm}",
                 Tag = entry.Id,
                 LogEntry = entry
             };
+        }
 
         private async Task MarkAllReadAsync()
         {
@@ -393,7 +421,6 @@ namespace HouseVictoria.App.Screens.Windows
         private int _unreadCount;
         private int _totalCount;
         private LogEntry? _logEntry;
-        private bool _isExpanded;
         private ObservableCollection<LogCategoryViewModel> _children = new();
 
         public string Name
@@ -418,12 +445,6 @@ namespace HouseVictoria.App.Screens.Windows
         {
             get => _totalCount;
             set => SetProperty(ref _totalCount, value);
-        }
-
-        public bool IsExpanded
-        {
-            get => _isExpanded;
-            set => SetProperty(ref _isExpanded, value);
         }
 
         public LogEntry? LogEntry

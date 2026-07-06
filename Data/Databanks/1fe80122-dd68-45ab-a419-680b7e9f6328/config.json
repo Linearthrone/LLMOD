@@ -1,0 +1,8 @@
+{
+  "Id": "1fe80122-dd68-45ab-a419-680b7e9f6328",
+  "Name": "Susan (2)",
+  "ModelName": "hf.co/G4E-Unknown/Dolphin3.0-Llama3.1-8B-abliterated-Q4_K_M-GGUF:Q4_K_M",
+  "MCPServerEndpoint": "http://localhost:8080",
+  "RestoredAt": "2026-06-08T04:33:54.6572078-04:00",
+  "SourceBackup": "2026-06-08T08:32:14.6014462Z"
+}

@@ -122,7 +122,7 @@ namespace HouseVictoria.App.Screens.Windows
                     if (logSummary != null) logSummary.Text = entry.Summary;
                     if (logContent != null) logContent.Text = WrapLongLines(entry.Content);
 
-                    var linkedItems = entry.LinkedFilePaths
+                    var linkedItems = (entry.LinkedFilePaths ?? new List<string>())
                         .Where(p => !string.IsNullOrWhiteSpace(p))
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .Select(p => new LinkedFileItem
@@ -253,9 +253,12 @@ namespace HouseVictoria.App.Screens.Windows
             _savedLeft = Left;
             _savedTop = Top;
 
+            // Let the window finish its first layout pass before binding a large inbox tree.
+            await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+
             try
             {
-                await ViewModel.InitializeAsync();
+                await ViewModel.InitializeAsync().ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -267,7 +270,7 @@ namespace HouseVictoria.App.Screens.Windows
                     MessageBoxImage.Warning);
             }
 
-            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
+            _ = Dispatcher.InvokeAsync(() =>
             {
                 try
                 {
@@ -277,7 +280,7 @@ namespace HouseVictoria.App.Screens.Windows
                 {
                     System.Diagnostics.Debug.WriteLine($"Error fitting GlobalLogDirectoryWindow on screen: {ex.Message}");
                 }
-            }));
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private const int WM_NCHITTEST = 0x0084;

@@ -232,24 +232,13 @@ namespace HouseVictoria.App.Screens.Trays
         {
             try
             {
-                var gldWindow = new GlobalLogDirectoryWindow();
-                var owner = System.Windows.Window.GetWindow(this);
-                if (owner != null)
-                {
-                    gldWindow.Owner = owner;
-                    gldWindow.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
-                }
-                else
-                {
-                    gldWindow.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterScreen;
-                }
-                gldWindow.Show();
+                _eventAggregator.Publish(new ShowWindowEvent { WindowType = "GLD" });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"GLD open error: {ex}");
                 System.Windows.MessageBox.Show(
-                    $"Could not open Global Log Directory:\n\n{ex}",
+                    $"Could not open Global Log Directory:\n\n{ex.Message}",
                     "Error",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);

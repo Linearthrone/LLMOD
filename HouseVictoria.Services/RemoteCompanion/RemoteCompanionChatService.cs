@@ -16,6 +16,7 @@ namespace HouseVictoria.Services.RemoteCompanion
         private readonly DatabasePersistenceService _database;
         private readonly IMemoryService? _memoryService;
         private readonly IVirtualEnvironmentService? _virtualEnvironment;
+        private readonly IVictoriaEmbodimentService? _embodiment;
         private readonly AppConfig _appConfig;
         private readonly IPersonaContext? _personaContext;
 
@@ -25,7 +26,8 @@ namespace HouseVictoria.Services.RemoteCompanion
             IMemoryService? memoryService,
             IVirtualEnvironmentService? virtualEnvironment,
             AppConfig appConfig,
-            IPersonaContext? personaContext = null)
+            IPersonaContext? personaContext = null,
+            IVictoriaEmbodimentService? embodiment = null)
         {
             _aiService = aiService;
             _database = database;
@@ -33,6 +35,7 @@ namespace HouseVictoria.Services.RemoteCompanion
             _virtualEnvironment = virtualEnvironment;
             _appConfig = appConfig;
             _personaContext = personaContext;
+            _embodiment = embodiment;
         }
 
         public async Task<RemoteCompanionChatResult> ChatAsync(string userMessage, string? contactIdOverride, CancellationToken cancellationToken = default)
@@ -101,7 +104,12 @@ namespace HouseVictoria.Services.RemoteCompanion
             await TryAppendMemoryAsync(contact, userMessage.Trim(), reply).ConfigureAwait(false);
 
             if (_appConfig.RemoteCompanionNotifyUnreal)
-                await TryNotifyUnrealAsync(userMessage.Trim(), reply).ConfigureAwait(false);
+            {
+                if (_embodiment != null)
+                    await _embodiment.OnChatExchangeAsync(contact.Id, userMessage.Trim(), reply, cancellationToken).ConfigureAwait(false);
+                else
+                    await TryNotifyUnrealAsync(userMessage.Trim(), reply).ConfigureAwait(false);
+            }
 
             return RemoteCompanionChatResult.Success(reply, conversationId);
         }
