@@ -690,7 +690,8 @@ namespace HouseVictoria.Services.Communication
                             HouseVictoriaToolCatalog.BuildChatDeliverableGuide(generatedPath)
                         };
                         if (HouseVictoriaToolCatalog.ShouldIncludeHermesGuide(aiContact, _appConfig))
-                            toolGuideParts.Add(HouseVictoriaToolCatalog.BuildHermesToolGuide(generatedPath));
+                            toolGuideParts.Add(HouseVictoriaToolCatalog.BuildHermesToolGuide(
+                                generatedPath, _appConfig?.AllowComputerControl == true));
                         var toolCatalogGuard = string.Join("\n\n", toolGuideParts);
 
                         if (!string.IsNullOrWhiteSpace(retrieval) ||

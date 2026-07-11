@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Bloom — Burgundy / Gold</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #1a050a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(212, 175, 55, 0.7);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | press S to save PNG | R to re-seed | click to bloom</div>
+<script>
+// === Neural Bloom ===
+// Abstract generative sketch: flowing particle trails forming
+// a blooming neural structure in burgundy, gold, and crimson.
+
+const CONFIG = {
+  seed: 2026,
+  particleCount: 900,
+  bloomCount: 60,
+  trailAlpha: 14,
+  noiseScale: 0.0018,
+  timeScale: 0.00035,
+  branchChance: 0.008,
+  fadeSpeed: 2.4,
+};
+
+let particles = [];
+let blooms = [];
+let trailLayer;
+let glowLayer;
+let t = 0;
+
+const PALETTE = [
+  { h: 340, s: 90, b: 55 },  // deep burgundy
+  { h: 350, s: 85, b: 70 },  // crimson
+  { h: 30,  s: 80, b: 90 },  // warm gold
+  { h: 45,  s: 65, b: 95 },  // pale gold
+  { h: 10,  s: 75, b: 80 },  // burnt sienna
+];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  spawnField();
+  document.getElementById('seed').textContent = CONFIG.seed;
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function spawnField() {
+  particles = [];
+  blooms = [];
+  trailLayer.background(8, 40, 6); // near-black wine
+  glowLayer.clear();
+
+  const cx = width * 0.5;
+  const cy = height * 0.46;
+
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    const angle = random(TWO_PI);
+    const radius = randomGaussian(0, min(width, height) * 0.12);
+    const x = cx + cos(angle) * radius;
+    const y = cy + sin(angle) * radius * 0.85;
+    particles.push(new Neuron(x, y));
+  }
+
+  for (let i = 0; i < CONFIG.bloomCount; i++) {
+    blooms.push(new Bloom(
+      cx + randomGaussian(0, width * 0.18),
+      cy + randomGaussian(0, height * 0.14),
+      random(20, 90)
+    ));
+  }
+}
+
+function draw() {
+  t += CONFIG.timeScale;
+
+  // Slowly darken the persistent trail field for long trails.
+  trailLayer.noStroke();
+  trailLayer.fill(8, 40, 6, CONFIG.fadeSpeed);
+  trailLayer.rect(0, 0, width, height);
+
+  // Update and draw particles onto trail layer.
+  for (let p of particles) {
+    p.update();
+    p.display(trailLayer);
+  }
+
+  // Refresh bloom pulses.
+  glowLayer.clear();
+  for (let b of blooms) {
+    b.update();
+    b.display(glowLayer);
+  }
+
+  // Composite: background vignette + trails + glow + particles.
+  background(8, 40, 6);
+
+  // Subtle radial vignette.
+  const grad = drawingContext.createRadialGradient(
+    width / 2, height / 2, 0,
+    width / 2, height / 2, max(width, height) * 0.75
+  );
+  grad.addColorStop(0, 'rgba(60, 10, 22, 0.12)');
+  grad.addColorStop(1, 'rgba(10, 2, 5, 0.55)');
+  drawingContext.fillStyle = grad;
+  drawingContext.fillRect(0, 0, width, height);
+
+  image(trailLayer, 0, 0);
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  blendMode(BLEND);
+
+  // Foreground sparkle dust.
+  noStroke();
+  for (let i = 0; i < 5; i++) {
+    const sx = random(width);
+    const sy = random(height);
+    const d = noise(sx * 0.005, sy * 0.005, t * 3) * 2.2;
+    if (d > 1.3) {
+      fill(42, 55, 95, 60);
+      ellipse(sx, sy, d, d);
+    }
+  }
+}
+
+function mousePressed() {
+  for (let i = 0; i < 40; i++) {
+    particles.push(new Neuron(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40)));
+  }
+  blooms.push(new Bloom(mouseX, mouseY, random(30, 80)));
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') {
+    saveCanvas(`neural-bloom-${CONFIG.seed}`, 'png');
+  }
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    spawnField();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const newTrail = createGraphics(width, height);
+  newTrail.colorMode(HSB, 360, 100, 100, 100);
+  newTrail.image(trailLayer, 0, 0);
+  trailLayer = newTrail;
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+}
+
+// === Neuron particle ===
+class Neuron {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.6, 2.2);
+    this.maxForce = random(0.015, 0.045);
+    this.sw = random(0.6, 2.2);
+    this.color = random(PALETTE);
+    this.life = random(120, 400);
+    this.age = 0;
+    this.history = [];
+    this.historyLimit = floor(random(12, 32));
+  }
+
+  update() {
+    this.age++;
+    const nx = this.pos.x * CONFIG.noiseScale;
+    const ny = this.pos.y * CONFIG.noiseScale;
+    const angle = noise(nx, ny, t) * TWO_PI * 3.5;
+    const flow = p5.Vector.fromAngle(angle);
+    flow.mult(0.18);
+
+    // Attraction toward center bloom cluster.
+    const cx = width * 0.5;
+    const cy = height * 0.46;
+    const toCenter = createVector(cx - this.pos.x, cy - this.pos.y);
+    toCenter.normalize().mult(0.04);
+
+    this.acc.add(flow);
+    this.acc.add(toCenter);
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) {
+      this.history.shift();
+    }
+
+    // Branching: occasionally spawn a child particle.
+    if (random(1) < CONFIG.branchChance && particles.length < 2200) {
+      const child = new Neuron(this.pos.x, this.pos.y);
+      child.vel = this.vel.copy().rotate(random(-PI / 4, PI / 4)).mult(0.8);
+      child.color = this.color;
+      particles.push(child);
+    }
+
+    this.edges();
+  }
+
+  edges() {
+    if (this.pos.x < -10) this.pos.x = width + 10;
+    if (this.pos.x > width + 10) this.pos.x = -10;
+    if (this.pos.y < -10) this.pos.y = height + 10;
+    if (this.pos.y > height + 10) this.pos.y = -10;
+  }
+
+  display(layer) {
+    const ageRatio = this.age / this.life;
+    const alpha = map(ageRatio, 0, 1, 80, 0, true);
+
+    layer.noFill();
+    layer.strokeWeight(this.sw * (1 - ageRatio * 0.6));
+
+    if (this.history.length > 1) {
+      layer.beginShape();
+      for (let i = 0; i < this.history.length; i++) {
+        const p = this.history[i];
+        const a = map(i, 0, this.history.length, 0, alpha, true);
+        layer.stroke(this.color.h, this.color.s, this.color.b, a);
+        layer.curveVertex(p.x, p.y);
+      }
+      layer.endShape();
+    }
+
+    // Head dot.
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s * 0.8, 95, alpha * 0.8);
+    layer.ellipse(this.pos.x, this.pos.y, this.sw * 1.6, this.sw * 1.6);
+
+    // Recycle old particles.
+    if (this.age > this.life) {
+      this.pos = createVector(random(width), random(height));
+      this.vel.mult(0);
+      this.age = 0;
+      this.history = [];
+      this.color = random(PALETTE);
+    }
+  }
+}
+
+// === Bloom node ===
+class Bloom {
+  constructor(x, y, r) {
+    this.pos = createVector(x, y);
+    this.baseR = r;
+    this.phase = random(TWO_PI);
+    this.hue = random([30, 42, 350, 10]);
+    this.pulseSpeed = random(0.003, 0.012);
+  }
+
+  update() {
+    this.phase += this.pulseSpeed;
+  }
+
+  display(layer) {
+    const pulse = sin(this.phase) * 0.5 + 1; // 0.5..1.5
+    const r = this.baseR * pulse;
+    const alpha = map(pulse, 0.5, 1.5, 8, 22, true);
+
+    layer.noStroke();
+    for (let i = 5; i > 0; i--) {
+      const frac = i / 5;
+      layer.fill(this.hue, 70, 95, alpha * frac * 0.35);
+      layer.ellipse(this.pos.x, this.pos.y, r * (1 + (1 - frac) * 2), r * (1 + (1 - frac) * 2));
+    }
+
+    // Inner core.
+    layer.fill(this.hue, 55, 100, 28);
+    layer.ellipse(this.pos.x, this.pos.y, r * 0.25, r * 0.25);
+  }
+}
+</script>
+</body>
+</html>

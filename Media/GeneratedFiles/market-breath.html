@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<style>body{margin:0;overflow:hidden;background:#080820}</style>
+</head><body>
+<script>
+p5.disableFriendlyErrors = true;
+let seed=42,t=0,aura;
+function setup(){createCanvas(1920,1080);colorMode(HSB,360,100,100,100);randomSeed(seed);noiseSeed(seed);aura=createGraphics(1920,1080);aura.colorMode(HSB,360,100,100,100);background(230,65,12);}
+function draw(){t+=.02;background(230,65,12,18);drawGrid();drawEkg();drawPressure();}
+function drawGrid(){strokeWeight(1);for(let x=0;x<width;x+=40){let b=sin(x*0.003+t)*35;stroke(220,45,38,16);line(x,0,x,height+b);}}
+function drawPressure(){aura.noStroke();aura.fill(230,65,12,6);aura.rect(0,0,width,height);for(let i=0;i<120;i++){let n=noise(i,t*.2),px=randomGaussian(width/2,width/3)+sin(t+i)*60,py=randomGaussian(height/2,height/3),r=10+n*45;let isBuy=n>0.5;aura.fill(isBuy?20:205,80,96,14);aura.ellipse(px,py+sin(t+i)*40,r);}image(aura,0,0);}
+function drawEkg(){stroke(0,95,100);strokeWeight(3);noFill();beginShape();for(let x=0;x<width;x+=2){let cx=x-width/2;let y=height/2+sin(cx*0.015+t*5)*(20+noise(t)*25)+sin(t*4)*15;vertex(x,y);}endShape();}
+function windowResized(){resizeCanvas(1920,1080);aura=createGraphics(1920,1080);aura.colorMode(HSB,360,100,100,100);}
+function keyPressed(){if(key=='r'){seed=floor(random(999999));setup();} if(key=='s')saveCanvas('market-breath-'+seed,'png'); if(key==' ')isLooping()?noLoop():loop();}
+function mousePressed(){seed=floor(random(999999));setup();}
+</script></body></html>

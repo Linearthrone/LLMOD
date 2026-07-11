@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Victoria — Gothic Noir Living Structure</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0d0b18; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+p5.disableFriendlyErrors = true;
+
+const CONFIG = {
+  seed: null,
+  burnInFrames: 360,
+  paused: false
+};
+
+let structureLayer, glowLayer, fogLayer, overlayLayer;
+let house;
+let fog = [];
+let stars = [];
+let kayleighWindow;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  CONFIG.seed = CONFIG.seed ?? floor(random(0, 999999));
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  structureLayer = createGraphics(width, height);
+  glowLayer = createGraphics(width, height);
+  fogLayer = createGraphics(width, height);
+  overlayLayer = createGraphics(width, height);
+
+  [structureLayer, glowLayer, fogLayer, overlayLayer].forEach(l => {
+    l.colorMode(HSB, 360, 100, 100, 100);
+  });
+
+  regenerate();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) {
+    simulateStep();
+  }
+}
+
+function regenerate() {
+  generateSky(structureLayer);
+  generateHouse();
+  drawHouseStructure();
+  generateFog();
+  drawVignette();
+}
+
+function draw() {
+  if (!CONFIG.paused) {
+    simulateStep();
+  }
+}
+
+function simulateStep() {
+  updateWindows();
+  drawGlow();
+  drawFog();
+  composite();
+}
+
+function composite() {
+  image(structureLayer, 0, 0);
+  image(glowLayer, 0, 0);
+  image(fogLayer, 0, 0);
+  image(overlayLayer, 0, 0);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  structureLayer.resizeCanvas(width, height);
+  glowLayer.resizeCanvas(width, height);
+  fogLayer.resizeCanvas(width, height);
+  overlayLayer.resizeCanvas(width, height);
+
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  regenerate();
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('house-victoria-noir-' + CONFIG.seed, 'png');
+  if (key === 'g' || key === 'G') saveGif('house-victoria-noir-' + CONFIG.seed, 6);
+  if (key === 'r' || key === 'R') {
+    CONFIG.seed = floor(random(0, 999999));
+    windowResized();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function mousePressed() {
+  for (let i = 0; i < 6; i++) {
+    fog.push(new FogParticle(mouseX + random(-40, 40), mouseY + random(-20, 20)));
+  }
+}
+
+// --- Sky ------------------------------------------------------------------
+
+function generateSky(layer) {
+  layer.noStroke();
+  for (let y = 0; y <= height; y += 2) {
+    let t = y / height;
+    let h = lerp(240, 265, t);
+    let s = lerp(55, 82, t);
+    let b = lerp(30, 14, t);
+    layer.fill(h, s, b);
+    layer.rect(0, y, width, 2);
+  }
+
+  // distant moon
+  let moonX = width * 0.75;
+  let moonY = height * 0.18;
+  let moonR = min(width, height) * 0.09;
+  layer.noStroke();
+  for (let r = moonR * 2.2; r > 0; r -= 3) {
+    let a = map(r, 0, moonR * 2.2, 5.0, 0);
+    layer.fill(250, 18, 98, a);
+    layer.ellipse(moonX, moonY, r * 2, r * 2);
+  }
+
+  // stars
+  stars = [];
+  let starCount = floor(map(width * height, 0, 2073600, 50, 180));
+  for (let i = 0; i < starCount; i++) {
+    let sx = random(width);
+    let sy = random(height * 0.62);
+    let sb = random(55, 98);
+    stars.push({x: sx, y: sy, b: sb, twinkle: random(100)});
+  }
+  drawStars(layer);
+}
+
+function drawStars(layer) {
+  layer.noStroke();
+  for (let s of stars) {
+    let flicker = map(sin(frameCount * 0.03 + s.twinkle), -1, 1, 0.65, 1);
+    layer.fill(260, 15, s.b * flicker, 80);
+    layer.ellipse(s.x, s.y, 2, 2);
+  }
+}
+
+// --- House architecture ---------------------------------------------------
+
+class HouseBlock {
+  constructor(x, y, w, h, type) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.type = type;
+    this.windows = [];
+  }
+}
+
+function generateHouse() {
+  house = { blocks: [], roofs: [], windows: [] };
+  let ground = height * 0.82;
+  let centerX = width * 0.5;
+
+  let mainW = width * 0.28;
+  let mainH = height * 0.52;
+  let mainX = centerX - mainW / 2;
+  let mainY = ground - mainH;
+  let main = new HouseBlock(mainX, mainY, mainW, mainH, 'main');
+  house.blocks.push(main);
+
+  house.roofs.push({
+    x: mainX - mainW * 0.04, y: mainY,
+    peakX: centerX, peakY: mainY - mainH * 0.22,
+    x2: mainX + mainW * 1.04, y2: mainY
+  });
+
+  let wingW = width * 0.18;
+  let wingH = height * 0.38;
+  let left = new HouseBlock(mainX - wingW + width * 0.006, ground - wingH, wingW, wingH, 'wing');
+  house.blocks.push(left);
+  house.roofs.push({
+    x: left.x - wingW * 0.02, y: left.y,
+    peakX: left.x + wingW * 0.5, peakY: left.y - wingH * 0.18,
+    x2: left.x + wingW * 1.02, y2: left.y
+  });
+
+  let right = new HouseBlock(mainX + mainW - width * 0.006, ground - wingH, wingW, wingH, 'wing');
+  house.blocks.push(right);
+  house.roofs.push({
+    x: right.x - wingW * 0.02, y: right.y,
+    peakX: right.x + wingW * 0.5, peakY: right.y - wingH * 0.18,
+    x2: right.x + wingW * 1.02, y2: right.y
+  });
+
+  let towerW = width * 0.09;
+  let towerH = height * 0.62;
+  let leftTower = new HouseBlock(left.x - towerW * 0.85, ground - towerH, towerW, towerH, 'tower');
+  let rightTower = new HouseBlock(right.x + right.w - towerW * 0.15, ground - towerH, towerW, towerH, 'tower');
+  house.blocks.push(leftTower, rightTower);
+
+  house.roofs.push({
+    x: leftTower.x - towerW * 0.05, y: leftTower.y,
+    peakX: leftTower.x + towerW * 0.5, peakY: leftTower.y - towerH * 0.28,
+    x2: leftTower.x + towerW * 1.05, y2: leftTower.y
+  });
+  house.roofs.push({
+    x: rightTower.x - towerW * 0.05, y: rightTower.y,
+    peakX: rightTower.x + towerW * 0.5, peakY: rightTower.y - towerH * 0.28,
+    x2: rightTower.x + towerW * 1.05, y2: rightTower.y
+  });
+
+  for (let b of house.blocks) {
+    generateWindowsForBlock(b);
+  }
+
+  let candidates = main.windows.filter(w => w.y < main.y + main.h * 0.55 && !w.isKayleigh);
+  if (candidates.length === 0) candidates = main.windows;
+  kayleighWindow = random(candidates);
+  kayleighWindow.isKayleigh = true;
+  kayleighWindow.active = true;
+  kayleighWindow.hue = 45;
+  kayleighWindow.sat = 55;
+}
+
+function generateWindowsForBlock(block) {
+  let cols = floor(block.w / (block.type === 'tower' ? width * 0.022 : width * 0.026));
+  let rows = floor(block.h / (block.type === 'tower' ? height * 0.045 : height * 0.05));
+  let padX = block.w * 0.08;
+  let padY = block.h * 0.06;
+  let cellW = (block.w - padX * 2) / cols;
+  let cellH = (block.h - padY * 2) / rows;
+  let winW = cellW * 0.55;
+  let winH = cellH * 0.65;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (random() < 0.12) continue;
+      let wx = block.x + padX + c * cellW + (cellW - winW) / 2;
+      let wy = block.y + padY + r * cellH + (cellH - winH) / 2;
+      let active = random() < 0.55;
+      let hue = random() < 0.82 ? 36 : 22;
+      let w = new WindowPane(wx, wy, winW, winH, hue, active);
+      block.windows.push(w);
+      house.windows.push(w);
+    }
+  }
+}
+
+class WindowPane {
+  constructor(x, y, w, h, hue, active) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.hue = hue;
+    this.sat = 98;
+    this.baseBri = active ? random(82, 100) : 0;
+    this.active = active;
+    this.phase = random(TWO_PI);
+    this.speed = random(0.018, 0.05);
+    this.flicker = random(100);
+    this.isKayleigh = false;
+  }
+
+  brightness() {
+    if (!this.active) return 0;
+    let base = this.isKayleigh ? 100 : this.baseBri;
+    let pulse = this.isKayleigh
+      ? map(sin(frameCount * 0.04 + this.phase), -1, 1, 0.9, 1.0)
+      : map(sin(frameCount * this.speed + this.phase), -1, 1, 0.35, 1.0);
+    let flick = map(noise(frameCount * 0.05 + this.flicker), 0, 1, 0.9, 1.08);
+    return constrain(base * pulse * flick, 0, 100);
+  }
+}
+
+function drawHouseStructure() {
+  let ctx = structureLayer;
+  ctx.noStroke();
+
+  for (let b of house.blocks) {
+    let grad = ctx.drawingContext.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+    grad.addColorStop(0, hsla(250, 52, 24));
+    grad.addColorStop(0.55, hsla(253, 58, 16));
+    grad.addColorStop(1, hsla(256, 65, 10));
+    ctx.drawingContext.fillStyle = grad;
+    ctx.rect(b.x, b.y, b.w, b.h);
+
+    ctx.noFill();
+    ctx.stroke(248, 28, 28, 75);
+    ctx.strokeWeight(1);
+    ctx.rect(b.x, b.y, b.w, b.h);
+  }
+
+  for (let r of house.roofs) {
+    ctx.fill(252, 38, 16);
+    ctx.stroke(250, 26, 28, 80);
+    ctx.strokeWeight(1.5);
+    ctx.triangle(r.x, r.y, r.peakX, r.peakY, r.x2, r.y2);
+  }
+
+  for (let w of house.windows) {
+    ctx.fill(250, 52, 8, 100);
+    ctx.noStroke();
+    ctx.rect(w.x, w.y, w.w, w.h, 1);
+    ctx.stroke(260, 20, 24, 90);
+    ctx.strokeWeight(0.8);
+    ctx.line(w.x + w.w / 2, w.y, w.x + w.w / 2, w.y + w.h);
+    ctx.line(w.x, w.y + w.h / 2, w.x + w.w, w.y + w.h / 2);
+    if (w.isKayleigh) {
+      ctx.noFill();
+      ctx.stroke(45, 55, 95, 85);
+      ctx.strokeWeight(1.4);
+      ctx.rect(w.x - 2, w.y - 2, w.w + 4, w.h + 4, 2);
+    }
+  }
+
+  ctx.noStroke();
+  for (let y = height * 0.82; y <= height; y += 2) {
+    let t = (y - height * 0.82) / (height * 0.18);
+    ctx.fill(250, 48, lerp(14, 6, t));
+    ctx.rect(0, y, width, 2);
+  }
+}
+
+function updateWindows() {
+  for (let w of house.windows) {
+    w.bri = w.brightness();
+  }
+}
+
+// --- Glow / light layer ---------------------------------------------------
+
+function drawGlow() {
+  glowLayer.noStroke();
+  glowLayer.fill(260, 60, 12, 25);
+  glowLayer.rect(0, 0, width, height);
+
+  glowLayer.blendMode(BLEND);
+  for (let w of house.windows) {
+    if (!w.active || w.bri <= 1) continue;
+
+    let cHue = w.isKayleigh ? 45 : w.hue;
+    let cSat = w.isKayleigh ? 50 : w.sat;
+    let coreBri = w.isKayleigh ? 100 : w.bri;
+
+    let auraSize = max(w.w, w.h) * (w.isKayleigh ? 26 : 13);
+    glowLayer.noStroke();
+    for (let r = auraSize; r > 0; r -= auraSize / 20) {
+      let a = map(r, 0, auraSize, w.isKayleigh ? 4.5 : 2.0, 0);
+      glowLayer.fill(cHue, cSat * 0.55, coreBri, a);
+      glowLayer.ellipse(w.x + w.w / 2, w.y + w.h / 2, r, r * 0.85);
+    }
+
+    glowLayer.fill(cHue, cSat, coreBri, 98);
+    glowLayer.rect(w.x + 1, w.y + 1, w.w - 2, w.h - 2, 1);
+
+    if (w.isKayleigh || w.bri > 85) {
+      glowLayer.fill(cHue, cSat * 0.45, coreBri, 12);
+      glowLayer.rect(w.x - w.w * 0.5, w.y + w.h * 0.5, w.w * 2, height * 0.35);
+    }
+  }
+  glowLayer.blendMode(BLEND);
+}
+
+// --- Fog ------------------------------------------------------------------
+
+class FogParticle {
+  constructor(x, y) {
+    this.x = x ?? random(width);
+    this.y = y ?? random(height * 0.58, height * 0.9);
+    this.size = random(width * 0.1, width * 0.32);
+    this.speedX = random(0.2, 0.65) * (random() < 0.5 ? 1 : -1);
+    this.drift = random(1000);
+    this.alpha = random(14, 26);
+    this.h = random(250, 272);
+  }
+
+  update() {
+    this.x += this.speedX + map(noise(frameCount * 0.005 + this.drift), 0, 1, -0.25, 0.25);
+    this.y += map(noise(frameCount * 0.003 + this.drift + 200), 0, 1, -0.2, 0.2);
+    if (this.x > width + this.size) this.x = -this.size;
+    if (this.x < -this.size) this.x = width + this.size;
+  }
+
+  draw(layer) {
+    layer.noStroke();
+    for (let r = this.size; r > 0; r -= this.size / 10) {
+      let a = map(r, 0, this.size, this.alpha, 0);
+      layer.fill(this.h, 28, 95, a);
+      layer.ellipse(this.x, this.y, r * 1.5, r * 0.55);
+    }
+  }
+}
+
+function generateFog() {
+  fog = [];
+  let count = floor(map(width, 800, 2560, 40, 90));
+  for (let i = 0; i < count; i++) {
+    fog.push(new FogParticle());
+  }
+}
+
+function drawFog() {
+  fogLayer.noStroke();
+  fogLayer.fill(260, 52, 12, 14);
+  fogLayer.rect(0, 0, width, height);
+
+  for (let p of fog) {
+    p.update();
+    p.draw(fogLayer);
+  }
+}
+
+// --- Vignette / overlay ---------------------------------------------------
+
+function drawVignette() {
+  overlayLayer.clear();
+  overlayLayer.noStroke();
+  let maxR = dist(0, 0, width / 2, height / 2) * 1.25;
+  for (let r = maxR; r > 0; r -= maxR / 35) {
+    let a = map(r, 0, maxR, 0, 28);
+    overlayLayer.fill(260, 72, 6, a);
+    overlayLayer.ellipse(width / 2, height / 2, r * 2, r * 2);
+  }
+}
+
+// --- Helpers --------------------------------------------------------------
+
+function hsla(h, s, b, a) {
+  let l = b * 0.55;
+  return `hsla(${h}, ${s}%, ${l}%, ${a / 100})`;
+}
+</script>
+</body>
+</html>

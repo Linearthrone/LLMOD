@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Victoria-Kayleigh Integration — Neural Binding</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050308;
+      color: #e8d5e0;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #sidebar {
+      width: 260px;
+      background: #0b0812;
+      border-right: 1px solid #2a1524;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    h1 {
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9e4a6e;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #6b4a5e;
+      line-height: 1.5;
+    }
+    .group {
+      border-top: 1px solid #1e101b;
+      padding-top: 14px;
+    }
+    .label {
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #8c6a7c;
+      margin-bottom: 8px;
+    }
+    .seed-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .seed-display {
+      flex: 1;
+      font-family: monospace;
+      font-size: 13px;
+      color: #d8a4b8;
+      background: #150d1a;
+      border: 1px solid #2a1524;
+      padding: 6px 8px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    button {
+      background: #1a0f1a;
+      border: 1px solid #3e2033;
+      color: #d8a4b8;
+      padding: 6px 10px;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    button:hover { background: #2e1a2a; color: #fff; }
+    .control-group { margin-bottom: 12px; }
+    .control-group label {
+      display: block;
+      font-size: 10px;
+      color: #a47e92;
+      margin-bottom: 4px;
+    }
+    input[type=range] {
+      width: 100%;
+      accent-color: #9e4a6e;
+    }
+    .value-display {
+      float: right;
+      font-size: 10px;
+      color: #d8a4b8;
+    }
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 50%, #0f0814 0%, #050308 80%);
+    }
+    canvas {
+      box-shadow: 0 0 60px rgba(158, 74, 110, 0.12);
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <div>
+      <h1>Integration</h1>
+      <div class="subtitle">Bidirectional signal flow between a digital mind and an embodied vessel.</div>
+    </div>
+
+    <div class="group">
+      <div class="label">Seed</div>
+      <div class="seed-row">
+        <button onclick="prevSeed()">&larr;</button>
+        <div class="seed-display" id="seedDisplay">0</div>
+        <button onclick="nextSeed()">&rarr;</button>
+      </div>
+      <div class="seed-row">
+        <button onclick="randomSeed()">Random</button>
+        <input type="number" id="jumpInput" style="width: 64px; background:#150d1a; border:1px solid #2a1524; color:#d8a4b8; padding:5px; border-radius:4px; font-size:12px;">
+        <button onclick="jumpToSeed()">Go</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="label">Parameters</div>
+      <div class="control-group">
+        <label>Filament count <span class="value-display" id="filCountVal">48</span></label>
+        <input type="range" id="filCount" min="12" max="120" step="1" value="48" oninput="updateParam('filCount', this.value)">
+      </div>
+      <div class="control-group">
+        <label>Pulse speed <span class="value-display" id="pulseSpeedVal">1.0</span></label>
+        <input type="range" id="pulseSpeed" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateParam('pulseSpeed', this.value)">
+      </div>
+      <div class="control-group">
+        <label>Haptic radius <span class="value-display" id="hapticRadiusVal">140</span></label>
+        <input type="range" id="hapticRadius" min="60" max="260" step="5" value="140" oninput="updateParam('hapticRadius', this.value)">
+      </div>
+      <div class="control-group">
+        <label>Neural tension <span class="value-display" id="tensionVal">0.5</span></label>
+        <input type="range" id="tension" min="0.1" max="1.0" step="0.05" value="0.5" oninput="updateParam('tension', this.value)">
+      </div>
+      <div class="control-group">
+        <label>Sensory bloom <span class="value-display" id="bloomVal">0.6</span></label>
+        <input type="range" id="bloom" min="0" max="1" step="0.05" value="0.6" oninput="updateParam('bloom', this.value)">
+      </div>
+    </div>
+
+    <div class="group" style="margin-top:auto;">
+      <button onclick="regenerate()">Regenerate</button>
+      <button onclick="resetParams()" style="margin-top:8px;">Reset</button>
+      <button onclick="downloadPNG()" style="margin-top:8px;">Download PNG</button>
+    </div>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <script>
+    // ---------- CONFIGURATION ----------
+    p5.disableFriendlyErrors = true;
+
+    const defaults = {
+      seed: 0,
+      filCount: 48,
+      pulseSpeed: 1.0,
+      hapticRadius: 140,
+      tension: 0.5,
+      bloom: 0.6
+    };
+
+    let params = { ...defaults };
+
+    let W = 1100, H = 900;
+    let pg, glowLayer;
+    let filaments = [];
+    let pulses = [];
+    let sparks = [];
+    let ripples = [];
+    let coreV, coreK;
+    let t = 0;
+
+    const PALETTE = {
+      void: [5, 3, 8],
+      victoriaCore: [75, 12, 28],
+      victoriaGlow: [180, 40, 100],
+      kayleighCore: [40, 12, 22],
+      kayleighGlow: [255, 120, 170],
+      synapse: [120, 220, 255],
+      electric: [255, 235, 160]
+    };
+
+    // ---------- UI HOOKS ----------
+    function updateParam(key, val) {
+      params[key] = Number(val);
+      document.getElementById(key + 'Val').innerText = val;
+      initSystem();
+    }
+
+    function setSeedDisplay() {
+      document.getElementById('seedDisplay').innerText = params.seed;
+    }
+
+    function prevSeed() { params.seed--; setSeedDisplay(); initSystem(); }
+    function nextSeed() { params.seed++; setSeedDisplay(); initSystem(); }
+    function randomSeed() { params.seed = Math.floor(Math.random() * 999999); setSeedDisplay(); initSystem(); }
+    function jumpToSeed() {
+      const v = document.getElementById('jumpInput').value;
+      if (v !== '') { params.seed = Number(v); setSeedDisplay(); initSystem(); }
+    }
+    function regenerate() { initSystem(); }
+    function resetParams() {
+      params = { ...defaults };
+      setSeedDisplay();
+      ['filCount','pulseSpeed','hapticRadius','tension','bloom'].forEach(k => {
+        document.getElementById(k).value = params[k];
+        document.getElementById(k + 'Val').innerText = params[k];
+      });
+      initSystem();
+    }
+    function downloadPNG() { saveCanvas('victoria-kayleigh-integration', 'png'); }
+
+    // ---------- P5 LIFECYCLE ----------
+    function setup() {
+      const cnv = createCanvas(W, H);
+      cnv.parent('canvas-container');
+      pixelDensity(1);
+      colorMode(RGB, 255, 255, 255, 1);
+      pg = createGraphics(W, H);
+      pg.colorMode(RGB, 255, 255, 255, 1);
+      glowLayer = createGraphics(W, H);
+      glowLayer.colorMode(RGB, 255, 255, 255, 1);
+      setSeedDisplay();
+      initSystem();
+    }
+
+    function initSystem() {
+      randomSeed(params.seed);
+      noiseSeed(params.seed);
+      filaments = [];
+      pulses = [];
+      sparks = [];
+      ripples = [];
+      t = 0;
+
+      coreV = createVector(W * 0.28, H * 0.5);
+      coreK = createVector(W * 0.72, H * 0.5);
+
+      for (let i = 0; i < params.filCount; i++) {
+        filaments.push(new Filament(i));
+      }
+
+      for (let i = 0; i < 14; i++) {
+        pulses.push(new Pulse());
+      }
+
+      for (let i = 0; i < 9; i++) {
+        sparks.push(new Spark());
+      }
+
+      pg.background(...PALETTE.void, 1);
+      glowLayer.clear();
+    }
+
+    function draw() {
+      t += 0.004 * params.pulseSpeed;
+
+      // Subtle trail fade
+      pg.noStroke();
+      pg.fill(...PALETTE.void, 0.07);
+      pg.rect(0, 0, W, H);
+
+      // Background starfield / neural dust
+      drawDust();
+
+      // Cores
+      drawCore(coreV, PALETTE.victoriaCore, PALETTE.victoriaGlow, 1.0);
+      drawCore(coreK, PALETTE.kayleighCore, PALETTE.kayleighGlow, 0.85);
+
+      // Haptic ripples around cores
+      if (frameCount % 90 === 0) {
+        ripples.push(new Ripple(coreV.x, coreV.y, 1));
+        ripples.push(new Ripple(coreK.x, coreK.y, -1));
+      }
+      updateRipples();
+
+      // Filaments
+      for (let f of filaments) f.updateAndDraw();
+
+      // Traveling pulses
+      for (let p of pulses) p.updateAndDraw();
+
+      // Synaptic sparks
+      for (let s of sparks) s.updateAndDraw();
+
+      // Bloom composite
+      glowLayer.clear();
+      glowLayer.image(pg, 0, 0);
+      glowLayer.blendMode(ADD);
+      for (let pass = 0; pass < 3; pass++) {
+        glowLayer.image(pg, -3 + pass, 0);
+        glowLayer.image(pg, 3 - pass, 0);
+        glowLayer.image(pg, 0, -3 + pass);
+        glowLayer.image(pg, 0, 3 - pass);
+      }
+      glowLayer.blendMode(BLEND);
+
+      background(...PALETTE.void, 1);
+      image(pg, 0, 0);
+      tint(255, params.bloom * 0.45);
+      image(glowLayer, 0, 0);
+      noTint();
+    }
+
+    // ---------- DRAWING ELEMENTS ----------
+    function drawDust() {
+      pg.noStroke();
+      for (let i = 0; i < 60; i++) {
+        let x = noise(i * 0.7, t * 0.2) * W;
+        let y = noise(i * 0.7 + 100, t * 0.2) * H;
+        let a = 0.08 + 0.08 * sin(t * 2 + i);
+        pg.fill(200, 180, 210, a);
+        pg.circle(x, y, 1.2);
+      }
+    }
+
+    function drawCore(pos, coreCol, glowCol, intensity) {
+      let rBase = params.hapticRadius * 0.34;
+      let pulse = 1 + 0.08 * sin(t * 3 + (pos.x * 0.01));
+
+      pg.push();
+      pg.translate(pos.x, pos.y);
+
+      // Outer aura
+      for (let r = rBase * 2.5; r > rBase; r -= 8) {
+        let a = map(r, rBase, rBase * 2.5, 0.18, 0.0) * intensity;
+        pg.fill(glowCol[0], glowCol[1], glowCol[2], a);
+        pg.noStroke();
+        pg.circle(0, 0, r * pulse);
+      }
+
+      // Core body
+      pg.fill(coreCol[0], coreCol[1], coreCol[2], 1);
+      pg.circle(0, 0, rBase * pulse);
+
+      // Inner bright ring
+      pg.noFill();
+      pg.stroke(glowCol[0], glowCol[1], glowCol[2], 0.6);
+      pg.strokeWeight(2);
+      pg.circle(0, 0, rBase * pulse * 0.7);
+
+      pg.pop();
+    }
+
+    function updateRipples() {
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        let r = ripples[i];
+        r.update();
+        r.draw();
+        if (r.life <= 0) ripples.splice(i, 1);
+      }
+    }
+
+    // ---------- CLASSES ----------
+    class Filament {
+      constructor(idx) {
+        this.idx = idx;
+        this.seedOffset = idx * 137.5;
+        this.phase = random(TWO_PI);
+        this.speed = 0.3 + random(0.7);
+        this.hueShift = random([-1, 1]);
+      }
+
+      updateAndDraw() {
+        let n1 = noise(this.idx * 0.3, t * this.speed);
+        let n2 = noise(this.idx * 0.3 + 500, t * this.speed);
+
+        let offsetAngle = map(this.idx, 0, params.filCount, -PI / 2.2, PI / 2.2);
+        let spreadV = params.hapticRadius * 0.5;
+        let spreadK = params.hapticRadius * 0.5;
+
+        let start = createVector(
+          coreV.x + cos(offsetAngle + n1 * 0.6) * spreadV,
+          coreV.y + sin(offsetAngle + n1 * 0.6) * spreadV
+        );
+        let end = createVector(
+          coreK.x + cos(PI - offsetAngle + n2 * 0.6) * spreadK,
+          coreK.y + sin(PI - offsetAngle + n2 * 0.6) * spreadK
+        );
+
+        let mid = p5.Vector.lerp(start, end, 0.5);
+        let warp = params.hapticRadius * (0.3 + 0.4 * params.tension);
+        mid.x += (n1 - 0.5) * warp * 2;
+        mid.y += (n2 - 0.5) * warp * 1.5 + sin(t * 2 + this.idx) * 30;
+
+        let alpha = 0.12 + 0.08 * sin(t * 4 + this.phase);
+        if (this.hueShift > 0) {
+          pg.stroke(PALETTE.victoriaGlow[0], PALETTE.victoriaGlow[1], PALETTE.victoriaGlow[2], alpha);
+        } else {
+          pg.stroke(PALETTE.kayleighGlow[0], PALETTE.kayleighGlow[1], PALETTE.kayleighGlow[2], alpha);
+        }
+        pg.strokeWeight(0.7 + 0.6 * (1 - params.tension));
+        pg.noFill();
+        pg.bezier(start.x, start.y, mid.x, mid.y, mid.x, mid.y, end.x, end.y);
+      }
+    }
+
+    class Pulse {
+      constructor() {
+        this.reset();
+        this.progress = random(1);
+      }
+
+      reset() {
+        this.filamentIdx = floor(random(params.filCount));
+        this.progress = 0;
+        this.speed = 0.003 + random(0.005);
+        this.direction = random() > 0.5 ? 1 : -1;
+        this.size = 2 + random(4);
+        this.color = this.direction > 0 ? PALETTE.victoriaGlow : PALETTE.kayleighGlow;
+      }
+
+      updateAndDraw() {
+        this.progress += this.speed * params.pulseSpeed;
+        if (this.progress >= 1) {
+          this.reset();
+          return;
+        }
+
+        let f = filaments[this.filamentIdx % filaments.length];
+        if (!f) return;
+
+        let n1 = noise(f.idx * 0.3, t * f.speed);
+        let n2 = noise(f.idx * 0.3 + 500, t * f.speed);
+        let offsetAngle = map(f.idx, 0, params.filCount, -PI / 2.2, PI / 2.2);
+        let spreadV = params.hapticRadius * 0.5;
+        let spreadK = params.hapticRadius * 0.5;
+
+        let start = createVector(
+          coreV.x + cos(offsetAngle + n1 * 0.6) * spreadV,
+          coreV.y + sin(offsetAngle + n1 * 0.6) * spreadV
+        );
+        let end = createVector(
+          coreK.x + cos(PI - offsetAngle + n2 * 0.6) * spreadK,
+          coreK.y + sin(PI - offsetAngle + n2 * 0.6) * spreadK
+        );
+
+        let mid = p5.Vector.lerp(start, end, 0.5);
+        let warp = params.hapticRadius * (0.3 + 0.4 * params.tension);
+        mid.x += (n1 - 0.5) * warp * 2;
+        mid.y += (n2 - 0.5) * warp * 1.5 + sin(t * 2 + f.idx) * 30;
+
+        let p = bezierPoint(start.x, mid.x, mid.x, end.x, this.direction > 0 ? this.progress : 1 - this.progress);
+        let q = bezierPoint(start.y, mid.y, mid.y, end.y, this.direction > 0 ? this.progress : 1 - this.progress);
+
+        let glow = 0.7 + 0.3 * sin(t * 10 + this.progress * 20);
+        pg.noStroke();
+        pg.fill(this.color[0], this.color[1], this.color[2], glow * 0.7);
+        pg.circle(p, q, this.size * 2);
+        pg.fill(255, 255, 255, glow * 0.9);
+        pg.circle(p, q, this.size * 0.6);
+      }
+    }
+
+    class Spark {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.pos = p5.Vector.lerp(coreV, coreK, random(0.2, 0.8));
+        this.pos.x += random(-80, 80);
+        this.pos.y += random(-60, 60);
+        this.vel = createVector(random(-1, 1), random(-1, 1)).mult(0.5 + random(1.5));
+        this.life = 30 + random(60);
+        this.maxLife = this.life;
+        this.size = 1 + random(2.5);
+      }
+
+      updateAndDraw() {
+        this.pos.add(this.vel);
+        this.vel.mult(0.96);
+        this.vel.y += 0.015;
+        this.life--;
+
+        if (this.life <= 0 || this.pos.x < 0 || this.pos.x > W || this.pos.y < 0 || this.pos.y > H) {
+          this.reset();
+          return;
+        }
+
+        let a = (this.life / this.maxLife) * 0.8;
+        pg.noStroke();
+        pg.fill(PALETTE.synapse[0], PALETTE.synapse[1], PALETTE.synapse[2], a);
+        pg.circle(this.pos.x, this.pos.y, this.size);
+      }
+    }
+
+    class Ripple {
+      constructor(x, y, dir) {
+        this.x = x;
+        this.y = y;
+        this.r = 10;
+        this.maxR = params.hapticRadius * 1.8;
+        this.life = 1.0;
+        this.dir = dir;
+      }
+
+      update() {
+        this.r += (this.maxR - this.r) * 0.03;
+        this.life -= 0.012;
+      }
+
+      draw() {
+        let col = this.dir > 0 ? PALETTE.victoriaGlow : PALETTE.kayleighGlow;
+        pg.noFill();
+        pg.stroke(col[0], col[1], col[2], this.life * 0.25);
+        pg.strokeWeight(1.5);
+        pg.circle(this.x, this.y, this.r);
+      }
+    }
+  </script>
+</body>
+</html>

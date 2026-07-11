@@ -4,18 +4,23 @@
     <Style x:Key="InstrumentTabItemStyle" TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="Padding" Value="6,5"/>
+        <Setter Property="MinWidth" Value="0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
                     <Border x:Name="Border"
                             Background="{DynamicResource DarkCardBrush}"
                             Padding="{TemplateBinding Padding}"
-                            Margin="2,0"
+                            Margin="1,0"
                             BorderBrush="{DynamicResource BorderSubtleBrush}"
                             BorderThickness="0,0,0,2"
-                            CornerRadius="8,8,0,0">
-                        <ContentPresenter ContentSource="Header"/>
+                            CornerRadius="8,8,0,0"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter ContentSource="Header"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsSelected" Value="True">

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,7 @@ namespace HouseVictoria.App.Screens.Windows
         private AutoHideBehavior? _topTrayAutoHide;
         private bool _autoHideEnabled = false;
         private TaskbarIcon? _notifyIcon;
+        private bool _trayDisposed;
         private SMSMMSWindow? _smsWindow;
         private AIModelsWindow? _aiModelsWindow;
         private SettingsWindow? _settingsWindow;
@@ -392,11 +394,87 @@ namespace HouseVictoria.App.Screens.Windows
             _eventAggregator.Unsubscribe<ToggleTrayEvent>(OnToggleTray);
             _appContext?.Dispose();
             _topTrayAutoHide?.Dispose();
-            if (_notifyIcon != null)
+            DisposeTrayIcon();
+        }
+
+        /// <summary>
+        /// Tear down tray UI and child windows before Application.Shutdown so the context menu
+        /// does not linger while background services stop.
+        /// </summary>
+        public void PrepareForShutdown()
+        {
+            try
             {
-                _notifyIcon.Visibility = System.Windows.Visibility.Hidden;
+                CloseAllChildWindows();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PrepareForShutdown (windows): {ex.Message}");
+            }
+
+            DisposeTrayIcon();
+        }
+
+        private void CloseAllChildWindows()
+        {
+            foreach (Window window in Application.Current.Windows.OfType<Window>().ToList())
+            {
+                if (window == this)
+                    continue;
+
+                try
+                {
+                    window.Close();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error closing {window.GetType().Name}: {ex.Message}");
+                }
+            }
+
+            _smsWindow = null;
+            _aiModelsWindow = null;
+            _settingsWindow = null;
+            _projectsWindow = null;
+            _journalsWindow = null;
+            _aarWindow = null;
+            _gldWindow = null;
+            _dataBankManagementWindow = null;
+            _virtualEnvironmentControlsWindow = null;
+            _videoCallWindow = null;
+        }
+
+        private void DisposeTrayIcon()
+        {
+            if (_trayDisposed || _notifyIcon == null)
+                return;
+
+            _trayDisposed = true;
+
+            try
+            {
+                if (_notifyIcon.ContextMenu is ContextMenu menu)
+                    menu.IsOpen = false;
+            }
+            catch { }
+
+            try
+            {
+                _notifyIcon.TrayMouseDoubleClick -= NotifyIcon_TrayMouseDoubleClick;
+            }
+            catch { }
+
+            try
+            {
+                _notifyIcon.Visibility = Visibility.Hidden;
                 _notifyIcon.Dispose();
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Tray icon dispose: {ex.Message}");
+            }
+
+            _notifyIcon = null;
         }
 
         #region Click-Through Handling
@@ -603,6 +681,8 @@ namespace HouseVictoria.App.Screens.Windows
 
         private void MenuItem_Exit_Click(object sender, RoutedEventArgs e)
         {
+            e.Handled = true;
+            PrepareForShutdown();
             Application.Current.Shutdown();
         }
 

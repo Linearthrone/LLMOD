@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mycelial Memory</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #070414; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(200, 220, 255, 0.50);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click reach</div>
+<script>
+const CONFIG = {
+  seed: 20250708,
+  nodeCount: 48,
+  bridgeCount: 12,
+  pulseCount: 120,
+  sporeCount: 250,
+  connectDistance: 0.28,
+  filamentAlpha: 34,
+  burnInFrames: 300,
+  paused: false,
+};
+
+const INK = { h: 240, s: 55, b: 7 };
+const TEAL = { h: 175, s: 82, b: 90 };
+const VIOLET = { h: 270, s: 78, b: 82 };
+const GOLD = { h: 45, s: 88, b: 95 };
+
+let structureLayer, pulseLayer, glowLayer, sporeLayer, bodyLayer;
+let nodes = [];
+let filaments = [];
+let pulses = [];
+let spores = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+  noLoop();
+
+  structureLayer = createGraphics(width, height);
+  structureLayer.colorMode(HSB, 360, 100, 100, 100);
+  structureLayer.pixelDensity(1);
+
+  pulseLayer = createGraphics(width, height);
+  pulseLayer.colorMode(HSB, 360, 100, 100, 100);
+  pulseLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  sporeLayer = createGraphics(width, height);
+  sporeLayer.colorMode(HSB, 360, 100, 100, 100);
+  sporeLayer.pixelDensity(1);
+
+  bodyLayer = createGraphics(width, height);
+  bodyLayer.colorMode(HSB, 360, 100, 100, 100);
+  bodyLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  buildTopology();
+  drawStructure();
+  for (let i = 0; i < CONFIG.sporeCount; i++) spores.push(new Spore());
+  for (let i = 0; i < CONFIG.pulseCount; i++) pulses.push(new Pulse(random(filaments)));
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+
+  loop();
+  document.getElementById('seed').textContent = CONFIG.seed;
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildTopology() {
+  nodes = [];
+  filaments = [];
+  pulses = [];
+  spores = [];
+  t = 0;
+
+  const cx = width / 2;
+  const cy = height / 2;
+  const spread = min(width, height) * 0.42;
+
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    const theta = random(TWO_PI);
+    const radius = randomGaussian(spread * 0.35, spread * 0.18);
+    const x = cx + cos(theta) * radius;
+    const y = cy + sin(theta) * radius;
+    nodes.push(new Node(x, y, i));
+  }
+
+  const maxDist = min(width, height) * CONFIG.connectDistance;
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const d = dist(nodes[i].pos.x, nodes[i].pos.y, nodes[j].pos.x, nodes[j].pos.y);
+      if (d < maxDist) {
+        filaments.push(new Filament(nodes[i], nodes[j]));
+      }
+    }
+  }
+
+  for (let i = 0; i < CONFIG.bridgeCount; i++) {
+    const a = random(nodes);
+    let b = random(nodes);
+    while (b === a || dist(a.pos.x, a.pos.y, b.pos.x, b.pos.y) < maxDist * 0.5) b = random(nodes);
+    filaments.push(new Filament(a, b, true));
+  }
+}
+
+function drawStructure() {
+  structureLayer.background(INK.h, INK.s, INK.b);
+
+  const cx = width / 2;
+  const cy = height / 2;
+  const steps = 120;
+  const maxR = max(width, height) * 0.9;
+  structureLayer.noStroke();
+  for (let i = steps; i >= 0; i--) {
+    const r = maxR * (i / steps);
+    const alpha = map(i, 0, steps, 0, 1.4, true);
+    structureLayer.fill(INK.h, INK.s + 8, INK.b + i * 0.04, alpha);
+    structureLayer.ellipse(cx, cy, r * 2, r * 2);
+  }
+
+  for (let f of filaments) {
+    f.update();
+    f.drawStructure(structureLayer);
+  }
+}
+
+function simulateStep() {
+  t += 0.0015;
+  for (let f of filaments) f.update();
+  for (let p of pulses) {
+    p.update();
+    if (p.dead) p.reset(random(filaments));
+  }
+  for (let s of spores) s.update();
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  pulseLayer.clear();
+  glowLayer.clear();
+  sporeLayer.clear();
+  bodyLayer.clear();
+
+  for (let p of pulses) p.draw(pulseLayer, glowLayer);
+  for (let s of spores) s.draw(sporeLayer, glowLayer);
+  for (let n of nodes) n.draw(bodyLayer, glowLayer);
+
+  background(INK.h, INK.s, INK.b);
+  image(structureLayer, 0, 0);
+  image(glowLayer, 0, 0);
+  image(sporeLayer, 0, 0);
+  image(pulseLayer, 0, 0);
+  image(bodyLayer, 0, 0);
+}
+
+function mousePressed() {
+  const reach = new Reach(mouseX, mouseY);
+  nodes.push(reach);
+  for (let n of nodes) {
+    const d = dist(n.pos.x, n.pos.y, reach.pos.x, reach.pos.y);
+    if (n !== reach && d < min(width, height) * CONFIG.connectDistance * 0.9) {
+      filaments.push(new Filament(n, reach, true));
+    }
+  }
+  drawStructure();
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`mycelial-memory-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`mycelial-memory-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildTopology();
+    drawStructure();
+    spores = []; pulses = [];
+    for (let i = 0; i < CONFIG.sporeCount; i++) spores.push(new Spore());
+    for (let i = 0; i < CONFIG.pulseCount; i++) pulses.push(new Pulse(random(filaments)));
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  structureLayer.resizeCanvas(width, height);
+  pulseLayer.resizeCanvas(width, height);
+  glowLayer.resizeCanvas(width, height);
+  sporeLayer.resizeCanvas(width, height);
+  bodyLayer.resizeCanvas(width, height);
+  buildTopology();
+  drawStructure();
+}
+
+class Node {
+  constructor(x, y, id = -1) {
+    this.pos = createVector(x, y);
+    this.id = id;
+    this.baseR = random(3, 7);
+    this.phase = random(TWO_PI);
+    const roll = random();
+    if (roll < 0.38) this.color = TEAL;
+    else if (roll < 0.72) this.color = VIOLET;
+    else this.color = GOLD;
+    this.pulseSpeed = random(0.4, 1.2);
+    this.reachMode = id < 0;
+  }
+
+  pulse() { return 0.6 + 0.4 * sin(t * this.pulseSpeed * 3 + this.phase); }
+
+  draw(body, glow) {
+    const pulse = this.pulse();
+    const r = this.baseR * (0.9 + pulse * 0.5);
+
+    glow.noStroke();
+    const auraSteps = this.reachMode ? 50 : 35;
+    const auraMaxR = r * (this.reachMode ? 8 : 5);
+    for (let i = auraSteps; i >= 0; i--) {
+      const rr = auraMaxR * (i / auraSteps);
+      const alpha = map(i, 0, auraSteps, 0, this.reachMode ? 1.8 : 1.1, true);
+      glow.fill(this.color.h, this.color.s * 0.55, 100, alpha);
+      glow.ellipse(this.pos.x, this.pos.y, rr * 2, rr * 2);
+    }
+
+    body.noStroke();
+    body.fill(this.color.h, this.color.s, this.color.b, 70 + pulse * 22);
+    body.ellipse(this.pos.x, this.pos.y, r * 2, r * 2);
+    body.fill(this.color.h, this.color.s * 0.3, 100, 85 + pulse * 12);
+    body.ellipse(this.pos.x, this.pos.y, r * 0.55, r * 0.55);
+  }
+}
+
+class Reach extends Node {
+  constructor(x, y) {
+    super(x, y, -1);
+    this.color = GOLD;
+    this.baseR = 10;
+    this.pulseSpeed = 2.0;
+  }
+}
+
+class Filament {
+  constructor(a, b, isBridge = false) {
+    this.a = a;
+    this.b = b;
+    this.isBridge = isBridge;
+    this.noiseOffset = random(1000);
+    this.thickness = isBridge ? random(0.9, 1.8) : random(0.35, 1.1);
+    this.cp1 = createVector(0, 0);
+    this.cp2 = createVector(0, 0);
+    const roll = random();
+    if (roll < 0.45) this.color = TEAL;
+    else if (roll < 0.82) this.color = VIOLET;
+    else this.color = GOLD;
+    this.alpha = isBridge ? 55 : CONFIG.filamentAlpha;
+  }
+
+  update() {
+    const ax = this.a.pos.x, ay = this.a.pos.y;
+    const bx = this.b.pos.x, by = this.b.pos.y;
+    const midX = (ax + bx) * 0.5, midY = (ay + by) * 0.5;
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const perpX = -dy / len, perpY = dx / len;
+    const bend = min(width, height) * (this.isBridge ? 0.20 : 0.16);
+
+    const n1 = noise(this.noiseOffset, t * 2.0) - 0.5;
+    const n2 = noise(this.noiseOffset + 100, t * 2.3) - 0.5;
+
+    this.cp1.set(
+      lerp(ax, midX, 0.5) + perpX * n1 * bend,
+      lerp(ay, midY, 0.5) + perpY * n1 * bend
+    );
+    this.cp2.set(
+      lerp(bx, midX, 0.5) + perpX * n2 * bend,
+      lerp(by, midY, 0.5) + perpY * n2 * bend
+    );
+  }
+
+  drawStructure(layer) {
+    layer.noFill();
+    layer.strokeWeight(this.thickness);
+    layer.stroke(this.color.h, this.color.s, this.color.b, this.alpha);
+    layer.bezier(
+      this.a.pos.x, this.a.pos.y,
+      this.cp1.x, this.cp1.y,
+      this.cp2.x, this.cp2.y,
+      this.b.pos.x, this.b.pos.y
+    );
+  }
+
+  bezierPointAt(p) {
+    const u = 1 - p;
+    return {
+      x: u*u*u*this.a.pos.x + 3*u*u*p*this.cp1.x + 3*u*p*p*this.cp2.x + p*p*p*this.b.pos.x,
+      y: u*u*u*this.a.pos.y + 3*u*u*p*this.cp1.y + 3*u*p*p*this.cp2.y + p*p*p*this.b.pos.y
+    };
+  }
+}
+
+class Pulse {
+  constructor(filament) {
+    this.filament = filament;
+    this.t = random();
+    this.speed = random(0.0015, 0.0040);
+    this.size = random(1.5, 3.5);
+    this.dead = false;
+    const roll = random();
+    if (roll < 0.4) this.color = TEAL;
+    else if (roll < 0.75) this.color = GOLD;
+    else this.color = VIOLET;
+  }
+
+  reset(filament) {
+    this.filament = filament;
+    this.t = random() < 0.5 ? 0 : 1;
+    this.speed = random(0.0015, 0.0040) * (this.t === 0 ? 1 : -1);
+    this.size = random(1.5, 3.5);
+    this.dead = false;
+    const roll = random();
+    if (roll < 0.4) this.color = TEAL;
+    else if (roll < 0.75) this.color = GOLD;
+    else this.color = VIOLET;
+  }
+
+  update() {
+    this.t += this.speed;
+    if (this.t >= 1 || this.t <= 0) this.dead = true;
+  }
+
+  draw(layer, glow) {
+    if (this.dead) return;
+    const p = this.filament.bezierPointAt(this.t);
+    const alpha = sin(this.t * PI) * 80 + 20;
+
+    glow.noStroke();
+    glow.fill(this.color.h, this.color.s * 0.5, 100, alpha * 0.18);
+    glow.ellipse(p.x, p.y, this.size * 4, this.size * 4);
+
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s, this.color.b, alpha);
+    layer.ellipse(p.x, p.y, this.size, this.size);
+  }
+}
+
+class Spore {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = p5.Vector.random2D().mult(random(0.2, 0.8));
+    this.size = random(0.6, 2.2);
+    const roll = random();
+    if (roll < 0.45) this.color = TEAL;
+    else if (roll < 0.80) this.color = VIOLET;
+    else this.color = GOLD;
+    this.life = random(120, 360);
+    this.maxLife = this.life;
+  }
+
+  update() {
+    const n = noise(this.pos.x * 0.005, this.pos.y * 0.005, t * 0.5);
+    const angle = n * TWO_PI * 2;
+    this.vel.add(p5.Vector.fromAngle(angle).mult(0.04));
+    this.vel.limit(1.2);
+    this.pos.add(this.vel);
+    this.life--;
+
+    if (this.life <= 0 || this.pos.x < -10 || this.pos.x > width + 10 || this.pos.y < -10 || this.pos.y > height + 10) {
+      this.pos = createVector(random(width), random(height));
+      this.vel = p5.Vector.random2D().mult(random(0.2, 0.8));
+      this.life = random(120, 360);
+      this.maxLife = this.life;
+    }
+  }
+
+  draw(layer, glow) {
+    const alpha = map(this.life, 0, this.maxLife, 0, 45, true);
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s, this.color.b, alpha);
+    layer.ellipse(this.pos.x, this.pos.y, this.size, this.size);
+  }
+}
+</script>
+</body>
+</html>

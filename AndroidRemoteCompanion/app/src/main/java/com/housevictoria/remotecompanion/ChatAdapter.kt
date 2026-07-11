@@ -13,13 +13,20 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
+import coil.load
+import coil.request.ImageRequest
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 
 class ChatAdapter(
     private var theme: ContactTheme = ContactThemePalette.forContact("default"),
-    private var assistantName: String = "Victoria"
+    private var assistantName: String = "Victoria",
+    private var config: CompanionConfig = CompanionConfig("", "")
 ) : ListAdapter<ChatMessage, RecyclerView.ViewHolder>(Diff) {
+
+    fun setConfig(value: CompanionConfig) {
+        config = value
+    }
 
     fun setTheme(value: ContactTheme) {
         theme = value
@@ -46,7 +53,7 @@ class ChatAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
-            is MessageViewHolder -> holder.bind(getItem(position), theme, assistantName)
+            is MessageViewHolder -> holder.bind(getItem(position), theme, assistantName, config)
             is TypingViewHolder -> holder.bind()
         }
     }
@@ -58,9 +65,10 @@ class ChatAdapter(
         private val avatarIcon: ImageView = itemView.findViewById(R.id.avatarIcon)
         private val senderLabel: TextView = itemView.findViewById(R.id.senderLabel)
         private val messageBody: TextView = itemView.findViewById(R.id.messageBody)
+        private val messageImage: ImageView = itemView.findViewById(R.id.messageImage)
         private val timestampText: TextView = itemView.findViewById(R.id.timestampText)
 
-        fun bind(message: ChatMessage, theme: ContactTheme, assistantName: String) {
+        fun bind(message: ChatMessage, theme: ContactTheme, assistantName: String, config: CompanionConfig) {
             if (message.role == MessageRole.SYSTEM) {
                 messageRow.isVisible = false
                 systemMessage.isVisible = true
@@ -101,6 +109,18 @@ class ChatAdapter(
                     if (isError) R.color.hv_error else R.color.hv_text_primary
                 )
             )
+            messageBody.isVisible = message.content.isNotBlank()
+
+            if (message.hasMedia && config.validate() == null) {
+                messageImage.isVisible = true
+                val url = RemoteApiClient.messageMediaUrl(config.baseUrl, message.id)
+                messageImage.load(url) {
+                    crossfade(true)
+                    addHeader("Authorization", "Bearer ${config.token}")
+                }
+            } else {
+                messageImage.isVisible = false
+            }
 
             timestampText.isVisible = message.role == MessageRole.ASSISTANT || isUser
             timestampText.text = message.formattedTime()

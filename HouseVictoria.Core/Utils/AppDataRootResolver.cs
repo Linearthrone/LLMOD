@@ -1,3 +1,5 @@
+using HouseVictoria.Core.Models;
+
 namespace HouseVictoria.Core.Utils
 {
     /// <summary>
@@ -48,6 +50,88 @@ namespace HouseVictoria.Core.Utils
                 .Replace('\\', Path.DirectorySeparatorChar);
 
             return Path.GetFullPath(Path.Combine(ResolveDataRoot(appDirectory), normalized));
+        }
+
+        /// <summary>
+        /// Rewrites paths that were persisted while running from bin/Debug or bin/Release
+        /// back to the stable repo-root data folder.
+        /// </summary>
+        public static string CoerceDataPath(string appDirectory, string? path, string defaultRelative)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return ResolveDataPath(appDirectory, defaultRelative);
+
+            var full = Path.IsPathRooted(path)
+                ? Path.GetFullPath(path)
+                : ResolveDataPath(appDirectory, path);
+
+            var binSegment = $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}";
+            if (!full.Contains(binSegment, StringComparison.OrdinalIgnoreCase))
+                return full;
+
+            var dataSegment = $"{Path.DirectorySeparatorChar}Data{Path.DirectorySeparatorChar}";
+            var dataIdx = full.IndexOf(dataSegment, StringComparison.OrdinalIgnoreCase);
+            if (dataIdx >= 0)
+            {
+                var relativeFromData = full[(dataIdx + 1)..]
+                    .Replace(Path.DirectorySeparatorChar, '/');
+                return ResolveDataPath(appDirectory, relativeFromData);
+            }
+
+            return ResolveDataPath(appDirectory, defaultRelative);
+        }
+
+        /// <summary>
+        /// Store relative data paths in user-settings.json so rebuilds do not pin bin/Release folders.
+        /// </summary>
+        public static string ToPortableDataPath(string appDirectory, string resolvedPath, string defaultRelative)
+        {
+            if (string.IsNullOrWhiteSpace(resolvedPath))
+                return defaultRelative.Replace('\\', '/');
+
+            var root = ResolveDataRoot(appDirectory);
+            var full = Path.GetFullPath(resolvedPath);
+            if (full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            {
+                var relative = Path.GetRelativePath(root, full)
+                    .Replace(Path.DirectorySeparatorChar, '/');
+                return string.IsNullOrWhiteSpace(relative) ? defaultRelative.Replace('\\', '/') : relative;
+            }
+
+            return defaultRelative.Replace('\\', '/');
+        }
+
+        public static void SanitizeDataPathsForPersistence(string appDirectory, AppConfig config)
+        {
+            config.DataBankPath = ToPortableDataPath(appDirectory, config.DataBankPath, "Data/Databanks");
+            config.LogsPath = ToPortableDataPath(appDirectory, config.LogsPath, "Logs");
+            config.PersistentMemoryPath = ToPortableDataPath(appDirectory, config.PersistentMemoryPath, "Data/Memory");
+            config.AutonomyDataPath = ToPortableDataPath(appDirectory, config.AutonomyDataPath, "Data/Autonomy");
+            if (!Path.IsPathRooted(config.MediaPath))
+            {
+                config.MediaPath = config.MediaPath.Replace('\\', '/');
+            }
+            else
+            {
+                config.MediaPath = ToPortableDataPath(appDirectory, config.MediaPath, "Media");
+            }
+        }
+
+        public static void ApplyCoercedDataPaths(string appDirectory, AppConfig config)
+        {
+            config.DataBankPath = CoerceDataPath(appDirectory, config.DataBankPath, "Data/Databanks");
+            config.LogsPath = CoerceDataPath(appDirectory, config.LogsPath, "Logs");
+            config.PersistentMemoryPath = CoerceDataPath(appDirectory, config.PersistentMemoryPath, "Data/Memory");
+            config.AutonomyDataPath = CoerceDataPath(appDirectory, config.AutonomyDataPath, "Data/Autonomy");
+            if (!Path.IsPathRooted(config.MediaPath))
+            {
+                config.MediaPath = Path.GetFullPath(
+                    Path.Combine(ResolveDataRoot(appDirectory), config.MediaPath));
+            }
+            else
+            {
+                config.MediaPath = CoerceDataPath(appDirectory, config.MediaPath, "Media");
+            }
         }
 
         /// <summary>

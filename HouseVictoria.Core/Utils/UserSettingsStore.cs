@@ -41,7 +41,14 @@ namespace HouseVictoria.Core.Utils
         {
             var path = GetSettingsFilePath();
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+
+            var appDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
+                               ?? AppDomain.CurrentDomain.BaseDirectory;
+            var snapshot = JsonConvert.DeserializeObject<AppConfig>(JsonConvert.SerializeObject(config))
+                           ?? config;
+            AppDataRootResolver.SanitizeDataPathsForPersistence(appDirectory, snapshot);
+
+            var json = JsonConvert.SerializeObject(snapshot, Formatting.Indented);
             File.WriteAllText(path, json);
         }
 

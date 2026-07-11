@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Somatic Risk Atlas — p5.js Generative Portrait</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #12152a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(200, 215, 255, 0.60);
+      font: 12px/1.5 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click disturb currents</div>
+<script>
+// === Somatic Risk Atlas ===
+// A deterministic p5.js generative portrait mapping physiological signals
+// (HRV, skin conductance, micro-expressions, posture sway) onto a dark
+// financial-risk landscape. The somatic-risk-lexicon is rendered as an atlas:
+// body states = glowing territories; risk thresholds = contour lines;
+// arousal gradients = flowing currents; emotional signatures = constellations.
+
+const CONFIG = {
+  seedString: 'victoria-somatic-risk-2026',
+  burnInFrames: 240,
+  paused: false,
+  nodeCount: 56,
+  filamentCount: 72,
+  currentParticleCount: 55,
+  faceScale: 0.70,
+};
+
+const PALETTE = {
+  ink:    { h: 230, s: 48, b: 32 },  // dark navy background
+  hrv:    { h: 182, s: 76, b: 94 },  // cyan currents / HRV waves
+  arousal:{ h: 44,  s: 86, b: 94 },  // amber arousal gradients
+  risk:   { h: 355, s: 82, b: 88 },  // crimson high-risk territory
+  calm:   { h: 152, s: 48, b: 78 },  // green calm territory
+  stress: { h: 22,  s: 74, b: 86 },  // orange stress territory
+  emotion:{ h: 272, s: 62, b: 92 },  // violet constellation nodes
+};
+
+let seedValue;
+let topoLayer, territoryLayer, contourLayer, structureLayer;
+let currentLayer, glowLayer, pulseLayer;
+let particles = [];
+let nodes = [];
+let filaments = [];
+let territories = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+  noLoop();
+
+  seedValue = cyrb53(CONFIG.seedString) % 1000000;
+  applySeed(seedValue);
+
+  topoLayer = createGraphics(width, height);
+  topoLayer.colorMode(HSB, 360, 100, 100, 100);
+  territoryLayer = createGraphics(width, height);
+  territoryLayer.colorMode(HSB, 360, 100, 100, 100);
+  contourLayer = createGraphics(width, height);
+  contourLayer.colorMode(HSB, 360, 100, 100, 100);
+  structureLayer = createGraphics(width, height);
+  structureLayer.colorMode(HSB, 360, 100, 100, 100);
+  currentLayer = createGraphics(width, height);
+  currentLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  pulseLayer = createGraphics(width, height);
+  pulseLayer.colorMode(HSB, 360, 100, 100, 100);
+
+  buildAtlas();
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  loop();
+  document.getElementById('seed').textContent = seedValue + ' (' + CONFIG.seedString + ')';
+}
+
+function applySeed(seed) {
+  randomSeed(seed);
+  noiseSeed(seed);
+}
+
+function buildAtlas() {
+  buildTerritories();
+  drawTopoBase();
+  drawTerritories();
+  drawContours();
+  buildConstellation();
+  drawConstellationStructure();
+  spawnCurrents();
+}
+
+// ---------- Atlas geometry: abstract face envelope ----------
+function faceEnvelope(x, y) {
+  const cx = width / 2;
+  const cy = height / 2;
+  const s = min(width, height) * CONFIG.faceScale * 0.5;
+  const nx = (x - cx) / s;
+  const ny = (y - cy) / s;
+
+  const n = noise(nx * 2.4 + 100, ny * 2.4 + 200, seedValue * 0.001);
+  const jaw = Math.max(0, ny - 0.18) * 1.50;
+  const pinch = 0.62 + 0.18 * Math.cos(ny * PI * 1.70);
+  const wobble = (n - 0.5) * 0.12;
+  return Math.abs(nx) < (pinch - jaw + wobble);
+}
+
+// ---------- Body-state territories ----------
+function buildTerritories() {
+  territories = [];
+  const s = min(width, height) * CONFIG.faceScale * 0.5;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const regions = [
+    { name: 'frontal-calm',     x: 0.0,  y: -0.44, r: 0.25, color: PALETTE.calm,    risk: 0.12 },
+    { name: 'left-brow-stress', x: -0.18,y: -0.31, r: 0.16, color: PALETTE.stress,  risk: 0.45 },
+    { name: 'right-brow-stress',x: 0.18, y: -0.31, r: 0.16, color: PALETTE.stress,  risk: 0.42 },
+    { name: 'left-eye-arousal', x: -0.22,y: -0.08, r: 0.18, color: PALETTE.arousal, risk: 0.58 },
+    { name: 'right-eye-arousal',x: 0.22, y: -0.08, r: 0.18, color: PALETTE.arousal, risk: 0.55 },
+    { name: 'nasal-hrv',        x: 0.0,  y: 0.06,  r: 0.13, color: PALETTE.hrv,     risk: 0.22 },
+    { name: 'left-cheek-risk',  x: -0.28,y: 0.22,  r: 0.22, color: PALETTE.risk,    risk: 0.72 },
+    { name: 'right-cheek-risk', x: 0.28, y: 0.22,  r: 0.22, color: PALETTE.risk,    risk: 0.70 },
+    { name: 'mouth-composure',  x: 0.0,  y: 0.42,  r: 0.18, color: PALETTE.calm,    risk: 0.30 },
+  ];
+
+  for (let r of regions) {
+    territories.push({
+      x: cx + r.x * s,
+      y: cy + r.y * s,
+      radius: r.r * s,
+      color: r.color,
+      risk: r.risk,
+      phase: random(TWO_PI),
+    });
+  }
+}
+
+function drawTopoBase() {
+  topoLayer.background(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b);
+
+  // Soft ambient atlas glow behind the face
+  topoLayer.noStroke();
+  const cx = width / 2;
+  const cy = height / 2;
+  const s = min(width, height) * CONFIG.faceScale * 0.65;
+  const steps = 50;
+  for (let i = steps; i >= 0; i--) {
+    const r = map(i, 0, steps, s * 2.0, 0);
+    const alpha = map(i, 0, steps, 0, 10);
+    topoLayer.fill(PALETTE.ink.h, 30, PALETTE.ink.b + 20, alpha);
+    topoLayer.ellipse(cx, cy, r, r);
+  }
+
+  // Subtle topographic grain
+  for (let y = 0; y < height; y += 7) {
+    for (let x = 0; x < width; x += 7) {
+      const v = noise(x * 0.005, y * 0.005, seedValue);
+      if (v > 0.58) {
+        topoLayer.fill(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b + 12, 16);
+        topoLayer.rect(x, y, 7, 7);
+      }
+    }
+  }
+}
+
+function drawTerritories() {
+  territoryLayer.clear();
+  territoryLayer.blendMode(ADD);
+  territoryLayer.noStroke();
+  for (let ter of territories) {
+    const col = ter.color;
+    const steps = 45;
+    for (let i = steps; i >= 0; i--) {
+      const rr = map(i, 0, steps, ter.radius * 2.8, 0);
+      const alpha = map(i, 0, steps, 0, 45 + ter.risk * 30);
+      territoryLayer.fill(col.h, col.s, col.b, alpha);
+      territoryLayer.ellipse(ter.x, ter.y, rr * 2, rr * 2);
+    }
+    territoryLayer.fill(col.h, col.s, 100, 60);
+    territoryLayer.ellipse(ter.x, ter.y, ter.radius * 1.8, ter.radius * 1.8);
+  }
+  territoryLayer.blendMode(BLEND);
+}
+
+// ---------- Risk thresholds as contour lines ----------
+function riskField(x, y) {
+  let v = 0;
+  for (let ter of territories) {
+    const d = Math.hypot(x - ter.x, y - ter.y);
+    const falloff = Math.exp(-d / (ter.radius * 1.15));
+    v += ter.risk * falloff;
+  }
+  v += (noise(x * 0.004, y * 0.004, t * 0.3) - 0.5) * 0.10;
+  return v;
+}
+
+function drawContours() {
+  contourLayer.clear();
+  const levels = [0.30, 0.50, 0.70, 0.90];
+  const step = 10;
+  const epsilon = 0.035;
+
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      // jitter sample location to break grid streaks
+      const jx = x + random(-step * 0.5, step * 0.5);
+      const jy = y + random(-step * 0.5, step * 0.5);
+      if (!faceEnvelope(jx, jy)) continue;
+      const v = riskField(jx, jy);
+      for (let idx = 0; idx < levels.length; idx++) {
+        const lvl = levels[idx];
+        const diff = Math.abs(v - lvl);
+        if (diff < epsilon) {
+          const intensity = map(diff, 0, epsilon, 1, 0);
+          const bright = map(lvl, 0.30, 0.90, 70, 100);
+          const alpha = 95 * intensity;
+          const sz = 5.5 + 4.0 * intensity;
+          contourLayer.noStroke();
+          contourLayer.fill(PALETTE.arousal.h, 55, bright, alpha);
+          contourLayer.ellipse(jx, jy, sz, sz);
+        }
+      }
+    }
+  }
+}
+
+// ---------- Emotional signatures as constellation nodes ----------
+function buildConstellation() {
+  nodes = [];
+  const s = min(width, height) * CONFIG.faceScale * 0.5;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const landmarks = [
+    { x: -0.22, y: -0.08, r: 0.28 },
+    { x:  0.22, y: -0.08, r: 0.28 },
+    { x: -0.18, y: -0.32, r: 0.22 },
+    { x:  0.18, y: -0.32, r: 0.22 },
+    { x:  0.0,  y:  0.42, r: 0.26 },
+    { x:  0.0,  y:  0.72, r: 0.34 },
+  ];
+
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    const lm = random(landmarks);
+    const angle = random(TWO_PI);
+    const rad = random(lm.r * s) * Math.sqrt(random(1));
+    const x = cx + lm.x * s + Math.cos(angle) * rad;
+    const y = cy + lm.y * s + Math.sin(angle) * rad;
+    nodes.push({
+      x, y,
+      baseX: x,
+      baseY: y,
+      radius: random(2.4, 6.2),
+      phase: random(TWO_PI),
+      type: floor(random(3)),
+    });
+  }
+
+  filaments = [];
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    const a = nodes[floor(random(nodes.length))];
+    const b = nodes[floor(random(nodes.length))];
+    if (a === b) continue;
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (d < min(width, height) * 0.28) {
+      filaments.push({ a, b, noiseOffset: random(1000), thickness: random(0.8, 2.0) });
+    }
+  }
+}
+
+function drawConstellationStructure() {
+  structureLayer.clear();
+
+  for (let f of filaments) {
+    const ax = f.a.x, ay = f.a.y;
+    const bx = f.b.x, by = f.b.y;
+    const midX = (ax + bx) * 0.5, midY = (ay + by) * 0.5;
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    const perpX = -dy / len, perpY = dx / len;
+    const bend = min(width, height) * 0.08;
+    const cp1x = lerp(ax, midX, 0.5) + perpX * bend;
+    const cp1y = lerp(ay, midY, 0.5) + perpY * bend;
+    const cp2x = lerp(bx, midX, 0.5) + perpX * bend;
+    const cp2y = lerp(by, midY, 0.5) + perpY * bend;
+
+    structureLayer.noFill();
+    structureLayer.strokeWeight(f.thickness);
+    structureLayer.stroke(PALETTE.emotion.h, 55, 90, 75);
+    structureLayer.bezier(ax, ay, cp1x, cp1y, cp2x, cp2y, bx, by);
+  }
+
+  for (let n of nodes) {
+    structureLayer.noStroke();
+    structureLayer.fill(PALETTE.emotion.h, 58, 100, 100);
+    structureLayer.ellipse(n.x, n.y, n.radius, n.radius);
+  }
+}
+
+// ---------- Arousal / HRV currents ----------
+function spawnCurrents() {
+  particles = [];
+  for (let i = 0; i < CONFIG.currentParticleCount; i++) {
+    let x, y;
+    let attempts = 0;
+    do {
+      x = random(width);
+      y = random(height);
+      attempts++;
+    } while (!faceEnvelope(x, y) && attempts < 80);
+    particles.push(new CurrentParticle(x, y));
+  }
+}
+
+function simulateStep() {
+  t += 0.003;
+
+  currentLayer.noStroke();
+  currentLayer.fill(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b, 3.0);
+  currentLayer.rect(0, 0, width, height);
+
+  glowLayer.clear();
+  pulseLayer.clear();
+
+  for (let p of particles) {
+    p.update();
+    p.display(currentLayer, glowLayer);
+  }
+
+  pulseLayer.blendMode(ADD);
+  for (let n of nodes) {
+    const pulse = sin(t * 3.5 + n.phase) * 0.5 + 0.5;
+    pulseLayer.noStroke();
+    pulseLayer.fill(PALETTE.emotion.h, 68, 100, 35 * pulse);
+    pulseLayer.ellipse(n.x, n.y, n.radius * (3.0 + pulse * 1.8), n.radius * (3.0 + pulse * 1.8));
+  }
+  pulseLayer.blendMode(BLEND);
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  background(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b);
+  image(topoLayer, 0, 0);
+  image(territoryLayer, 0, 0);
+  image(currentLayer, 0, 0);
+  image(contourLayer, 0, 0);
+  image(structureLayer, 0, 0);
+  image(pulseLayer, 0, 0);
+  image(glowLayer, 0, 0);
+
+  noStroke();
+  const vSteps = 60;
+  const maxR = Math.hypot(width, height) * 0.55;
+  for (let i = 0; i < vSteps; i++) {
+    const r = map(i, 0, vSteps, 0, maxR);
+    const alpha = map(i, 0, vSteps, 0, 10);
+    fill(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b, alpha);
+    ellipse(width / 2, height / 2, r * 2, r * 2);
+  }
+}
+
+function mousePressed() {
+  for (let i = 0; i < 12; i++) {
+    const p = new CurrentParticle(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40));
+    p.vel = p5.Vector.fromAngle(random(TWO_PI)).mult(random(1, 3));
+    particles.push(p);
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`somatic-risk-atlas-${seedValue}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`somatic-risk-atlas-${seedValue}`, 5);
+  if (key === 'r' || key === 'R') {
+    seedValue = floor(random(1000000));
+    CONFIG.seedString = 'random-' + seedValue;
+    applySeed(seedValue);
+    buildAtlas();
+    document.getElementById('seed').textContent = seedValue;
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  topoLayer = resizeLayer(topoLayer);
+  territoryLayer = resizeLayer(territoryLayer);
+  contourLayer = resizeLayer(contourLayer);
+  structureLayer = resizeLayer(structureLayer);
+  currentLayer = resizeLayer(currentLayer);
+  glowLayer = resizeLayer(glowLayer);
+  pulseLayer = resizeLayer(pulseLayer);
+  buildAtlas();
+}
+
+function resizeLayer(layer) {
+  const next = createGraphics(width, height);
+  next.colorMode(HSB, 360, 100, 100, 100);
+  next.image(layer, 0, 0);
+  return next;
+}
+
+class CurrentParticle {
+  constructor(x, y) {
+    this.pos = createVector(
+      x !== undefined ? x : random(width),
+      y !== undefined ? y : random(height)
+    );
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.5, 1.8);
+    this.history = [];
+    this.historyLimit = floor(random(6, 14));
+    this.signal = random(['hrv', 'arousal']);
+    this.sw = random(0.6, 1.8);
+    this.noiseZ = random(1000);
+    this.orbitOffset = random(0.5, 1.5);
+  }
+
+  update() {
+    const cx = width / 2;
+    const cy = height / 2;
+    let angle = noise(this.pos.x * 0.006, this.pos.y * 0.006, t + this.noiseZ) * TWO_PI * 4;
+
+    const toCenter = createVector(cx - this.pos.x, cy - this.pos.y);
+    const dist = toCenter.mag();
+    const hrvPulse = sin(t * 3.0 + dist * 0.008) * 0.5 + 0.5;
+    const tangent = createVector(-toCenter.y, toCenter.x).normalize().mult(0.04 * hrvPulse * this.orbitOffset);
+    this.acc.add(tangent);
+
+    const sway = noise(this.pos.x * 0.012, this.pos.y * 0.012, t * 0.6) - 0.5;
+    this.acc.add(p5.Vector.fromAngle(angle).mult(0.10 + sway * 0.05));
+
+    for (let ter of territories) {
+      const d = Math.hypot(this.pos.x - ter.x, this.pos.y - ter.y);
+      const force = map(d, 0, ter.radius * 2.2, 0.04, 0, true);
+      const dir = createVector(ter.x - this.pos.x, ter.y - this.pos.y).normalize().mult(force * ter.risk);
+      this.acc.add(dir);
+    }
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    this.edges();
+  }
+
+  edges() {
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+
+  display(trail, glow) {
+    const col = this.signal === 'hrv' ? PALETTE.hrv : PALETTE.arousal;
+
+    trail.noFill();
+    trail.strokeWeight(this.sw);
+    trail.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, 70, true);
+      trail.stroke(col.h, col.s, col.b, a);
+      trail.curveVertex(p.x, p.y);
+    }
+    trail.endShape();
+
+    glow.noStroke();
+    glow.fill(col.h, col.s, 100, 25);
+    glow.ellipse(this.pos.x, this.pos.y, this.sw * 4, this.sw * 4);
+
+    trail.noStroke();
+    trail.fill(col.h, col.s, 100, 100);
+    trail.ellipse(this.pos.x, this.pos.y, this.sw * 1.4, this.sw * 1.4);
+  }
+}
+
+function cyrb53(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+</script>
+</body>
+</html>

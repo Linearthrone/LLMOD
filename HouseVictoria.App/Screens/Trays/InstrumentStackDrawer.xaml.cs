@@ -32,7 +32,17 @@ namespace HouseVictoria.App.Screens.Trays
                 _systemMonitorService = new HouseVictoria.Services.SystemMonitor.SystemMonitorService();
             }
 
-            _viewModel = new InstrumentStackDrawerViewModel(_systemMonitorService, DrawerPanel, VitalsDrawerStub);
+            IAgentDesktopMonitorService? desktopMonitor = null;
+            try
+            {
+                desktopMonitor = App.GetService<IAgentDesktopMonitorService>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to get IAgentDesktopMonitorService: {ex.Message}");
+            }
+
+            _viewModel = new InstrumentStackDrawerViewModel(_systemMonitorService, DrawerPanel, VitalsDrawerStub, desktopMonitor);
             DataContext = _viewModel;
 
             _viewModel.System.PropertyChanged += System_PropertyChanged;
@@ -52,6 +62,17 @@ namespace HouseVictoria.App.Screens.Trays
             {
                 if (_viewModel.System.SelectedTabIndex <= InstrumentStackDrawerViewModel.ControlTabIndex)
                     _viewModel.Vitals.SelectedTabIndex = _viewModel.System.SelectedTabIndex;
+
+                if (_viewModel.System.SelectedTabIndex == InstrumentStackDrawerViewModel.DesktopTabIndex)
+                    _viewModel.OnDesktopTabSelected();
+                else
+                    _viewModel.OnDesktopTabDeselected();
+            }
+            else if (e.PropertyName == nameof(SystemMonitorDrawerViewModel.IsDrawerOpen)
+                     && _viewModel.System.IsDrawerOpen
+                     && _viewModel.System.SelectedTabIndex == InstrumentStackDrawerViewModel.DesktopTabIndex)
+            {
+                _viewModel.OnDesktopTabSelected();
             }
             else if (e.PropertyName == nameof(SystemMonitorDrawerViewModel.IsDrawerOpen)
                      && !_viewModel.System.IsDrawerOpen

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergence Presence</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #08070a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      color: rgba(200, 190, 210, 0.45);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 8px rgba(120, 80, 140, 0.35);
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | click disturb | space pause</div>
+<script>
+const CONFIG = {
+  seed: 777,
+  particleCount: 820,
+  burnInFrames: 520,
+  trailFade: 3.2,
+  glowFade: 4.2,
+  corePulseSpeed: 0.008,
+  coreBaseRadius: 0.05,
+  nScale: 0.00128,
+  tSpeed: 0.0009,
+  paused: false,
+};
+
+const PALETTE = {
+  ground: { h: 250, s: 44, b: 5 },
+  deep: { h: 242, s: 60, b: 12 },
+  slate: { h: 220, s: 40, b: 24 },
+  violet: { h: 275, s: 70, b: 62 },
+  burgundy: { h: 348, s: 80, b: 55 },
+  copper: { h: 24, s: 78, b: 88 },
+  gold: { h: 46, s: 84, b: 94 },
+};
+
+let particles = [];
+let trailLayer, glowLayer, structureLayer;
+let core = { x: 0, y: 0 };
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+  noLoop();
+
+  applySeed(CONFIG.seed);
+  core.x = width * 0.5;
+  core.y = height * 0.5;
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  structureLayer = createGraphics(width, height);
+  structureLayer.colorMode(HSB, 360, 100, 100, 100);
+  structureLayer.pixelDensity(1);
+
+  buildGround();
+  spawnField();
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep(false);
+  loop();
+  document.getElementById('seed').textContent = CONFIG.seed;
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildGround() {
+  trailLayer.background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+  glowLayer.background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+  structureLayer.background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+
+  // full-canvas feathered radial haze, dim
+  structureLayer.noStroke();
+  const steps = 160;
+  const maxR = max(width, height) * 0.78;
+  for (let i = steps; i >= 0; i--) {
+    const r = maxR * (i / steps);
+    const alpha = map(i, 0, steps, 0, 0.55, true);
+    structureLayer.fill(PALETTE.deep.h, PALETTE.deep.s, PALETTE.deep.b, alpha);
+    structureLayer.ellipse(core.x, core.y, r * 2, r * 2);
+  }
+
+  // distant filament web
+  structureLayer.stroke(PALETTE.slate.h, PALETTE.slate.s, PALETTE.slate.b, 2.0);
+  structureLayer.strokeWeight(0.26);
+  for (let i = 0; i < 70; i++) {
+    const a1 = random(TWO_PI);
+    const a2 = a1 + random(-0.7, 0.7);
+    const r1 = random(width * 0.15, width * 0.44);
+    const r2 = r1 * random(0.65, 1.25);
+    structureLayer.line(
+      core.x + cos(a1) * r1, core.y + sin(a1) * r1,
+      core.x + cos(a2) * r2, core.y + sin(a2) * r2
+    );
+  }
+}
+
+function spawnField() {
+  particles = [];
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    const angle = random(TWO_PI);
+    const r = randomGaussian(max(width, height) * 0.26, max(width, height) * 0.11);
+    particles.push(new Particle(core.x + cos(angle) * r, core.y + sin(angle) * r));
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  t += CONFIG.tSpeed;
+  simulateStep(true);
+
+  background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+  image(structureLayer, 0, 0);
+  image(trailLayer, 0, 0);
+  image(glowLayer, 0, 0);
+  drawCore();
+}
+
+function simulateStep(render) {
+  trailLayer.noStroke();
+  trailLayer.fill(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b, CONFIG.trailFade);
+  trailLayer.rect(0, 0, width, height);
+
+  glowLayer.noStroke();
+  glowLayer.fill(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b, CONFIG.glowFade);
+  glowLayer.rect(0, 0, width, height);
+
+  for (let p of particles) {
+    p.update();
+    if (render) {
+      p.displayTrail(trailLayer);
+      p.displayGlow(glowLayer);
+    }
+  }
+}
+
+function drawCore() {
+  const pulse = 0.5 + 0.5 * sin(frameCount * CONFIG.corePulseSpeed);
+  const baseR = min(width, height) * CONFIG.coreBaseRadius;
+  const r = baseR + min(width, height) * pulse * 0.012;
+
+  noStroke();
+  // small stepped radial aura — soft, not a bright wash
+  const auraSteps = 60;
+  const auraMaxR = r * 6;
+  for (let i = auraSteps; i >= 0; i--) {
+    const rr = auraMaxR * (i / auraSteps);
+    const alpha = map(i, 0, auraSteps, 0, 1.1, true);
+    fill(PALETTE.violet.h, 46, 82, alpha);
+    ellipse(core.x, core.y, rr * 2, rr * 2);
+  }
+
+  // warm inner light, modest and soft
+  fill(PALETTE.gold.h, 18, 100, 10 + pulse * 5);
+  ellipse(core.x, core.y, r * 0.9, r * 0.9);
+
+  fill(PALETTE.gold.h, 6, 100, 35 + pulse * 14);
+  ellipse(core.x, core.y, r * 0.26, r * 0.26);
+}
+
+function mousePressed() {
+  const m = createVector(mouseX, mouseY);
+  for (let p of particles) {
+    const d = p.pos.dist(m);
+    if (d < 220) {
+      const dir = p5.Vector.sub(p.pos, m).normalize();
+      const force = map(d, 0, 220, 4.5, 0.2, true);
+      p.vel.add(dir.mult(force));
+    }
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`emergence-presence-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`emergence-presence-${CONFIG.seed}`, 6);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    core.x = width * 0.5;
+    core.y = height * 0.5;
+    buildGround();
+    spawnField();
+    for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep(false);
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  core.x = width * 0.5;
+  core.y = height * 0.5;
+  rebuildAll();
+}
+
+function rebuildAll() {
+  const nextTrail = createGraphics(width, height);
+  nextTrail.colorMode(HSB, 360, 100, 100, 100);
+  nextTrail.image(trailLayer, 0, 0);
+  trailLayer = nextTrail;
+
+  const nextGlow = createGraphics(width, height);
+  nextGlow.colorMode(HSB, 360, 100, 100, 100);
+  nextGlow.image(glowLayer, 0, 0);
+  glowLayer = nextGlow;
+
+  structureLayer = createGraphics(width, height);
+  structureLayer.colorMode(HSB, 360, 100, 100, 100);
+  buildGround();
+}
+
+class Particle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.9, 2.1);
+    this.sw = random(0.5, 1.4);
+    this.historyLimit = floor(random(10, 26));
+    this.history = [];
+    this.angleOffset = random(TWO_PI);
+    this.colorKey = random() < 0.55 ? 'burgundy' : 'violet';
+    if (random() < 0.12) this.colorKey = 'copper';
+    this.color = PALETTE[this.colorKey];
+  }
+
+  update() {
+    const toCore = p5.Vector.sub(createVector(core.x, core.y), this.pos);
+    const distCore = toCore.mag();
+    const nScale = CONFIG.nScale;
+
+    // domain-warped curl noise
+    const warpX = noise(this.pos.x * nScale * 0.55, this.pos.y * nScale * 0.55, t * 0.9);
+    const warpY = noise(this.pos.x * nScale * 0.55 + 600, this.pos.y * nScale * 0.55 + 600, t * 0.9);
+    const ux = this.pos.x * nScale + warpX * 0.85;
+    const uy = this.pos.y * nScale + warpY * 0.85;
+    const n1 = noise(ux, uy, t);
+    const n2 = noise(ux + 1000, uy + 1000, t * 1.08);
+    const angle = (n1 * 0.6 + n2 * 0.4) * TWO_PI * 4.4 + this.angleOffset * 0.5;
+    const curl = createVector(cos(angle), sin(angle)).mult(0.12);
+
+    // inward drift — active coalescence
+    const driftStrength = map(distCore, 0, max(width, height) * 0.5, 0.006, 0.095, true);
+    const drift = toCore.copy().normalize().mult(driftStrength);
+
+    // gentle orbit near core
+    if (distCore < width * 0.16) {
+      const tangent = createVector(-toCore.y, toCore.x).normalize().mult(0.055);
+      this.acc.add(tangent);
+    }
+
+    this.acc.add(curl);
+    this.acc.add(drift);
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    this.edges();
+
+    // palette shifts with proximity to core
+    if (distCore < width * 0.14) {
+      this.colorKey = 'copper';
+    } else if (distCore > width * 0.34) {
+      this.colorKey = random() < 0.5 ? 'burgundy' : 'violet';
+    }
+    this.color = PALETTE[this.colorKey];
+  }
+
+  edges() {
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+
+  displayTrail(layer) {
+    if (this.history.length < 2) return;
+    layer.noFill();
+    layer.strokeWeight(this.sw);
+    layer.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, 62, true);
+      layer.stroke(this.color.h, this.color.s, this.color.b, a);
+      layer.curveVertex(p.x, p.y);
+    }
+    layer.endShape();
+  }
+
+  displayGlow(layer) {
+    const speed = this.vel.mag();
+    const a = map(speed, 0, this.maxSpeed, 0, 42, true);
+    if (a < 1) return;
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s, 100, a);
+    layer.ellipse(this.pos.x, this.pos.y, this.sw * 2.6, this.sw * 2.6);
+  }
+}
+</script>
+</body>
+</html>

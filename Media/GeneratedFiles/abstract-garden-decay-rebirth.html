@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abstract Garden — Decay & Rebirth</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #0b0c0f;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<script>
+let plants = [];
+let seeds = [];
+let palette;
+let noiseScale = 0.008;
+let timeOffset = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  noStroke();
+
+  palette = [
+    color(25, 92, 98, 80),   // warm amber
+    color(18, 88, 92, 75),   // burnt orange
+    color(8, 86, 78, 70),    // rust red
+    color(45, 70, 85, 60),   // muted gold
+    color(340, 60, 55, 50),  // dried rose
+    color(160, 45, 55, 45),  // shadow moss
+  ];
+
+  // seed an initial garden
+  for (let i = 0; i < 60; i++) {
+    seeds.push(new Seed(random(width), random(height)));
+  }
+}
+
+function draw() {
+  // faint decay trail — dark veiled background
+  fill(220, 25, 6, 12);
+  rect(0, 0, width, height);
+
+  timeOffset += 0.003;
+
+  // update and draw plants
+  for (let i = plants.length - 1; i >= 0; i--) {
+    let p = plants[i];
+    p.update();
+    p.display();
+    if (p.isDead()) {
+      // withered plant may drop a seed before deletion
+      if (random() < 0.35 && plants.length < 400) {
+        seeds.push(new Seed(p.x, p.y, p.hueBase));
+      }
+      plants.splice(i, 1);
+    }
+  }
+
+  // germinate seeds
+  for (let i = seeds.length - 1; i >= 0; i--) {
+    let s = seeds[i];
+    s.update();
+    s.display();
+    if (s.germinated) {
+      plants.push(new Plant(s.x, s.y, s.hueBase));
+      seeds.splice(i, 1);
+    }
+  }
+
+  // ambient reseeding if population is low
+  if (plants.length + seeds.length < 40) {
+    for (let k = 0; k < 5; k++) {
+      seeds.push(new Seed(random(width), random(height)));
+    }
+  }
+
+  // mouse/touch planting
+  if (mouseIsPressed) {
+    if (frameCount % 5 === 0) {
+      seeds.push(new Seed(mouseX + random(-20, 20), mouseY + random(-20, 20)));
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+class Seed {
+  constructor(x, y, hueBase) {
+    this.x = x;
+    this.y = y;
+    this.hueBase = hueBase || random([25, 18, 8, 45, 340, 160]);
+    this.age = 0;
+    this.lifespan = random(60, 180);
+    this.germinated = false;
+    this.pulse = random(TWO_PI);
+  }
+
+  update() {
+    this.age++;
+    if (this.age > this.lifespan && random() < 0.02) {
+      this.germinated = true;
+    }
+  }
+
+  display() {
+    let glow = map(sin(this.age * 0.1 + this.pulse), -1, 1, 20, 55);
+    fill(this.hueBase, 60, glow, 40);
+    ellipse(this.x, this.y, 3 + sin(this.age * 0.08 + this.pulse) * 1.5);
+  }
+}
+
+class Plant {
+  constructor(x, y, hueBase) {
+    this.x = x;
+    this.y = y;
+    this.hueBase = hueBase;
+    this.history = [];
+    this.age = 0;
+    this.lifespan = random(180, 520);
+    this.maxLen = floor(random(40, 140));
+    this.sw = random(0.8, 2.8);
+    this.nSeed = random(1000);
+    this.growing = true;
+    this.withering = false;
+    this.dead = false;
+    this.bloom = random() < 0.25;
+  }
+
+  update() {
+    this.age++;
+
+    if (this.growing && this.history.length < this.maxLen) {
+      // follow the noise field
+      let n = noise(this.x * noiseScale, this.y * noiseScale, timeOffset + this.nSeed);
+      let angle = n * TWO_PI * 2.5;
+      let speed = map(this.age, 0, this.lifespan, 1.8, 0.4);
+      this.x += cos(angle) * speed;
+      this.y += sin(angle) * speed;
+
+      // wrap edges gently
+      if (this.x < -10) this.x = width + 10;
+      if (this.x > width + 10) this.x = -10;
+      if (this.y < -10) this.y = height + 10;
+      if (this.y > height + 10) this.y = -10;
+
+      this.history.push(createVector(this.x, this.y));
+
+      if (this.history.length >= this.maxLen) {
+        this.growing = false;
+      }
+    }
+
+    // begin withering in the second half of life
+    if (!this.withering && this.age > this.lifespan * 0.55) {
+      this.withering = true;
+    }
+
+    if (this.withering && this.history.length > 0 && frameCount % 2 === 0) {
+      this.history.shift(); // decay from root
+    }
+
+    if (this.history.length === 0 || this.age > this.lifespan) {
+      this.dead = true;
+    }
+  }
+
+  display() {
+    let life = map(this.age, 0, this.lifespan, 1, 0);
+    let sat = this.withering ? map(life, 0.55, 0, 70, 10) : map(this.age, 0, this.lifespan * 0.5, 40, 90);
+    let bri = this.withering ? map(life, 0.55, 0, 85, 20) : map(this.age, 0, this.lifespan * 0.5, 40, 95);
+    let alp = this.withering ? map(life, 0.55, 0, 70, 5) : map(this.age, 0, this.lifespan * 0.5, 30, 85);
+
+    stroke(this.hueBase, sat, bri, alp);
+    strokeWeight(this.sw * (this.withering ? life : 1));
+    noFill();
+
+    beginShape();
+    for (let v of this.history) {
+      curveVertex(v.x, v.y);
+    }
+    endShape();
+
+    // subtle bloom at the growing tip
+    if (this.growing && this.history.length > 0) {
+      let tip = this.history[this.history.length - 1];
+      noStroke();
+      fill(this.hueBase, 80, 100, 30);
+      ellipse(tip.x, tip.y, 4, 4);
+    }
+
+    // occasional withered leaf/ember
+    if (this.withering && this.history.length > 5 && random() < 0.03) {
+      let idx = floor(random(this.history.length));
+      let v = this.history[idx];
+      fill(18, 70, random(30, 70), random(20, 50));
+      noStroke();
+      ellipse(v.x, v.y, random(2, 5));
+    }
+  }
+
+  isDead() {
+    return this.dead;
+  }
+}
+</script>
+</body>
+</html>

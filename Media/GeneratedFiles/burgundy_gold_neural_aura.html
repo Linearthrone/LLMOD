@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Burgundy-Gold Neural Aura</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #080305; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(255, 232, 210, 0.45);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | R re-seed | click bloom</div>
+<script>
+const CONFIG = {
+  seed: 20260708,
+  coreCount: 2,
+  filamentCount: 340,
+  sparkCount: 70,
+  auraParticleCount: 380,
+  paused: false,
+};
+
+const PALETTE = {
+  burgundy: { h: 350, s: 78, b: 55 },
+  crimson:  { h: 345, s: 88, b: 70 },
+  wine:     { h: 355, s: 72, b: 42 },
+  gold:     { h: 45,  s: 92, b: 94 },
+  amber:    { h: 38,  s: 84, b: 78 },
+  blush:    { h: 10,  s: 65, b: 82 },
+  darkBase: { h: 348, s: 60, b: 6 },
+};
+
+let cores = [];
+let filaments = [];
+let sparks = [];
+let aura = [];
+let trailLayer, bloomLayer, auraLayer;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.pixelDensity(1);
+
+  auraLayer = createGraphics(width, height);
+  auraLayer.colorMode(HSB, 360, 100, 100, 100);
+  auraLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  document.getElementById('seed').textContent = CONFIG.seed;
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+
+  const margin = min(width, height) * 0.22;
+  cores = [
+    new Core(margin, height / 2 + random(-60, 60), PALETTE.burgundy, 0),
+    new Core(width - margin, height / 2 + random(-60, 60), PALETTE.gold, PI),
+  ];
+
+  filaments = [];
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    filaments.push(new Filament(i));
+  }
+
+  sparks = [];
+  for (let i = 0; i < CONFIG.sparkCount; i++) {
+    sparks.push(new Spark());
+  }
+
+  aura = [];
+  for (let i = 0; i < CONFIG.auraParticleCount; i++) {
+    aura.push(new AuraParticle());
+  }
+
+  trailLayer.background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+  bloomLayer.background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+  auraLayer.background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  t += 0.0035;
+
+  trailLayer.noStroke();
+  trailLayer.fill(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b, 3.2);
+  trailLayer.rect(0, 0, width, height);
+
+  bloomLayer.noStroke();
+  bloomLayer.fill(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b, 5.5);
+  bloomLayer.rect(0, 0, width, height);
+
+  auraLayer.noStroke();
+  auraLayer.fill(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b, 6);
+  auraLayer.rect(0, 0, width, height);
+
+  for (let c of cores) c.update();
+
+  for (let f of filaments) {
+    f.update();
+    f.display(trailLayer, bloomLayer);
+  }
+
+  for (let s of sparks) {
+    s.update();
+    s.display(bloomLayer);
+  }
+
+  for (let a of aura) {
+    a.update();
+    a.display(auraLayer);
+  }
+
+  background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+  image(trailLayer, 0, 0);
+  blendMode(ADD);
+  image(auraLayer, 0, 0);
+  image(bloomLayer, 0, 0);
+  blendMode(BLEND);
+
+  for (let c of cores) c.display();
+}
+
+function mousePressed() {
+  for (let i = 0; i < 40; i++) {
+    sparks.push(new Spark(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40)));
+  }
+  for (let i = 0; i < 25; i++) {
+    aura.push(new AuraParticle(mouseX, mouseY, true));
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`burgundy-gold-aura-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`burgundy-gold-aura-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') applySeed(floor(random(1000000)));
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailLayer.resizeCanvas(width, height);
+  bloomLayer.resizeCanvas(width, height);
+  auraLayer.resizeCanvas(width, height);
+  trailLayer.background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+  bloomLayer.background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+  auraLayer.background(PALETTE.darkBase.h, PALETTE.darkBase.s, PALETTE.darkBase.b);
+  applySeed(CONFIG.seed);
+}
+
+class Core {
+  constructor(x, y, color, phase) {
+    this.base = createVector(x, y);
+    this.pos = createVector(x, y);
+    this.color = color;
+    this.phase = phase;
+    this.radius = min(width, height) * 0.055;
+  }
+
+  update() {
+    this.pos.x = this.base.x + sin(t * 0.7 + this.phase) * 30;
+    this.pos.y = this.base.y + cos(t * 0.5 + this.phase) * 22;
+    this.radius = min(width, height) * 0.05 + sin(t * 1.3 + this.phase) * 8;
+  }
+
+  display() {
+    noStroke();
+    const hueShift = map(sin(t + this.phase), -1, 1, -6, 6);
+    for (let r = this.radius * 2.6; r > 0; r -= this.radius * 0.35) {
+      const a = map(r, 0, this.radius * 2.6, 28, 0, true);
+      fill((this.color.h + hueShift + 360) % 360, this.color.s * 0.7, this.color.b * 1.15, a);
+      ellipse(this.pos.x, this.pos.y, r * 2, r * 2);
+    }
+    fill((this.color.h + hueShift + 360) % 360, this.color.s, this.color.b, 70);
+    ellipse(this.pos.x, this.pos.y, this.radius * 0.55, this.radius * 0.55);
+  }
+}
+
+class Filament {
+  constructor(idx) {
+    this.idx = idx;
+    this.palette = idx % 3 === 0 ? PALETTE.gold : (idx % 2 === 0 ? PALETTE.crimson : PALETTE.wine);
+    this.offset = random(1000);
+    this.points = [];
+    this.resolution = 42;
+    for (let i = 0; i <= this.resolution; i++) this.points.push(createVector(0, 0));
+  }
+
+  update() {
+    const src = cores[0].pos;
+    const dst = cores[1].pos;
+    for (let i = 0; i <= this.resolution; i++) {
+      const tt = i / this.resolution;
+      const nx = noise(tt * 2.2, t * 0.5 + this.offset) - 0.5;
+      const ny = noise(tt * 2.2 + 100, t * 0.6 + this.offset) - 0.5;
+      const midDrift = sin(tt * PI) * (noise(t * 0.3, this.offset) - 0.5) * 140;
+      const x = lerp(src.x, dst.x, tt) + nx * 120 + cos(tt * TWO_PI + t + this.offset) * midDrift * 0.35;
+      const y = lerp(src.y, dst.y, tt) + ny * 120 + sin(tt * TWO_PI + t * 1.2 + this.offset) * midDrift * 0.35;
+      this.points[i].set(x, y);
+    }
+  }
+
+  display(trails, blooms) {
+    const hueShift = sin(t * 0.8 + this.offset) * 10;
+    const col = color((this.palette.h + hueShift + 360) % 360, this.palette.s * 0.85, this.palette.b * 0.9, 18);
+
+    trails.noFill();
+    trails.strokeWeight(1.2 + sin(t + this.offset) * 0.4);
+    trails.stroke(col);
+    trails.beginShape();
+    for (let p of this.points) trails.curveVertex(p.x, p.y);
+    trails.endShape();
+
+    const burst = map(sin(t * 3 + this.offset * 2), -1, 1, 0, 1);
+    if (burst > 0.82) {
+      const idx = floor(random(2, this.resolution - 2));
+      const p = this.points[idx];
+      blooms.noStroke();
+      blooms.fill((PALETTE.gold.h + random(-8, 8) + 360) % 360, PALETTE.gold.s, PALETTE.gold.b, burst * 28);
+      blooms.ellipse(p.x, p.y, 5 + burst * 14, 5 + burst * 14);
+    }
+  }
+}
+
+class Spark {
+  constructor(x, y, isBurst = false) {
+    const src = cores[0].pos;
+    const dst = cores[1].pos;
+    const start = x !== undefined ? createVector(x, y) : (random() < 0.5 ? src.copy() : dst.copy());
+    this.pos = start.copy();
+    const target = start === src ? dst : src;
+    this.vel = p5.Vector.sub(target, start).normalize().mult(random(1.2, 3.2));
+    this.vel.rotate(random(-0.4, 0.4));
+    this.life = random(60, 160);
+    this.maxLife = this.life;
+    this.color = random() < 0.45 ? PALETTE.gold : (random() < 0.7 ? PALETTE.amber : PALETTE.blush);
+    this.isBurst = isBurst;
+  }
+
+  update() {
+    const n = noise(this.pos.x * 0.006, this.pos.y * 0.006, t + this.life);
+    this.vel.rotate((n - 0.5) * 0.18);
+    this.pos.add(this.vel);
+    this.life--;
+  }
+
+  display(layer) {
+    if (this.life <= 0) return;
+    const a = map(this.life, 0, this.maxLife, 0, 70, true);
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s, this.color.b, a);
+    layer.ellipse(this.pos.x, this.pos.y, 3, 3);
+  }
+}
+
+class AuraParticle {
+  constructor(x, y, isBurst = false) {
+    this.center = x !== undefined ? createVector(x, y) : (random() < 0.5 ? cores[0].pos.copy() : cores[1].pos.copy());
+    this.angle = random(TWO_PI);
+    this.radius = random(20, min(width, height) * 0.32);
+    this.speed = random(0.002, 0.012) * (random() < 0.5 ? 1 : -1);
+    this.color = random() < 0.55 ? PALETTE.burgundy : PALETTE.wine;
+    this.sw = random(0.6, 2.2);
+    this.alphaBase = random(8, 24);
+    this.isBurst = isBurst;
+  }
+
+  update() {
+    this.angle += this.speed;
+    this.radius += sin(t * 2 + this.angle * 3) * 0.4;
+    if (this.isBurst && this.radius > min(width, height) * 0.42) this.radius = 20;
+  }
+
+  display(layer) {
+    const x = this.center.x + cos(this.angle) * this.radius;
+    const y = this.center.y + sin(this.angle) * this.radius;
+    const pulse = map(sin(t * 3 + this.angle * 5), -1, 1, 0.6, 1.0);
+    const a = this.alphaBase * pulse;
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s * 0.75, this.color.b * 1.1, a);
+    layer.ellipse(x, y, this.sw, this.sw);
+  }
+}
+</script>
+</body>
+</html>

@@ -13,11 +13,14 @@ namespace HouseVictoria.Services.Trading
         private readonly AppConfig _config;
         private readonly ITradingService _trading;
         private readonly IProjectManagementService? _projects;
+        private readonly IOpportunityRouter _router;
         private readonly object _lock = new();
         private readonly List<MarketWatchAlert> _pendingAlerts = new();
         private readonly Dictionary<string, double> _lastMidBySymbol = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _lastTechnicalSignalKey = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<TechnicalSignalResult> _recentTechnicalSignals = new();
+        private readonly MarketWatchStateStore _stateStore;
+        private readonly Dictionary<string, MarketWatchQuoteSnapshot> _quoteSnapshots = new(StringComparer.OrdinalIgnoreCase);
 
         private Timer? _timer;
         private bool _running;
@@ -26,6 +29,9 @@ namespace HouseVictoria.Services.Trading
         private DateTime? _lastTechnicalScanUtc;
         private string? _marketWatchProjectId;
         private bool _bridgeActive;
+        private string? _lastOfflineReason;
+        private readonly Dictionary<string, int> _technicalFailCount = new(StringComparer.OrdinalIgnoreCase);
+        private const int TechnicalFailureBackoffAfter = 3;
 
         public event EventHandler<MarketWatchAlert>? AlertRaised;
 
@@ -35,12 +41,16 @@ namespace HouseVictoria.Services.Trading
         public MarketWatchScannerService(
             AppConfig config,
             ITradingService trading,
-            IProjectManagementService? projects = null)
+            IProjectManagementService? projects = null,
+            IOpportunityRouter? router = null)
         {
             _config = config;
             _trading = trading;
             _projects = projects;
+            _router = router ?? new NoOpportunityRouter();
             _watchSymbols = ParseWatchSymbols(_config.TradingWatchSymbols);
+            _stateStore = new MarketWatchStateStore(_config.AutonomyDataPath);
+            TryRestoreState();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -102,8 +112,18 @@ namespace HouseVictoria.Services.Trading
             _bridgeActive = status.IsConnected && status.IsBridgeActive;
             if (!_bridgeActive)
             {
+                var reason = status.IsConnected
+                    ? "MT4 bridge EA inactive (no recent file activity)"
+                    : "MT4 not connected";
+                _lastOfflineReason = reason;
+                _stateStore.RecordOfflineReason(reason);
                 await WriteStatusFileAsync().ConfigureAwait(false);
-                return new MarketWatchScanSummary();
+                _stateStore.SaveState(BuildPersistedState(reason));
+                return new MarketWatchScanSummary
+                {
+                    ScannedUtc = DateTime.UtcNow,
+                    OfflineReason = reason
+                };
             }
 
             await SyncWatchlistToBridgeAsync(cancellationToken).ConfigureAwait(false);
@@ -160,10 +180,23 @@ namespace HouseVictoria.Services.Trading
 
                 _lastMidBySymbol[symbol] = mid;
 
+                lock (_lock)
+                {
+                    _quoteSnapshots[symbol] = new MarketWatchQuoteSnapshot
+                    {
+                        Symbol = symbol,
+                        Bid = quote.Bid,
+                        Ask = quote.Ask,
+                        SpreadPips = spreadPips,
+                        CapturedUtc = DateTime.UtcNow
+                    };
+                }
+
                 if (alert != null)
                 {
                     alerts.Add(alert);
                     EnqueueAlert(alert);
+                    _router.RouteAlert(alert);
                 }
             }
 
@@ -176,6 +209,7 @@ namespace HouseVictoria.Services.Trading
 
             AppendScanLog(polled, available, alerts, technicalFound);
             await WriteStatusFileAsync().ConfigureAwait(false);
+            _stateStore.SaveState(BuildPersistedState(null));
 
             return new MarketWatchScanSummary
             {
@@ -226,7 +260,8 @@ namespace HouseVictoria.Services.Trading
                     MarketWatchProjectId = _marketWatchProjectId,
                     MarketWatchProjectName = MarketWatchProjectBootstrap.ProjectName,
                     PendingAlerts = _pendingAlerts.ToList(),
-                    RecentTechnicalSignals = _recentTechnicalSignals.ToList()
+                    RecentTechnicalSignals = _recentTechnicalSignals.ToList(),
+                    OfflineReason = _bridgeActive ? null : _lastOfflineReason
                 };
             }
         }
@@ -258,6 +293,12 @@ namespace HouseVictoria.Services.Trading
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (_technicalFailCount.TryGetValue(symbol, out var fails) && fails >= TechnicalFailureBackoffAfter)
+                {
+                    _stateStore.AppendEvent("technical_backoff", $"Skipping {symbol} after {fails} consecutive H1 load failures");
+                    continue;
+                }
+
                 List<HistoricalBar> bars;
                 try
                 {
@@ -268,8 +309,11 @@ namespace HouseVictoria.Services.Trading
                         start,
                         end).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _technicalFailCount[symbol] = _technicalFailCount.GetValueOrDefault(symbol) + 1;
+                    _stateStore.AppendEvent("technical_error", $"H1 load failed for {symbol}",
+                        new Dictionary<string, object> { ["attempt"] = _technicalFailCount[symbol], ["error"] = ex.Message });
                     continue;
                 }
 
@@ -286,14 +330,22 @@ namespace HouseVictoria.Services.Trading
                             start,
                             end).ConfigureAwait(false);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        _technicalFailCount[symbol] = _technicalFailCount.GetValueOrDefault(symbol) + 1;
+                        _stateStore.AppendEvent("technical_error", $"H1 export/load failed for {symbol}",
+                            new Dictionary<string, object> { ["attempt"] = _technicalFailCount[symbol], ["error"] = ex.Message });
                         continue;
                     }
                 }
 
                 if (bars.Count < TechnicalSignalScanner.MinBars)
+                {
+                    _technicalFailCount[symbol] = _technicalFailCount.GetValueOrDefault(symbol) + 1;
                     continue;
+                }
+
+                _technicalFailCount[symbol] = 0;
 
                 bars = bars.OrderBy(b => b.Time).TakeLast(barCount).ToList();
                 var signal = TechnicalSignalScanner.Evaluate(symbol, bars);
@@ -329,6 +381,7 @@ namespace HouseVictoria.Services.Trading
 
                 EnqueueAlert(alert);
                 AppendTechnicalLog(signal);
+                _router.RouteSignal(signal, quote);
             }
 
             _lastTechnicalScanUtc = DateTime.UtcNow;
@@ -341,9 +394,56 @@ namespace HouseVictoria.Services.Trading
             {
                 await ScanOnceAsync().ConfigureAwait(false);
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
+                _stateStore.RecordError(ex.Message);
                 System.Diagnostics.Debug.WriteLine($"Market watch scan: {ex.Message}");
+            }
+        }
+
+        private void TryRestoreState()
+        {
+            var state = _stateStore.LoadState();
+            if (state == null)
+                return;
+
+            lock (_lock)
+            {
+                _lastQuoteScanUtc = state.LastQuoteScanUtc;
+                _lastTechnicalScanUtc = state.LastTechnicalScanUtc;
+                _recentTechnicalSignals.AddRange(state.LastTechnicalSignals);
+                while (_recentTechnicalSignals.Count > 30)
+                    _recentTechnicalSignals.RemoveAt(0);
+
+                _lastMidBySymbol.Clear();
+                foreach (var snap in state.LastQuotes)
+                    _lastMidBySymbol[snap.Symbol] = (snap.Bid + snap.Ask) / 2.0;
+
+                _quoteSnapshots.Clear();
+                foreach (var snap in state.LastQuotes)
+                    _quoteSnapshots[snap.Symbol] = snap;
+            }
+        }
+
+        private MarketWatchPersistedState BuildPersistedState(string? offlineReason)
+        {
+            lock (_lock)
+            {
+                return new MarketWatchPersistedState
+                {
+                    SavedUtc = DateTime.UtcNow,
+                    BridgeActive = _bridgeActive,
+                    LastQuoteScanUtc = _lastQuoteScanUtc,
+                    LastTechnicalScanUtc = _lastTechnicalScanUtc,
+                    LastAlerts = _pendingAlerts.ToList(),
+                    LastTechnicalSignals = _recentTechnicalSignals.ToList(),
+                    LastQuotes = _quoteSnapshots.Values.ToList(),
+                    OfflineReason = offlineReason
+                };
             }
         }
 
@@ -461,7 +561,15 @@ namespace HouseVictoria.Services.Trading
                 .ToArray();
         }
 
-        private static double GetPipSize(string symbol) =>
-            symbol.Contains("JPY", StringComparison.OrdinalIgnoreCase) ? 0.01 : 0.0001;
+        private static double GetPipSize(string symbol)
+        {
+            var upper = symbol.ToUpperInvariant();
+            // JPY crosses and yen-quoted CFDs use 0.01. Gold/Silver/indices are quoted in USD points.
+            if (upper.Contains("JPY")) return 0.01;
+            if (upper.Contains("XAU") || upper.Contains("XAG") ||
+                upper.Contains("US30") || upper.Contains("US500") || upper.Contains("NAS"))
+                return 0.01; // broad pip convention for these CFDs in this scanner
+            return 0.0001;
+        }
     }
 }

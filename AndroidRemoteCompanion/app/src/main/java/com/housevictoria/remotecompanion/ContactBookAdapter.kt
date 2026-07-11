@@ -37,15 +37,16 @@ class ContactBookAdapter(
 
         fun bind(contact: AiContact, config: CompanionConfig, onClick: (AiContact) -> Unit) {
             val theme = contact.theme()
+            val palette = ThemeManager.currentPalette(itemView.context)
             name.text = contact.name
             name.setTextColor(theme.accentBright)
             description.text = contact.description?.ifBlank { "AI persona" } ?: "AI persona"
+            description.setTextColor(palette.textSecondary)
             primaryChip.isVisible = contact.isPrimary
             primaryChip.setTextColor(theme.accentBright)
 
             glow.setBackgroundColor(theme.accentGlow)
-            card.strokeColor = theme.accent
-            card.strokeWidth = (1.2f * itemView.resources.displayMetrics.density).toInt()
+            ThemeManager.applyCard(card, palette)
 
             AvatarLoader.load(itemView.context, avatar, config, contact.id, contact.hasAvatar, theme)
             itemView.setOnClickListener { onClick(contact) }

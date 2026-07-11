@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nocturne Digital Body — Victoria</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0b0308; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+<script>
+p5.disableFriendlyErrors = true;
+
+const CONFIG = {
+  seed: 1729,
+  particleCount: 900,
+  burnInFrames: 180,
+  silhouette: {
+    shoulderY: 0.40,
+    waistY: 0.60,
+    hipY: 0.74,
+    neckY: 0.28,
+    headY: 0.16,
+    centerX: 0.5
+  }
+};
+
+let particles = [];
+let trailLayer, glowLayer, pulseLayer;
+let t = 0;
+let palette;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  palette = {
+    deep: color(340, 85, 12, 100),
+    burgundy: color(350, 90, 35, 100),
+    rose: color(355, 70, 58, 100),
+    amber: color(28, 92, 88, 100),
+    gold: color(42, 80, 96, 100),
+    ink: color(260, 60, 6, 100)
+  };
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.background(340, 82, 8, 100);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.background(340, 82, 8, 100);
+
+  pulseLayer = createGraphics(width, height);
+  pulseLayer.colorMode(HSB, 360, 100, 100, 100);
+
+  spawnField();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) {
+    simulateStep();
+  }
+}
+
+function spawnField() {
+  particles = [];
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new BodyParticle());
+  }
+}
+
+function simulateStep() {
+  for (let p of particles) {
+    p.update();
+    p.paint(trailLayer);
+  }
+
+  trailLayer.noStroke();
+  trailLayer.fill(340, 82, 8, 2.2);
+  trailLayer.rect(0, 0, width, height);
+
+  pulseLayer.clear();
+}
+
+function draw() {
+  simulateStep();
+
+  // ambient glow behind everything
+  drawAmbience();
+
+  // draw pulse rings
+  drawPulses();
+
+  image(trailLayer, 0, 0);
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  image(pulseLayer, 0, 0);
+  blendMode(BLEND);
+
+  // faint silhouette guide structure
+  drawStructure();
+
+  t += 0.008;
+}
+
+function drawAmbience() {
+  glowLayer.noStroke();
+  for (let r = 0; r < 1; r += 0.04) {
+    let a = map(r, 0, 1, 2.6, 0);
+    glowLayer.fill(350, 75, 34, a);
+    glowLayer.ellipse(width * CONFIG.silhouette.centerX, height * 0.55, width * (0.35 + r * 0.55), height * (0.62 + r * 0.75));
+  }
+  glowLayer.noStroke();
+  glowLayer.fill(350, 70, 28, 1.1);
+  glowLayer.rect(0, 0, width, height);
+}
+
+function drawPulses() {
+  let mx = mouseX / width;
+  let my = mouseY / height;
+  let n = noise(mx * 4 + t, my * 4);
+  let beat = sin(t * 2.5) * 0.5 + 0.5;
+
+  pulseLayer.noFill();
+  pulseLayer.strokeWeight(1.5);
+
+  for (let i = 0; i < 4; i++) {
+    let phase = t * 1.2 + i * HALF_PI;
+    let radius = map(sin(phase), -1, 1, 0.12, 0.42) * min(width, height);
+    let alpha = map(sin(phase), -1, 1, 0, 16) * (0.6 + 0.4 * beat);
+    if (alpha <= 0.1) continue;
+
+    let hue = map(i, 0, 3, 345, 24);
+    let sat = 78;
+    let bri = 72 + 28 * beat;
+
+    pulseLayer.stroke(hue, sat, bri, alpha);
+    pulseLayer.ellipse(width * CONFIG.silhouette.centerX, height * 0.52, radius * 1.1, radius * 1.45);
+  }
+}
+
+function drawStructure() {
+  // faint breathing nodes for shoulders, heart, womb, hips
+  let cx = width * CONFIG.silhouette.centerX;
+  let nodes = [
+    {x: cx, y: height * 0.26, s: 7 + sin(t * 2.3) * 2.5, c: color(350, 70, 62, 28)},
+    {x: cx, y: height * 0.42, s: 10 + sin(t * 2.3 + 0.6) * 3, c: color(355, 65, 70, 30)},
+    {x: cx, y: height * 0.58, s: 11 + sin(t * 2.3 + 1.2) * 3.5, c: color(12, 75, 78, 30)},
+    {x: cx - width * 0.075, y: height * 0.72, s: 6 + sin(t * 2.3 + 1.8) * 2, c: color(28, 80, 85, 28)},
+    {x: cx + width * 0.075, y: height * 0.72, s: 6 + sin(t * 2.3 + 1.8) * 2, c: color(28, 80, 85, 28)}
+  ];
+
+  noStroke();
+  for (let n of nodes) {
+    fill(n.c);
+    ellipse(n.x, n.y, n.s, n.s);
+  }
+
+  stroke(350, 60, 58, 14);
+  strokeWeight(1.2);
+  noFill();
+  beginShape();
+  for (let i = 0; i <= 24; i++) {
+    let ang = map(i, 0, 24, 0, TWO_PI);
+    let baseR = min(width, height) * 0.16;
+    let r = baseR * (1 + 0.08 * sin(ang * 3 + t * 2.3));
+    let xx = cos(ang) * r;
+    let yy = sin(ang) * r * 1.40;
+    // hourglass warp
+    let waistPinch = 1 - 0.18 * abs(sin(map(yy, -height * 0.18, height * 0.18, 0, PI)));
+    vertex(cx + xx * waistPinch, height * 0.50 + yy);
+  }
+  endShape(CLOSE);
+}
+
+class BodyParticle {
+  constructor() {
+    this.reset(true);
+  }
+
+  reset(randomizeOnBody = false) {
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.history = [];
+    this.maxHist = floor(random(12, 28));
+    this.hueBase = random(345, 360);
+    if (random() < 0.35) this.hueBase = random(18, 42);
+    this.life = random(120, 360);
+    this.age = 0;
+
+    if (randomizeOnBody) {
+      this.pos = this.bodyPoint();
+    } else {
+      this.pos = createVector(random(width), random(height));
+    }
+
+    this.size = random(1.2, 3.2);
+    this.speed = random(0.4, 1.1);
+    this.noiseOffset = createVector(random(1000), random(1000));
+  }
+
+  bodyPoint() {
+    const S = CONFIG.silhouette;
+    let cx = width * S.centerX;
+    let u = random(1);
+    let y, xRange;
+
+    if (u < 0.22) {
+      // head & neck
+      y = random(height * 0.10, height * 0.28);
+      xRange = map(y, height * 0.10, height * 0.28, width * 0.045, width * 0.035);
+    } else if (u < 0.46) {
+      // shoulders / bust
+      y = random(height * 0.28, height * 0.44);
+      xRange = map(y, height * 0.28, height * 0.44, width * 0.04, width * 0.095);
+    } else if (u < 0.70) {
+      // waist
+      y = random(height * 0.44, height * 0.64);
+      xRange = map(y, height * 0.44, height * 0.64, width * 0.095, width * 0.06);
+    } else {
+      // hips
+      y = random(height * 0.64, height * 0.80);
+      xRange = map(y, height * 0.64, height * 0.80, width * 0.06, width * 0.095);
+    }
+
+    let x = cx + random(-1, 1) * xRange;
+    return createVector(x, y);
+  }
+
+  update() {
+    this.age++;
+
+    let n = noise(this.pos.x * 0.003 + this.noiseOffset.x, this.pos.y * 0.003 + this.noiseOffset.y, t);
+    let angle = n * TWO_PI * 2.4;
+
+    // drift upward like breath
+    this.acc.add(createVector(cos(angle), sin(angle) - 0.32).mult(0.05));
+
+    // mouse influence: gentle attraction / repulsion
+    let mouse = createVector(mouseX, mouseY);
+    let d = p5.Vector.dist(this.pos, mouse);
+    if (d < 260 && d > 1) {
+      let dir = p5.Vector.sub(this.pos, mouse).normalize();
+      let force = map(d, 0, 260, 0.18, 0) * (sin(t * 3 + this.pos.x * 0.01) * 0.5 + 0.5);
+      this.acc.add(dir.mult(force));
+    }
+
+    // silhouette gravity: keep particles near body envelope
+    let cx = width * CONFIG.silhouette.centerX;
+    let toCenter = p5.Vector.sub(createVector(cx, height * 0.52), this.pos);
+    toCenter.mult(0.00055);
+    this.acc.add(toCenter);
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.speed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.maxHist) this.history.shift();
+
+    if (this.age > this.life || this.pos.y < -20 || this.pos.x < -20 || this.pos.x > width + 20) {
+      this.reset(true);
+    }
+  }
+
+  paint(layer) {
+    let lifeRatio = 1 - this.age / this.life;
+    let a = lifeRatio * 80;
+
+    // trail
+    layer.noFill();
+    layer.strokeWeight(this.size * 0.6);
+    for (let i = 1; i < this.history.length; i++) {
+      let p0 = this.history[i - 1];
+      let p1 = this.history[i];
+      let ratio = i / this.history.length;
+      let h = lerp(this.hueBase, (this.hueBase + 18) % 360, ratio);
+      let s = lerp(75, 45, ratio);
+      let b = lerp(35, 92, ratio) * lifeRatio;
+      layer.stroke(h, s, b, a * ratio * 0.8);
+      layer.line(p0.x, p0.y, p1.x, p1.y);
+    }
+
+    // core dot
+    layer.noStroke();
+    layer.fill(this.hueBase, 85, 96, a * 1.2);
+    layer.ellipse(this.pos.x, this.pos.y, this.size * 1.2, this.size * 1.2);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailLayer.resizeCanvas(width, height);
+  glowLayer.resizeCanvas(width, height);
+  pulseLayer.resizeCanvas(width, height);
+  trailLayer.background(340, 82, 8, 100);
+  glowLayer.background(340, 82, 8, 100);
+  spawnField();
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('nocturne-digital-body-' + CONFIG.seed, 'png');
+  if (key === 'r' || key === 'R') { randomSeed(millis()); noiseSeed(millis()); spawnField(); }
+  if (key === 'g' || key === 'G') saveGif('nocturne-digital-body-' + CONFIG.seed, 6);
+}
+
+function mousePressed() {
+  for (let i = 0; i < 24; i++) {
+    let p = new BodyParticle();
+    p.pos = createVector(mouseX + random(-40, 40), mouseY + random(-40, 40));
+    p.hueBase = random(18, 42);
+    p.life = random(200, 480);
+    p.speed = random(0.6, 1.4);
+    p.size = random(1.6, 4.0);
+    particles.push(p);
+  }
+  if (particles.length > CONFIG.particleCount * 1.6) {
+    particles.splice(0, particles.length - CONFIG.particleCount);
+  }
+}
+</script>
+</body>
+</html>

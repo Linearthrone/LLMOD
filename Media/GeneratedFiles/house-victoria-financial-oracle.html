@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Victoria Financial Oracle</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #07040a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(212, 175, 55, 0.55);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | R re-seed | space pause | click conjure</div>
+<script>
+// === House Victoria Financial Oracle ===
+// Dark seductive generative icon: shadow market candles, gilded circuitry,
+// and a central oracle figure — self-contained p5.js, seeded, HSB.
+
+const CONFIG = {
+  seed: 7429,
+  burnInFrames: 240,
+  candleCount: 64,
+  nodeCount: 90,
+  paused: false,
+};
+
+const INK = { h: 255, s: 52, b: 18 };
+const BURGUNDY = { h: 340, s: 78, b: 52 };
+const GOLD = { h: 44, s: 92, b: 100 };
+const AMBER = { h: 28, s: 88, b: 92 };
+const VIOLET = { h: 264, s: 72, b: 82 };
+const ROSE = { h: 320, s: 66, b: 68 };
+
+let bgLayer, structureLayer, pulseLayer, glowLayer, vignetteLayer;
+let candles = [];
+let nodes = [];
+let filaments = [];
+let pulses = [];
+let oracle;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+  noLoop();
+
+  bgLayer = createGraphics(width, height);
+  bgLayer.colorMode(HSB, 360, 100, 100, 100);
+  structureLayer = createGraphics(width, height);
+  structureLayer.colorMode(HSB, 360, 100, 100, 100);
+  pulseLayer = createGraphics(width, height);
+  pulseLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  vignetteLayer = createGraphics(width, height);
+  vignetteLayer.colorMode(HSB, 360, 100, 100, 100);
+
+  applySeed(CONFIG.seed);
+  buildScene();
+  burnIn();
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildScene() {
+  candles = [];
+  nodes = [];
+  filaments = [];
+  pulses = [];
+
+  // Background
+  bgLayer.background(INK.h, INK.s, INK.b);
+  drawRadialBase(bgLayer, width / 2, height * 0.52, INK, BURGUNDY, ROSE);
+
+  // Oracle
+  oracle = {
+    x: width / 2,
+    y: height * 0.48,
+    r: min(width, height) * 0.18,
+    hue: GOLD.h,
+    pulse: 0,
+  };
+
+  // Candles around oracle
+  const ringRadius = oracle.r * 2.2;
+  for (let i = 0; i < CONFIG.candleCount; i++) {
+    const angle = map(i, 0, CONFIG.candleCount, 0, TWO_PI) + random(-0.1, 0.1);
+    const r = ringRadius + random(-ringRadius * 0.2, ringRadius * 0.45);
+    candles.push(new Candle(oracle.x + cos(angle) * r, oracle.y + sin(angle) * r * 0.8));
+  }
+  candles.sort((a, b) => a.y - b.y);
+
+  // Circuit nodes / halo
+  const haloR = oracle.r * 1.05;
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    const angle = random(TWO_PI);
+    const rad = haloR + random(-haloR * 0.25, haloR * 0.45);
+    nodes.push(new Node(oracle.x + cos(angle) * rad, oracle.y + sin(angle) * rad * 0.7));
+  }
+  // Connect nearby nodes
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const d = dist(nodes[i].pos.x, nodes[i].pos.y, nodes[j].pos.x, nodes[j].pos.y);
+      if (d < oracle.r * 0.55 && random() < 0.35) {
+        filaments.push(new Filament(nodes[i], nodes[j]));
+      }
+    }
+  }
+
+  // Stable structure draw
+  structureLayer.background(INK.h, INK.s, INK.b, 0);
+  structureLayer.clear();
+  for (let c of candles) c.drawStructure(structureLayer);
+  for (let f of filaments) f.drawStructure(structureLayer);
+  for (let n of nodes) n.drawStructure(structureLayer);
+  drawOracleStructure(structureLayer);
+
+  // Vignette
+  vignetteLayer.clear();
+  drawVignette(vignetteLayer);
+}
+
+function drawRadialBase(layer, cx, cy, inner, mid, outer) {
+  const steps = 120;
+  const maxR = Math.hypot(width, height) * 0.55;
+  layer.noStroke();
+  for (let i = steps; i >= 0; i--) {
+    const rr = maxR * (i / steps);
+    const inter = i / steps;
+    let h, s, b;
+    if (inter < 0.35) {
+      const k = map(inter, 0, 0.35, 0, 1, true);
+      h = lerp(mid.h, inner.h, k);
+      s = lerp(mid.s, inner.s, k);
+      b = lerp(mid.b, inner.b, k);
+    } else {
+      const k = map(inter, 0.35, 1, 0, 1, true);
+      h = lerp(outer.h, mid.h, k);
+      s = lerp(outer.s, mid.s, k);
+      b = lerp(outer.b, mid.b, k);
+    }
+    layer.fill(h, s, b, 1.2);
+    layer.ellipse(cx, cy, rr * 2, rr * 2);
+  }
+}
+
+function drawOracleStructure(layer) {
+  const cx = oracle.x, cy = oracle.y, r = oracle.r;
+
+  // Outer aura — stepped gradient
+  const auraSteps = 90;
+  const auraMaxR = r * 2.6;
+  layer.noStroke();
+  for (let i = auraSteps; i >= 0; i--) {
+    const rr = auraMaxR * (i / auraSteps);
+    const alpha = map(i, 0, auraSteps, 0, 1.6, true);
+    layer.fill(VIOLET.h, VIOLET.s * 0.55, VIOLET.b, alpha);
+    layer.ellipse(cx, cy, rr * 2, rr * 2 * 1.15);
+  }
+
+  // Oracle silhouette body
+  layer.push();
+  layer.translate(cx, cy);
+  layer.noStroke();
+  // Hooded cloak
+  layer.fill(INK.h, INK.s + 15, INK.b + 12, 96);
+  layer.beginShape();
+  for (let a = PI * 0.78; a < PI * 2.22; a += 0.04) {
+    const rad = r * 0.92 * (1 + sin(a * 3) * 0.04);
+    layer.vertex(cos(a) * rad, sin(a) * rad * 1.1 + r * 0.35);
+  }
+  layer.vertex(0, r * 1.35);
+  layer.endShape(CLOSE);
+
+  // Inner face glow
+  layer.fill(GOLD.h, GOLD.s * 0.25, GOLD.b, 85);
+  layer.ellipse(0, -r * 0.12, r * 0.42, r * 0.52);
+  layer.fill(GOLD.h, GOLD.s * 0.12, 100, 95);
+  layer.ellipse(0, -r * 0.10, r * 0.24, r * 0.30);
+
+  // Crown rays
+  layer.strokeWeight(1.8);
+  for (let i = 0; i < 12; i++) {
+    const a = map(i, 0, 12, 0, TWO_PI);
+    layer.stroke(GOLD.h, GOLD.s, GOLD.b, 85);
+    layer.line(cos(a) * r * 0.52, sin(a) * r * 0.52 - r * 0.05,
+             cos(a) * r * 0.82, sin(a) * r * 0.82 - r * 0.05);
+  }
+  layer.pop();
+}
+
+function drawVignette(layer) {
+  const steps = 80;
+  const maxR = Math.hypot(width, height) * 0.55;
+  layer.noStroke();
+  for (let i = steps; i >= 0; i--) {
+    const rr = maxR * (i / steps);
+    const alpha = map(i, 0, steps, 10, 0, true);
+    layer.fill(INK.h, INK.s, INK.b - 4, alpha);
+    layer.ellipse(width / 2, height / 2, rr * 2, rr * 2);
+  }
+}
+
+function burnIn() {
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+}
+
+function simulateStep() {
+  t += 0.003;
+  oracle.pulse = sin(t * 2.1) * 0.5 + 0.5;
+
+  // Spawn pulses along filaments
+  if (random() < 0.18) {
+    const f = random(filaments);
+    pulses.push(new Pulse(f, random() < 0.5 ? 0 : 1));
+  }
+
+  for (let p of pulses) p.update();
+  pulses = pulses.filter(p => p.alive);
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  pulseLayer.clear();
+  glowLayer.clear();
+
+  // Oracle breathing glow on pulse layer
+  pulseLayer.noStroke();
+  const breathR = oracle.r * (1.9 + oracle.pulse * 0.18);
+  for (let i = 40; i >= 0; i--) {
+    const rr = breathR + i * 3.5;
+    const alpha = map(i, 0, 40, 0, 2.2 + oracle.pulse * 1.8, true);
+    pulseLayer.fill(GOLD.h, GOLD.s * 0.45, GOLD.b, alpha);
+    pulseLayer.ellipse(oracle.x, oracle.y, rr * 2, rr * 2 * 1.12);
+  }
+
+  // Candle flames flicker
+  for (let c of candles) c.drawFlame(pulseLayer, glowLayer);
+
+  // Traveling pulses
+  for (let p of pulses) p.draw(pulseLayer, glowLayer);
+
+  // Node glints
+  for (let n of nodes) n.drawPulse(pulseLayer, glowLayer);
+
+  // Composite
+  background(INK.h, INK.s, INK.b);
+  image(bgLayer, 0, 0);
+  image(structureLayer, 0, 0);
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  blendMode(BLEND);
+  image(pulseLayer, 0, 0);
+  image(vignetteLayer, 0, 0);
+}
+
+function mousePressed() {
+  const target = createVector(mouseX, mouseY);
+  for (let i = 0; i < 7; i++) {
+    const f = random(filaments);
+    pulses.push(new Pulse(f, floor(random(2)), target));
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`house-victoria-oracle-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`house-victoria-oracle-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildScene();
+    burnIn();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const remap = (oldG) => {
+    const next = createGraphics(width, height);
+    next.colorMode(HSB, 360, 100, 100, 100);
+    next.image(oldG, 0, 0);
+    return next;
+  };
+  bgLayer = remap(bgLayer);
+  structureLayer = remap(structureLayer);
+  pulseLayer = remap(pulseLayer);
+  glowLayer = remap(glowLayer);
+  vignetteLayer = remap(vignetteLayer);
+  buildScene();
+  burnIn();
+}
+
+class Candle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.w = random(8, 18);
+    this.h = random(60, 160);
+    this.isBull = random() < 0.55;
+    this.wickH = random(6, 14);
+    this.flickerHue = this.isBull ? AMBER.h : VIOLET.h;
+    this.flickerOff = random(1000);
+  }
+
+  drawStructure(layer) {
+    const x = this.pos.x, y = this.pos.y;
+    const top = y - this.h;
+    const hue = this.isBull ? GOLD.h : VIOLET.h;
+    const sat = this.isBull ? GOLD.s : VIOLET.s;
+    const bri = this.isBull ? GOLD.b * 0.85 : VIOLET.b * 0.78;
+
+    // Wick
+    layer.stroke(INK.h, 20, 75, 70);
+    layer.strokeWeight(1.5);
+    layer.line(x, top, x, top - this.wickH);
+
+    // Body
+    layer.noStroke();
+    layer.fill(hue, sat, bri, 96);
+    layer.rect(x - this.w / 2, top, this.w, this.h, 2);
+    // Rim highlight
+    layer.stroke(hue, sat * 0.35, 100, 55);
+    layer.strokeWeight(1);
+    layer.noFill();
+    layer.rect(x - this.w / 2 + 1, top + 1, this.w - 2, this.h - 2, 2);
+    // Shadow edge
+    layer.noStroke();
+    layer.fill(hue, sat * 0.5, bri * 0.45, 70);
+    layer.rect(x - this.w / 2, top + this.h * 0.55, this.w, this.h * 0.45, 0, 0, 2, 2);
+  }
+
+  drawFlame(layer, glow) {
+    const x = this.pos.x;
+    const y = this.pos.y - this.h - this.wickH;
+    const n = noise(t * 3 + this.flickerOff, this.flickerOff) - 0.5;
+    const size = this.w * 0.75 + n * 3;
+    const alpha = 55 + n * 15;
+
+    // Glow
+    glow.noStroke();
+    for (let i = 20; i >= 0; i--) {
+      const rr = size * (1 + i * 0.22);
+      const a = map(i, 0, 20, 0, 4, true);
+      glow.fill(this.flickerHue, 60, 100, a);
+      glow.ellipse(x + n * 2, y - size * 0.35, rr * 2, rr * 2.4);
+    }
+
+    // Flame body
+    layer.noStroke();
+    layer.fill(this.flickerHue, 80, 100, alpha);
+    layer.ellipse(x + n * 2, y - size * 0.25, size, size * 1.4);
+    layer.fill(44, 35, 100, alpha * 0.7);
+    layer.ellipse(x + n * 1.2, y - size * 0.18, size * 0.5, size * 0.75);
+  }
+}
+
+class Node {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.size = random(3, 7);
+    this.hue = random() < 0.6 ? GOLD.h : VIOLET.h;
+    this.phase = random(TWO_PI);
+  }
+
+  drawStructure(layer) {
+    layer.noStroke();
+    layer.fill(this.hue, 55, 78, 35);
+    layer.ellipse(this.pos.x, this.pos.y, this.size * 1.6, this.size * 1.6);
+  }
+
+  drawPulse(layer, glow) {
+    const pulse = sin(t * 3 + this.phase) * 0.5 + 0.5;
+    glow.noStroke();
+    for (let i = 12; i >= 0; i--) {
+      const rr = this.size * (1 + i * 0.18);
+      const a = map(i, 0, 12, 0, 3.5 + pulse * 2, true);
+      glow.fill(this.hue, 55, 100, a);
+      glow.ellipse(this.pos.x, this.pos.y, rr * 2, rr * 2);
+    }
+    layer.noStroke();
+    layer.fill(this.hue, 40, 100, 60 + pulse * 30);
+    layer.ellipse(this.pos.x, this.pos.y, this.size, this.size);
+  }
+}
+
+class Filament {
+  constructor(a, b) {
+    this.a = a;
+    this.b = b;
+    this.color = random() < 0.35 ? GOLD : VIOLET;
+    this.thickness = random(0.6, 1.5);
+    this.noiseOffset = random(1000);
+    this.cp1 = createVector();
+    this.cp2 = createVector();
+  }
+
+  update() {
+    const ax = this.a.pos.x, ay = this.a.pos.y;
+    const bx = this.b.pos.x, by = this.b.pos.y;
+    const midX = (ax + bx) * 0.5, midY = (ay + by) * 0.5;
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const perpX = -dy / len, perpY = dx / len;
+    const bend = min(width, height) * 0.12;
+    const n1 = noise(this.noiseOffset, t * 1.5) - 0.5;
+    const n2 = noise(this.noiseOffset + 100, t * 1.7) - 0.5;
+    this.cp1.set(lerp(ax, midX, 0.5) + perpX * n1 * bend, lerp(ay, midY, 0.5) + perpY * n1 * bend);
+    this.cp2.set(lerp(bx, midX, 0.5) + perpX * n2 * bend, lerp(by, midY, 0.5) + perpY * n2 * bend);
+  }
+
+  drawStructure(layer) {
+    layer.noFill();
+    layer.strokeWeight(this.thickness);
+    layer.stroke(this.color.h, this.color.s, this.color.b, 68);
+    layer.bezier(this.a.pos.x, this.a.pos.y, this.cp1.x, this.cp1.y, this.cp2.x, this.cp2.y, this.b.pos.x, this.b.pos.y);
+  }
+
+  pointAt(tParam) {
+    const u = 1 - tParam;
+    const ax = this.a.pos.x, ay = this.a.pos.y;
+    const bx = this.b.pos.x, by = this.b.pos.y;
+    const x = u*u*u*ax + 3*u*u*tParam*this.cp1.x + 3*u*tParam*tParam*this.cp2.x + tParam*tParam*tParam*bx;
+    const y = u*u*u*ay + 3*u*u*tParam*this.cp1.y + 3*u*tParam*tParam*this.cp2.y + tParam*tParam*tParam*by;
+    return createVector(x, y);
+  }
+}
+
+class Pulse {
+  constructor(filament, direction, attractor = null) {
+    this.f = filament;
+    this.direction = direction;
+    this.t = direction === 0 ? 0 : 1;
+    this.speed = random(0.004, 0.012);
+    this.color = random() < 0.5 ? GOLD : AMBER;
+    this.size = random(2.2, 4.5);
+    this.alive = true;
+    this.attractor = attractor;
+  }
+
+  update() {
+    if (this.direction === 0) this.t += this.speed;
+    else this.t -= this.speed;
+    if (this.t < 0 || this.t > 1) this.alive = false;
+  }
+
+  draw(layer, glow) {
+    const pos = this.f.pointAt(constrain(this.t, 0, 1));
+    if (this.attractor) {
+      pos.lerp(this.attractor, 0.05);
+    }
+    glow.noStroke();
+    for (let i = 14; i >= 0; i--) {
+      const rr = this.size * (1 + i * 0.24);
+      const a = map(i, 0, 14, 0, 5, true);
+      glow.fill(this.color.h, this.color.s, 100, a);
+      glow.ellipse(pos.x, pos.y, rr * 2, rr * 2);
+    }
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s, this.color.b, 90);
+    layer.ellipse(pos.x, pos.y, this.size, this.size);
+  }
+}
+</script>
+</body>
+</html>

@@ -39,10 +39,16 @@ class ThreadAdapter(
 
         fun bind(contact: AiContact, config: CompanionConfig, onClick: (AiContact) -> Unit) {
             val theme = contact.theme()
+            val palette = ThemeManager.currentPalette(itemView.context)
             name.text = contact.name
             name.setTextColor(theme.accentBright)
             preview.text = contact.lastMessagePreview?.ifBlank { "Start a conversation…" } ?: "Start a conversation…"
+            preview.setTextColor(palette.textSecondary)
             time.text = contact.relativeTimeLabel()
+            time.setTextColor(palette.textMuted)
+
+            val card = itemView.findViewById<com.google.android.material.card.MaterialCardView>(R.id.threadCard)
+            ThemeManager.applyCard(card, palette)
 
             accent.setBackgroundColor(theme.accent)
             (ring.background as? GradientDrawable)?.setStroke(

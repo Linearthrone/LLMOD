@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Somatic-Digital Feedback Loop</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #08050a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(220, 180, 140, 0.6);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click pulse</div>
+<script>
+// === Somatic-Digital Feedback Loop ===
+// Burgundy neural filaments entwine with circuit pathways,
+// converging into a central heart-core.
+// Dark palette with crimson and gold accents.
+
+const CONFIG = {
+  seed: 2026,
+  filamentCount: 700,
+  circuitCount: 240,
+  paused: false,
+  heartPulseSpeed: 0.035,
+  convergenceStrength: 0.00045,
+  filamentChaos: 0.0018,
+};
+
+const PALETTE = {
+  void: { h: 340, s: 25, b: 3 },
+  deepBurgundy: { h: 344, s: 82, b: 18 },
+  burgundy: { h: 346, s: 78, b: 42 },
+  crimson: { h: 352, s: 95, b: 76 },
+  gold: { h: 48, s: 96, b: 92 },
+  paleGold: { h: 52, s: 60, b: 98 },
+};
+
+let filaments = [];
+let circuits = [];
+let pulses = [];
+let trailLayer, glowLayer, circuitLayer;
+let heartPhase = 0;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  circuitLayer = createGraphics(width, height);
+  circuitLayer.colorMode(HSB, 360, 100, 100, 100);
+  circuitLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  initWorld();
+  document.getElementById('seed').textContent = CONFIG.seed;
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function initWorld() {
+  filaments = [];
+  circuits = [];
+  pulses = [];
+  trailLayer.background(PALETTE.void.h, PALETTE.void.s, PALETTE.void.b);
+  glowLayer.clear();
+  circuitLayer.background(PALETTE.void.h, PALETTE.void.s, PALETTE.void.b);
+
+  const cx = width / 2;
+  const cy = height / 2;
+
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    filaments.push(new Filament(cx, cy));
+  }
+
+  for (let i = 0; i < CONFIG.circuitCount; i++) {
+    circuits.push(new CircuitAgent(cx, cy));
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  t += 0.003;
+  heartPhase += CONFIG.heartPulseSpeed;
+
+  const cx = width / 2;
+  const cy = height / 2;
+
+  // Soft fade on organic trail layer
+  trailLayer.noStroke();
+  trailLayer.fill(PALETTE.void.h, PALETTE.void.s, PALETTE.void.b, 1.8);
+  trailLayer.rect(0, 0, width, height);
+
+  // Clear glow each frame
+  glowLayer.clear();
+
+  // Refresh circuit layer with dark fade
+  circuitLayer.noStroke();
+  circuitLayer.fill(PALETTE.void.h, PALETTE.void.s, PALETTE.void.b, 7);
+  circuitLayer.rect(0, 0, width, height);
+
+  // Update and draw filaments
+  for (let f of filaments) {
+    f.update(cx, cy);
+    f.display(trailLayer, glowLayer);
+  }
+
+  // Update and draw circuits
+  for (let c of circuits) {
+    c.update(cx, cy);
+    c.display(circuitLayer, glowLayer);
+  }
+
+  // Energy pulses from heart
+  for (let i = pulses.length - 1; i >= 0; i--) {
+    pulses[i].update();
+    pulses[i].display(glowLayer);
+    if (pulses[i].dead) pulses.splice(i, 1);
+  }
+
+  // Occasional heart burst
+  if (frameCount % 180 === 0) {
+    pulses.push(new EnergyPulse(cx, cy, 0));
+  }
+
+  // Composite layers
+  background(PALETTE.void.h, PALETTE.void.s, PALETTE.void.b);
+  image(trailLayer, 0, 0);
+  image(circuitLayer, 0, 0);
+  drawHeartCore(cx, cy);
+  image(glowLayer, 0, 0);
+}
+
+function drawHeartCore(cx, cy) {
+  const beat = 1 + sin(heartPhase) * 0.12 + sin(heartPhase * 2.3) * 0.04;
+  const rBase = min(width, height) * 0.09 * beat;
+
+  push();
+  translate(cx, cy);
+
+  // Outer aura rings
+  noFill();
+  for (let i = 4; i >= 1; i--) {
+    const auraR = rBase * (1 + i * 0.35);
+    const alpha = map(sin(heartPhase + i), -1, 1, 4, 18);
+    stroke(PALETTE.crimson.h, 80, 70, alpha);
+    strokeWeight(1.5);
+    ellipse(0, 0, auraR * 2, auraR * 2);
+  }
+
+  // Heart body: stylized cardioid-ish shape built from two lobes
+  const blood = map(sin(heartPhase), -1, 1, 0.5, 1.0);
+  fill(PALETTE.burgundy.h, 88, 22 + blood * 20, 92);
+  stroke(PALETTE.crimson.h, 96, 60 + blood * 30, 75);
+  strokeWeight(2.5);
+  beginShape();
+  for (let a = 0; a < TWO_PI; a += 0.02) {
+    const hr = rBase * 0.55 * (1 - sin(a)) * (1 + 0.12 * cos(2 * a));
+    const x = hr * cos(a);
+    const y = -hr * sin(a) * 0.9;
+    vertex(x, y);
+  }
+  endShape(CLOSE);
+
+  // Gold core threads wrapping the heart
+  noFill();
+  strokeWeight(1.2);
+  for (let i = 0; i < 12; i++) {
+    const offset = i * 0.6 + heartPhase * 0.7;
+    stroke(PALETTE.gold.h, 90, 95, 22);
+    beginShape();
+    for (let a = 0; a < TWO_PI; a += 0.05) {
+      const rad = rBase * 0.6 * (1 + 0.08 * sin(a * 5 + offset));
+      vertex(rad * cos(a), rad * sin(a) * 0.85);
+    }
+    endShape(CLOSE);
+  }
+
+  // Central glowing ember
+  noStroke();
+  const emberAlpha = 60 + sin(heartPhase * 3) * 25;
+  fill(PALETTE.gold.h, 70, 100, emberAlpha);
+  ellipse(0, 0, rBase * 0.28, rBase * 0.28);
+  fill(PALETTE.paleGold.h, 40, 100, emberAlpha * 0.6);
+  ellipse(0, 0, rBase * 0.45, rBase * 0.45);
+
+  pop();
+}
+
+function mousePressed() {
+  const cx = width / 2;
+  const cy = height / 2;
+  pulses.push(new EnergyPulse(cx, cy, 0));
+  for (let i = 0; i < 30; i++) {
+    filaments.push(new Filament(mouseX, mouseY));
+  }
+  for (let i = 0; i < 12; i++) {
+    circuits.push(new CircuitAgent(mouseX, mouseY));
+  }
+  if (filaments.length > CONFIG.filamentCount * 1.6) {
+    filaments.splice(0, 40);
+  }
+  if (circuits.length > CONFIG.circuitCount * 1.6) {
+    circuits.splice(0, 20);
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`somatic-feedback-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`somatic-feedback-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    initWorld();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const rebuild = (old) => {
+    const next = createGraphics(width, height);
+    next.colorMode(HSB, 360, 100, 100, 100);
+    next.pixelDensity(1);
+    next.image(old, 0, 0);
+    return next;
+  };
+  trailLayer = rebuild(trailLayer);
+  glowLayer = rebuild(glowLayer);
+  circuitLayer = rebuild(circuitLayer);
+}
+
+class Filament {
+  constructor(x, y) {
+    this.pos = createVector(x + randomGaussian(0, min(width, height) * 0.18),
+                             y + randomGaussian(0, min(width, height) * 0.18));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.7, 2.2);
+    this.hue = random([PALETTE.burgundy.h, PALETTE.crimson.h, PALETTE.deepBurgundy.h]);
+    this.sat = random(70, 95);
+    this.bri = random(35, 70);
+    this.sw = random(0.4, 1.6);
+    this.history = [];
+    this.historyLimit = floor(random(16, 38));
+    this.noiseZ = random(1000);
+  }
+
+  update(cx, cy) {
+    const center = createVector(cx, cy);
+    const dir = p5.Vector.sub(center, this.pos);
+    const d = dir.mag();
+    dir.normalize();
+    dir.mult(CONFIG.convergenceStrength * d);
+    this.acc.add(dir);
+
+    const n = noise(this.pos.x * CONFIG.filamentChaos,
+                    this.pos.y * CONFIG.filamentChaos,
+                    t + this.noiseZ);
+    const angle = n * TWO_PI * 3.5;
+    const flow = p5.Vector.fromAngle(angle).mult(0.18);
+    this.acc.add(flow);
+
+    // Orbital swirl near center
+    if (d < min(width, height) * 0.22) {
+      const tangent = createVector(-dir.y, dir.x).mult(0.35);
+      this.acc.add(tangent);
+    }
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    this.edges();
+  }
+
+  edges() {
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+
+  display(trails, glow) {
+    trails.noFill();
+    trails.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, 55, true);
+      trails.stroke(this.hue, this.sat, this.bri, a);
+      trails.strokeWeight(this.sw * map(i, 0, this.history.length, 0.5, 1, true));
+      trails.curveVertex(p.x, p.y);
+    }
+    trails.endShape();
+
+    glow.noStroke();
+    glow.fill(this.hue, this.sat, 100, 8);
+    glow.ellipse(this.pos.x, this.pos.y, this.sw * 3, this.sw * 3);
+  }
+}
+
+class CircuitAgent {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.target = createVector(width / 2, height / 2);
+    this.speed = random(1.2, 3.0);
+    this.stepSize = random(12, 28);
+    this.progress = 0;
+    this.hue = PALETTE.gold.h;
+    this.nextWaypoint = this.pos.copy();
+    this.pickNextWaypoint();
+    this.dead = false;
+    this.thickness = random(0.8, 2.0);
+  }
+
+  pickNextWaypoint() {
+    const dir = p5.Vector.sub(this.target, this.nextWaypoint);
+    const d = dir.mag();
+    dir.normalize();
+    const step = min(this.stepSize, d * 0.4 + 2);
+    const jitter = p5.Vector.random2D().mult(step * 0.2);
+    const next = p5.Vector.add(this.nextWaypoint, p5.Vector.add(dir.mult(step), jitter));
+    next.x = constrain(next.x, 0, width);
+    next.y = constrain(next.y, 0, height);
+    this.nextWaypoint = next;
+  }
+
+  update(cx, cy) {
+    this.target.set(cx, cy);
+    this.progress += this.speed;
+    const total = this.pos.dist(this.nextWaypoint);
+    if (total < 1 || this.progress > total * 1.5) {
+      this.pos.set(this.nextWaypoint);
+      this.progress = 0;
+      if (this.pos.dist(this.target) < this.stepSize * 1.5) {
+        this.dead = true;
+      } else {
+        this.pickNextWaypoint();
+      }
+    } else {
+      const dir = p5.Vector.sub(this.nextWaypoint, this.pos);
+      dir.normalize();
+      dir.mult(this.speed);
+      this.pos.add(dir);
+    }
+  }
+
+  display(layer, glow) {
+    if (this.dead) return;
+    layer.noFill();
+    layer.stroke(this.hue, 90, 90, 55);
+    layer.strokeWeight(this.thickness);
+    layer.line(this.pos.x, this.pos.y, this.nextWaypoint.x, this.nextWaypoint.y);
+
+    // Gold node at waypoint
+    glow.noStroke();
+    glow.fill(this.hue, 60, 100, 18);
+    glow.ellipse(this.nextWaypoint.x, this.nextWaypoint.y, 5, 5);
+
+    // Traveling spark
+    glow.fill(PALETTE.paleGold.h, 50, 100, 35);
+    glow.ellipse(this.pos.x, this.pos.y, 3.5, 3.5);
+  }
+}
+
+class EnergyPulse {
+  constructor(x, y, delay) {
+    this.x = x;
+    this.y = y;
+    this.age = -delay;
+    this.maxR = min(width, height) * 0.55;
+    this.dead = false;
+  }
+
+  update() {
+    this.age += 1.2;
+    if (this.age > this.maxR / 3) this.dead = true;
+  }
+
+  display(glow) {
+    if (this.age < 0) return;
+    const r = this.age * 3;
+    const alpha = map(r, 0, this.maxR, 55, 0, true);
+    glow.noFill();
+    glow.stroke(PALETTE.crimson.h, 90, 80, alpha);
+    glow.strokeWeight(2);
+    glow.ellipse(this.x, this.y, r * 2, r * 2);
+  }
+}
+</script>
+</body>
+</html>

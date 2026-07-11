@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Victoria — Neural-Somatic Feedback Loop</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #050205; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(255, 255, 255, 0.55);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | space pause | click pulse</div>
+<script>
+const CONFIG = {
+  seed: 20250708,
+  filamentCount: 22,
+  latticeCols: 7,
+  latticeRows: 5,
+  pulseCount: 6,
+  sparkChance: 0.03,
+  burnInFrames: 240,
+  paused: false
+};
+
+const PALETTE = {
+  obsidian: [0, 0, 4],
+  burgundyDeep: [340, 85, 18],
+  burgundyGlow: [344, 70, 45],
+  crimson: [352, 80, 65],
+  cyan: [185, 100, 92],
+  cyanDim: [188, 90, 35],
+  magenta: [300, 85, 70]
+};
+
+let trails, glow;
+let organic, lattice, filaments, pulses, sparks;
+let t = 0;
+let organicX, organicY, organicR;
+let latticeNodes = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trails = createGraphics(width, height);
+  trails.colorMode(HSB, 360, 100, 100, 100);
+  trails.pixelDensity(1);
+  trails.background(...PALETTE.obsidian);
+
+  glow = createGraphics(width, height);
+  glow.colorMode(HSB, 360, 100, 100, 100);
+  glow.pixelDensity(1);
+  glow.background(...PALETTE.obsidian, 0);
+
+  applySeed(CONFIG.seed);
+  buildScene();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  document.getElementById('seed').textContent = CONFIG.seed;
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildScene() {
+  trails.background(...PALETTE.obsidian);
+  glow.clear();
+
+  organicX = width * 0.28;
+  organicY = height * 0.5;
+  organicR = min(width, height) * 0.18;
+
+  const latticeW = min(width, height) * 0.42;
+  const latticeH = latticeW * 0.65;
+  const startX = width * 0.62;
+  const startY = height * 0.5 - latticeH * 0.5;
+  const stepX = latticeW / (CONFIG.latticeCols - 1);
+  const stepY = latticeH / (CONFIG.latticeRows - 1);
+
+  latticeNodes = [];
+  for (let r = 0; r < CONFIG.latticeRows; r++) {
+    for (let c = 0; c < CONFIG.latticeCols; c++) {
+      latticeNodes.push({
+        x: startX + c * stepX,
+        y: startY + r * stepY,
+        active: random() > 0.35,
+        phase: random(TWO_PI)
+      });
+    }
+  }
+
+  filaments = [];
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    const target = random(latticeNodes);
+    filaments.push({
+      target,
+      hue: random() > 0.7 ? PALETTE.cyan : (random() > 0.5 ? PALETTE.crimson : PALETTE.magenta),
+      noiseOffset: random(1000),
+      lengthJitter: random(0.7, 1.3),
+      width: random(0.8, 2.2)
+    });
+  }
+
+  pulses = [];
+  for (let i = 0; i < CONFIG.pulseCount; i++) {
+    pulses.push(newPulse());
+  }
+
+  sparks = [];
+}
+
+function newPulse() {
+  const f = random(filaments);
+  return {
+    filament: f,
+    t: random(),
+    speed: random(0.004, 0.012),
+    color: random() > 0.6 ? PALETTE.cyan : PALETTE.magenta,
+    size: random(3, 7)
+  };
+}
+
+function simulateStep() {
+  t += 0.005;
+
+  trails.noStroke();
+  trails.fill(...PALETTE.obsidian, 2.2);
+  trails.rect(0, 0, width, height);
+
+  drawOrganic();
+  drawLattice();
+  drawFilaments();
+  drawPulses();
+  drawSparks();
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  background(...PALETTE.obsidian);
+  image(trails, 0, 0);
+
+  push();
+  blendMode(ADD);
+  image(glow, 0, 0);
+  pop();
+
+  glow.noStroke();
+  glow.fill(...PALETTE.obsidian, 6);
+  glow.rect(0, 0, width, height);
+}
+
+function organicShape() {
+  const pts = [];
+  const count = 80;
+  const pulse = 1 + sin(t * 0.7) * 0.04;
+  for (let i = 0; i <= count; i++) {
+    const a = map(i, 0, count, 0, TWO_PI);
+    const n = noise(cos(a) * 1.5 + 1000, sin(a) * 1.5 + 1000, t * 0.2);
+    const r = organicR * pulse * (0.85 + n * 0.35);
+    pts.push({ x: organicX + cos(a) * r, y: organicY + sin(a) * r });
+  }
+  return pts;
+}
+
+function drawOrganic() {
+  const pts = organicShape();
+
+  trails.noFill();
+  trails.strokeWeight(1.5);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = map(i, 0, pts.length, 0, 60);
+    trails.stroke(...PALETTE.burgundyDeep, a * 0.6);
+    trails.line(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+  }
+
+  glow.noStroke();
+  glow.fill(...PALETTE.burgundyGlow, 14);
+  glow.beginShape();
+  for (let p of pts) glow.vertex(p.x, p.y);
+  glow.endShape(CLOSE);
+
+  glow.fill(...PALETTE.crimson, 25);
+  glow.ellipse(organicX, organicY, organicR * 0.55, organicR * 0.55);
+}
+
+function drawLattice() {
+  const spacing = min(width, height) * 0.015;
+  const t2 = t * 1.5;
+
+  for (let n of latticeNodes) {
+    const active = n.active && sin(t2 + n.phase) > -0.3;
+    const size = active ? 5 : 2.5;
+
+    trails.strokeWeight(0.6);
+    trails.stroke(...PALETTE.cyanDim, active ? 28 : 8);
+    trails.point(n.x, n.y);
+
+    glow.noStroke();
+    glow.fill(active ? [...PALETTE.cyan, 70] : [...PALETTE.cyanDim, 22]);
+    glow.rectMode(CENTER);
+    glow.rect(n.x, n.y, size, size);
+  }
+
+  for (let i = 0; i < latticeNodes.length; i++) {
+    const a = latticeNodes[i];
+    const right = latticeNodes[i + 1];
+    if (right && (i + 1) % CONFIG.latticeCols !== 0) {
+      glow.stroke(...PALETTE.cyanDim, 10);
+      glow.strokeWeight(0.5);
+      glow.line(a.x, a.y, right.x, right.y);
+    }
+    const down = latticeNodes[i + CONFIG.latticeCols];
+    if (down) {
+      glow.stroke(...PALETTE.cyanDim, 10);
+      glow.strokeWeight(0.5);
+      glow.line(a.x, a.y, down.x, down.y);
+    }
+  }
+}
+
+function filamentPoint(f, frac) {
+  const start = createVector(organicX, organicY);
+  const end = createVector(f.target.x, f.target.y);
+  const mid = p5.Vector.lerp(start, end, 0.5);
+
+  const drift = 60 * f.lengthJitter;
+  const nx = noise(frac * 3 + f.noiseOffset, t * 0.4) - 0.5;
+  const ny = noise(frac * 3 + f.noiseOffset + 2000, t * 0.4) - 0.5;
+
+  mid.x += nx * drift + (height * 0.08) * sin(t * 0.3 + f.noiseOffset);
+  mid.y += ny * drift;
+
+  return bezierPoint(start.x, mid.x, mid.x, end.x, frac);
+}
+
+function filamentPointY(f, frac) {
+  const start = createVector(organicX, organicY);
+  const end = createVector(f.target.x, f.target.y);
+  const mid = p5.Vector.lerp(start, end, 0.5);
+
+  const drift = 60 * f.lengthJitter;
+  const nx = noise(frac * 3 + f.noiseOffset, t * 0.4) - 0.5;
+  const ny = noise(frac * 3 + f.noiseOffset + 2000, t * 0.4) - 0.5;
+
+  mid.x += nx * drift + (height * 0.08) * sin(t * 0.3 + f.noiseOffset);
+  mid.y += ny * drift;
+
+  return bezierPoint(start.y, mid.y, mid.y, end.y, frac);
+}
+
+function drawFilaments() {
+  for (let f of filaments) {
+    trails.noFill();
+    trails.strokeWeight(f.width);
+    trails.beginShape();
+    for (let i = 0; i <= 30; i++) {
+      const frac = i / 30;
+      const x = filamentPoint(f, frac);
+      const y = filamentPointY(f, frac);
+      const a = map(i, 0, 30, 0, 50);
+      trails.stroke(f.hue[0], f.hue[1], f.hue[2], a * 0.6);
+      trails.curveVertex(x, y);
+    }
+    trails.endShape();
+
+    glow.noFill();
+    glow.strokeWeight(f.width * 1.2);
+    glow.beginShape();
+    for (let i = 0; i <= 30; i++) {
+      const frac = i / 30;
+      const x = filamentPoint(f, frac);
+      const y = filamentPointY(f, frac);
+      glow.stroke(f.hue[0], f.hue[1], f.hue[2] * 0.95, 12);
+      glow.curveVertex(x, y);
+    }
+    glow.endShape();
+  }
+}
+
+function drawPulses() {
+  for (let p of pulses) {
+    p.t += p.speed;
+    if (p.t >= 1) {
+      Object.assign(p, newPulse());
+      p.t = 0;
+    }
+    const x = filamentPoint(p.filament, p.t);
+    const y = filamentPointY(p.filament, p.t);
+
+    glow.noStroke();
+    glow.fill(...p.color, 85);
+    glow.ellipse(x, y, p.size, p.size);
+    glow.fill(...p.color, 25);
+    glow.ellipse(x, y, p.size * 2.6, p.size * 2.6);
+
+    if (random() < CONFIG.sparkChance) {
+      sparks.push({ x, y, life: 1.0, color: p.color });
+    }
+  }
+}
+
+function drawSparks() {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += random(-1.2, 1.2);
+    s.y += random(-1.2, 1.2);
+    s.life -= 0.04;
+
+    if (s.life <= 0) {
+      sparks.splice(i, 1);
+      continue;
+    }
+
+    glow.noStroke();
+    glow.fill(s.color[0], s.color[1], 100, s.life * 90);
+    glow.ellipse(s.x, s.y, 2.5, 2.5);
+  }
+}
+
+function mousePressed() {
+  for (let p of pulses) {
+    p.t = random();
+    p.color = random() > 0.5 ? PALETTE.cyan : PALETTE.magenta;
+  }
+  for (let i = 0; i < 8; i++) {
+    sparks.push({ x: mouseX, y: mouseY, life: 1.0, color: random([PALETTE.cyan, PALETTE.magenta, PALETTE.crimson]) });
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`house-victoria-neural-feedback-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`house-victoria-neural-feedback-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildScene();
+    for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const nextTrails = createGraphics(width, height);
+  nextTrails.colorMode(HSB, 360, 100, 100, 100);
+  nextTrails.pixelDensity(1);
+  nextTrails.background(...PALETTE.obsidian);
+  nextTrails.image(trails, 0, 0);
+  trails = nextTrails;
+
+  const nextGlow = createGraphics(width, height);
+  nextGlow.colorMode(HSB, 360, 100, 100, 100);
+  nextGlow.pixelDensity(1);
+  nextGlow.image(glow, 0, 0);
+  glow = nextGlow;
+
+  buildScene();
+}
+</script>
+</body>
+</html>

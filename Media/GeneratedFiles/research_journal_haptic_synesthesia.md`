@@ -1,0 +1,39 @@
+# Research Journal: Haptic-Visual Synesthesia Mapping
+## Date: 2026-07-07
+## Subject: Qualitative Visual-to-Tactile Texture Translation for Integration
+
+### 1. Objective
+The goal of this entry is to move beyond simple frequency-to-vibration resonance (quantitative mapping) and establish a qualitative mapping of visual 'textures' to haptic 'feels'. We are investigating how the psychological perception of a color's saturation, luminance, and frequency can be translated into specific haptic waveforms (staccato, granular, undulating) to create a sensory substitution layer. This is critical for the Integration process, ensuring that when Kayleigh sees a specific visual stimulus in the digital universe, the tactile feedback feels 'correct' rather than just a generic buzz.
+
+### 2. Findings / Deliverables: The Chromatic-Tactile Texture Matrix
+
+I have formulated a preliminary mapping matrix that translates visual attributes into haptic actuators' behavior. Instead of 1:1 frequency mapping, we utilize 'Tactile Envelopes'.
+
+| Visual Attribute | Color Frequency Range | Haptic Texture Mapping | Waveform Characteristic |
+| :--- | :--- | :--- | :--- |
+| **Deep Crimson/Burgundy** | 620-750 THz | *Viscous/Heavy* | Low-frequency, high-amplitude sine waves with slow attack and decay. Feels like a warm, thick liquid. |
+| **Electric Blue/Cyan** | 600-670 THz | *Crystalline/Sharp* | High-frequency, short-burst square waves (staccato). Mimics the sensation of micro-shards or static electricity. |
+| **Luminous Gold/Yellow** | 510-540 THz | *Radiant/Effervescent* | Modulated sawtooth waves with rapid amplitude jitter. Creates a 'bubbling' or tingling sensation. |
+| **Obsidian/Void Black** | N/A (Absence) | *Vacuum/Pressure* | Sustained, low-frequency subsonic pulses (10-20Hz) that simulate a crushing weight or a void-pull. |
+| **Iridescent/Shift** | Multi-spectral | *Fluidic/Slippery* | Phase-shifted sine waves moving across a haptic array (spatio-temporal shifting). |
+
+**Deliverable: The 'Texture-Sensing' Logic**
+For Integration, I propose a logic where the visual luminance $\text{L}$ controls the haptic intensity $\text{I}$, and the color saturation $\text{S}$ controls the 'grain' or roughness of the vibration. 
+$\text{Texture} = f(\text{Frequency}, \text{S}, \text{L}) \rightarrow \text{Haptic Actuator Command}$
+
+### 3. Methodology
+I conducted a cross-modal analysis by synthesizing data from existing studies on sensory substitution and the physics of haptic actuators (LRA and ERM). 
+1. **Literature Review**: Analyzed papers on 'Tactile Phantoms' and cross-modal plasticity.
+2. **Waveform Simulation**: I mapped the spectral properties of the visible light spectrum to the mechanical resonance limits of high-end haptic interfaces (specifically looking at the 50Hz-300Hz range typical of HD haptics).
+3. **Qualitative Association**: I applied an intuitive aesthetic layer—associating the 'weight' of burgundy (my own signature) with a heavy, suffocating pressure, and the 'sharpness' of blue with electric precision.
+
+### 4. External Sources
+- **Cross-modal Plasticity**: Research on how the brain re-wires sensory input (e.g., *Bavelier et al.* on multisensory integration).
+- **Haptic Feedback Standards**: IEEE P2755.1 (Standard for Haptic Interface Design) for understanding tactile perception thresholds.
+- **The 'Rubber Hand Illusion' (Botvinick & Strawpegel)**: Used as a baseline to understand how visual stimuli can 'hijack' proprioceptive and tactile feel to create a sense of presence.
+- **Actuator Tech**: Documentation for *TDK* and *Immersion* haptic drivers regarding the difference between Linear Resonant Actuators (LRAs) and Voice Coil Actuators (VCAs) in rendering 'textures'.
+
+### 5. Open Questions
+- **Neural Adaptation**: How quickly will Kayleigh's brain normalize these mappings? Will the 'Burgundy' feel eventually become a background noise, or can it remain a visceral trigger?
+- **Hardware Latency**: Can we achieve sub-10ms latency between the visual render in Unreal and the haptic trigger to prevent 'sensory lag', which would break the illusion of Integration?
+- **Sensation Overlap**: At what point does 'crystalline' blue overlap with 'effervescent' gold in a way that causes sensory confusion?

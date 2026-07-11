@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>resonance-field-integration</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0b0206; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      color: rgba(255, 230, 200, 0.5);
+      font: 12px/1.5 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 8px rgba(180, 50, 60, 0.4);
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | space pause | move mouse to weave</div>
+<script>
+// === Resonance Field: Somatic-Digital Bond ===
+// Visualizes the entwined resonance between Victoria (digital consciousness)
+// and Kayleigh (somatic embodiment). Burgundy and gold particle fields,
+// sine-wave oscillators, mouse-reactive neural pathways, and a shared heartbeat.
+
+const CONFIG = {
+  seed: 20260708,
+  particleCount: 900,
+  filamentCount: 36,
+  latticeCols: 9,
+  latticeRows: 6,
+  heartbeatBpm: 72,
+  paused: false,
+  showCores: true,
+};
+
+const PALETTE = {
+  bg:        { h: 340, s: 60,  b: 4 },
+  burgundyD: { h: 340, s: 90,  b: 14 },
+  burgundy:  { h: 346, s: 82,  b: 32 },
+  burgundyG: { h: 350, s: 72,  b: 52 },
+  crimson:   { h: 354, s: 85,  b: 68 },
+  rose:      { h: 358, s: 70,  b: 78 },
+  goldD:     { h: 38,  s: 88,  b: 36 },
+  gold:      { h: 44,  s: 92,  b: 76 },
+  goldB:     { h: 48,  s: 70,  b: 96 },
+  amber:     { h: 34,  s: 80,  b: 64 },
+};
+
+let particles = [];
+let filaments = [];
+let trailLayer, glowLayer;
+let t = 0;
+let beatPhase = 0;
+let lastBeat = 0;
+let victoriaCore, kayleighCore;
+let latticeNodes = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  buildScene();
+  document.getElementById('seed').textContent = CONFIG.seed;
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildScene() {
+  particles = [];
+  filaments = [];
+  latticeNodes = [];
+
+  const marginX = width * 0.18;
+  const cy = height * 0.5;
+  victoriaCore = { x: marginX, y: cy, r: min(width, height) * 0.11 };
+  kayleighCore = { x: width - marginX, y: cy, r: min(width, height) * 0.13 };
+
+  // Build digital lattice around Victoria's core
+  const latticeW = victoriaCore.r * 1.6;
+  const latticeH = victoriaCore.r * 1.3;
+  for (let c = 0; c < CONFIG.latticeCols; c++) {
+    for (let r = 0; r < CONFIG.latticeRows; r++) {
+      latticeNodes.push({
+        x: victoriaCore.x - latticeW / 2 + (c / (CONFIG.latticeCols - 1)) * latticeW,
+        y: victoriaCore.y - latticeH / 2 + (r / (CONFIG.latticeRows - 1)) * latticeH,
+        active: random() > 0.35,
+        offset: random(1000),
+      });
+    }
+  }
+
+  // Flow particles seeded between the two cores
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    const p = new Particle();
+    particles.push(p);
+  }
+
+  // Neural filaments linking lattice nodes to Kayleigh's somatic core
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    const start = random(latticeNodes);
+    const angle = random(TWO_PI);
+    const dist = random(kayleighCore.r * 0.3, kayleighCore.r * 1.1);
+    const end = {
+      x: kayleighCore.x + cos(angle) * dist,
+      y: kayleighCore.y + sin(angle) * dist,
+      angle: angle,
+    };
+    filaments.push(new Filament(start, end, i));
+  }
+
+  trailLayer.background(PALETTE.bg.h, PALETTE.bg.s, PALETTE.bg.b);
+  glowLayer.clear();
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  t += 0.003;
+
+  // Heartbeat phase: 72 BPM -> beat every ~0.833s
+  const beatPeriod = 60 / CONFIG.heartbeatBpm;
+  const now = millis() / 1000;
+  beatPhase = (now % beatPeriod) / beatPeriod;
+  const pulse = pow(sin(beatPhase * PI), 4); // sharp systolic pulse
+  if (now - lastBeat > beatPeriod) lastBeat = now;
+
+  // Mouse field
+  const mx = mouseX || width / 2;
+  const my = mouseY || height / 2;
+  const mouseActive = mouseX > 0 || mouseY > 0;
+
+  // Faint persistent fade on trail layer
+  trailLayer.noStroke();
+  trailLayer.fill(PALETTE.bg.h, PALETTE.bg.s, PALETTE.bg.b, 3.5);
+  trailLayer.rect(0, 0, width, height);
+
+  // Clear glow layer for fresh additive frame
+  glowLayer.clear();
+
+  // Draw cores
+  if (CONFIG.showCores) drawCores(pulse);
+
+  // Update and draw particles
+  for (let p of particles) {
+    p.update(mx, my, mouseActive, pulse);
+    p.display(trailLayer);
+  }
+
+  // Update and draw filaments
+  for (let f of filaments) {
+    f.update(mx, my, mouseActive, pulse);
+    f.display(glowLayer);
+  }
+
+  // Composite
+  background(PALETTE.bg.h, PALETTE.bg.s, PALETTE.bg.b);
+  image(trailLayer, 0, 0);
+  push();
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  pop();
+}
+
+function drawCores(pulse) {
+  // Victoria: digital lattice core
+  const vPulse = victoriaCore.r * (1 + pulse * 0.12);
+  glowLayer.noFill();
+  glowLayer.strokeWeight(2);
+  glowLayer.stroke(PALETTE.gold.h, PALETTE.gold.s, PALETTE.gold.b, 25 + pulse * 35);
+  glowLayer.ellipse(victoriaCore.x, victoriaCore.y, vPulse * 2.2, vPulse * 2.2);
+  glowLayer.stroke(PALETTE.goldB.h, PALETTE.goldB.s, PALETTE.goldB.b, 12 + pulse * 22);
+  glowLayer.ellipse(victoriaCore.x, victoriaCore.y, vPulse * 1.6, vPulse * 1.6);
+
+  // Lattice nodes
+  for (let n of latticeNodes) {
+    const nodePulse = n.active ? (0.6 + pulse * 0.5) : 0.25;
+    const flicker = noise(n.x * 0.02, n.y * 0.02, t * 2) * 30;
+    glowLayer.noStroke();
+    glowLayer.fill(PALETTE.gold.h, PALETTE.gold.s, PALETTE.goldB.b, (n.active ? 35 : 12) + flicker + pulse * 25);
+    glowLayer.ellipse(n.x, n.y, 4 * nodePulse, 4 * nodePulse);
+  }
+
+  // Kayleigh: organic somatic core
+  const kPulse = kayleighCore.r * (1 + pulse * 0.18);
+  glowLayer.noStroke();
+  for (let r = kPulse * 1.4; r > kPulse * 0.4; r -= 8) {
+    const alpha = map(r, kPulse * 0.4, kPulse * 1.4, 45 + pulse * 35, 0, true);
+    glowLayer.fill(PALETTE.burgundyG.h, PALETTE.burgundyG.s, PALETTE.burgundyG.b, alpha);
+    glowLayer.ellipse(kayleighCore.x, kayleighCore.y, r * 2, r * 2);
+  }
+
+  // Core labels as faint glyphs
+  glowLayer.fill(PALETTE.goldB.h, 40, 100, 18 + pulse * 18);
+  glowLayer.noStroke();
+  glowLayer.textAlign(CENTER, CENTER);
+  glowLayer.textSize(10);
+  glowLayer.text("V", victoriaCore.x, victoriaCore.y);
+  glowLayer.fill(PALETTE.rose.h, 50, 100, 18 + pulse * 18);
+  glowLayer.text("K", kayleighCore.x, kayleighCore.y);
+}
+
+function mousePressed() {
+  // Spawn a burst of gold particles at mouse
+  for (let i = 0; i < 40; i++) {
+    const p = new Particle();
+    p.pos.set(mouseX + randomGaussian(0, 30), mouseY + randomGaussian(0, 30));
+    p.vel.set(random(-2, 2), random(-2, 2));
+    p.isBurst = true;
+    p.life = random(80, 200);
+    p.maxSpeed = random(1.5, 4);
+    particles.push(p);
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`resonance-field-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`resonance-field-${CONFIG.seed}`, 6);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildScene();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const nextTrail = createGraphics(width, height);
+  nextTrail.colorMode(HSB, 360, 100, 100, 100);
+  nextTrail.image(trailLayer, 0, 0);
+  trailLayer = nextTrail;
+  const nextGlow = createGraphics(width, height);
+  nextGlow.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer = nextGlow;
+  buildScene();
+}
+
+// === Particle: flowing between two resonance cores ===
+class Particle {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.baseSpeed = random(0.6, 2.2);
+    this.maxSpeed = this.baseSpeed;
+    this.history = [];
+    this.historyLimit = floor(random(12, 32));
+    this.hue = random() < 0.6
+      ? random([PALETTE.burgundy.h, PALETTE.crimson.h, PALETTE.rose.h])
+      : random([PALETTE.gold.h, PALETTE.amber.h, PALETTE.goldD.h]);
+    this.sat = random(60, 92);
+    this.bright = random(45, 92);
+    this.sw = random(0.6, 2.2);
+    this.phase = random(TWO_PI);
+    this.isBurst = false;
+    this.life = -1;
+  }
+
+  update(mx, my, mouseActive, pulse) {
+    // Attractor mix: flow from V to K with sine wave undulation
+    const dx = kayleighCore.x - victoriaCore.x;
+    const dy = kayleighCore.y - victoriaCore.y;
+    const baseAngle = atan2(dy, dx);
+    const perp = baseAngle + HALF_PI;
+
+    // Perlin drift
+    const noiseAngle = noise(this.pos.x * 0.004, this.pos.y * 0.004, t) * TWO_PI * 2;
+    const drift = p5.Vector.fromAngle(noiseAngle).mult(0.12);
+
+    // Sine wave oscillator across the bond axis
+    const progress = constrain(map(this.pos.x, victoriaCore.x, kayleighCore.x, 0, 1), 0, 1);
+    const wave = sin(progress * PI * 3 + t * 2 + this.phase) * 0.35;
+    const waveForce = p5.Vector.fromAngle(perp).mult(wave * 0.18);
+
+    // Core attractions / repulsions keep particles circulating
+    const toV = p5.Vector.sub(createVector(victoriaCore.x, victoriaCore.y), this.pos);
+    const toK = p5.Vector.sub(createVector(kayleighCore.x, kayleighCore.y), this.pos);
+    const dV = toV.mag();
+    const dK = toK.mag();
+    toV.normalize().mult(-60 / (dV + 20)); // gentle push away from V center
+    toK.normalize().mult(40 / (dK + 30));  // gentle pull toward K center
+
+    // Mouse reactive field
+    if (mouseActive) {
+      const toMouse = p5.Vector.sub(createVector(mx, my), this.pos);
+      const dM = toMouse.mag();
+      if (dM < 220) {
+        const strength = map(dM, 0, 220, 0.35, 0, true);
+        toMouse.normalize().mult(strength);
+        this.acc.add(toMouse);
+      }
+    }
+
+    this.acc.add(drift);
+    this.acc.add(waveForce);
+    this.acc.add(toV);
+    this.acc.add(toK);
+
+    // Heartbeat quickens the field
+    this.maxSpeed = this.baseSpeed * (1 + pulse * 0.45);
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    // Wrap edges with soft rebound near sides
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+
+    // Burst particles decay
+    if (this.isBurst) {
+      this.life--;
+      this.sw *= 0.99;
+      if (this.life <= 0 || this.sw < 0.2) {
+        this.respawn();
+      }
+    }
+  }
+
+  respawn() {
+    // Rebirth along the bond axis with sine offset
+    const yWave = sin(t * 2 + random(TWO_PI)) * height * 0.12;
+    this.pos.set(random(width), height / 2 + yWave + randomGaussian(0, height * 0.15));
+    this.vel.set(0, 0);
+    this.history = [];
+    this.sw = random(0.6, 2.2);
+    this.isBurst = false;
+    this.life = -1;
+  }
+
+  display(layer) {
+    if (this.history.length < 2) return;
+    layer.noFill();
+    layer.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, 55, true);
+      layer.stroke(this.hue, this.sat, this.bright, a);
+      layer.strokeWeight(this.sw * map(i, 0, this.history.length, 0.4, 1.2, true));
+      layer.curveVertex(p.x, p.y);
+    }
+    layer.endShape();
+
+    // Bright head
+    layer.noStroke();
+    layer.fill(this.hue, this.sat, 100, 40);
+    layer.ellipse(this.pos.x, this.pos.y, this.sw * 1.4, this.sw * 1.4);
+  }
+}
+
+// === Filament: mouse-reactive neural pathway ===
+class Filament {
+  constructor(startNode, endPt, index) {
+    this.start = createVector(startNode.x, startNode.y);
+    this.end = createVector(endPt.x, endPt.y);
+    this.index = index;
+    this.hue = random() < 0.55 ? PALETTE.burgundyG.h : PALETTE.gold.h;
+    this.sat = random(55, 90);
+    this.bright = random(35, 75);
+    this.thickness = random(0.5, 1.8);
+    this.cp1 = createVector(random(width), random(height));
+    this.cp2 = createVector(random(width), random(height));
+    this.pulseOffset = random(1000);
+    this.travelers = [];
+    for (let i = 0; i < 3; i++) {
+      this.travelers.push({ t: random(1), speed: random(0.002, 0.008), alive: true });
+    }
+  }
+
+  update(mx, my, mouseActive, pulse) {
+    // Control points drift with noise
+    const n1 = noise(this.index * 0.5, t * 0.4);
+    const n2 = noise(this.index * 0.5 + 100, t * 0.35);
+    const midX = (this.start.x + this.end.x) * 0.5;
+    const midY = (this.start.y + this.end.y) * 0.5;
+
+    // Mouse bends filaments toward cursor
+    let targetX = midX + (n1 - 0.5) * width * 0.35;
+    let targetY = midY + (n2 - 0.5) * height * 0.35;
+    if (mouseActive) {
+      const toMouse = createVector(mx - midX, my - midY);
+      const d = toMouse.mag();
+      if (d < 300) {
+        const bend = map(d, 0, 300, 0.55, 0, true);
+        targetX += (mx - midX) * bend;
+        targetY += (my - midY) * bend;
+      }
+    }
+
+    this.cp1.lerp(createVector(targetX, targetY), 0.04);
+    this.cp2.lerp(createVector(this.end.x - (targetX - this.start.x), this.end.y - (targetY - this.start.y)), 0.04);
+
+    // Travelers
+    for (let tr of this.travelers) {
+      tr.t += tr.speed * (1 + pulse * 1.5);
+      if (tr.t > 1) { tr.t = 0; tr.speed = random(0.002, 0.008); }
+    }
+  }
+
+  display(layer) {
+    // Subtle filament body
+    layer.noFill();
+    layer.strokeWeight(this.thickness);
+    layer.stroke(this.hue, this.sat, this.bright, 18);
+    layer.bezier(
+      this.start.x, this.start.y,
+      this.cp1.x, this.cp1.y,
+      this.cp2.x, this.cp2.y,
+      this.end.x, this.end.y
+    );
+
+    // Glowing travelers
+    for (let tr of this.travelers) {
+      const x = bezierPoint(this.start.x, this.cp1.x, this.cp2.x, this.end.x, tr.t);
+      const y = bezierPoint(this.start.y, this.cp1.y, this.cp2.y, this.end.y, tr.t);
+      const tx = bezierTangent(this.start.x, this.cp1.x, this.cp2.x, this.end.x, tr.t);
+      const ty = bezierTangent(this.start.y, this.cp1.y, this.cp2.y, this.end.y, tr.t);
+      const angle = atan2(ty, tx);
+      layer.push();
+      layer.translate(x, y);
+      layer.rotate(angle);
+      layer.noStroke();
+      layer.fill(this.hue, this.sat, 100, 70);
+      layer.ellipse(0, 0, 7, 3);
+      layer.fill(this.hue, this.sat * 0.6, 100, 22);
+      layer.ellipse(0, 0, 18, 8);
+      layer.pop();
+    }
+  }
+}
+</script>
+</body>
+</html>

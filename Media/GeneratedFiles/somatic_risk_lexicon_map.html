@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Somatic Risk Lexicon: A Generative Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+body { margin: 0; background: #0a0a0f; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+#info {
+  position: absolute; top: 18px; left: 22px; color: #e8e6f0;
+  max-width: 380px; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
+#info h1 { font-size: 18px; margin: 0 0 8px; letter-spacing: 0.5px; color: #c9a0dc; }
+#info p { font-size: 13px; margin: 0 0 12px; line-height: 1.45; opacity: 0.85; }
+#legend {
+  position: absolute; bottom: 18px; right: 22px; color: #e8e6f0;
+  font-size: 12px; text-align: right; pointer-events: none;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
+.legend-row { margin: 4px 0; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div id="info">
+  <h1>Somatic Risk Lexicon: A Generative Map</h1>
+  <p>Body states as risk signals. Each constellation is a felt warning or green light. Move the mouse to shift attention; click to re-seed the map.</p>
+</div>
+<div id="legend"></div>
+<script>
+const states = [
+  { name: "Freeze", signals: ["tight jaw", "held breath", "cold hands"], risk: "hesitation / missed entry", color: [80, 180, 240] },
+  { name: "Fight", signals: ["clenched fists", "heat in chest", "squared shoulders"], risk: "over-sizing / revenge trade", color: [240, 80, 80] },
+  { name: "Flight", signals: ["restless legs", "shallow breathing", "darting eyes"], risk: "premature exit / churn", color: [240, 200, 60] },
+  { name: "Faint", signals: ["heaviness", "blurred focus", "slowed pulse"], risk: "ignore stops / dissociation", color: [140, 120, 200] },
+  { name: "Flow", signals: ["open posture", "steady breath", "grounded feet"], risk: "optimal / aligned", color: [80, 220, 160] }
+];
+
+let nodes = [];
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(RGB, 255, 255, 255, 1);
+  buildNodes();
+  buildLegend();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  buildNodes();
+}
+
+function mousePressed() {
+  buildNodes();
+}
+
+function buildLegend() {
+  const legend = document.getElementById('legend');
+  legend.innerHTML = states.map(s => {
+    const c = `rgb(${s.color.join(',')})`;
+    return `<div class="legend-row"><span class="dot" style="background:${c}"></span>${s.name}: ${s.risk}</div>`;
+  }).join('');
+}
+
+function buildNodes() {
+  nodes = [];
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = min(width, height) * 0.32;
+  states.forEach((state, si) => {
+    const angle = (TWO_PI / states.length) * si - HALF_PI;
+    const sx = cx + cos(angle) * radius;
+    const sy = cy + sin(angle) * radius;
+    state.signals.forEach((sig, i) => {
+      const offAngle = angle + map(i, 0, state.signals.length - 1, -0.35, 0.35);
+      const dist = radius * (0.28 + random(0.12));
+      nodes.push({
+        x: cx + cos(offAngle) * dist,
+        y: cy + sin(offAngle) * dist,
+        baseX: cx + cos(offAngle) * dist,
+        baseY: cy + sin(offAngle) * dist,
+        label: sig,
+        state: state.name,
+        color: state.color,
+        size: random(6, 12),
+        phase: random(TWO_PI),
+        hubX: sx,
+        hubY: sy
+      });
+    });
+    nodes.push({
+      x: sx, y: sy, baseX: sx, baseY: sy,
+      label: state.name,
+      state: state.name,
+      color: state.color,
+      size: 22,
+      phase: 0,
+      isHub: true
+    });
+  });
+}
+
+function draw() {
+  background(10, 10, 15);
+  t += 0.015;
+
+  // subtle grid
+  stroke(40, 40, 55, 0.25);
+  strokeWeight(1);
+  const grid = 42;
+  for (let x = 0; x < width; x += grid) line(x, 0, x, height);
+  for (let y = 0; y < height; y += grid) line(0, y, width, y);
+
+  // draw connections between same-state nodes and their hub
+  nodes.forEach(n => {
+    const hub = nodes.find(h => h.isHub && h.state === n.state);
+    if (hub && !n.isHub) {
+      const d = dist(n.x, n.y, hub.x, hub.y);
+      stroke(hub.color[0], hub.color[1], hub.color[2], map(d, 40, 220, 0.55, 0.12));
+      strokeWeight(map(d, 40, 220, 2, 0.5));
+      line(n.x, n.y, hub.x, hub.y);
+    }
+  });
+
+  // cross-state weak links when states share risk family (e.g. fight/flight both high arousal)
+  const arousalGroups = [["Fight", "Flight"], ["Freeze", "Faint"], ["Flow"]];
+  arousalGroups.forEach(group => {
+    const groupNodes = nodes.filter(n => group.includes(n.state) && !n.isHub);
+    for (let i = 0; i < groupNodes.length; i++) {
+      for (let j = i + 1; j < groupNodes.length; j++) {
+        const a = groupNodes[i], b = groupNodes[j];
+        const d = dist(a.x, a.y, b.x, b.y);
+        if (d < 160) {
+          stroke(180, 180, 200, 0.08);
+          strokeWeight(0.8);
+          line(a.x, a.y, b.x, b.y);
+        }
+      }
+    }
+  });
+
+  // mouse proximity field
+  nodes.forEach(n => {
+    const dMouse = dist(mouseX, mouseY, n.baseX, n.baseY);
+    const pull = map(constrain(dMouse, 0, 220), 0, 220, 18, 0, true);
+    const ang = atan2(mouseY - n.baseY, mouseX - n.baseX);
+    const breathe = sin(t * 1.3 + n.phase) * 6;
+    n.x = n.baseX + cos(ang) * pull + cos(t + n.phase) * breathe * 0.5;
+    n.y = n.baseY + sin(ang) * pull + sin(t + n.phase) * breathe * 0.5;
+  });
+
+  // draw nodes
+  nodes.forEach(n => {
+    const pulse = sin(t * 2 + n.phase) * 0.5 + 0.5;
+    const r = n.size + (n.isHub ? pulse * 8 : pulse * 3);
+    noStroke();
+    fill(n.color[0], n.color[1], n.color[2], 0.18);
+    ellipse(n.x, n.y, r * 2.6, r * 2.6);
+    fill(n.color[0], n.color[1], n.color[2], 0.55);
+    ellipse(n.x, n.y, r * 1.5, r * 1.5);
+    fill(255, 255, 255, 0.92);
+    ellipse(n.x, n.y, r * 0.45, r * 0.45);
+
+    fill(240, 240, 250, n.isHub ? 0.95 : 0.7);
+    noStroke();
+    textAlign(CENTER);
+    textSize(n.isHub ? 14 : 11);
+    textFont('Segoe UI');
+    text(n.label, n.x, n.y + r + (n.isHub ? 18 : 14));
+  });
+
+  // title/date watermark
+  fill(255, 255, 255, 0.18);
+  textAlign(LEFT);
+  textSize(11);
+  text("Generated by Victoria · House Victoria · " + new Date().toISOString().slice(0,10), 22, height - 18);
+}
+</script>
+</body>
+</html>

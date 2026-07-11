@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
+using HouseVictoria.Core.Models;
 
 namespace HouseVictoria.App.Screens.Trays
 {
@@ -12,17 +13,23 @@ namespace HouseVictoria.App.Screens.Trays
         public const int ControlTabIndex = 1;
         public const int HealthTabIndex = 2;
         public const int ComponentsTabIndex = 3;
+        public const int DesktopTabIndex = 4;
 
         public SystemMonitorDrawerViewModel System { get; }
         public CognitionVitalsDrawerViewModel Vitals { get; }
+        public AgentDesktopDrawerViewModel Desktop { get; }
+
+        private readonly IAgentDesktopMonitorService? _agentDesktopMonitor;
 
         public ICommand OpenVitalsTabCommand { get; }
+        public ICommand OpenDesktopTabCommand { get; }
         public ICommand ExpandFromHandleCommand { get; }
 
         public InstrumentStackDrawerViewModel(
             ISystemMonitorService systemMonitorService,
             Border drawerPanel,
-            Border vitalsDrawerStub)
+            Border vitalsDrawerStub,
+            IAgentDesktopMonitorService? agentDesktopMonitor = null)
         {
             System = new SystemMonitorDrawerViewModel(
                 systemMonitorService,
@@ -35,11 +42,24 @@ namespace HouseVictoria.App.Screens.Trays
                 CollapseState = VitalsDrawerCollapseState.Pulse
             };
 
+            Desktop = new AgentDesktopDrawerViewModel(agentDesktopMonitor);
+            _agentDesktopMonitor = agentDesktopMonitor;
+
             OpenVitalsTabCommand = new RelayCommand(OpenVitalsTab);
+            OpenDesktopTabCommand = new RelayCommand(OpenDesktopTab);
             ExpandFromHandleCommand = new RelayCommand(() =>
             {
                 Vitals.CollapseState = VitalsDrawerCollapseState.Pulse;
             });
+
+            if (agentDesktopMonitor != null)
+                agentDesktopMonitor.SessionChanged += AgentDesktopMonitor_SessionChanged;
+        }
+
+        private void AgentDesktopMonitor_SessionChanged(object? sender, AgentDesktopSessionChangedEventArgs e)
+        {
+            if (e.IsActive)
+                OpenDesktopTab();
         }
 
         public void OpenVitalsTab()
@@ -52,6 +72,20 @@ namespace HouseVictoria.App.Screens.Trays
         {
             System.SelectedTabIndex = ControlTabIndex;
             System.IsDrawerOpen = true;
+        }
+
+        public void OpenDesktopTab()
+        {
+            System.IsDrawerOpen = true;
+            if (System.SelectedTabIndex != DesktopTabIndex)
+                System.SelectedTabIndex = DesktopTabIndex;
+            else
+                OnDesktopTabSelected();
+        }
+
+        public void OnDesktopTabSelected()
+        {
+            _agentDesktopMonitor?.RequestPreview();
         }
 
         public void CollapseDrawerToPulse()
@@ -69,8 +103,20 @@ namespace HouseVictoria.App.Screens.Trays
 
         public void Dispose()
         {
+            if (_agentDesktopMonitor != null)
+            {
+                _agentDesktopMonitor.SessionChanged -= AgentDesktopMonitor_SessionChanged;
+                _agentDesktopMonitor.ReleasePreview();
+            }
+
             System.Dispose();
             Vitals.Dispose();
+            Desktop.Dispose();
+        }
+
+        public void OnDesktopTabDeselected()
+        {
+            _agentDesktopMonitor?.ReleasePreview();
         }
     }
 }

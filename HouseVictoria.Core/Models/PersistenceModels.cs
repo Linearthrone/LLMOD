@@ -79,6 +79,12 @@ namespace HouseVictoria.Core.Models
         /// <summary>Auto-start <c>hermes gateway</c> on app launch when Hermes is primary or this flag is true.</summary>
         public bool HermesAutoStart { get; set; } = true;
         /// <summary>
+        /// When true, Victoria is allowed to act on the desktop via the Hermes <c>computer_use</c> tool
+        /// (mouse/keyboard/screen). Independent of screen sharing: sharing lets her see, this lets her act.
+        /// Default false for safety.
+        /// </summary>
+        public bool AllowComputerControl { get; set; }
+        /// <summary>
         /// Id of the always-active "primary" persona (the house brain). Managed by IPersonaContext.
         /// At most one persona is primary at a time.
         /// </summary>

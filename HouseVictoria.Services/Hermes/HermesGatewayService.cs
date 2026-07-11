@@ -1,5 +1,6 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Core.Utils;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 
@@ -82,14 +83,16 @@ namespace HouseVictoria.Services.Hermes
 
             try
             {
-                var hermesExe = ResolveHermesExecutable();
+                var hermesExe = HermesPaths.ResolveHermesExecutable();
                 if (hermesExe == null)
                 {
                     Debug.WriteLine("HermesGatewayService: 'hermes' executable not found. Run Tools/setup-hermes-integration.ps1");
                     return false;
                 }
 
-                var envFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".hermes", ".env");
+                var hermesDir = HermesPaths.ResolveHermesDir();
+                var envFile = Path.Combine(hermesDir, ".env");
+                LoggingHelper.WriteToStartupLog($"Hermes config dir resolved: {hermesDir} (.env: {(File.Exists(envFile) ? "found" : "missing")})");
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = hermesExe,
@@ -102,6 +105,7 @@ namespace HouseVictoria.Services.Hermes
                 };
 
                 ApplyHermesEnvironment(startInfo, envFile);
+                SanitizePythonEnvironment(startInfo);
                 startInfo.Environment["FILE_RETRIEVAL_PATH"] = ResolveGeneratedFilesPath();
 
                 Process.Start(startInfo);
@@ -131,6 +135,35 @@ namespace HouseVictoria.Services.Hermes
             return string.Equals(_config.PrimaryLLM, "hermes", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Hermes gateway runs on Python 3.11. Inherited PYTHONPATH/VIRTUAL_ENV from a project
+        /// venv (e.g. Python 3.13) breaks pydantic_core native imports.
+        /// </summary>
+        private static void SanitizePythonEnvironment(ProcessStartInfo startInfo)
+        {
+            foreach (var key in new[] { "PYTHONPATH", "VIRTUAL_ENV", "VIRTUAL_ENV_PROMPT", "CONDA_PREFIX", "CONDA_DEFAULT_ENV" })
+            {
+                startInfo.Environment.Remove(key);
+            }
+
+            PrependPathIfExists(startInfo, Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Programs", "Cua", "cua-driver", "bin"));
+        }
+
+        private static void PrependPathIfExists(ProcessStartInfo startInfo, string directory)
+        {
+            if (!Directory.Exists(directory))
+                return;
+
+            startInfo.Environment.TryGetValue("PATH", out var path);
+            if (string.IsNullOrEmpty(path))
+                path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+
+            if (!path.Split(';').Any(p => string.Equals(p.TrimEnd('\\'), directory.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
+                startInfo.Environment["PATH"] = directory + ";" + path;
+        }
+
         private static void ApplyHermesEnvironment(ProcessStartInfo startInfo, string envFilePath)
         {
             if (File.Exists(envFilePath))
@@ -150,33 +183,6 @@ namespace HouseVictoria.Services.Hermes
                     startInfo.Environment[key] = value;
                 }
             }
-        }
-
-        internal static string? ResolveHermesExecutable()
-        {
-            var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-            foreach (var dir in pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var candidate = Path.Combine(dir.Trim(), OperatingSystem.IsWindows() ? "hermes.exe" : "hermes");
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var fallbacks = new[]
-            {
-                Path.Combine(localAppData, "hermes", "hermes-agent", ".venv", "Scripts", "hermes.exe"),
-                Path.Combine(localAppData, "Programs", "hermes", "hermes.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "bin", "hermes")
-            };
-
-            foreach (var path in fallbacks)
-            {
-                if (File.Exists(path))
-                    return path;
-            }
-
-            return null;
         }
 
         private string ResolveGeneratedFilesPath()

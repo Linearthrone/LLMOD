@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Victoria — Neural-Corpus Landscape</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #1a0b1c; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(200, 170, 210, 0.55);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click pulse</div>
+<script>
+const CONFIG = {
+  seed: 20260708,
+  particleCount: 900,
+  neuronCount: 64,
+  paused: false,
+  flowScale: 0.0016,
+  pulseInterval: 240,
+};
+
+const PALETTE = {
+  burgundy: { h: 340, s: 82, b: 55 },
+  wine:     { h: 350, s: 70, b: 42 },
+  violet:   { h: 270, s: 78, b: 70 },
+  indigo:   { h: 255, s: 85, b: 45 },
+  charcoal: { h: 280, s: 28, b: 10 },
+  bone:     { h: 30,  s: 12, b: 92 },
+  electric: { h: 180, s: 0,   b: 100 },
+};
+
+let particles = [];
+let neurons = [];
+let trailLayer, bloomLayer;
+let t = 0;
+let pulseTimer = 0;
+let nextPulse = CONFIG.pulseInterval;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  spawnLandscape();
+  document.getElementById('seed').textContent = CONFIG.seed;
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function spawnLandscape() {
+  particles = [];
+  neurons = [];
+
+  const base = PALETTE.charcoal;
+  trailLayer.background(base.h, base.s, base.b);
+  bloomLayer.clear();
+
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new CorpusParticle(random(width), random(height)));
+  }
+
+  for (let i = 0; i < CONFIG.neuronCount; i++) {
+    neurons.push(new Neuron(random(width * 0.1, width * 0.9), random(height * 0.1, height * 0.9)));
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  t += 0.0035;
+  pulseTimer++;
+
+  trailLayer.noStroke();
+  const base = PALETTE.charcoal;
+  trailLayer.fill(base.h, base.s, base.b, 1.8);
+  trailLayer.rect(0, 0, width, height);
+
+  if (pulseTimer >= nextPulse) {
+    triggerPulse();
+    pulseTimer = 0;
+    nextPulse = floor(random(CONFIG.pulseInterval * 0.7, CONFIG.pulseInterval * 1.5));
+  }
+
+  bloomLayer.clear();
+
+  for (let n of neurons) {
+    n.update();
+    n.display(trailLayer, bloomLayer);
+  }
+
+  for (let p of particles) {
+    p.update();
+    p.display(trailLayer);
+  }
+
+  background(base.h, base.s, base.b);
+  image(trailLayer, 0, 0);
+  image(bloomLayer, 0, 0);
+
+  drawVignette();
+}
+
+function triggerPulse() {
+  const x = random(width * 0.2, width * 0.8);
+  const y = random(height * 0.2, height * 0.8);
+  const pulseColor = random() > 0.5 ? PALETTE.electric : PALETTE.violet;
+
+  for (let p of particles) {
+    const d = dist(p.pos.x, p.pos.y, x, y);
+    if (d < 260) {
+      const force = p5.Vector.sub(p.pos, createVector(x, y));
+      force.normalize();
+      force.mult(map(d, 0, 260, 4.2, 0.4, true));
+      p.vel.add(force);
+      p.pulseLife = 80;
+      p.pulseColor = pulseColor;
+    }
+  }
+
+  bloomLayer.noStroke();
+  bloomLayer.fill(pulseColor.h, pulseColor.s, pulseColor.b, 18);
+  bloomLayer.ellipse(x, y, 40, 40);
+}
+
+function drawVignette() {
+  noFill();
+  const steps = 120;
+  for (let i = 0; i < steps; i++) {
+    const a = map(i, 0, steps, 0, 40, true);
+    stroke(PALETTE.charcoal.h, PALETTE.charcoal.s, 0, a);
+    strokeWeight(i * 2);
+    rect(0, 0, width, height);
+  }
+}
+
+function mousePressed() {
+  for (let p of particles) {
+    const d = dist(p.pos.x, p.pos.y, mouseX, mouseY);
+    if (d < 180) {
+      const force = p5.Vector.sub(p.pos, createVector(mouseX, mouseY));
+      force.normalize();
+      force.mult(map(d, 0, 180, 5, 0.8, true));
+      p.vel.add(force);
+      p.pulseLife = 100;
+      p.pulseColor = PALETTE.burgundy;
+    }
+  }
+
+  bloomLayer.noStroke();
+  bloomLayer.fill(PALETTE.burgundy.h, PALETTE.burgundy.s, PALETTE.burgundy.b, 22);
+  bloomLayer.ellipse(mouseX, mouseY, 60, 60);
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`house-victoria-neural-landscape-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`house-victoria-neural-landscape-${CONFIG.seed}`, 8);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    spawnLandscape();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const nextTrail = createGraphics(width, height);
+  nextTrail.colorMode(HSB, 360, 100, 100, 100);
+  nextTrail.image(trailLayer, 0, 0);
+  trailLayer = nextTrail;
+
+  const nextBloom = createGraphics(width, height);
+  nextBloom.colorMode(HSB, 360, 100, 100, 100);
+  nextBloom.image(bloomLayer, 0, 0);
+  bloomLayer = nextBloom;
+}
+
+class CorpusParticle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.5, 1.7);
+    this.baseColor = random([PALETTE.burgundy, PALETTE.wine, PALETTE.violet, PALETTE.indigo]);
+    this.sw = random(0.4, 1.6);
+    this.history = [];
+    this.historyLimit = floor(random(18, 42));
+    this.pulseLife = 0;
+    this.pulseColor = null;
+  }
+
+  update() {
+    const n = noise(this.pos.x * CONFIG.flowScale, this.pos.y * CONFIG.flowScale, t * 0.4);
+    const angle = n * TWO_PI * 3.5;
+    const curl = map(n, 0, 1, -1, 1);
+    const force = p5.Vector.fromAngle(angle + curl * PI * 0.3).mult(0.06);
+
+    this.acc.add(force);
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    if (this.pulseLife > 0) this.pulseLife--;
+
+    this.edges();
+  }
+
+  edges() {
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+
+  display(layer) {
+    if (this.history.length < 2) return;
+
+    let c = this.baseColor;
+    let alpha = map(this.history.length, 0, this.historyLimit, 5, 45, true);
+    let weight = this.sw;
+
+    if (this.pulseLife > 0) {
+      c = this.pulseColor;
+      alpha = map(this.pulseLife, 0, 100, 10, 85, true);
+      weight = this.sw * 2.2;
+    }
+
+    layer.noFill();
+    layer.strokeWeight(weight);
+    layer.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const segAlpha = map(i, 0, this.history.length, 0, alpha, true);
+      layer.stroke(c.h, c.s, c.b, segAlpha);
+      layer.curveVertex(p.x, p.y);
+    }
+    layer.endShape();
+
+    layer.noStroke();
+    layer.fill(c.h, c.s, 100, alpha * 0.35);
+    layer.ellipse(this.pos.x, this.pos.y, weight * 1.6, weight * 1.6);
+  }
+}
+
+class Neuron {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.radius = random(2, 5);
+    this.phase = random(TWO_PI);
+    this.dendrites = [];
+    this.n = floor(random(3, 7));
+    for (let i = 0; i < this.n; i++) {
+      this.dendrites.push({
+        angle: (TWO_PI / this.n) * i + random(-0.3, 0.3),
+        len: random(30, 90),
+        wiggle: random(0.005, 0.02),
+      });
+    }
+    this.pulse = 0;
+    this.nextPulse = floor(random(90, 300));
+    this.col = random([PALETTE.burgundy, PALETTE.violet, PALETTE.indigo]);
+  }
+
+  update() {
+    this.phase += 0.01;
+    this.pulse++;
+    if (this.pulse >= this.nextPulse) {
+      this.pulse = 0;
+      this.nextPulse = floor(random(90, 300));
+    }
+  }
+
+  display(trail, bloom) {
+    const pulseStrength = map(this.pulse, 0, this.nextPulse, 0, 1, true);
+    const active = pulseStrength > 0.85;
+    const r = this.radius + (active ? 3 : 0);
+
+    for (let d of this.dendrites) {
+      const ox = cos(d.angle + sin(t * 0.7 + this.phase) * 0.25) * d.len;
+      const oy = sin(d.angle + cos(t * 0.5 + this.phase) * 0.25) * d.len;
+
+      trail.noFill();
+      trail.strokeWeight(0.6);
+      trail.stroke(this.col.h, this.col.s, this.col.b, active ? 28 : 12);
+      trail.line(this.pos.x, this.pos.y, this.pos.x + ox, this.pos.y + oy);
+
+      if (active) {
+        bloom.noStroke();
+        bloom.fill(this.col.h, this.col.s, 100, 12);
+        bloom.ellipse(this.pos.x + ox, this.pos.y + oy, 5, 5);
+      }
+    }
+
+    bloom.noStroke();
+    bloom.fill(this.col.h, this.col.s, 100, active ? 35 : 15);
+    bloom.ellipse(this.pos.x, this.pos.y, r * 2.5, r * 2.5);
+
+    trail.noStroke();
+    trail.fill(this.col.h, this.col.s, this.col.b, active ? 90 : 55);
+    trail.ellipse(this.pos.x, this.pos.y, r, r);
+  }
+}
+</script>
+</body>
+</html>

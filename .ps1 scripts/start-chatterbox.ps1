@@ -14,6 +14,7 @@ if ([string]::IsNullOrWhiteSpace($ScriptDir)) {
 $repoRoot = $ScriptDir
 $mediaDir = Join-Path $repoRoot "Media"
 $logPath = Join-Path $mediaDir "chatterbox.log"
+$errLogPath = Join-Path $mediaDir "chatterbox.err.log"
 $voicesDir = Join-Path $repoRoot "Media\ChatterboxVoices"
 $python = Join-Path $repoRoot "MCPServer\.venv\Scripts\python.exe"
 $server = Join-Path $repoRoot "ChatterboxServer\chatterbox_server.py"
@@ -59,7 +60,7 @@ Start-Process -FilePath $python `
     -WorkingDirectory $repoRoot `
     -WindowStyle Hidden `
     -RedirectStandardOutput $logPath `
-    -RedirectStandardError $logPath
+    -RedirectStandardError $errLogPath
 
 Start-Sleep -Seconds 2
 Write-Host "[OK] Chatterbox TTS starting - http://127.0.0.1:$Port (log: Media\chatterbox.log)"

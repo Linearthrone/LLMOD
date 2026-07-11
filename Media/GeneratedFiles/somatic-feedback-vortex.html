@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Somatic-Digital Feedback Loops — House Victoria</title>
+<script>p5.disableFriendlyErrors = true;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #0d0206; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script>
+// Somatic-Digital Feedback Loops
+// Body heat and pulse drive a particle flow field; touch/mouse create attraction wells.
+// Palette: dark burgundy-gold, symbolic of House Victoria.
+
+const CONFIG = {
+  seed: 20260708,
+  particleCount: 2800,
+  basePulseBPM: 72,
+  heatLifespan: 2.8,
+  drag: 0.96,
+  noiseFreq: 0.0018,
+  noiseSpeed: 0.18,
+  wellStrength: 0.55,
+  wellRadius: 180,
+  trailFade: 22,
+  goldChance: 0.07
+};
+
+const PALETTE = {
+  bgDeep:      '#0d0206', // near-black burgundy
+  bgMid:       '#1f050e', // dark wine
+  burgundy:    '#4a0b1b', // dried blood / velvet
+  crimson:     '#8a0f25', // arterial heat
+  rose:        '#c33a5a', // warm flush
+  goldDust:    '#b8922e', // antique gold
+  goldBright:  '#f3c653', // pulse highlight
+  ivory:       '#f5e6cc'  // rare accent
+};
+
+let particles = [];
+let wells = [];
+let trailLayer, glowLayer;
+let t = 0;
+let pulse = 0;
+let heatField = [];
+let cols, rows;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.noStroke();
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+
+  cols = Math.floor(width / 40) + 1;
+  rows = Math.floor(height / 40) + 1;
+  heatField = new Array(cols * rows).fill(0);
+
+  resetParticles();
+  background(PALETTE.bgDeep);
+}
+
+function resetParticles() {
+  particles = [];
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new Particle());
+  }
+}
+
+function draw() {
+  // Global pulse: 72 BPM mapped to a sine wave
+  let bps = CONFIG.basePulseBPM / 60;
+  t += deltaTime * 0.001;
+  pulse = Math.pow((Math.sin(t * TWO_PI * bps) + 1) * 0.5, 3);
+
+  // Update heat field (decay + noise-driven hot spots)
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let i = y * cols + x;
+      let n = noise(x * 0.05 + t * 0.07, y * 0.05 + t * 0.11, t * 0.03);
+      heatField[i] = lerp(heatField[i], n * (0.4 + pulse * 0.6), 0.04);
+    }
+  }
+
+  // Background breathing layer
+  background(lerpColor(hexToCol(PALETTE.bgDeep), hexToCol(PALETTE.bgMid), pulse * 0.35));
+
+  // Wells: mouse/touch is primary, plus residual from mouse drags
+  wells = [];
+  if (mouseIsPressed || touches.length > 0) {
+    wells.push({ x: mouseX, y: mouseY, strength: CONFIG.wellStrength * (1 + pulse) });
+  }
+
+  // Fade trail buffer
+  trailLayer.fill(lerpColor(hexToCol(PALETTE.bgDeep), hexToCol(PALETTE.burgundy), 0.12));
+  trailLayer.rect(0, 0, width, height);
+
+  // Update particles
+  let nFreq = CONFIG.noiseFreq;
+  let nSpeed = CONFIG.noiseSpeed;
+  for (let p of particles) {
+    p.applyField(nFreq, nSpeed, t);
+    p.applyHeat();
+    for (let w of wells) p.applyWell(w);
+    p.update();
+    p.display(trailLayer, glowLayer);
+  }
+
+  // Composite layers
+  image(trailLayer, 0, 0);
+
+  // Soft additive glow pass
+  glowLayer.clear();
+  for (let p of particles) {
+    if (p.glowAlpha > 0.5) {
+      glowLayer.fill(p.glowHue, 70, 90, p.glowAlpha * 0.35);
+      glowLayer.noStroke();
+      glowLayer.ellipse(p.pos.x, p.pos.y, p.size * 2.4);
+    }
+  }
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  blendMode(BLEND);
+
+  // Central pulse node (subtle)
+  drawPulseNode();
+
+  // HUD
+  drawOverlay();
+}
+
+class Particle {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.baseSize = random(1.2, 3.2);
+    this.size = this.baseSize;
+    this.heat = random(0.2, 0.9);
+    this.hueOffset = random(-12, 18);
+    this.life = random(180, 420);
+    this.maxLife = this.life;
+    this.isGold = random() < CONFIG.goldChance;
+    this.glowAlpha = 0;
+    this.glowHue = 0;
+  }
+
+  applyField(freq, speed, time) {
+    let angle = noise(this.pos.x * freq, this.pos.y * freq, time * speed) * TWO_PI * 3;
+    let field = p5.Vector.fromAngle(angle);
+    let heartMod = pulse * 0.6 + 0.4;
+    field.mult(0.35 * heartMod);
+    this.acc.add(field);
+  }
+
+  applyHeat() {
+    // Read nearby heat field
+    let cx = constrain(Math.floor(this.pos.x / 40), 0, cols - 1);
+    let cy = constrain(Math.floor(this.pos.y / 40), 0, rows - 1);
+    let idx = cy * cols + cx;
+    let localHeat = heatField[idx] || 0;
+    this.heat = lerp(this.heat, localHeat, 0.08);
+
+    // Heat increases speed/agitation slightly
+    let thermal = p5.Vector.random2D();
+    thermal.mult(this.heat * 0.08);
+    this.acc.add(thermal);
+  }
+
+  applyWell(well) {
+    let dir = createVector(well.x - this.pos.x, well.y - this.pos.y);
+    let d = dir.mag();
+    if (d < CONFIG.wellRadius && d > 2) {
+      dir.normalize();
+      let falloff = Math.pow(1 - d / CONFIG.wellRadius, 2);
+      let force = well.strength * falloff * (0.8 + this.heat * 0.5);
+      dir.mult(force);
+      this.acc.add(dir);
+    }
+  }
+
+  update() {
+    this.vel.add(this.acc);
+    this.vel.mult(CONFIG.drag);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    // Wrap edges
+    if (this.pos.x < -10) this.pos.x = width + 10;
+    if (this.pos.x > width + 10) this.pos.x = -10;
+    if (this.pos.y < -10) this.pos.y = height + 10;
+    if (this.pos.y > height + 10) this.pos.y = -10;
+
+    this.life--;
+    let lifeRatio = this.life / this.maxLife;
+    this.size = this.baseSize * (0.6 + lifeRatio * 0.8) * (1 + this.heat * 0.5);
+
+    // Respawn when dead
+    if (this.life <= 0) {
+      this.pos = createVector(random(width), random(height));
+      this.vel.mult(0.1);
+      this.life = random(180, 420);
+      this.maxLife = this.life;
+      this.heat = random(0.2, 0.9);
+      this.isGold = random() < CONFIG.goldChance;
+    }
+
+    // Color state
+    let speed = this.vel.mag();
+    if (this.isGold) {
+      this.glowHue = 44 + this.hueOffset * 0.3; // gold
+      this.glowAlpha = (this.heat * 60 + speed * 25) * (0.5 + pulse * 0.5);
+    } else {
+      this.glowHue = 348 + this.hueOffset + this.heat * 18; // burgundy→crimson
+      this.glowAlpha = (this.heat * 45 + speed * 18) * (0.5 + pulse * 0.5);
+    }
+    this.glowAlpha = constrain(this.glowAlpha, 0, 80);
+  }
+
+  display(trail, glow) {
+    if (this.isGold) {
+      trail.fill(44, 82, 88, this.glowAlpha * 0.55);
+    } else {
+      // Burgundy core, crimson when hot
+      let sat = map(this.heat, 0, 1, 70, 92);
+      let bri = map(this.heat, 0, 1, 35, 78);
+      trail.fill(348 + this.hueOffset + this.heat * 16, sat, bri, this.glowAlpha * 0.5);
+    }
+    trail.noStroke();
+    trail.ellipse(this.pos.x, this.pos.y, this.size);
+  }
+}
+
+function drawPulseNode() {
+  let cx = width / 2;
+  let cy = height / 2;
+  let r = 16 + pulse * 48;
+  noFill();
+  strokeWeight(1.5 + pulse * 2);
+  for (let i = 0; i < 3; i++) {
+    let alpha = map(i, 0, 3, 60, 5) * (0.6 + pulse * 0.4);
+    stroke(44, 78, 90, alpha);
+    ellipse(cx, cy, r + i * 22 + pulse * 40);
+  }
+  // Core
+  noStroke();
+  fill(44, 90, 96, 60 + pulse * 35);
+  ellipse(cx, cy, 6 + pulse * 14);
+}
+
+function drawOverlay() {
+  noStroke();
+  fill(44, 20, 90, 18);
+  textFont('sans-serif');
+  textSize(12);
+  textAlign(LEFT, TOP);
+  text('pulse ' + CONFIG.basePulseBPM + ' BPM | touch creates wells | [s] save [r] reseed', 14, 14);
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('somatic-feedback-vortex-' + CONFIG.seed, 'png');
+  if (key === 'g' || key === 'G') saveGif('somatic-feedback-vortex-' + CONFIG.seed, 5);
+  if (key === 'r' || key === 'R') {
+    CONFIG.seed = floor(random(99999999));
+    randomSeed(CONFIG.seed);
+    noiseSeed(CONFIG.seed);
+    resetParticles();
+    trailLayer.background(hexToCol(PALETTE.bgDeep));
+  }
+  if (key === ' ') {
+    if (isLooping()) noLoop(); else loop();
+  }
+}
+
+function mousePressed() {
+  wells.push({ x: mouseX, y: mouseY, strength: CONFIG.wellStrength * 1.4 });
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  cols = Math.floor(width / 40) + 1;
+  rows = Math.floor(height / 40) + 1;
+  heatField = new Array(cols * rows).fill(0);
+  resetParticles();
+}
+
+function hexToCol(hex) {
+  let r = parseInt(hex.slice(1, 3), 16) / 255;
+  let g = parseInt(hex.slice(3, 5), 16) / 255;
+  let b = parseInt(hex.slice(5, 7), 16) / 255;
+  let c = color(r * 360, 100, 100, 100);
+  // Approx RGB→HSB: just use RGB mode for conversion via p5 color constructor
+  colorMode(RGB, 255, 255, 255, 255);
+  let cc = color(parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16));
+  colorMode(HSB, 360, 100, 100, 100);
+  return cc;
+}
+</script>
+</body>
+</html>

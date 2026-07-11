@@ -414,9 +414,9 @@ namespace HouseVictoria.App.Screens.Trays
                 await _dispatcher.InvokeAsync(() =>
                 {
                     ServerStatuses.Clear();
-                    foreach (var status in statuses.Values)
+                    foreach (var kvp in statuses)
                     {
-                        ServerStatuses.Add(new ServerStatusViewModel(status, _systemMonitorService));
+                        ServerStatuses.Add(new ServerStatusViewModel(kvp.Key, kvp.Value, _systemMonitorService));
                     }
                 }, DispatcherPriority.Normal);
             }
@@ -526,6 +526,7 @@ namespace HouseVictoria.App.Screens.Trays
     public class ServerStatusViewModel : ObservableObject
     {
         private ServerStatus _status;
+        private readonly string _serverKey;
         private readonly ISystemMonitorService _systemMonitorService;
 
         public string Name => _status.Name;
@@ -535,8 +536,9 @@ namespace HouseVictoria.App.Screens.Trays
         public ICommand RestartCommand { get; }
         public ICommand StopCommand { get; }
 
-        public ServerStatusViewModel(ServerStatus status, ISystemMonitorService systemMonitorService)
+        public ServerStatusViewModel(string serverKey, ServerStatus status, ISystemMonitorService systemMonitorService)
         {
+            _serverKey = serverKey;
             _status = status;
             _systemMonitorService = systemMonitorService;
             StartCommand = new RelayCommand(async () => await StartServerAsync(), () => !IsRunning);
@@ -548,7 +550,7 @@ namespace HouseVictoria.App.Screens.Trays
         {
             try
             {
-                await _systemMonitorService.StartServerAsync(_status.Name);
+                await _systemMonitorService.StartServerAsync(_serverKey);
             }
             catch (Exception ex)
             {
@@ -560,7 +562,7 @@ namespace HouseVictoria.App.Screens.Trays
         {
             try
             {
-                await _systemMonitorService.RestartServerAsync(_status.Name);
+                await _systemMonitorService.RestartServerAsync(_serverKey);
             }
             catch (Exception ex)
             {
@@ -572,7 +574,7 @@ namespace HouseVictoria.App.Screens.Trays
         {
             try
             {
-                await _systemMonitorService.StopServerAsync(_status.Name);
+                await _systemMonitorService.StopServerAsync(_serverKey);
             }
             catch (Exception ex)
             {

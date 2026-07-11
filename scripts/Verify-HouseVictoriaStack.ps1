@@ -83,7 +83,7 @@ catch {
 }
 
 try {
-    $body = '{"messages":[{"role":"user","content":"ping"}]}'
+    $body = '{"message":"ping"}'
     $null = Invoke-WebRequest -Uri "$base/api/remote/v1/chat" -UseBasicParsing -Method POST `
         -Headers @{ Authorization = 'Bearer short' } -ContentType 'application/json; charset=utf-8' `
         -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 8 -ErrorAction Stop
@@ -101,15 +101,31 @@ catch {
 
 if (-not [string]::IsNullOrWhiteSpace($token)) {
     try {
-        $bodyOk = '{"messages":[{"role":"user","content":"ping"}]}'
+        $bodyOk = '{"message":"ping"}'
         $respC = Invoke-WebRequest -Uri "$base/api/remote/v1/chat" -UseBasicParsing -Method POST `
             -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json; charset=utf-8' `
             -Body ([System.Text.Encoding]::UTF8.GetBytes($bodyOk)) -TimeoutSec 120 -ErrorAction Stop
         $cLen = [Math]::Min(200, $respC.Content.Length)
-        $null = $lines.Add("[remote-chat-valid-token] $($respC.StatusCode) snippet=$($respC.Content.Substring(0, $cLen))")
+        $null = $lines.Add("[remote-chat-valid-token] PASS $($respC.StatusCode) snippet=$($respC.Content.Substring(0, $cLen))")
     }
     catch {
-        $null = $lines.Add("[remote-chat-valid-token] FAIL $(Get-ErrDetail $_)")
+        $detail = Get-ErrDetail $_
+        # Auth + connectivity are proven the moment we get any HTTP response other than 401.
+        # A downstream business error (e.g. no AI contact configured) still returns 400, but is
+        # NOT a smoke failure for this check -- surface the status/body so it is not mistaken for a
+        # socket failure. Only 401/unauthorized or a real transport error counts as FAIL.
+        if ($detail -match '\b401\b' -or $detail -match 'unauthorized') {
+            $null = $lines.Add("[remote-chat-valid-token] FAIL auth rejected valid token: $detail")
+        }
+        elseif ($detail -match 'message_required') {
+            $null = $lines.Add("[remote-chat-valid-token] FAIL payload contract regressed: $detail")
+        }
+        elseif ($detail -match '\bHTTP\s+\d+\b') {
+            $null = $lines.Add("[remote-chat-valid-token] PASS auth+connectivity ok, downstream: $detail")
+        }
+        else {
+            $null = $lines.Add("[remote-chat-valid-token] FAIL $detail")
+        }
     }
 }
 

@@ -139,7 +139,7 @@
         android:layout_gravity="bottom"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="88dp"
+        android:layout_marginBottom="160dp"
         android:visibility="gone"
         app:cardBackgroundColor="@color/hv_surface_elevated"
         app:cardCornerRadius="20dp"
@@ -197,7 +197,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_margin="12dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="84dp"
         app:cardBackgroundColor="@color/hv_surface"
         app:cardCornerRadius="@dimen/input_bar_radius"
         app:cardElevation="12dp"
@@ -217,16 +220,32 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
+                android:gravity="top|start"
                 android:hint="@string/hint_message"
                 android:imeOptions="actionSend"
                 android:inputType="textCapSentences|textMultiLine"
-                android:maxLines="5"
+                android:maxLines="6"
                 android:minHeight="48dp"
+                android:overScrollMode="ifContentScrolls"
                 android:paddingStart="12dp"
                 android:paddingEnd="8dp"
+                android:scrollbars="vertical"
+                android:scrollHorizontally="false"
                 android:textColor="@color/hv_text_primary"
                 android:textColorHint="@color/hv_text_muted"
                 android:textSize="16sp" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/attachFab"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="@string/cd_attach_image"
+                app:backgroundTint="@color/hv_surface_elevated"
+                app:fabCustomSize="@dimen/fab_size"
+                app:maxImageSize="22dp"
+                app:srcCompat="@drawable/ic_attach_image"
+                app:tint="@color/hv_primary" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/micFab"
@@ -253,5 +272,12 @@
                 app:tint="@color/hv_background" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:menu="@menu/menu_bottom_nav" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

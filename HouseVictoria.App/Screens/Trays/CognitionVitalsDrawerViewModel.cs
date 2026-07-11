@@ -36,6 +36,7 @@ namespace HouseVictoria.App.Screens.Trays
         private readonly IAutonomyService? _autonomyService;
         private readonly ITradingService? _tradingService;
         private readonly IPersonaContext? _personaContext;
+        private readonly ICognitionThoughtStreamService? _thoughtStream;
         private readonly AppConfig? _appConfig;
         private DateTime _lastTradingVitalsPollUtc = DateTime.MinValue;
         private int _selectedTabIndex;
@@ -61,6 +62,13 @@ namespace HouseVictoria.App.Screens.Trays
                 _autonomyService = App.GetService<IAutonomyService>();
                 _tradingService = App.GetService<ITradingService>();
                 _personaContext = App.GetService<IPersonaContext>();
+                _thoughtStream = App.GetService<ICognitionThoughtStreamService>();
+
+                if (_thoughtStream != null)
+                {
+                    _thoughtStream.StreamChanged += OnThoughtStreamChanged;
+                    RunOnUiThread(() => ApplyThoughtStream());
+                }
 
                 if (_autonomyService != null)
                 {
@@ -183,6 +191,20 @@ namespace HouseVictoria.App.Screens.Trays
         {
             get => _cognitionRhythmDescription;
             set => SetProperty(ref _cognitionRhythmDescription, value);
+        }
+
+        private IReadOnlyList<CognitionThoughtSubject> _thoughtSubjects = Array.Empty<CognitionThoughtSubject>();
+        public IReadOnlyList<CognitionThoughtSubject> ThoughtSubjects
+        {
+            get => _thoughtSubjects;
+            private set => SetProperty(ref _thoughtSubjects, value);
+        }
+
+        private string _latestThoughtSnippet = string.Empty;
+        public string LatestThoughtSnippet
+        {
+            get => _latestThoughtSnippet;
+            private set => SetProperty(ref _latestThoughtSnippet, value);
         }
 
         private string _autonomyLevelLabel = "Mid";
@@ -533,6 +555,26 @@ namespace HouseVictoria.App.Screens.Trays
         private void OnAutonomyVitalsChanged(object? sender, CognitionVitalsChangedEventArgs e) =>
             RunOnUiThread(() => ApplyVitals(e.Vitals));
 
+        private void OnThoughtStreamChanged(object? sender, CognitionThoughtStreamChangedEventArgs e) =>
+            RunOnUiThread(() => ApplyThoughtStream(e));
+
+        private void ApplyThoughtStream(CognitionThoughtStreamChangedEventArgs? e = null)
+        {
+            if (_thoughtStream == null)
+                return;
+
+            var subjects = e?.Subjects ?? _thoughtStream.GetActiveSubjects();
+            ThoughtSubjects = subjects;
+            LatestThoughtSnippet = e?.LatestSnippet ?? _thoughtStream.GetLatestSnippet() ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(e?.Caption))
+                CognitionRhythmDescription = e.Caption;
+            else if (!string.IsNullOrWhiteSpace(_thoughtStream.GetStreamCaption()))
+                CognitionRhythmDescription = _thoughtStream.GetStreamCaption()!;
+            else if (!string.IsNullOrWhiteSpace(LatestThoughtSnippet))
+                CognitionRhythmDescription = LatestThoughtSnippet;
+        }
+
         private void OnAutonomyLevelChanged(object? sender, EventArgs e) =>
             RunOnUiThread(RefreshAutonomyLevel);
 
@@ -620,7 +662,11 @@ namespace HouseVictoria.App.Screens.Trays
             CognitionBpm = vitals.BeatsPerMinute;
             CognitionIntensity = vitals.Intensity;
             CognitionWaveColorHex = vitals.WaveColorHex;
-            CognitionRhythmDescription = string.IsNullOrWhiteSpace(vitals.Label) ? "Present" : vitals.Label;
+
+            _thoughtStream?.NotifyAutonomyVitals(vitals);
+
+            if (_thoughtStream == null || _thoughtStream.GetActiveSubjects().Count == 0)
+                CognitionRhythmDescription = string.IsNullOrWhiteSpace(vitals.Label) ? "Present" : vitals.Label;
 
             var levelLabel = AutonomyLevelLabel;
             AutonomyStatusText = vitals.AutonomyRunning
@@ -675,6 +721,9 @@ namespace HouseVictoria.App.Screens.Trays
                 _autonomyService.AutonomyLevelChanged -= OnAutonomyLevelChanged;
                 _autonomyService.ActionLogChanged -= OnActionLogChanged;
             }
+
+            if (_thoughtStream != null)
+                _thoughtStream.StreamChanged -= OnThoughtStreamChanged;
         }
     }
 }

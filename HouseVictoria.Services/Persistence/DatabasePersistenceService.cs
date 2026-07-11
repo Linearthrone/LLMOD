@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Dapper;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Core.Utils;
 using HouseVictoria.Services.Memory;
 
 namespace HouseVictoria.Services.Persistence
@@ -20,6 +21,8 @@ namespace HouseVictoria.Services.Persistence
         private readonly string _dataBankFilesPath;
         private readonly AppConfig? _appConfig;
         private readonly PgVectorClient? _pgVector;
+
+        public string DatabasePath => _databasePath;
 
         public DatabasePersistenceService(AppConfig? appConfig = null, string basePath = "Data")
         {
@@ -39,6 +42,8 @@ namespace HouseVictoria.Services.Persistence
             InitializeDatabase();
             EnsureMemoryV2Columns();
             EnsureMemoryFts();
+            Debug.WriteLine($"DatabasePersistenceService: db={_databasePath}, files={_dataBankFilesPath}");
+            LoggingHelper.WriteToStartupLog($"DatabasePersistenceService: db={_databasePath}, files={_dataBankFilesPath}");
         }
 
         private static List<DataBankEntry> DeserializeDataEntries(string? dataEntriesJson)
@@ -506,21 +511,21 @@ namespace HouseVictoria.Services.Persistence
             using var connection = new SQLiteConnection(_connectionString);
             await connection.OpenAsync();
 
-            var result = await connection.QueryFirstOrDefaultAsync(
-                "SELECT * FROM DataBanks WHERE Id = @Id",
+            var row = await connection.QueryFirstOrDefaultAsync<DataBankRow>(
+                "SELECT Id, Name, Description, DataEntries, CreatedAt, LastModified FROM DataBanks WHERE Id = @Id",
                 new { Id = bankId });
 
-            if (result == null) return null;
+            if (row == null || string.IsNullOrWhiteSpace(row.Id))
+                return null;
 
-            var dataEntries = DeserializeDataEntries(result.DataEntries);
             return new DataBank
             {
-                Id = result.Id,
-                Name = result.Name,
-                Description = result.Description,
-                DataEntries = dataEntries,
-                CreatedAt = DateTime.Parse(result.CreatedAt),
-                LastModified = DateTime.Parse(result.LastModified)
+                Id = row.Id,
+                Name = row.Name,
+                Description = row.Description,
+                DataEntries = DeserializeDataEntries(row.DataEntries),
+                CreatedAt = DateTime.TryParse(row.CreatedAt, out var created) ? created : DateTime.Now,
+                LastModified = DateTime.TryParse(row.LastModified, out var modified) ? modified : DateTime.Now
             };
         }
 
@@ -529,71 +534,46 @@ namespace HouseVictoria.Services.Persistence
             using var connection = new SQLiteConnection(_connectionString);
             await connection.OpenAsync();
 
-            var results = await connection.QueryAsync("SELECT * FROM DataBanks ORDER BY CreatedAt DESC");
+            var rows = await connection.QueryAsync<DataBankRow>(
+                "SELECT Id, Name, Description, DataEntries, CreatedAt, LastModified FROM DataBanks ORDER BY CreatedAt DESC");
 
             var banks = new List<DataBank>();
-            foreach (var row in results)
+            foreach (var row in rows)
             {
-                try
-                {
-                    var idType = row.GetType().GetProperty("Id");
-                    var nameType = row.GetType().GetProperty("Name");
-                    var descType = row.GetType().GetProperty("Description");
-                    var dataEntryType = row.GetType().GetProperty("DataEntries");
-                    var createdAtType = row.GetType().GetProperty("CreatedAt");
-                    var lastModType = row.GetType().GetProperty("LastModified");
-
-                    if (idType == null || nameType == null || createdAtType == null || lastModType == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Warning: Missing required properties in DataBank row");
-                        continue;
-                    }
-
-                    var idValue = idType!.GetValue(row);
-                    var nameValue = nameType!.GetValue(row);
-                    var createdAtValue = createdAtType!.GetValue(row);
-                    var lastModValue = lastModType!.GetValue(row);
-
-                    if (idValue == null || nameValue == null || createdAtValue == null || lastModValue == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Warning: Null values in DataBank row");
-                        continue;
-                    }
-
-                    var dataEntriesRaw = dataEntryType?.GetValue(row)?.ToString();
-                    var dataEntries = string.IsNullOrWhiteSpace(dataEntriesRaw)
-                        ? new List<DataBankEntry>()
-                        : DeserializeDataEntries(dataEntriesRaw) ?? new List<DataBankEntry>();
-
-                    DateTime createdAt = DateTime.Now;
-                    DateTime lastModified = DateTime.Now;
-                    // createdAtValue and lastModValue are guaranteed to be non-null after the check on line 506
-                    if (DateTime.TryParse(createdAtValue!.ToString(), out DateTime parsedCreatedAt))
-                    {
-                        createdAt = parsedCreatedAt;
-                    }
-                    if (DateTime.TryParse(lastModValue!.ToString(), out DateTime parsedLastModified))
-                    {
-                        lastModified = parsedLastModified;
-                    }
-
-                    banks.Add(new DataBank
-                    {
-                        Id = idValue?.ToString() ?? Guid.NewGuid().ToString(),
-                        Name = nameValue?.ToString() ?? "",
-                        Description = descType?.GetValue(row)?.ToString(),
-                        DataEntries = dataEntries ?? new List<DataBankEntry>(),
-                        CreatedAt = createdAt,
-                        LastModified = lastModified
-                    });
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error parsing DataBank row: {ex.Message}");
+                if (row == null || string.IsNullOrWhiteSpace(row.Id) || string.IsNullOrWhiteSpace(row.Name))
                     continue;
-                }
+
+                var dataEntries = DeserializeDataEntries(row.DataEntries);
+
+                DateTime createdAt = DateTime.TryParse(row.CreatedAt, out var parsedCreated)
+                    ? parsedCreated
+                    : DateTime.Now;
+                DateTime lastModified = DateTime.TryParse(row.LastModified, out var parsedModified)
+                    ? parsedModified
+                    : DateTime.Now;
+
+                banks.Add(new DataBank
+                {
+                    Id = row.Id,
+                    Name = row.Name,
+                    Description = row.Description,
+                    DataEntries = dataEntries,
+                    CreatedAt = createdAt,
+                    LastModified = lastModified
+                });
             }
+
             return banks;
+        }
+
+        private sealed class DataBankRow
+        {
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public string? Description { get; set; }
+            public string? DataEntries { get; set; }
+            public string CreatedAt { get; set; } = string.Empty;
+            public string LastModified { get; set; } = string.Empty;
         }
 
         public async Task AddDataToBankAsync(string bankId, string data)

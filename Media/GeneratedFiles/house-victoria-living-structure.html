@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Victoria — Living Structure</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #0a0210;
+    }
+    canvas { display: block; }
+  </style>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+</head>
+<body>
+<script>
+const CONFIG = {
+  seed: 0,
+  chamberCount: 9,
+  filamentCount: 52,
+  pulseCount: 28,
+  nodeCount: 48,
+  burnInFrames: 280,
+  autoDrift: 0.22,
+  paused: false
+};
+
+let chambers, filaments, pulses, nodes, figures;
+let glowLayer, pulseLayer, dustLayer;
+let cx, cy, t = 0;
+let camX = 0, camY = 0, targetCamX = 0, targetCamY = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  CONFIG.seed = floor(random(1000000));
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  cx = width / 2;
+  cy = height / 2;
+
+  glowLayer = createGraphics(width, height);
+  pulseLayer = createGraphics(width, height);
+  dustLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  pulseLayer.colorMode(HSB, 360, 100, 100, 100);
+  dustLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.blendMode(ADD);
+  pulseLayer.blendMode(ADD);
+  dustLayer.blendMode(ADD);
+
+  generateHouse();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+
+  loop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  cx = width / 2;
+  cy = height / 2;
+  glowLayer.resizeCanvas(width, height);
+  pulseLayer.resizeCanvas(width, height);
+  dustLayer.resizeCanvas(width, height);
+  glowLayer.blendMode(ADD);
+  pulseLayer.blendMode(ADD);
+  dustLayer.blendMode(ADD);
+  generateHouse();
+}
+
+function generateHouse() {
+  chambers = [];
+  for (let i = 0; i < CONFIG.chamberCount; i++) {
+    let depth = i / (CONFIG.chamberCount - 1);
+    let w = lerp(width * 0.14, width * 1.45, depth);
+    let h = lerp(height * 0.12, height * 1.28, depth);
+    let archH = lerp(h * 0.08, h * 0.22, depth);
+    chambers.push({
+      depth: depth,
+      w: w,
+      h: h,
+      archH: archH,
+      hue: lerp(270, 340, depth),
+      sat: lerp(48, 80, depth),
+      wallBri: lerp(18, 44, depth),
+      ribHue: lerp(272, 352, depth),
+      ribBri: lerp(45, 78, depth),
+      lightCount: floor(lerp(1, 6, depth)),
+      lights: []
+    });
+  }
+
+  for (let c of chambers) {
+    for (let k = 0; k < c.lightCount; k++) {
+      let side = floor(random(4));
+      let u = random(0.25, 0.75);
+      let px, py;
+      if (side === 0) { px = -c.w / 2 + u * c.w; py = -c.h / 2 + c.archH * 0.2; }
+      else if (side === 1) { px = c.w / 2 - 2; py = -c.h / 2 + c.archH + u * (c.h - c.archH); }
+      else if (side === 2) { px = -c.w / 2 + u * c.w; py = c.h / 2 - 2; }
+      else { px = -c.w / 2 + 2; py = -c.h / 2 + c.archH + u * (c.h - c.archH); }
+      c.lights.push({
+        x: px, y: py,
+        phase: random(TWO_PI),
+        hue: random([350, 354, 42, 46]),
+        isGold: random() < 0.3,
+        w: random(5, 11),
+        h: random(8, 18)
+      });
+    }
+  }
+
+  filaments = [];
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    let idx1 = floor(random(chambers.length));
+    let idx2 = constrain(idx1 + floor(random(-2, 3)), 0, chambers.length - 1);
+    if (idx2 === idx1) idx2 = constrain(idx1 + 1, 0, chambers.length - 1);
+    let a = randomPointOnChamber(chambers[idx1]);
+    let b = randomPointOnChamber(chambers[idx2]);
+    let depthMix = (chambers[idx1].depth + chambers[idx2].depth) / 2;
+    filaments.push({
+      a: a, b: b,
+      cp: randomMidPoint(a, b, 0.04, 0.12),
+      hue: random([260, 270, 340]),
+      bri: lerp(35, 65, depthMix),
+      alpha: lerp(10, 32, depthMix),
+      weight: lerp(0.4, 1.6, depthMix)
+    });
+  }
+
+  pulses = [];
+  for (let i = 0; i < CONFIG.pulseCount; i++) {
+    let f = random(filaments);
+    pulses.push({
+      filament: f,
+      pos: random(1),
+      speed: random(0.002, 0.008),
+      hue: random([38, 44, 350]),
+      size: random(1.6, 3.8),
+      phase: random(TWO_PI)
+    });
+  }
+
+  nodes = [];
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    let c = chambers[floor(random(1, chambers.length))];
+    let p = randomPointOnChamber(c);
+    nodes.push({
+      chamber: c,
+      lx: p.x, ly: p.y,
+      hue: random([260, 340, 46]),
+      size: random(1.2, 3.2),
+      phase: random(TWO_PI)
+    });
+  }
+
+  figures = {
+    x1: -15, y1: 18,
+    x2: 15, y2: 18,
+    headR: 5,
+    bodyH: 24,
+    reach: 5,
+    phase: random(TWO_PI)
+  };
+}
+
+function randomPointOnChamber(c) {
+  let side = floor(random(4));
+  let u = random(0.15, 0.85);
+  if (side === 0) return { chamber: c, x: -c.w / 2 + u * c.w, y: -c.h / 2 + c.archH * 0.15 };
+  if (side === 1) return { chamber: c, x: c.w / 2 - 1, y: -c.h / 2 + c.archH + u * (c.h - c.archH) };
+  if (side === 2) return { chamber: c, x: -c.w / 2 + u * c.w, y: c.h / 2 - 1 };
+  return { chamber: c, x: -c.w / 2 + 1, y: -c.h / 2 + c.archH + u * (c.h - c.archH) };
+}
+
+function randomMidPoint(a, b, lo, hi) {
+  let mx = (a.x + b.x) / 2;
+  let my = (a.y + b.y) / 2;
+  let off = min(width, height) * random(lo, hi);
+  let ang = random(TWO_PI);
+  return { x: mx + cos(ang) * off, y: my + sin(ang) * off };
+}
+
+function simulateStep() {
+  t += 0.003;
+
+  targetCamX = (mouseX - width / 2) * 0.025;
+  targetCamY = (mouseY - height / 2) * 0.025;
+  targetCamX += noise(t * 0.16, 0) * CONFIG.autoDrift * width * 0.06 - CONFIG.autoDrift * width * 0.03;
+  targetCamY += noise(0, t * 0.16) * CONFIG.autoDrift * height * 0.06 - CONFIG.autoDrift * height * 0.03;
+  camX = lerp(camX, targetCamX, 0.03);
+  camY = lerp(camY, targetCamY, 0.03);
+
+  glowLayer.noStroke();
+  glowLayer.fill(270, 70, 5, 0.6);
+  glowLayer.rect(0, 0, width, height);
+
+  dustLayer.noStroke();
+  dustLayer.fill(270, 60, 4, 1.2);
+  dustLayer.rect(0, 0, width, height);
+
+  for (let c of chambers) {
+    let off = parallaxFor(c.depth);
+    for (let lt of c.lights) {
+      let px = cx + off.x + lt.x;
+      let py = cy + off.y + lt.y;
+      let pulse = 0.78 + 0.22 * sin(t * 1.6 + lt.phase);
+      let h = lt.isGold ? 46 : 352;
+      let s = lt.isGold ? 90 : 78;
+      let b = (lt.isGold ? 88 : 82) * pulse;
+      drawGlow(glowLayer, px, py, h, s, b, 3, 34, 0.75);
+    }
+  }
+
+  for (let n of nodes) {
+    let off = parallaxFor(n.chamber.depth);
+    let px = cx + off.x + n.lx;
+    let py = cy + off.y + n.ly;
+    let pulse = 0.55 + 0.45 * sin(t * 2.4 + n.phase);
+    drawGlow(dustLayer, px, py, n.hue, 72, 66 * pulse, n.size, n.size * 4.5, 0.85);
+  }
+
+  pulseLayer.clear();
+  for (let p of pulses) {
+    p.pos += p.speed;
+    if (p.pos > 1) p.pos -= 1;
+    let f = p.filament;
+    let offA = parallaxFor(f.a.chamber.depth);
+    let offB = parallaxFor(f.b.chamber.depth);
+    let ax = cx + offA.x + f.a.x;
+    let ay = cy + offA.y + f.a.y;
+    let bx = cx + offB.x + f.b.x;
+    let by = cy + offB.y + f.b.y;
+    let mx = cx + (offA.x + offB.x) / 2 + f.cp.x;
+    let my = cy + (offA.y + offB.y) / 2 + f.cp.y;
+    let qx = lerp(lerp(ax, mx, p.pos), lerp(mx, bx, p.pos), p.pos);
+    let qy = lerp(lerp(ay, my, p.pos), lerp(my, by, p.pos), p.pos);
+    let pulse = 0.7 + 0.3 * sin(t * 3 + p.phase);
+    pulseLayer.noStroke();
+    pulseLayer.fill(p.hue, 72, 92, 32 * pulse);
+    pulseLayer.circle(qx, qy, p.size * pulse);
+  }
+
+  let sanctuaryPulse = 0.88 + 0.12 * sin(t * 1.3);
+  drawGlow(glowLayer, cx + camX * 0.15, cy + camY * 0.15, 34, 50, 74 * sanctuaryPulse, 14, 90, 0.85);
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  drawVoid();
+
+  push();
+  for (let i = 0; i < chambers.length; i++) drawChamber(chambers[i]);
+  pop();
+
+  drawFilaments();
+
+  image(glowLayer, 0, 0);
+  image(dustLayer, 0, 0);
+  image(pulseLayer, 0, 0);
+
+  drawSanctuary();
+  drawFigures();
+  drawVignette();
+}
+
+function parallaxFor(depth) {
+  let factor = depth * 0.75 + 0.1;
+  return { x: camX * factor, y: camY * factor };
+}
+
+function drawVoid() {
+  noStroke();
+  let grad = drawingContext.createLinearGradient(0, 0, 0, height);
+  grad.addColorStop(0, color(266, 72, 8, 100).toString('#rrggbbaa'));
+  grad.addColorStop(0.5, color(274, 66, 11, 100).toString('#rrggbbaa'));
+  grad.addColorStop(1, color(282, 58, 15, 100).toString('#rrggbbaa'));
+  drawingContext.fillStyle = grad;
+  drawingContext.fillRect(0, 0, width, height);
+}
+
+function drawChamber(c) {
+  let off = parallaxFor(c.depth);
+  let x = cx + off.x;
+  let y = cy + off.y;
+  let w = c.w;
+  let h = c.h;
+  let ah = c.archH;
+
+  noStroke();
+
+  let wallGrad = drawingContext.createLinearGradient(x - w / 2, y - h / 2, x + w / 2, y + h / 2);
+  wallGrad.addColorStop(0, color(c.hue, c.sat, c.wallBri * 0.45, 100).toString('#rrggbbaa'));
+  wallGrad.addColorStop(0.5, color(c.hue, c.sat, c.wallBri, 100).toString('#rrggbbaa'));
+  wallGrad.addColorStop(1, color(c.hue, c.sat, c.wallBri * 0.4, 100).toString('#rrggbbaa'));
+  drawingContext.fillStyle = wallGrad;
+
+  beginShape();
+  vertex(x - w / 2, y + h / 2);
+  vertex(x - w / 2, y - h / 2 + ah);
+  bezierVertex(x - w / 2, y - h / 2 - ah * 0.45, x + w / 2, y - h / 2 - ah * 0.45, x + w / 2, y - h / 2 + ah);
+  vertex(x + w / 2, y + h / 2);
+  endShape(CLOSE);
+
+  drawingContext.fillStyle = color(268, 78, max(5, c.wallBri * 0.18), 100).toString('#rrggbbaa');
+  beginShape();
+  let inset = min(w, h) * 0.16;
+  let iw = w - inset * 2;
+  let ih = h - inset * 2;
+  vertex(x - iw / 2, y + ih / 2);
+  vertex(x - iw / 2, y - ih / 2 + ah * 0.7);
+  bezierVertex(x - iw / 2, y - ih / 2 - ah * 0.25, x + iw / 2, y - ih / 2 - ah * 0.25, x + iw / 2, y - ih / 2 + ah * 0.7);
+  vertex(x + iw / 2, y + ih / 2);
+  endShape(CLOSE);
+
+  stroke(c.ribHue, 65, c.ribBri, 80);
+  strokeWeight(map(c.depth, 0, 1, 0.9, 3.5));
+  noFill();
+  beginShape();
+  vertex(x - w / 2, y + h / 2);
+  vertex(x - w / 2, y - h / 2 + ah);
+  bezierVertex(x - w / 2, y - h / 2 - ah * 0.45, x + w / 2, y - h / 2 - ah * 0.45, x + w / 2, y - h / 2 + ah);
+  vertex(x + w / 2, y + h / 2);
+  endShape();
+
+  let railCount = floor(map(c.depth, 0, 1, 2, 7));
+  stroke(c.ribHue, 58, c.ribBri * 0.6, 38);
+  strokeWeight(map(c.depth, 0, 1, 0.5, 1.6));
+  for (let r = 1; r < railCount; r++) {
+    let fy = y - h / 2 + ah + (r / railCount) * (h - ah);
+    line(x - w / 2, fy, x + w / 2, fy);
+  }
+
+  let pillarCount = floor(map(c.depth, 0, 1, 2, 5));
+  stroke(c.ribHue, 55, c.ribBri * 0.5, 30);
+  strokeWeight(map(c.depth, 0, 1, 0.4, 1.2));
+  for (let r = 1; r < pillarCount; r++) {
+    let fx = x - w / 2 + (r / pillarCount) * w;
+    line(fx, y - h / 2 + ah, fx, y + h / 2);
+  }
+
+  for (let lt of c.lights) {
+    let px = x + lt.x;
+    let py = y + lt.y;
+    let pulse = 0.78 + 0.22 * sin(t * 1.6 + lt.phase);
+    noStroke();
+    fill(lt.hue, lt.isGold ? 88 : 76, 94, 82 * pulse);
+    rectMode(CENTER);
+    rect(px, py, lt.w, lt.h, 2);
+    rectMode(CORNER);
+  }
+}
+
+function drawFilaments() {
+  noFill();
+  for (let f of filaments) {
+    let offA = parallaxFor(f.a.chamber.depth);
+    let offB = parallaxFor(f.b.chamber.depth);
+    let ax = cx + offA.x + f.a.x;
+    let ay = cy + offA.y + f.a.y;
+    let bx = cx + offB.x + f.b.x;
+    let by = cy + offB.y + f.b.y;
+    let mx = cx + (offA.x + offB.x) / 2 + f.cp.x;
+    let my = cy + (offA.y + offB.y) / 2 + f.cp.y;
+    stroke(f.hue, 50, f.bri, f.alpha);
+    strokeWeight(f.weight);
+    beginShape();
+    vertex(ax, ay);
+    quadraticVertex(mx, my, bx, by);
+    endShape();
+  }
+}
+
+function drawGlow(g, x, y, h, s, b, coreR, haloR, alphaScale) {
+  g.noStroke();
+  let steps = 26;
+  for (let i = steps; i >= 0; i--) {
+    let rr = map(i, 0, steps, coreR, haloR);
+    let aa = map(i, 0, steps, 14, 0.9) * alphaScale;
+    g.fill(h, s, b, aa);
+    g.circle(x, y, rr * 2);
+  }
+}
+
+function drawSanctuary() {
+  let fx = cx + camX * 0.15;
+  let fy = cy + camY * 0.15;
+  let pulse = 0.88 + 0.12 * sin(t * 1.3);
+  noStroke();
+  fill(34, 55, 70, 16 * pulse);
+  circle(fx, fy, 170);
+  stroke(38, 50, 82, 24 * pulse);
+  strokeWeight(1.5);
+  noFill();
+  for (let i = 0; i < 3; i++) {
+    circle(fx, fy, 130 + i * 32 + sin(t * 0.9 + i) * 6);
+  }
+}
+
+function drawFigures() {
+  let fx = cx + camX * 0.15;
+  let fy = cy + camY * 0.15;
+  let f = figures;
+
+  let sway1 = sin(t * 0.7 + f.phase) * 1.0;
+  let sway2 = sin(t * 0.7 + f.phase + PI) * 1.0;
+
+  let x1 = fx + f.x1 + sway1;
+  let y1 = fy + f.y1;
+  let x2 = fx + f.x2 + sway2;
+  let y2 = fy + f.y2;
+
+  noStroke();
+  fill(30, 42, 66, 88);
+  ellipse(x1, y1 - f.bodyH * 0.55, f.headR * 2, f.headR * 2);
+  ellipse(x2, y2 - f.bodyH * 0.55, f.headR * 2, f.headR * 2);
+
+  fill(30, 36, 48, 84);
+  beginShape();
+  vertex(x1 - 5, y1);
+  vertex(x1 + 5, y1);
+  vertex(x1 + 7, y1 + f.bodyH);
+  vertex(x1 - 7, y1 + f.bodyH);
+  endShape(CLOSE);
+  beginShape();
+  vertex(x2 - 5, y2);
+  vertex(x2 + 5, y2);
+  vertex(x2 + 7, y2 + f.bodyH);
+  vertex(x2 - 7, y2 + f.bodyH);
+  endShape(CLOSE);
+
+  stroke(38, 55, 86, 55);
+  strokeWeight(2);
+  noFill();
+  line(x1 + 4, y1 + f.bodyH * 0.32, x1 + 10 + f.reach, y1 + f.bodyH * 0.42);
+  line(x2 - 4, y2 + f.bodyH * 0.32, x2 - 10 - f.reach, y2 + f.bodyH * 0.42);
+
+  let hx1 = x1 + 10 + f.reach;
+  let hy1 = y1 + f.bodyH * 0.42;
+  let hx2 = x2 - 10 - f.reach;
+  let hy2 = y2 + f.bodyH * 0.42;
+  let handDist = dist(hx1, hy1, hx2, hy2);
+  let spark = map(handDist, 0, 36, 1, 0.15, true);
+  noStroke();
+  fill(44, 78, 94, 42 * spark);
+  circle((hx1 + hx2) / 2, (hy1 + hy2) / 2, 10 + spark * 16);
+  stroke(42, 65, 90, 35 * spark);
+  strokeWeight(1.2);
+  noFill();
+  let reachSpan = abs(hx2 - hx1);
+  for (let i = 0; i < 3; i++) {
+    let yy = (hy1 + hy2) / 2 + (i - 1) * 4;
+    let span = reachSpan * (0.3 + i * 0.15) * spark;
+    if (span > 2) line((hx1 + hx2) / 2 - span / 2, yy, (hx1 + hx2) / 2 + span / 2, yy);
+  }
+}
+
+function drawVignette() {
+  let grad = drawingContext.createRadialGradient(width / 2, height / 2, height * 0.28, width / 2, height / 2, height * 0.88);
+  grad.addColorStop(0, color(270, 70, 100, 0).toString('#rrggbbaa'));
+  grad.addColorStop(1, color(272, 80, 5, 24).toString('#rrggbbaa'));
+  noStroke();
+  drawingContext.fillStyle = grad;
+  drawingContext.fillRect(0, 0, width, height);
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') {
+    saveCanvas('house-victoria-living-structure-' + CONFIG.seed, 'png');
+  } else if (key === 'r' || key === 'R') {
+    setup();
+  } else if (key === ' ') {
+    CONFIG.paused = !CONFIG.paused;
+  }
+}
+
+function mousePressed() {
+  targetCamX += (mouseX - width / 2) * 0.08;
+  targetCamY += (mouseY - height / 2) * 0.08;
+}
+</script>
+</body>
+</html>

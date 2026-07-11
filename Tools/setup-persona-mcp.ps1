@@ -3,17 +3,22 @@
 # - Syncs persona databank config.json files
 # - Registers stdio house_victoria MCP in Hermes (required when PrimaryLLM=hermes)
 param(
-    [string]$McpEndpoint = "http://127.0.0.1:8080"
+    [string]$McpEndpoint = "http://127.0.0.1:8080",
+    [switch]$SkipComputerUse
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'HermesShared.ps1')
 $AppConfig = Join-Path $RepoRoot "HouseVictoria.App\App.config"
-$HermesConfig = Join-Path $env:USERPROFILE ".hermes\config.yaml"
+$HermesDir = Get-HermesDir
+$HermesConfig = Join-Path $HermesDir "config.yaml"
 $McpPython = Join-Path $RepoRoot "MCPServer\.venv\Scripts\python.exe"
 $McpPythonEscaped = $McpPython -replace '\\', '/'
+$ComputerUseMcpPackage = 'computer-use-mcp'
 
 Write-Host "=== House Victoria persona MCP setup ===" -ForegroundColor Cyan
+Write-Host ("[INFO] Hermes config dir: " + $HermesDir) -ForegroundColor Cyan
 
 function Get-AppSetting($key) {
     if (-not (Test-Path $AppConfig)) { return $null }
@@ -169,6 +174,31 @@ $hermesVictoriaBlock
 if (Test-Path $HermesConfig) {
     Update-HermesMcpBlock -ConfigPath $HermesConfig -Block $hermesManagedBlock
     Write-Host ('OK: Updated Hermes MCP block in ' + $HermesConfig)
+
+    # Desktop control: keep computer_use registered so a persona-only setup run never drops it.
+    # Mirrors setup-hermes-integration.ps1; opt out with -SkipComputerUse.
+    if (-not $SkipComputerUse) {
+        $cuBlock = @"
+
+  computer_use:
+    command: npx
+    args: ["-y", "$ComputerUseMcpPackage"]
+    timeout: 120
+    enabled: true
+"@
+        $cfgText = Get-Content $HermesConfig -Raw
+        if ($cfgText -match '(?m)^\s*computer_use:\s*$') {
+            Write-Host 'INFO: computer_use MCP already present in config.yaml'
+        } else {
+            if ($cfgText -notmatch 'mcp_servers:') {
+                Add-Content -Path $HermesConfig -Value "`nmcp_servers:"
+            }
+            Add-Content -Path $HermesConfig -Value $cuBlock
+            Write-Host 'OK: Registered computer_use MCP in config.yaml (desktop control)'
+        }
+    } else {
+        Write-Host 'INFO: Skipped computer_use MCP registration (-SkipComputerUse)'
+    }
 } else {
     Write-Host 'INFO: Hermes config not found — run Tools\setup-hermes-integration.ps1 first, then re-run this script.'
 }

@@ -97,6 +97,8 @@ async def create_server():
     await register_memory_tools(mcp, memory_manager)
     await register_data_bank_tools(mcp, storage)
     await register_system_tools(mcp)
+    await register_desktop_tools(mcp)
+    await register_browser_tools(mcp)
     await register_trading_tools(mcp)
     await register_tt_tools(mcp, task_manager, workflow_engine, progress_tracker)
     await register_agent_tools(mcp, agent)
@@ -760,6 +762,14 @@ async def register_system_tools(mcp_server: FastMCP):
                 "save_to_file_retrieval": "Save a document/paper/report to the user's File Retrieval folder (📥 top tray).",
                 "chat_file_markers": "Or put content in [FILE]filename.md[/FILE] in the chat reply (app saves automatically).",
             },
+            "desktop_control_windows": {
+                "list_desktop_windows": "List open window titles and bounds when computer_use lost the browser.",
+                "focus_desktop_window": "Bring a window to the front by title substring before screenshot/click.",
+            },
+            "browser_capture_extension": {
+                "browser_capture_tab": "Screenshot + interactive page map of the ACTIVE browser tab (use instead of computer_use for web pages).",
+                "browser_bridge_health": "Check whether the browser capture bridge (:17891) and extension are connected.",
+            },
             "trading": [
                 "mt4_status", "mt4_list_symbols", "mt4_get_market_data",
                 "mt4_get_open_positions", "mt4_execute_trade", "mt4_close_position",
@@ -775,6 +785,73 @@ async def register_system_tools(mcp_server: FastMCP):
     _tool_functions["list_categories"] = list_categories
     _tool_functions["save_to_file_retrieval"] = save_to_file_retrieval
     _tool_functions["list_house_victoria_tools"] = list_house_victoria_tools
+
+
+async def register_desktop_tools(mcp_server: FastMCP):
+    """Register Windows desktop window helpers for computer-use workflows."""
+    import platform
+
+    if platform.system() != "Windows":
+        return
+
+    from .desktop_windows import focus_desktop_window, list_desktop_windows
+
+    @mcp_server.tool()
+    async def list_desktop_windows_tool(include_minimized: bool = True) -> dict:
+        """List visible top-level windows (title + screen bounds).
+
+        Call this when computer_use loses track of the browser or the wrong app is on top.
+        Use the returned title with focus_desktop_window before the next screenshot.
+        """
+        return list_desktop_windows(include_minimized=include_minimized)
+
+    @mcp_server.tool()
+    async def focus_desktop_window(title_contains: str, exact: bool = False) -> dict:
+        """Bring a window to the foreground by matching part of its title.
+
+        Use after list_desktop_windows when the target browser/app is behind House Victoria,
+        Cursor, or another window. Then take a computer_use get_screenshot to verify.
+        """
+        return focus_desktop_window(title_contains=title_contains, exact=exact)
+
+    _tool_functions["list_desktop_windows"] = list_desktop_windows_tool
+    _tool_functions["focus_desktop_window"] = focus_desktop_window
+
+
+async def register_browser_tools(mcp_server: FastMCP):
+    """Register browser extension capture tools (avoids overlay/desktop depth issues)."""
+    from .browser_capture import bridge_health, request_browser_capture
+
+    @mcp_server.tool()
+    async def browser_bridge_health() -> dict:
+        """Check if the House Victoria browser capture bridge is running on :17891.
+
+        Call before browser_capture_tab if captures time out.
+        Requires: BrowserCaptureBridge running + Chrome/Edge extension loaded.
+        """
+        return bridge_health()
+
+    @mcp_server.tool()
+    async def browser_capture_tab(
+        include_screenshot: bool = True,
+        include_page_map: bool = True,
+    ) -> dict:
+        """Capture the active browser tab: PNG screenshot + interactive element map.
+
+        Use this for ANY task inside a browser tab (GitHub, docs, web apps).
+        Do NOT use computer_use get_screenshot for browser content — the House Victoria
+        overlay pollutes desktop framebuffer captures.
+
+        page_map.elements includes viewport-relative bounds and center coordinates for clicks.
+        screenshot_path points to a saved PNG under ~/.house_victoria/browser_captures/.
+        """
+        return request_browser_capture(
+            include_screenshot=include_screenshot,
+            include_page_map=include_page_map,
+        )
+
+    _tool_functions["browser_bridge_health"] = browser_bridge_health
+    _tool_functions["browser_capture_tab"] = browser_capture_tab
 
 
 async def register_trading_tools(mcp_server: FastMCP):

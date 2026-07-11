@@ -55,6 +55,8 @@ namespace HouseVictoria.App.Screens.Windows
 
         private void DataBankManagementWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            _ = ViewModel.LoadDataBanksAsync();
+
             // Ensure window fits on screen (preserves XAML sizes, adjusts if off-screen or too large)
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() =>
             {

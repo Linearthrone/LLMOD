@@ -36,6 +36,7 @@ namespace HouseVictoria.Core.Models
         public int NewAlerts { get; set; }
         public int TechnicalSignalsFound { get; set; }
         public IReadOnlyList<MarketWatchAlert> Alerts { get; set; } = Array.Empty<MarketWatchAlert>();
+        public string? OfflineReason { get; set; }
     }
 
     public class MarketWatchStatus
@@ -50,5 +51,6 @@ namespace HouseVictoria.Core.Models
         public string? MarketWatchProjectName { get; set; }
         public IReadOnlyList<MarketWatchAlert> PendingAlerts { get; set; } = Array.Empty<MarketWatchAlert>();
         public IReadOnlyList<TechnicalSignalResult> RecentTechnicalSignals { get; set; } = Array.Empty<TechnicalSignalResult>();
+        public string? OfflineReason { get; set; }
     }
 }

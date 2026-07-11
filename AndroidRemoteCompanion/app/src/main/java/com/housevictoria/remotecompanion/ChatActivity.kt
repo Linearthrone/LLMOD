@@ -13,6 +13,7 @@ import android.view.View
 import android.view.animation.AnimationUtils
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
+import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -21,7 +22,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.recyclerview.widget.LinearLayoutManager
+import kotlin.math.max
 import com.google.android.material.snackbar.Snackbar
 import com.housevictoria.remotecompanion.databinding.ActivityChatBinding
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +61,12 @@ class ChatActivity : AppCompatActivity() {
         if (granted) beginAudioRecording() else toast(getString(R.string.toast_mic_required))
     }
 
+    private val pickImageLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { uploadImage(it) } }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.applyToActivity(this)
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityChatBinding.inflate(layoutInflater)
@@ -74,8 +82,10 @@ class ChatActivity : AppCompatActivity() {
         theme = contact.theme()
         chatAdapter.setTheme(theme)
         chatAdapter.setAssistantName(contact.name)
+        chatAdapter.setConfig(config)
 
         applyPersonaTheme()
+        BottomNavHelper.wire(this, binding.bottomNav, R.id.nav_home)
         setupChrome()
         setupChatList()
         setupInputBar()
@@ -120,7 +130,26 @@ class ChatActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRoot) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            binding.inputBarCard.updatePadding(bottom = bars.bottom.coerceAtLeast(0))
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val density = resources.displayMetrics.density
+            val baseMargin = (12 * density).toInt()
+            val bottomNavHeight = (72 * density).toInt()
+            val bottomInset = max(bars.bottom, ime.bottom)
+
+            (binding.inputBarCard.layoutParams as? CoordinatorLayout.LayoutParams)?.let { lp ->
+                lp.bottomMargin = baseMargin + bottomInset + bottomNavHeight
+                binding.inputBarCard.layoutParams = lp
+            }
+
+            (binding.recordingOverlay.layoutParams as? CoordinatorLayout.LayoutParams)?.let { lp ->
+                lp.bottomMargin = (160 * density).toInt() + bottomInset
+                binding.recordingOverlay.layoutParams = lp
+            }
+
+            binding.chatRecycler.updatePadding(
+                bottom = (192 * density).toInt() + ime.bottom
+            )
+
             insets
         }
     }
@@ -148,8 +177,46 @@ class ChatActivity : AppCompatActivity() {
             } else false
         }
 
+        binding.messageInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) scrollToBottom()
+        }
+
         binding.sendFab.setOnClickListener { sendTextMessage() }
         binding.micFab.setOnClickListener { ensureMicPermissionAndStart() }
+        binding.attachFab.setOnClickListener { pickImageLauncher.launch("image/*") }
+    }
+
+    private fun uploadImage(uri: Uri) {
+        if (isSubmitting) return
+        if (config.validate() != null) {
+            toast(getString(R.string.toast_config_required))
+            return
+        }
+        setSubmitting(true)
+        uiScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val temp = File(cacheDir, "upload-${System.currentTimeMillis()}.jpg")
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        temp.outputStream().use { output -> input.copyTo(output) }
+                    } ?: throw IllegalStateException("Could not read image")
+                    val caption = binding.messageInput.text?.toString()?.trim()
+                    apiClient.sendChatImage(config.baseUrl, config.token, temp, caption, contact.id)
+                }
+            }
+            setSubmitting(false)
+            result.onSuccess { outcome ->
+                if (outcome.ok) {
+                    binding.messageInput.setText("")
+                    toast(getString(R.string.toast_image_sent))
+                    loadHistory()
+                } else {
+                    addMessage(MessageRole.ERROR, outcome.text)
+                }
+            }.onFailure { ex ->
+                addMessage(MessageRole.ERROR, ex.message ?: "Image upload failed")
+            }
+        }
     }
 
     private fun setupRecording() {

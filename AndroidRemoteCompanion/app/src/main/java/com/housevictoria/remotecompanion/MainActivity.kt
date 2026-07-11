@@ -14,6 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -23,11 +25,18 @@ class MainActivity : AppCompatActivity() {
     private val uiScope = CoroutineScope(Job() + Dispatchers.Main)
     private var config = CompanionConfig("", "")
     private lateinit var threadAdapter: ThreadAdapter
+    private var systemStatusPollJob: Job? = null
+
+    companion object {
+        private const val SYSTEM_STATUS_POLL_INTERVAL_MS = 12_000L
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        ThemeManager.applyToActivity(this)
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyThemeColors()
 
         config = CompanionPrefs.load(this)
         threadAdapter = ThreadAdapter(config) { contact ->
@@ -43,6 +52,7 @@ class MainActivity : AppCompatActivity() {
         binding.inboxSwipeRefresh.setOnRefreshListener { refreshInbox() }
 
         binding.openContactBookFab.setOnClickListener { AppNavigation.openContactBook(this) }
+        BottomNavHelper.wire(this, binding.bottomNav, R.id.nav_home)
 
         binding.inboxRoot.alpha = 0f
         binding.inboxRoot.scaleX = 0.98f
@@ -55,22 +65,90 @@ class MainActivity : AppCompatActivity() {
             AppNavigation.openSettings(this)
         } else {
             refreshInbox()
+            loadSystemStatus()
+        }
+    }
+
+    private fun applyThemeColors() {
+        val palette = ThemeManager.currentPalette(this)
+        binding.inboxRoot.background = ThemeManager.meshBackground(palette)
+        binding.inboxToolbar.setTitleTextColor(palette.textPrimary)
+        binding.inboxToolbar.setSubtitleTextColor(palette.textSecondary)
+        binding.inboxStatusText.setTextColor(palette.textSecondary)
+        binding.openContactBookFab.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(palette.primary)
+        ThemeManager.strokeCard(binding.systemMonitorInclude.systemMonitorCard, palette)
+        binding.systemMonitorInclude.systemMonitorTitle.setTextColor(palette.primary)
+    }
+
+    private fun loadSystemStatus() {
+        val monitor = binding.systemMonitorInclude
+        val summary = monitor.systemMonitorSummary
+        val cpu = monitor.systemCpuText
+        val gpu = monitor.systemGpuText
+        val ram = monitor.systemRamText
+        val uptime = monitor.systemUptimeText
+        val servers = monitor.systemServersText
+
+        uiScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { apiClient.getSystemStatus(config.baseUrl, config.token) }
+            }
+            result.onSuccess { status ->
+                summary.text = getString(R.string.system_monitor_title)
+                cpu.text = "${getString(R.string.system_cpu)}: ${status.cpuUsagePercent ?: 0}% · ${status.cpuTemperatureC ?: 0}°C"
+                gpu.text = "${getString(R.string.system_gpu)}: ${status.gpuUsagePercent ?: 0}% · ${status.gpuTemperatureC ?: 0}°C"
+                ram.text = "${getString(R.string.system_ram)}: ${status.ramUsedMb ?: 0}/${status.ramTotalMb ?: 0} MB (${status.ramUsagePercent ?: 0}%)"
+                uptime.text = "${getString(R.string.system_uptime)}: ${status.uptimeLabel ?: "—"}"
+                val serverLines = status.servers.orEmpty().joinToString("\n") { s ->
+                    val mark = if (s.isRunning == true) "●" else "○"
+                    "$mark ${s.name ?: "Server"}"
+                }
+                servers.text = serverLines.ifBlank { "—" }
+            }.onFailure {
+                summary.text = getString(R.string.system_unavailable)
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         config = CompanionPrefs.load(this)
+        applyThemeColors()
         threadAdapter = ThreadAdapter(config) { contact ->
             AppNavigation.openChat(this, contact)
         }
         binding.threadsRecycler.adapter = threadAdapter
         if (config.validate() == null) refreshInbox()
+        if (config.validate() == null) loadSystemStatus()
+        startSystemStatusPolling()
+    }
+
+    override fun onPause() {
+        stopSystemStatusPolling()
+        super.onPause()
     }
 
     override fun onDestroy() {
+        stopSystemStatusPolling()
         uiScope.cancel()
         super.onDestroy()
+    }
+
+    private fun startSystemStatusPolling() {
+        stopSystemStatusPolling()
+        if (config.validate() != null) return
+        systemStatusPollJob = uiScope.launch {
+            while (isActive) {
+                delay(SYSTEM_STATUS_POLL_INTERVAL_MS)
+                if (config.validate() == null) loadSystemStatus()
+            }
+        }
+    }
+
+    private fun stopSystemStatusPolling() {
+        systemStatusPollJob?.cancel()
+        systemStatusPollJob = null
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

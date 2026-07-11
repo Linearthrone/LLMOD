@@ -227,6 +227,11 @@ namespace HouseVictoria.Services.SystemMonitor
                     tasks.Add(CheckSTTServerAsync(sttStatus));
                 }
 
+                if (_serverStatuses.TryGetValue("BrowserCapture", out var browserCaptureStatus))
+                {
+                    tasks.Add(CheckBrowserCaptureBridgeAsync(browserCaptureStatus));
+                }
+
                 if (_serverStatuses.TryGetValue("UnrealEngine", out var ueStatus))
                 {
                     tasks.Add(CheckUnrealEngineServerAsync(ueStatus));
@@ -312,6 +317,18 @@ namespace HouseVictoria.Services.SystemMonitor
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Auto-start Hermes failed: {ex.Message}");
+            }
+
+            try
+            {
+                if (_serverStatuses.TryGetValue("BrowserCapture", out var browserCaptureStatus))
+                {
+                    await StartBrowserCaptureBridgeIfNeededAsync(browserCaptureStatus).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Auto-start Browser Capture bridge failed: {ex.Message}");
             }
 
             try
@@ -588,6 +605,14 @@ namespace HouseVictoria.Services.SystemMonitor
                 Type = ServerType.MCP
             };
 
+            _serverStatuses["BrowserCapture"] = new ServerStatus
+            {
+                Name = "Browser Capture Bridge",
+                IsRunning = false,
+                Endpoint = "http://127.0.0.1:17891/health",
+                Type = ServerType.Other
+            };
+
             _serverStatuses["UnrealEngine"] = new ServerStatus
             {
                 Name = "Unreal Engine",
@@ -625,77 +650,76 @@ namespace HouseVictoria.Services.SystemMonitor
 
         public async Task<ServerStatus> GetServerStatusAsync(string serverName)
         {
-            if (_serverStatuses.TryGetValue(serverName, out var status))
+            if (!TryGetServerStatus(serverName, out var key, out var status))
+                throw new KeyNotFoundException($"Server '{serverName}' not found");
+
+            // For MCP server, check actual status if service is available
+            if (key == "MCP" && _mcpService != null &&
+                !string.IsNullOrWhiteSpace(status.Endpoint) &&
+                (DateTime.Now - _lastMCPCheck) > _mcpCheckInterval)
             {
-                // For MCP server, check actual status if service is available
-                if (serverName == "MCP" && _mcpService != null &&
-                    !string.IsNullOrWhiteSpace(status.Endpoint) &&
-                    (DateTime.Now - _lastMCPCheck) > _mcpCheckInterval)
+                try
                 {
-                    try
+                    var isAvailable = await _mcpService.IsServerAvailableAsync(status.Endpoint);
+                    if (status.IsRunning != isAvailable)
                     {
-                        var isAvailable = await _mcpService.IsServerAvailableAsync(status.Endpoint);
-                        if (status.IsRunning != isAvailable)
+                        var previousStatus = new ServerStatus
                         {
-                            var previousStatus = new ServerStatus
-                            {
-                                Name = status.Name,
-                                IsRunning = status.IsRunning,
-                                Endpoint = status.Endpoint,
-                                Uptime = status.Uptime,
-                                LastStarted = status.LastStarted,
-                                LastStopped = status.LastStopped,
-                                Type = status.Type,
-                                CpuUsage = status.CpuUsage,
-                                MemoryUsage = status.MemoryUsage
-                            };
+                            Name = status.Name,
+                            IsRunning = status.IsRunning,
+                            Endpoint = status.Endpoint,
+                            Uptime = status.Uptime,
+                            LastStarted = status.LastStarted,
+                            LastStopped = status.LastStopped,
+                            Type = status.Type,
+                            CpuUsage = status.CpuUsage,
+                            MemoryUsage = status.MemoryUsage
+                        };
 
-                            status.IsRunning = isAvailable;
-                            if (isAvailable && !previousStatus.IsRunning)
-                            {
-                                status.LastStarted = DateTime.Now;
-                            }
-                            else if (!isAvailable && previousStatus.IsRunning)
-                            {
-                                status.LastStopped = DateTime.Now;
-                            }
-
-                            ServerStatusChanged?.Invoke(this, new ServerStatusChangedEventArgs
-                            {
-                                ServerName = "MCP",
-                                PreviousStatus = previousStatus,
-                                CurrentStatus = status
-                            });
+                        status.IsRunning = isAvailable;
+                        if (isAvailable && !previousStatus.IsRunning)
+                        {
+                            status.LastStarted = DateTime.Now;
                         }
-                        _lastMCPCheck = DateTime.Now;
+                        else if (!isAvailable && previousStatus.IsRunning)
+                        {
+                            status.LastStopped = DateTime.Now;
+                        }
+
+                        ServerStatusChanged?.Invoke(this, new ServerStatusChangedEventArgs
+                        {
+                            ServerName = key,
+                            PreviousStatus = previousStatus,
+                            CurrentStatus = status
+                        });
                     }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Error checking MCP server status: {ex.Message}");
-                    }
+                    _lastMCPCheck = DateTime.Now;
                 }
-
-                // Calculate uptime
-                status.Uptime = status.IsRunning && status.LastStarted.HasValue
-                    ? DateTime.Now - status.LastStarted.Value
-                    : TimeSpan.Zero;
-
-                // Return a copy to avoid with expression issues
-                var copy = new ServerStatus
+                catch (Exception ex)
                 {
-                    Name = status.Name,
-                    IsRunning = status.IsRunning,
-                    Endpoint = status.Endpoint,
-                    Uptime = status.Uptime,
-                    LastStarted = status.LastStarted,
-                    LastStopped = status.LastStopped,
-                    Type = status.Type,
-                    CpuUsage = status.CpuUsage,
-                    MemoryUsage = status.MemoryUsage
-                };
-                return copy;
+                    System.Diagnostics.Debug.WriteLine($"Error checking MCP server status: {ex.Message}");
+                }
             }
-            throw new KeyNotFoundException($"Server '{serverName}' not found");
+
+            // Calculate uptime
+            status.Uptime = status.IsRunning && status.LastStarted.HasValue
+                ? DateTime.Now - status.LastStarted.Value
+                : TimeSpan.Zero;
+
+            // Return a copy to avoid with expression issues
+            var copy = new ServerStatus
+            {
+                Name = status.Name,
+                IsRunning = status.IsRunning,
+                Endpoint = status.Endpoint,
+                Uptime = status.Uptime,
+                LastStarted = status.LastStarted,
+                LastStopped = status.LastStopped,
+                Type = status.Type,
+                CpuUsage = status.CpuUsage,
+                MemoryUsage = status.MemoryUsage
+            };
+            return copy;
         }
 
         public async Task<Dictionary<string, ServerStatus>> GetAllServerStatusesAsync()
@@ -736,128 +760,144 @@ namespace HouseVictoria.Services.SystemMonitor
 
         public async Task StopServerAsync(string serverName)
         {
-            if (_serverStatuses.TryGetValue(serverName, out var status))
+            if (!TryGetServerStatus(serverName, out var key, out var status))
+                return;
+
+            if (key == "BrowserCapture")
             {
-                var previousStatus = new ServerStatus
-                {
-                    Name = status.Name,
-                    IsRunning = status.IsRunning,
-                    Endpoint = status.Endpoint,
-                    Uptime = status.Uptime,
-                    LastStarted = status.LastStarted,
-                    LastStopped = status.LastStopped,
-                    Type = status.Type,
-                    CpuUsage = status.CpuUsage,
-                    MemoryUsage = status.MemoryUsage
-                };
-                status.IsRunning = false;
-                status.LastStopped = DateTime.Now;
-                ServerStatusChanged?.Invoke(this, new ServerStatusChangedEventArgs
-                {
-                    ServerName = serverName,
-                    PreviousStatus = previousStatus,
-                    CurrentStatus = status
-                });
+                KillProcessOnPort(17891);
             }
+
+            var previousStatus = new ServerStatus
+            {
+                Name = status.Name,
+                IsRunning = status.IsRunning,
+                Endpoint = status.Endpoint,
+                Uptime = status.Uptime,
+                LastStarted = status.LastStarted,
+                LastStopped = status.LastStopped,
+                Type = status.Type,
+                CpuUsage = status.CpuUsage,
+                MemoryUsage = status.MemoryUsage
+            };
+            status.IsRunning = false;
+            status.LastStopped = DateTime.Now;
+            ServerStatusChanged?.Invoke(this, new ServerStatusChangedEventArgs
+            {
+                ServerName = key,
+                PreviousStatus = previousStatus,
+                CurrentStatus = status
+            });
             await Task.CompletedTask;
         }
 
         public async Task StartServerAsync(string serverName)
         {
-            if (_serverStatuses.TryGetValue(serverName, out var status))
+            if (!TryGetServerStatus(serverName, out var key, out var status))
+                return;
+
+            if (key == "BrowserCapture")
             {
-                if (serverName == "Ollama")
+                await StartBrowserCaptureBridgeIfNeededAsync(status).ConfigureAwait(false);
+                return;
+            }
+
+            if (key == "Ollama")
+            {
+                try
                 {
-                    try
+                    var psi = new ProcessStartInfo
                     {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = "ollama",
-                            Arguments = "serve",
-                            WorkingDirectory = _rootDirectory,
-                            UseShellExecute = true,
-                            CreateNoWindow = false
-                        };
-                        Process.Start(psi);
-                        await Task.Delay(2000).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Start Ollama: {ex.Message}");
-                    }
+                        FileName = "ollama",
+                        Arguments = "serve",
+                        WorkingDirectory = _rootDirectory,
+                        UseShellExecute = true,
+                        CreateNoWindow = false
+                    };
+                    Process.Start(psi);
+                    await Task.Delay(2000).ConfigureAwait(false);
                 }
-                else if (serverName == "LmStudio")
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = "lms",
-                            Arguments = "server start --port 1234",
-                            WorkingDirectory = _rootDirectory,
-                            UseShellExecute = true,
-                            CreateNoWindow = false
-                        };
-                        Process.Start(psi);
-                        await Task.Delay(2000).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Start LM Studio: {ex.Message}");
-                    }
+                    System.Diagnostics.Debug.WriteLine($"Start Ollama: {ex.Message}");
                 }
-                else if (serverName == "AnythingLLM")
+            }
+            else if (key == "LmStudio")
+            {
+                try
                 {
-                    try
+                    var psi = new ProcessStartInfo
                     {
-                        var paths = new[]
+                        FileName = "lms",
+                        Arguments = "server start --port 1234",
+                        WorkingDirectory = _rootDirectory,
+                        UseShellExecute = true,
+                        CreateNoWindow = false
+                    };
+                    Process.Start(psi);
+                    await Task.Delay(2000).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Start LM Studio: {ex.Message}");
+                }
+            }
+            else if (key == "AnythingLLM")
+            {
+                try
+                {
+                    var paths = new[]
+                    {
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "AnythingLLM", "AnythingLLM.exe"),
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "AnythingLLM", "AnythingLLM.exe"),
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "AnythingLLM", "AnythingLLM.exe")
+                    };
+                    foreach (var p in paths)
+                    {
+                        if (File.Exists(p))
                         {
-                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "AnythingLLM", "AnythingLLM.exe"),
-                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "AnythingLLM", "AnythingLLM.exe"),
-                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "AnythingLLM", "AnythingLLM.exe")
-                        };
-                        foreach (var p in paths)
-                        {
-                            if (File.Exists(p))
-                            {
-                                Process.Start(new ProcessStartInfo { FileName = p, UseShellExecute = true });
-                                await Task.Delay(3000).ConfigureAwait(false);
-                                break;
-                            }
+                            Process.Start(new ProcessStartInfo { FileName = p, UseShellExecute = true });
+                            await Task.Delay(3000).ConfigureAwait(false);
+                            break;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Start Anything LLM: {ex.Message}");
-                    }
                 }
-                else if (serverName == "Hermes")
+                catch (Exception ex)
                 {
-                    if (_hermesGatewayService != null)
-                        await _hermesGatewayService.EnsureGatewayRunningAsync().ConfigureAwait(false);
+                    System.Diagnostics.Debug.WriteLine($"Start Anything LLM: {ex.Message}");
                 }
-
-                var previousStatus = new ServerStatus
-                {
-                    Name = status.Name,
-                    IsRunning = status.IsRunning,
-                    Endpoint = status.Endpoint,
-                    Uptime = status.Uptime,
-                    LastStarted = status.LastStarted,
-                    LastStopped = status.LastStopped,
-                    Type = status.Type,
-                    CpuUsage = status.CpuUsage,
-                    MemoryUsage = status.MemoryUsage
-                };
-                status.IsRunning = true;
-                status.LastStarted = DateTime.Now;
-                ServerStatusChanged?.Invoke(this, new ServerStatusChangedEventArgs
-                {
-                    ServerName = serverName,
-                    PreviousStatus = previousStatus,
-                    CurrentStatus = status
-                });
             }
+            else if (key == "Hermes")
+            {
+                if (_hermesGatewayService != null)
+                    await _hermesGatewayService.EnsureGatewayRunningAsync().ConfigureAwait(false);
+            }
+            else if (key == "MCP")
+            {
+                await StartMcpServerIfNeededAsync(status).ConfigureAwait(false);
+                return;
+            }
+
+            var previousStatus = new ServerStatus
+            {
+                Name = status.Name,
+                IsRunning = status.IsRunning,
+                Endpoint = status.Endpoint,
+                Uptime = status.Uptime,
+                LastStarted = status.LastStarted,
+                LastStopped = status.LastStopped,
+                Type = status.Type,
+                CpuUsage = status.CpuUsage,
+                MemoryUsage = status.MemoryUsage
+            };
+            status.IsRunning = true;
+            status.LastStarted = DateTime.Now;
+            ServerStatusChanged?.Invoke(this, new ServerStatusChangedEventArgs
+            {
+                ServerName = key,
+                PreviousStatus = previousStatus,
+                CurrentStatus = status
+            });
             await Task.CompletedTask;
         }
 
@@ -1298,6 +1338,131 @@ namespace HouseVictoria.Services.SystemMonitor
                 UpdateServerStatus(status, false, "MCP");
             }
         }
+
+        private async Task StartBrowserCaptureBridgeIfNeededAsync(ServerStatus status)
+        {
+            const string healthUrl = "http://127.0.0.1:17891/health";
+            status.Endpoint = healthUrl;
+
+            try
+            {
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+                var response = await _httpClient.GetAsync(healthUrl, linked.Token).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    UpdateServerStatus(status, true, "BrowserCapture");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Initial Browser Capture bridge check failed: {ex.Message}");
+            }
+
+            try
+            {
+                var bridgePath = Path.Combine(_rootDirectory, "BrowserCaptureBridge", "bridge_server.py");
+                if (!File.Exists(bridgePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Browser Capture bridge script not found at {bridgePath}");
+                    UpdateServerStatus(status, false, "BrowserCapture");
+                    return;
+                }
+
+                var venvPython = Path.Combine(_rootDirectory, "MCPServer", ".venv", "Scripts", "python.exe");
+                var pythonExe = File.Exists(venvPython) ? venvPython : "python";
+                var mediaDir = Path.Combine(_rootDirectory, "Media");
+                Directory.CreateDirectory(mediaDir);
+                var logPath = Path.Combine(mediaDir, "browser-capture-bridge.log");
+                var inner = $"\"{pythonExe}\" \"{bridgePath}\" >> \"{logPath}\" 2>&1";
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {inner}",
+                    WorkingDirectory = _rootDirectory,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                Process.Start(startInfo);
+                await Task.Delay(2000).ConfigureAwait(false);
+
+                using var verifyCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var verifyLinked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, verifyCts.Token);
+                var verifyResponse = await _httpClient.GetAsync(healthUrl, verifyLinked.Token).ConfigureAwait(false);
+                UpdateServerStatus(status, verifyResponse.IsSuccessStatusCode, "BrowserCapture");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to start Browser Capture bridge: {ex.Message}");
+                UpdateServerStatus(status, false, "BrowserCapture");
+            }
+        }
+
+        private async Task CheckBrowserCaptureBridgeAsync(ServerStatus status)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(status.Endpoint))
+                    return;
+
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token);
+
+                var response = await _httpClient.GetAsync(status.Endpoint, linked.Token).ConfigureAwait(false);
+                var isRunning = response.IsSuccessStatusCode;
+                UpdateServerStatus(status, isRunning, "BrowserCapture");
+            }
+            catch (TaskCanceledException)
+            {
+                UpdateServerStatus(status, false, "BrowserCapture");
+            }
+            catch (HttpRequestException)
+            {
+                UpdateServerStatus(status, false, "BrowserCapture");
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                UpdateServerStatus(status, false, "BrowserCapture");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Browser Capture bridge health check error: {ex.Message}");
+                UpdateServerStatus(status, false, "BrowserCapture");
+            }
+        }
+
+        private static bool TryGetServerStatus(
+            Dictionary<string, ServerStatus> servers,
+            string serverNameOrKey,
+            out string key,
+            out ServerStatus status)
+        {
+            if (servers.TryGetValue(serverNameOrKey, out status!))
+            {
+                key = serverNameOrKey;
+                return true;
+            }
+
+            foreach (var kvp in servers)
+            {
+                if (string.Equals(kvp.Value.Name, serverNameOrKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    key = kvp.Key;
+                    status = kvp.Value;
+                    return true;
+                }
+            }
+
+            status = null!;
+            key = string.Empty;
+            return false;
+        }
+
+        private bool TryGetServerStatus(string serverNameOrKey, out string key, out ServerStatus status) =>
+            TryGetServerStatus(_serverStatuses, serverNameOrKey, out key, out status);
 
         private async Task CheckOllamaServerAsync(ServerStatus status)
         {

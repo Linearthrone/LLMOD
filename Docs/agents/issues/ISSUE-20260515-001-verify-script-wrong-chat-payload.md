@@ -2,8 +2,27 @@
 issue_id: ISSUE-20260515-001
 发现时间: 2026-05-15
 严重程度: P2（一般）
-状态: 待修复
+状态: 已修复并关闭（PM-01 2026-07-08）。DEV 修复 TASK-016，QA 实机回归 TASK-019 PASS（真实 :17890，无 message_required）。016+019 已归档 log/。
+verified_by: QA-01
+verified: 2026-07-08
+closed_by: PM-01
+closed: 2026-07-08
 ---
+
+## QA 实机回归结论（QA-01, 2026-07-08 · TASK-20260708-019）
+
+**PASS（真机）。** 启动 Release 版 `HouseVictoria.App.exe`，`127.0.0.1:17890` 起监听（pid 52120），
+对真实 Remote Companion 端点运行 `scripts/Verify-HouseVictoriaStack.ps1`：
+
+- `[remote-health] 200 {"ok":true,"service":"house-victoria-remote","version":2}`（真实 host 签名）
+- `[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}`
+- `[remote-chat-valid-token] PASS 200`（真实 LLM 回复，非 mock 定值），**全程无 `message_required`**
+- 脚本 `EXITCODE: 0`，证据追加至 `tmpcode/qa-stack-evidence.txt`（第 109-116 行）
+- 测试后已关闭该 app 实例，恢复测试前状态。
+
+原症状（valid-token 误报 `message_required`）已消除。详见
+`Docs/agents/reports/TASK-20260708-019-QA01-to-PM01.md`。
+（注：`[comfy-checkpoint-metadata] NOT_REACHABLE` 为 ComfyUI 未运行，属本 issue 范围外。）
 
 ## 问题描述
 

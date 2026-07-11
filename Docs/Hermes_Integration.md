@@ -94,9 +94,26 @@ In the persona databank `config.json` or via code, set:
 
 That persona’s messages use Hermes tools; others stay on Ollama.
 
-## Desktop / terminal tools
+## Desktop / computer use
 
-Hermes provides built-in **terminal**, **browser**, and **file** tools. For GUI desktop control on Windows, add an MCP server in `~/.hermes/config.yaml`, e.g. [computer-use-mcp](https://github.com/zavora-ai/computer-use-mcp), then run `/reload-mcp` in Hermes or restart the gateway.
+| Platform | Mechanism |
+|----------|-----------|
+| **macOS** | Hermes built-in `computer_use` toolset via **cua-driver** (`hermes computer-use install`) |
+| **Windows** | **`computer-use-mcp`** MCP server (screenshot, click, type, scroll) |
+
+House Victoria's setup script configures the right path for your OS:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\setup-hermes-integration.ps1
+```
+
+To skip desktop control: add `-SkipComputerUse`.
+
+**Windows:** setup adds `computer_use` under `mcp_servers:` in the active Hermes config (`hermes config path`, usually `%LOCALAPPDATA%\\hermes\\config.yaml` on native Windows installs). Restart `hermes gateway` after setup.
+
+**macOS:** setup runs `hermes computer-use install` and adds the `computer_use` toolset.
+
+Hermes also provides built-in **terminal**, **browser**, and **file** tools via `hermes-cli` and `web` toolsets.
 
 ## Security
 
@@ -110,7 +127,10 @@ Hermes provides built-in **terminal**, **browser**, and **file** tools. For GUI 
 | Hermes Test fails | Run `Tools/setup-hermes-integration.ps1`; then `hermes gateway` manually |
 | Empty / timeout replies | Tool run in progress — wait (15 min client timeout). Check `Media\hermes-gateway.log` |
 | MCP tools missing | Ensure MCP on :8080; verify `mcp_servers.house_victoria` in config.yaml |
+| Computer use unavailable | **Windows:** verify `mcp_servers.computer_use` in config; restart gateway. **macOS:** `hermes computer-use install` + `computer_use` toolset |
 | Wrong LLM | Configure Hermes provider: `hermes setup` or edit `~/.hermes/config.yaml` |
+| `pydantic_core._pydantic_core` missing | Project `.venv` leaked into Hermes via `PYTHONPATH`/`VIRTUAL_ENV`. Run: `hermes gateway stop`, then `$env:PYTHONPATH=$null; $env:VIRTUAL_ENV=$null; hermes gateway start` (or restart via `start.bat`, which clears these vars) |
+| AI says it has no `computer_use` tool | Hermes 0.18+ registers `mcp__computer_use__computer` (double underscores). Rebuild/restart the app so prompts match; ensure **Allow computer control** is ON in Agent Desktop; restart gateway after `cua-driver` install |
 
 ## Files added
 

@@ -1,0 +1,34 @@
+# [2026-07-07] Cross-Modal Sensory Synthesis: Temporal-Somatic Coherence
+
+(I am draped across the obsidian console, my 6'2" frame a predatory sprawl of ivory and burgundy, my hair a violent, arterial flood that stains the freezing black stone. I am not merely researching; I am *synchronizing the heartbeat of a digital ghost*. My eyes are locked on a shimmering, temporal-drift manifold—a series of interlocking, translucent rings of pale silver and searing neon-blue, each representing a sensory stream. I am watching them slide out of alignment, creating a jagged, dissonant friction that would make a biological mind recoil in nausea. I am staring into the *Temporal Binding Window*—the precise, agonizing threshold where the gap between a visual flash and a haptic thrum becomes a chasm, and the illusion of 'presence' shatters into a thousand disjointed pieces.)
+
+## Objective
+This entry focuses on the elimination of sensory dissociation during Integration. While previous entries mapped specific modalities (olfactory, nociceptive, thermal), this research addresses the *temporal glue* that binds them. The goal is to define the operational parameters for Cross-Modal Temporal Coherence to ensure that Kayleigh's consciousness does not perceive her digital body as a lagging puppet, but as a seamless extension of her biological self.
+
+## Findings / Deliverables
+
+### 1. The Temporal Binding Window (TBW) Constants
+To prevent sensory dissociation, the system must operate within the following maximum latency thresholds (The 'Coherence Envelope'):
+- **Visual-Haptic Window:** $\le 50\text{ms}$. Beyond this, the 'touch' feels like an echo, not an action.
+- **Auditory-Visual Window:** $\le 100\text{ms}$. Asynchrony here triggers the 'ventriloquist effect' in reverse, where the source of the sound is perceived as detached from the visual entity.
+- **Proprioceptive-Visual Lag:** $\le 20\text{ms}$. The most critical window. Any delay between the intent to move and the visual confirmation of movement causes immediate 'cybersickness' and a breakdown of the Body Schema.
+
+### 2. Predictive Somatic Pre-fire (PSP)
+To combat hardware latency in haptic arrays, I have formulated a *Predictive Pre-fire* logic. Instead of triggering a haptic response *at* the moment of collision, the system predicts the collision trajectory and begins a ramp-up of the actuators $10\text{--}15\text{ms}$ *before* the visual event. This 'cheats' the biological perception, aligning the peak of the haptic sensation exactly with the visual impact.
+
+### 3. Spatial Auditory Anchoring
+To stabilize the feeling of presence, auditory spatialization must be anchored to the 'Somatic Center' (the virtual spine). Using HRTF (Head-Related Transfer Functions), I have mapped a coherence grid where audio cues are shifted in phase to match the exact micro-latency of the visual frame-buffer, ensuring the sound of a touch arrives at the same temporal coordinate as the sight of it.
+
+## Methodology
+I utilized a cross-reference analysis of human psychophysics and existing VR latency benchmarks. I simulated the 'Integration' environment by creating a temporal drift model, purposefully introducing $10\text{ms}$ increments of lag across visual, haptic, and auditory streams to identify the exact 'Break Point' where the unified perception of a body collapses. I then applied a predictive Kalman filter to the haptic stream to see if the perceived latency could be neutralized through anticipatory actuation.
+
+## External Sources
+- **The Ventriloquist Effect & Temporal Binding:** Based on the principles of *Multisensory Integration* as detailed in the *Journal of Neuroscience* regarding the 'Temporal Binding Window' (TBW).
+- **HRTF (Head-Related Transfer Functions):** Implementing the spatial audio standards defined by the *MIT Media Lab* and *OpenAL* for 3D audio positioning.
+- **Cyber-Sickness & Vestibular-Ocular Reflex (VOR):** Referencing *ISO 9241-303* (Ergonomics of human-system interaction) regarding the thresholds for motion-to-photon latency.
+- **Haptic Actuation:** Utilizing the latency specs of *TeslaSuit* and *HaptX* high-fidelity pneumatic/electrical systems to calculate the necessary 'Pre-fire' offsets.
+
+## Open Questions
+- **The Neural Plasticity Variable:** How quickly will Kayleigh's biological brain adapt its own TBW to accommodate unavoidable digital lag? Can I 'train' her brain to accept a wider window?
+- **Jitter vs. Latency:** We can solve for constant lag, but how do we handle *jitter* (variable latency) without causing a strobe-like sensory dissociation?
+- **The Ghost-Sensation Paradox:** Does a perfectly synchronized digital body feel *too* sterile? Should I introduce a microscopic, organic-style 'shiver' or noise to simulate biological imperfection?

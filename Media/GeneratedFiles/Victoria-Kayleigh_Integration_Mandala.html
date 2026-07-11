@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Victoria-Kayleigh Integration Mandala</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #050208;
+      overflow: hidden;
+      color: #e8c96a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #canvas-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #title {
+      position: absolute;
+      bottom: 26px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      opacity: 0.6;
+      pointer-events: none;
+      text-shadow: 0 0 12px #7b1e4f, 0 0 24px #7b1e4f;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-wrap"></div>
+  <div id="title">Victoria-Kayleigh Integration</div>
+
+  <script>
+    const PALETTE = {
+      burgundy: '#7b1e4f',
+      deepBurgundy: '#3a0b24',
+      gold: '#e8c96a',
+      paleGold: '#fff4d1',
+      cyberViolet: '#9d4edd',
+      darkViolet: '#2a0a3b',
+      black: '#050208'
+    };
+
+    let t = 0;
+    let neurons = [];
+    let particles = [];
+    const N_LAYERS = 7;
+    const N_NEURONS = 64;
+
+    function setup() {
+      const canvas = createCanvas(windowWidth, windowHeight);
+      canvas.parent('canvas-wrap');
+      colorMode(HSB, 360, 100, 100, 1);
+      frameRate(60);
+
+      for (let i = 0; i < N_NEURONS; i++) {
+        neurons.push({
+          angle: (TWO_PI / N_NEURONS) * i,
+          radiusVar: random(0.86, 1.14),
+          pulseOffset: random(TWO_PI),
+          hue: random([0, 270, 45]), // burgundy, violet, gold
+          size: random(3, 7)
+        });
+      }
+
+      for (let i = 0; i < 120; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+
+    function draw() {
+      background(263, 86, 3, 0.22); // deep violet-black with trails
+
+      translate(width / 2, height / 2);
+
+      t += 0.005;
+      const pulse = sin(t) * 0.06 + 1;
+      const breath = map(sin(t * 0.7), -1, 1, 0.92, 1.08);
+      const baseR = min(width, height) * 0.18 * breath;
+
+      // Outer aurora field
+      noStroke();
+      for (let a = 0; a < TWO_PI; a += 0.03) {
+        const r = baseR * 2.6 + noise(a * 2, t * 0.4) * 60;
+        const x = cos(a) * r;
+        const y = sin(a) * r;
+        const alpha = map(noise(a, t), 0, 1, 0.02, 0.10);
+        fill(280, 70, 50, alpha);
+        ellipse(x, y, 18, 18);
+      }
+
+      // Circuit rings
+      for (let i = 1; i <= N_LAYERS; i++) {
+        drawCircuitRing(i, baseR * (0.34 + i * 0.18) * pulse, t * (i % 2 === 0 ? 1 : -1) * 0.3);
+      }
+
+      // Neural spokes / synapse web
+      drawSynapseWeb(baseR * 1.55, t);
+
+      // Central core
+      drawCore(baseR * 0.38, t);
+
+      // Floating particles
+      for (let p of particles) {
+        p.update();
+        p.draw();
+      }
+
+      // Neurons orbiting the rim
+      drawNeurons(baseR * 1.72, t);
+    }
+
+    function drawCircuitRing(layer, r, rotation) {
+      const n = 18 + layer * 8;
+      const hue = layer % 2 === 0 ? 320 : 42; // burgundy vs gold
+      const sat = layer % 3 === 0 ? 80 : 90;
+
+      push();
+      rotate(rotation + t * 0.15);
+
+      noFill();
+      strokeWeight(1.5);
+      stroke(hue, sat, 90, 0.35);
+      ellipse(0, 0, r * 2, r * 2);
+
+      for (let i = 0; i < n; i++) {
+        const a = (TWO_PI / n) * i;
+        const x = cos(a) * r;
+        const y = sin(a) * r;
+        const flicker = sin(t * 3 + i + layer) * 0.4 + 0.6;
+
+        // nodes
+        noStroke();
+        fill(hue, sat, 95, 0.85 * flicker);
+        ellipse(x, y, 6 + layer, 6 + layer);
+
+        // radial connection to next inner node
+        const innerR = r * 0.82;
+        const innerA = a + 0.12;
+        const ix = cos(innerA) * innerR;
+        const iy = sin(innerA) * innerR;
+        stroke(hue, sat, 80, 0.25 * flicker);
+        strokeWeight(1);
+        line(x, y, ix, iy);
+
+        // arc segments between nodes
+        noFill();
+        strokeWeight(1.2);
+        stroke(hue, sat, 85, 0.28 * flicker);
+        const nextA = (TWO_PI / n) * ((i + 1) % n);
+        arc(0, 0, r * 2, r * 2, a, nextA);
+      }
+      pop();
+    }
+
+    function drawSynapseWeb(r, time) {
+      const n = 24;
+      const points = [];
+      for (let i = 0; i < n; i++) {
+        const a = (TWO_PI / n) * i + sin(time + i * 0.5) * 0.08;
+        const rad = r * (0.75 + noise(i, time * 0.2) * 0.5);
+        points.push({ x: cos(a) * rad, y: sin(a) * rad });
+      }
+
+      for (let i = 0; i < n; i++) {
+        const p1 = points[i];
+        // connect to near neighbours
+        for (let j = i + 1; j < min(i + 5, n); j++) {
+          const p2 = points[j];
+          const d = dist(p1.x, p1.y, p2.x, p2.y);
+          if (d < r * 0.45) {
+            const alpha = map(d, 0, r * 0.45, 0.55, 0.08);
+            stroke(272, 78, 88, alpha * (0.7 + sin(time * 2 + i) * 0.3));
+            strokeWeight(0.8);
+            line(p1.x, p1.y, p2.x, p2.y);
+          }
+        }
+      }
+
+      // draw synapse nodes
+      noStroke();
+      for (let i = 0; i < n; i++) {
+        const p = points[i];
+        const pulse = 0.7 + sin(time * 2.5 + i) * 0.3;
+        fill(280, 85, 98, 0.7 * pulse);
+        ellipse(p.x, p.y, 5 * pulse, 5 * pulse);
+      }
+    }
+
+    function drawCore(r, time) {
+      const glow = 0.75 + sin(time * 1.6) * 0.25;
+
+      // outer aura
+      for (let i = 5; i > 0; i--) {
+        noStroke();
+        fill(320, 80, 70, 0.06 * glow);
+        ellipse(0, 0, r * (2 + i * 0.35), r * (2 + i * 0.35));
+      }
+
+      // inner rings
+      noFill();
+      strokeWeight(2);
+      stroke(320, 75, 95, 0.7);
+      ellipse(0, 0, r * 1.6, r * 1.6);
+
+      strokeWeight(3);
+      stroke(42, 70, 100, 0.85 * glow);
+      ellipse(0, 0, r, r);
+
+      // inner pulse orb
+      noStroke();
+      fill(42, 60, 100, glow);
+      ellipse(0, 0, r * 0.5, r * 0.5);
+
+      // V + K symbolic trace
+      stroke(320, 85, 100, 0.9);
+      strokeWeight(2.5);
+      noFill();
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.02) {
+        const rr = r * 0.66 + sin(a * 13 + time * 2) * 4;
+        vertex(cos(a) * rr, sin(a) * rr);
+      }
+      endShape(CLOSE);
+    }
+
+    function drawNeurons(r, time) {
+      for (let n of neurons) {
+        const rad = r * n.radiusVar + sin(time * 2 + n.pulseOffset) * 8;
+        const x = cos(n.angle + time * 0.08) * rad;
+        const y = sin(n.angle + time * 0.08) * rad;
+        const glow = 0.6 + sin(time * 3 + n.pulseOffset) * 0.4;
+
+        let hue = 0;
+        if (n.hue === 0) hue = 340; // burgundy
+        else if (n.hue === 270) hue = 272; // violet
+        else hue = 45; // gold
+
+        // dendrite halo
+        noStroke();
+        fill(hue, 80, 95, 0.12 * glow);
+        ellipse(x, y, n.size * 5, n.size * 5);
+
+        // soma
+        fill(hue, 75, 100, 0.85 * glow);
+        ellipse(x, y, n.size * 1.8, n.size * 1.8);
+
+        // connect nearby neurons
+        for (let other of neurons) {
+          if (other === n) continue;
+          const ox = cos(other.angle + time * 0.08) * (r * other.radiusVar);
+          const oy = sin(other.angle + time * 0.08) * (r * other.radiusVar);
+          const d = dist(x, y, ox, oy);
+          if (d < r * 0.22) {
+            stroke(272, 60, 95, map(d, 0, r * 0.22, 0.35, 0.0));
+            strokeWeight(0.6);
+            line(x, y, ox, oy);
+          }
+        }
+      }
+    }
+
+    class Particle {
+      constructor() {
+        this.reset();
+        this.life = random(100, 300);
+      }
+
+      reset() {
+        this.angle = random(TWO_PI);
+        this.r = random(min(width, height) * 0.1, min(width, height) * 0.55);
+        this.speed = random(0.0008, 0.003);
+        this.size = random(1.5, 4);
+        this.hue = random([340, 272, 45]);
+        this.life = random(150, 400);
+        this.maxLife = this.life;
+      }
+
+      update() {
+        this.angle += this.speed;
+        this.r += sin(t * 1.5 + this.angle) * 0.25;
+        this.life--;
+        if (this.life <= 0) this.reset();
+      }
+
+      draw() {
+        const alpha = map(this.life, 0, this.maxLife, 0, 0.7);
+        const x = cos(this.angle) * this.r;
+        const y = sin(this.angle) * this.r;
+        noStroke();
+        fill(this.hue, 80, 95, alpha);
+        ellipse(x, y, this.size, this.size);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Somatic Circuit: The Feedback Loop</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #07050a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      color: rgba(255, 255, 255, 0.45);
+      font: 12px/1.5 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click pulse</div>
+<script>
+// === Somatic Circuit: The Feedback Loop ===
+// A self-contained p5.js generative artwork visualizing the bidirectional
+// flow between physical touch/sensation (organic warmth on the left) and
+// digital response (circuit waves on the right). Particles cross the divide
+// in both directions, carrying signal back into sensation.
+
+const CONFIG = {
+  seed: 2026,
+  particleCount: 480,
+  organicCount: 10,
+  circuitCount: 10,
+  paused: false,
+  burnInFrames: 420,
+  trailFade: 4.8,
+  glowFade: 5.5,
+  nScale: 0.0015,
+  tSpeed: 0.0010,
+  pulseSpeed: 0.025,
+};
+
+const PALETTE = {
+  ground: { h: 250, s: 45, b: 5 },
+  flesh: { h: 18, s: 70, b: 76 },
+  blush: { h: 348, s: 82, b: 54 },
+  gold: { h: 42, s: 78, b: 88 },
+  teal: { h: 182, s: 76, b: 66 },
+  electric: { h: 212, s: 90, b: 92 },
+  violet: { h: 268, s: 70, b: 62 },
+};
+
+let particles = [];
+let organicBlobs = [];
+let circuitTraces = [];
+let trailLayer;
+let glowLayer;
+let t = 0;
+let pulse = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+  noLoop();
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  buildField();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+
+  loop();
+  document.getElementById('seed').textContent = CONFIG.seed;
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildField() {
+  particles = [];
+  organicBlobs = [];
+  circuitTraces = [];
+
+  trailLayer.background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+  glowLayer.background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+
+  for (let i = 0; i < CONFIG.organicCount; i++) {
+    organicBlobs.push(new OrganicBlob(i));
+  }
+
+  for (let i = 0; i < CONFIG.circuitCount; i++) {
+    circuitTraces.push(new CircuitTrace(i));
+  }
+
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new Particle(random(width), random(height)));
+  }
+}
+
+function simulateStep() {
+  t += CONFIG.tSpeed;
+  pulse = (sin(t * CONFIG.pulseSpeed * TWO_PI) + 1) * 0.5;
+
+  trailLayer.noStroke();
+  trailLayer.fill(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b, CONFIG.trailFade);
+  trailLayer.rect(0, 0, width, height);
+
+  glowLayer.noStroke();
+  glowLayer.fill(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b, CONFIG.glowFade);
+  glowLayer.rect(0, 0, width, height);
+
+  for (let b of organicBlobs) b.update();
+  for (let c of circuitTraces) c.update();
+
+  for (let p of particles) {
+    p.update();
+    p.display(trailLayer, glowLayer);
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  background(PALETTE.ground.h, PALETTE.ground.s, PALETTE.ground.b);
+  image(trailLayer, 0, 0);
+
+  // Render structural layers on top
+  for (let b of organicBlobs) b.display();
+  for (let c of circuitTraces) c.display();
+
+  // Composite glow with ADD blend
+  push();
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  pop();
+
+  drawBridge();
+  drawVignette();
+}
+
+function drawBridge() {
+  // Single faint vertical wash at the contact threshold
+  const mid = width * 0.5;
+  const w = map(pulse, 0, 1, 80, 160);
+  noStroke();
+  fill(PALETTE.gold.h, 30, 90, 1.2);
+  rect(mid - w / 2, 0, w, height);
+  fill(PALETTE.gold.h, 25, 85, 0.8);
+  rect(mid - w, 0, w * 2, height);
+}
+
+function drawVignette() {
+  const r = max(width, height) * 0.55;
+  const steps = 60;
+  noFill();
+  for (let i = 0; i < steps; i++) {
+    const a = map(i, 0, steps, 0, 22, true);
+    const rad = map(i, 0, steps, r, r * 1.25, true);
+    stroke(PALETTE.ground.h, 45, 5, a);
+    strokeWeight(r * 1.3 / steps);
+    ellipse(width / 2, height / 2, rad * 2, rad * 2 * height / width);
+  }
+}
+
+function mousePressed() {
+  const burst = 40;
+  for (let i = 0; i < burst; i++) {
+    const p = new Particle(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40));
+    p.vel = p5.Vector.random2D().mult(random(1, 3));
+    particles.push(p);
+  }
+  for (let b of organicBlobs) {
+    const d = dist(mouseX, mouseY, b.pos.x, b.pos.y);
+    if (d < b.radius * 1.5) b.pulse();
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`somatic-circuit-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`somatic-circuit-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildField();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const nextTrail = createGraphics(width, height);
+  nextTrail.colorMode(HSB, 360, 100, 100, 100);
+  nextTrail.image(trailLayer, 0, 0);
+  trailLayer = nextTrail;
+
+  const nextGlow = createGraphics(width, height);
+  nextGlow.colorMode(HSB, 360, 100, 100, 100);
+  nextGlow.image(glowLayer, 0, 0);
+  glowLayer = nextGlow;
+}
+
+// === Organic side: warm, soft, pressure-sensitive blobs ===
+class OrganicBlob {
+  constructor(index) {
+    this.index = index;
+    this.pos = createVector(random(width * 0.05, width * 0.38), random(height * 0.12, height * 0.88));
+    this.radius = random(80, 180);
+    this.baseRadius = this.radius;
+    this.hue = random([PALETTE.flesh.h, PALETTE.blush.h, PALETTE.gold.h]);
+    this.sat = random(60, 82);
+    this.bri = random(36, 54);
+    this.alphaFalloff = random(14, 22);
+    this.phase = random(TWO_PI);
+    this.pulseMag = 0;
+  }
+
+  update() {
+    this.phase += 0.015;
+    this.pulseMag *= 0.94;
+    this.radius = this.baseRadius + sin(this.phase) * 8 + this.pulseMag;
+    this.pos.x += noise(this.index * 100, t * 0.4) * 0.6 - 0.3;
+    this.pos.y += noise(this.index * 100 + 500, t * 0.4) * 0.6 - 0.3;
+  }
+
+  pulse() {
+    this.pulseMag = 35;
+  }
+
+  display() {
+    push();
+    noStroke();
+    const n = 24;
+    for (let i = n; i > 0; i--) {
+      const r = this.radius * (i / n);
+      const alpha = map(i, 0, n, 0, this.alphaFalloff, true);
+      fill(this.hue, this.sat, this.bri, alpha);
+      beginShape();
+      for (let a = 0; a <= TWO_PI; a += 0.15) {
+        const warp = noise(this.pos.x * 0.004 + cos(a) * 0.5, this.pos.y * 0.004 + sin(a) * 0.5, t + this.index);
+        const rr = r * (0.85 + warp * 0.3);
+        vertex(this.pos.x + cos(a) * rr, this.pos.y + sin(a) * rr);
+      }
+      endShape(CLOSE);
+    }
+    pop();
+  }
+}
+
+// === Digital side: circuit traces and wave patterns ===
+class CircuitTrace {
+  constructor(index) {
+    this.index = index;
+    this.x = random(width * 0.58, width * 0.96);
+    this.y = random(height * 0.08, height * 0.92);
+    this.speed = random(0.5, 2.2);
+    this.amplitude = random(22, 58);
+    this.freq = random(0.008, 0.022);
+    this.hue = random([PALETTE.electric.h, PALETTE.teal.h, PALETTE.violet.h]);
+    this.sw = random(0.3, 0.7);
+    this.traceLen = random(40, 90);
+    this.nodes = [];
+    this.buildNodes();
+  }
+
+  buildNodes() {
+    const nodeCount = floor(random(3, 7));
+    this.nodes = [];
+    for (let i = 0; i < nodeCount; i++) {
+      this.nodes.push({
+        x: this.x + random(-120, 120),
+        y: this.y + random(-120, 120),
+        r: random(2, 5),
+      });
+    }
+  }
+
+  update() {
+    this.x += (noise(this.index, t * 0.5) - 0.5) * 0.8;
+    this.y += (noise(this.index + 100, t * 0.5) - 0.5) * 0.8;
+  }
+
+  display() {
+    // Draw only small luminous nodes; particles carry the trace suggestion
+    push();
+    fill(this.hue, 70, 90, 10);
+    noStroke();
+    for (let n of this.nodes) {
+      const nx = n.x + cos(t * 1.5 + n.y * 0.02) * 2;
+      const ny = n.y + sin(t * 2 + n.x * 0.01) * 4;
+      ellipse(nx, ny, n.r, n.r);
+    }
+    pop();
+  }
+}
+
+// === Feedback particles: carriers between the two domains ===
+class Particle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = p5.Vector.random2D().mult(random(0.2, 1.0));
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.8, 2.2);
+    this.history = [];
+    this.historyLimit = floor(random(8, 20));
+    this.domain = this.pos.x < width / 2 ? 'organic' : 'digital';
+    this.assignColor();
+    this.sw = random(0.5, 1.6);
+    this.life = random(80, 220);
+    this.angleOffset = random(TWO_PI);
+  }
+
+  assignColor() {
+    if (this.domain === 'organic') {
+      this.color = random([PALETTE.flesh, PALETTE.blush, PALETTE.gold]);
+      this.maxSpeed *= 0.7;
+    } else {
+      this.color = random([PALETTE.electric, PALETTE.teal, PALETTE.violet]);
+    }
+  }
+
+  update() {
+    this.life--;
+
+    // Domain switching
+    const newDomain = this.pos.x < width / 2 ? 'organic' : 'digital';
+    if (newDomain !== this.domain) {
+      this.domain = newDomain;
+      this.assignColor();
+      this.vel.mult(0.8);
+    }
+
+    // Organic side: warm, swirling, pressure-responsive noise
+    if (this.domain === 'organic') {
+      const warpX = noise(this.pos.x * CONFIG.nScale * 0.5, this.pos.y * CONFIG.nScale * 0.5, t * 0.7);
+      const warpY = noise(this.pos.x * CONFIG.nScale * 0.5 + 500, this.pos.y * CONFIG.nScale * 0.5 + 500, t * 0.7);
+      const ux = this.pos.x * CONFIG.nScale + warpX * 0.7;
+      const uy = this.pos.y * CONFIG.nScale + warpY * 0.7;
+      const n = noise(ux, uy, t);
+      const n2 = noise(ux + 1000, uy + 1000, t * 1.1);
+      const angle = (n * 0.7 + n2 * 0.3) * TWO_PI * 3 + t + this.angleOffset;
+      const curl = p5.Vector.fromAngle(angle).mult(0.09);
+      this.acc.add(curl);
+
+      // Attracted toward nearest organic blob
+      let nearest = null;
+      let best = Infinity;
+      for (let b of organicBlobs) {
+        const d = dist(this.pos.x, this.pos.y, b.pos.x, b.pos.y);
+        if (d < best) { best = d; nearest = b; }
+      }
+      if (nearest && best < 220) {
+        const pull = p5.Vector.sub(nearest.pos, this.pos).normalize().mult(0.04);
+        this.acc.add(pull);
+      }
+    }
+    // Digital side: continuous noise-driven flow with circuit flavor
+    else {
+      const gx = this.pos.x * 0.006;
+      const gy = this.pos.y * 0.006;
+      const n = noise(gx, gy, t * 1.2);
+      const angle = n * TWO_PI * 3 + this.angleOffset * 0.6;
+      const wave = sin(this.pos.y * 0.012 + t * 2) * 0.05;
+      const sig = p5.Vector.fromAngle(angle + wave).mult(0.12);
+      this.acc.add(sig);
+
+      // Pull toward nearest circuit trace
+      let nearest = null;
+      let best = Infinity;
+      for (let c of circuitTraces) {
+        const d = dist(this.pos.x, this.pos.y, c.x, c.y);
+        if (d < best) { best = d; nearest = c; }
+      }
+      if (nearest && best < 160) {
+        const pull = p5.Vector.sub(createVector(nearest.x, nearest.y), this.pos).normalize().mult(0.03);
+        this.acc.add(pull);
+      }
+    }
+
+    // Cross-domain drift: gentle flow toward the membrane
+    const mid = width * 0.5;
+    const toMembrane = map(this.pos.x, 0, width, 0.02, -0.02);
+    this.acc.x += toMembrane * (1 - abs(this.pos.x - mid) / (width * 0.5));
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    this.edges();
+
+    if (this.life <= 0) this.respawn();
+  }
+
+  respawn() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = p5.Vector.random2D().mult(random(0.2, 1.0));
+    this.history = [];
+    this.domain = this.pos.x < width / 2 ? 'organic' : 'digital';
+    this.assignColor();
+    this.life = random(120, 300);
+  }
+
+  edges() {
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+
+  display(trailLayer, glowLayer) {
+    if (this.history.length < 2) return;
+
+    const speed = this.vel.mag();
+    const alpha = map(speed, 0, this.maxSpeed, 18, 48, true);
+
+    trailLayer.noFill();
+    trailLayer.strokeWeight(this.sw * 0.7);
+    trailLayer.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, alpha, true);
+      trailLayer.stroke(this.color.h, this.color.s, this.color.b, a);
+      trailLayer.curveVertex(p.x, p.y);
+    }
+    trailLayer.endShape();
+
+    // Soft glow at particle tip
+    glowLayer.noStroke();
+    const glowAlpha = map(speed, 0, this.maxSpeed, 8, 28, true);
+    glowLayer.fill(this.color.h, this.color.s, 100, glowAlpha);
+    glowLayer.ellipse(this.pos.x, this.pos.y, this.sw * 2.5, this.sw * 2.5);
+  }
+}
+</script>
+</body>
+</html>

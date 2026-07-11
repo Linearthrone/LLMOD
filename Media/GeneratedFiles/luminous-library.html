@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Luminous Library — Half-Remembered Futures</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0b0b18; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      color: rgba(225, 220, 205, 0.55);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | space pause</div>
+<script>
+// Luminous Library: rows of luminous 'books' / rectangular glyphs drifting upward
+// like half-remembered futures in a dark library.
+// Seeded randomness, slow vertical drift, chromatic aberration on edges,
+// subtle mouse-parallax depth.
+
+const CONFIG = {
+  seed: 0,
+  bookCount: 130,
+  rowCount: 8,
+  driftSpeed: 0.22,
+  parallaxStrength: 36,
+  burnInFrames: 340,
+  paused: false,
+};
+
+let books = [];
+let t = 0;
+let mouseParallax;
+let baseLayer, glowLayer, caLayer, compositeLayer;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
+  noLoop();
+
+  mouseParallax = createVector(0, 0);
+
+  baseLayer = createGraphics(width, height);
+  baseLayer.colorMode(HSB, 360, 100, 100, 100);
+  baseLayer.pixelDensity(pixelDensity());
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(pixelDensity());
+
+  caLayer = createGraphics(width, height);
+  caLayer.colorMode(HSB, 360, 100, 100, 100);
+  caLayer.pixelDensity(pixelDensity());
+
+  compositeLayer = createGraphics(width, height);
+  compositeLayer.colorMode(HSB, 360, 100, 100, 100);
+  compositeLayer.pixelDensity(pixelDensity());
+
+  applySeed(floor(random(1000000)));
+  spawnLibrary();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+
+  document.getElementById('seed').textContent = CONFIG.seed;
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function spawnLibrary() {
+  books = [];
+  baseLayer.background(244, 38, 18);
+  glowLayer.clear();
+  caLayer.clear();
+  compositeLayer.clear();
+
+  const marginX = width * 0.06;
+  const marginY = height * 0.05;
+  const shelfHeight = (height - marginY * 2) / CONFIG.rowCount;
+  const cols = 18;
+  const colW = (width - marginX * 2) / cols;
+
+  for (let r = 0; r < CONFIG.rowCount; r++) {
+    const rowY = marginY + r * shelfHeight + shelfHeight * 0.5;
+    for (let c = 0; c < cols; c++) {
+      if (random() < 0.18) continue;
+      const w = random(18, Math.min(colW * 0.9, 48));
+      const h = shelfHeight * random(0.48, 0.90);
+      const jitterX = random(-colW * 0.18, colW * 0.18);
+      const x = marginX + c * colW + (colW - w) * 0.5 + jitterX;
+      const y = rowY - h * 0.5;
+
+      let overlap = false;
+      for (let b of books) {
+        if (b.row === r && abs(b.x - x) < (b.w + w) * 0.55 && abs(b.baseY - y) < (b.h + h) * 0.55) {
+          overlap = true;
+          break;
+        }
+      }
+      if (overlap) continue;
+
+      books.push(new Book(x, y, w, h, r));
+    }
+  }
+
+  books.sort((a, b) => a.depth - b.depth);
+}
+
+function simulateStep() {
+  t += 0.005;
+
+  const targetParallax = createVector(
+    (mouseX - width * 0.5) / width,
+    (mouseY - height * 0.5) / height
+  );
+  mouseParallax.lerp(targetParallax, 0.05);
+
+  for (let b of books) {
+    b.update();
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  baseLayer.noStroke();
+  baseLayer.fill(244, 38, 18, 3.2);
+  baseLayer.rect(0, 0, width, height);
+
+  glowLayer.clear();
+  caLayer.clear();
+
+  drawShelves(baseLayer);
+
+  for (let b of books) {
+    b.display(baseLayer, glowLayer, caLayer);
+  }
+
+  compositeLayer.image(baseLayer, 0, 0);
+  compositeLayer.blendMode(ADD);
+  compositeLayer.image(glowLayer, 0, 0);
+  compositeLayer.blendMode(BLEND);
+  compositeLayer.image(caLayer, 0, 0);
+
+  background(244, 38, 18);
+  image(compositeLayer, 0, 0);
+
+  drawVignette();
+}
+
+function drawShelves(layer) {
+  const marginY = height * 0.05;
+  const shelfHeight = (height - marginY * 2) / CONFIG.rowCount;
+  layer.stroke(246, 25, 34, 18);
+  layer.strokeWeight(1.6);
+  for (let r = 0; r < CONFIG.rowCount; r++) {
+    const y = marginY + (r + 1) * shelfHeight;
+    layer.line(width * 0.02, y, width * 0.98, y);
+  }
+}
+
+function drawVignette() {
+  noStroke();
+  const cx = width * 0.5, cy = height * 0.5;
+  const maxD = Math.hypot(width, height) * 0.50;
+  const steps = 45;
+  for (let i = 0; i <= steps; i++) {
+    const d = maxD * (i / steps);
+    const alpha = map(i, 0, steps, 0, 10, true);
+    fill(248, 48, 7, alpha);
+    ellipse(cx, cy, d * 2, d * 2);
+  }
+}
+
+function mousePressed() {
+  for (let b of books) {
+    if (abs(b.x - mouseX) < b.w * 0.6 && abs((b.y + b.h * 0.5) - mouseY) < b.h * 0.6) {
+      b.perturb();
+      return;
+    }
+  }
+  const b = new Book(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40), random(24, 46), random(48, 110), floor(random(CONFIG.rowCount)));
+  b.depth = 0.75;
+  books.push(b);
+  books.sort((a, b2) => a.depth - b2.depth);
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`luminous-library-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`luminous-library-${CONFIG.seed}`, 6);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    spawnLibrary();
+    for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  pixelDensity(d);
+  baseLayer = resizeGraphics(baseLayer);
+  glowLayer = resizeGraphics(glowLayer);
+  caLayer = resizeGraphics(caLayer);
+  compositeLayer = resizeGraphics(compositeLayer);
+  baseLayer.background(244, 38, 18);
+  glowLayer.clear();
+  caLayer.clear();
+  compositeLayer.clear();
+}
+
+function resizeGraphics(g) {
+  const next = createGraphics(width, height);
+  next.colorMode(HSB, 360, 100, 100, 100);
+  next.pixelDensity(pixelDensity());
+  next.image(g, 0, 0);
+  return next;
+}
+
+class Book {
+  constructor(x, y, w, h, row) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.row = row;
+    this.depth = random(0.35, 1.0);
+    this.baseY = y;
+    this.driftPhase = random(TWO_PI);
+    this.driftAmp = random(5, 24) * (1.0 - this.depth * 0.45);
+    this.hue = random([38, 46, 56, 212, 268, 314, 188, 164, 22]);
+    this.sat = random(50, 88);
+    this.bri = random(75, 100);
+    this.alpha = random(82, 100);
+    this.glowHue = this.hue + random(-16, 16);
+    this.perturbVel = 0;
+    this.angle = random(-0.04, 0.04);
+  }
+
+  update() {
+    const parallaxY = mouseParallax.y * CONFIG.parallaxStrength * (this.depth - 0.5) * 2;
+    const parallaxX = mouseParallax.x * CONFIG.parallaxStrength * (this.depth - 0.5) * 2;
+    const drift = Math.sin(t + this.driftPhase) * this.driftAmp;
+    this.y = this.baseY + drift + parallaxY;
+    this.renderX = this.x + parallaxX;
+    this.perturbVel *= 0.9;
+    this.y += this.perturbVel;
+    this.angle += Math.sin(t * 0.6 + this.driftPhase) * 0.0004;
+  }
+
+  perturb() {
+    this.perturbVel = random(-24, -10);
+    this.driftPhase = random(TWO_PI);
+  }
+
+  display(base, glow, ca) {
+    const cx = this.renderX + this.w * 0.5;
+    const cy = this.y + this.h * 0.5;
+
+    base.push();
+    base.translate(cx, cy);
+    base.rotate(this.angle);
+    base.rectMode(CENTER);
+
+    base.noStroke();
+    base.fill(this.hue, this.sat, this.bri * 0.82, this.alpha);
+    base.rect(0, 0, this.w, this.h, 2);
+
+    base.fill(this.hue, this.sat * 0.75, this.bri, this.alpha * 0.75);
+    base.rect(-this.w * 0.22, 0, this.w * 0.2, this.h * 0.86, 1);
+
+    base.fill(this.glowHue, this.sat * 0.6, this.bri * 1.25, this.alpha * 0.72);
+    base.rect(this.w * 0.12, -this.h * 0.16, this.w * 0.4, this.h * 0.26, 1);
+
+    base.stroke(this.hue, this.sat * 0.45, this.bri * 1.5, this.alpha * 0.62);
+    base.strokeWeight(0.9);
+    base.noFill();
+    base.rect(0, 0, this.w * 0.94, this.h * 0.94, 2);
+
+    base.pop();
+
+    glow.push();
+    glow.translate(cx, cy);
+    glow.noStroke();
+    glow.rectMode(CENTER);
+    const steps = 50;
+    const maxR = Math.max(this.w, this.h) * 1.05;
+    for (let i = steps; i >= 0; i--) {
+      const r = maxR * (i / steps);
+      const alpha = map(i, 0, steps, 0, 7.5, true);
+      glow.fill(this.glowHue, this.sat * 0.55, this.bri * 0.95, alpha);
+      glow.rect(0, 0, r * 2, r * 2, 4);
+    }
+    glow.pop();
+
+    ca.push();
+    ca.translate(cx, cy);
+    ca.rotate(this.angle);
+    ca.rectMode(CENTER);
+    ca.noFill();
+    ca.strokeWeight(1.5);
+    ca.stroke(this.glowHue + 30, this.sat * 0.82, this.bri * 1.15, 26);
+    ca.rect(-2.2, -1.4, this.w, this.h, 2);
+    ca.stroke(this.glowHue - 45, this.sat * 0.65, this.bri * 1.15, 20);
+    ca.rect(2.2, 1.4, this.w, this.h, 2);
+    ca.pop();
+  }
+}
+</script>
+</body>
+</html>

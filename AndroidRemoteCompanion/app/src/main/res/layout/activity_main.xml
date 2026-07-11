@@ -47,6 +47,10 @@
                 android:textColor="@color/hv_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <include
+            android:id="@+id/systemMonitorInclude"
+            layout="@layout/include_system_monitor" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -115,5 +119,12 @@
         app:backgroundTint="@color/hv_primary"
         app:icon="@drawable/ic_contacts"
         app:iconTint="@color/hv_background" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        app:menu="@menu/menu_bottom_nav" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,0 +1,40 @@
+{
+  "visualization": {
+    "title": "Neural Integration: Market Data & Somatic Feedback",
+    "description": "Abstract visualization of sensory data flow through neural pathways",
+    "version": "1.0.0",
+    "author": "AI Art Generator",
+    "colors": {
+      "deep_burgundy": "#8B0000",
+      "electric_gold": "#FFD700",
+      "neural_purple": "#9370DB",
+      "somatic_blue": "#4169E1"
+    },
+    "elements": {
+      "market_data": {
+        "type": "lines_and_charts",
+        "color": "electric_gold",
+        "particle_count": 100,
+        "representation": "flowing_lines_candlesticks"
+      },
+      "somatic_feedback": {
+        "type": "body_and_touch",
+        "color": "somatic_blue",
+        "particle_count": 50,
+        "representation": "body_forms_touch_sensitivity"
+      },
+      "neural_pathways": {
+        "type": "connections",
+        "color": "neural_purple",
+        "count": 30,
+        "representation": "perlin_noise_flow"
+      }
+    },
+    "settings": {
+      "particle_systems": true,
+      "perlin_noise": true,
+      "fluid_motion": true,
+      "responsive": true
+    }
+  }
+}

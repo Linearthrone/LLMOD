@@ -1,7 +1,9 @@
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
+using HouseVictoria.Services.Persona;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace HouseVictoria.Services.AIServices
@@ -12,17 +14,29 @@ namespace HouseVictoria.Services.AIServices
     /// </summary>
     public class HermesAIService : IAIService
     {
+        /// <summary>Shown when Hermes returns HTTP 200 but no assistant text (e.g. LLM rate limit / empty stream).</summary>
+        internal const string UnavailableSubscriberMessage =
+            "The subscriber to are trying to reach is currently unavailable, please try again later.";
+
         private readonly HttpClient _httpClient;
         private readonly AppConfig _config;
         private readonly IHermesGatewayService? _gatewayService;
+        private readonly IAgentDesktopMonitorService? _desktopMonitor;
+        private readonly ICognitionThoughtStreamService? _thoughtStream;
 
         public event EventHandler<AIMessageEventArgs>? MessageReceived;
         public event EventHandler<AIEErrorEventArgs>? ErrorOccurred;
 
-        public HermesAIService(AppConfig config, IHermesGatewayService? gatewayService = null)
+        public HermesAIService(
+            AppConfig config,
+            IHermesGatewayService? gatewayService = null,
+            IAgentDesktopMonitorService? desktopMonitor = null,
+            ICognitionThoughtStreamService? thoughtStream = null)
         {
             _config = config;
             _gatewayService = gatewayService;
+            _desktopMonitor = desktopMonitor;
+            _thoughtStream = thoughtStream;
             _httpClient = new HttpClient
             {
                 // Tool loops (terminal, browser, MCP) can take several minutes.
@@ -53,13 +67,32 @@ namespace HouseVictoria.Services.AIServices
             if (!string.IsNullOrWhiteSpace(contact.SystemPrompt))
                 messages.Add(new OpenAIMessage { Role = "system", Content = contact.SystemPrompt });
 
+            if (_desktopMonitor?.AllowComputerControl == true)
+            {
+                messages.Add(new OpenAIMessage
+                {
+                    Role = "system",
+                    Content = HouseVictoriaToolCatalog.BuildHermesToolGuide(
+                        ResolveGeneratedFilesPath(), includeComputerUse: true)
+                });
+            }
+
             if (context != null)
             {
                 foreach (var msg in context)
                     messages.Add(new OpenAIMessage { Role = msg.Role, Content = msg.Content });
             }
 
-            messages.Add(new OpenAIMessage { Role = "user", Content = message });
+            var forceBrowserCapture =
+                _desktopMonitor?.AllowComputerControl == true
+                && HouseVictoriaToolCatalog.IsBrowserPageRequest(message);
+
+            var forceComputerUseScreenshot =
+                _desktopMonitor?.AllowComputerControl == true
+                && !forceBrowserCapture
+                && HouseVictoriaToolCatalog.IsDesktopScreenshotRequest(message);
+
+            messages.Add(new OpenAIMessage { Role = "user", Content = BuildUserContent(message) });
 
             var model = ResolveModelName(contact);
             var requestBody = new OpenAIChatRequest
@@ -69,11 +102,33 @@ namespace HouseVictoria.Services.AIServices
                 Temperature = (float)contact.Temperature,
                 MaxTokens = contact.MaxTokens > 0 ? contact.MaxTokens : 4096,
                 TopP = (float)contact.TopP,
-                Stream = false
+                Stream = true,
+                ToolChoice = forceBrowserCapture
+                    ? new Dictionary<string, object>
+                    {
+                        ["type"] = "function",
+                        ["function"] = new Dictionary<string, string>
+                        {
+                            ["name"] = HouseVictoriaToolCatalog.BrowserCaptureTabToolName
+                        }
+                    }
+                    : forceComputerUseScreenshot
+                    ? new Dictionary<string, object>
+                    {
+                        ["type"] = "function",
+                        ["function"] = new Dictionary<string, string>
+                        {
+                            ["name"] = HouseVictoriaToolCatalog.ComputerUseMcpToolName
+                        }
+                    }
+                    : null
             };
 
             try
             {
+                _desktopMonitor?.BeginSession(contact.Name);
+                _thoughtStream?.NotifyChatTurnStarted(contact.Name);
+
                 using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/chat/completions")
                 {
                     Content = JsonContent.Create(requestBody)
@@ -82,7 +137,11 @@ namespace HouseVictoria.Services.AIServices
                 if (!string.IsNullOrWhiteSpace(_config.HermesApiKey))
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.HermesApiKey);
 
-                var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+                request.Headers.Accept.ParseAdd("text/event-stream");
+
+                using var response = await _httpClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -90,8 +149,9 @@ namespace HouseVictoria.Services.AIServices
                     throw new HttpRequestException($"Hermes API returned {response.StatusCode}: {errorContent}. Endpoint: {BaseUrl}/chat/completions");
                 }
 
-                var result = await response.Content.ReadFromJsonAsync<OpenAIChatResponse>().ConfigureAwait(false);
-                var reply = result?.Choices?[0]?.Message?.Content ?? string.Empty;
+                var reply = await ReadStreamingReplyAsync(response).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(reply))
+                    reply = UnavailableSubscriberMessage;
 
                 MessageReceived?.Invoke(this, new AIMessageEventArgs
                 {
@@ -113,6 +173,45 @@ namespace HouseVictoria.Services.AIServices
                 ErrorOccurred?.Invoke(this, new AIEErrorEventArgs { ErrorMessage = ex.Message, Exception = ex });
                 throw;
             }
+            finally
+            {
+                _desktopMonitor?.EndSession();
+                _thoughtStream?.NotifyChatTurnEnded();
+            }
+        }
+
+        private async Task<string> ReadStreamingReplyAsync(HttpResponseMessage response)
+        {
+            await using var body = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var reader = new StreamReader(body, Encoding.UTF8);
+
+            var segment = new StringBuilder();
+            var full = new StringBuilder();
+
+            await foreach (var evt in HermesChatSseReader.ReadEventsAsync(reader).ConfigureAwait(false))
+            {
+                switch (evt.Kind)
+                {
+                    case HermesSseEventKind.ContentDelta when !string.IsNullOrEmpty(evt.Text):
+                        segment.Append(evt.Text);
+                        full.Append(evt.Text);
+                        _thoughtStream?.NotifyStreamDelta(evt.Text, segment.ToString());
+                        break;
+
+                    case HermesSseEventKind.ToolProgress:
+                        segment.Clear();
+                        _thoughtStream?.NotifyHermesToolProgress(
+                            evt.ToolName ?? string.Empty,
+                            evt.ToolLabel ?? evt.ToolName ?? "tool",
+                            evt.ToolStatus ?? "running");
+                        break;
+
+                    case HermesSseEventKind.Done:
+                        return full.Length > 0 ? full.ToString() : segment.ToString();
+                }
+            }
+
+            return full.Length > 0 ? full.ToString() : segment.ToString();
         }
 
         private string ResolveModelName(AIContact contact)
@@ -222,13 +321,157 @@ namespace HouseVictoria.Services.AIServices
 
         public Task PullModelAsync(string serverUrl, string modelName) => Task.CompletedTask;
 
+        /// <summary>
+        /// Builds the user message content. When screen sharing is on, returns an OpenAI-style
+        /// multimodal array (text + image_url data URL) so the vision model sees the live screen.
+        /// Guidance depends on whether desktop control is allowed:
+        /// - control OFF: tell the model to read the attached screenshot and NOT call computer_use.
+        /// - control ON: do not forbid the tool; tell the model it MAY use computer_use to act.
+        /// </summary>
+        private object BuildUserContent(string message)
+        {
+            var sharing = _desktopMonitor?.ShareScreenWithAI == true;
+            var allowControl = _desktopMonitor?.AllowComputerControl == true;
+            var browserPageRequest =
+                allowControl && HouseVictoriaToolCatalog.IsBrowserPageRequest(message);
+            var desktopScreenshotRequest =
+                allowControl && !browserPageRequest && HouseVictoriaToolCatalog.IsDesktopScreenshotRequest(message);
+
+            var png = sharing ? _desktopMonitor?.CaptureScreenPng() : null;
+            var hasImage = png != null && png.Length > 0;
+
+            // No screen shared and no control granted → plain text, unchanged behavior.
+            if (!hasImage && !allowControl)
+                return message;
+
+            string guidance;
+            if (hasImage && !allowControl)
+            {
+                // Screen attached, control forbidden: read the image directly, don't grab the desktop.
+                guidance =
+                    "[A screenshot of my current screen is attached to this message. " +
+                    "Look at the attached image directly to see what I'm seeing — " +
+                    "do NOT call the computer_use tool or take your own screenshot. " +
+                    "Reply in plain, conversational text without markdown formatting.]";
+            }
+            else if (browserPageRequest)
+            {
+                guidance =
+                    $"[You MUST call {HouseVictoriaToolCatalog.BrowserCaptureTabToolName} as your first tool on this turn. " +
+                    "It captures the active browser tab and returns page_map.elements with coordinates. " +
+                    "Do NOT use computer_use get_screenshot for browser tabs. " +
+                    "Reply in plain, conversational text without markdown formatting.]";
+            }
+            else if (desktopScreenshotRequest)
+            {
+                guidance =
+                    $"[You MUST call {HouseVictoriaToolCatalog.ComputerUseMcpToolName} with action={HouseVictoriaToolCatalog.ComputerUseScreenshotAction} as your first tool " +
+                    "on this turn before answering. Do NOT use vision_analyze, browser_vision, browser, " +
+                    "terminal, or skill-discovery tools for this request. " +
+                    "Reply in plain, conversational text without markdown formatting.]";
+            }
+            else if (hasImage)
+            {
+                // Screen attached AND control allowed: let her act on what she sees.
+                guidance =
+                    "[A screenshot of my current screen is attached to this message. " +
+                    "Look at it directly, and you MAY use the computer_use tool " +
+                    "(get_screenshot/click/type/scroll) to act on my desktop when the task needs it. " +
+                    "If the browser is buried, use list_desktop_windows and focus_desktop_window first. " +
+                    "Reply in plain, conversational text without markdown formatting.]";
+            }
+            else
+            {
+                // No screenshot but control allowed.
+                guidance =
+                    "[You MAY use the computer_use tool (get_screenshot/click/type/scroll) to act on my " +
+                    "desktop when the task needs it. Stay on one browser window; use list_desktop_windows " +
+                    "and focus_desktop_window if you lose it. Reply in plain, conversational text.]";
+            }
+
+            var text = string.IsNullOrWhiteSpace(message)
+                ? (hasImage ? "Here is what I'm currently looking at on my screen. " : string.Empty) + guidance
+                : message + "\n\n" + guidance;
+
+            if (browserPageRequest)
+            {
+                text = HouseVictoriaToolCatalog.BuildBrowserCaptureMandatoryFirstAction()
+                    + "\n\n"
+                    + text
+                    + "\n\n"
+                    + HouseVictoriaToolCatalog.BuildBrowserCaptureSteering();
+            }
+            else if (desktopScreenshotRequest)
+            {
+                text = HouseVictoriaToolCatalog.BuildDesktopScreenshotMandatoryFirstAction()
+                    + "\n\n"
+                    + text
+                    + "\n\n"
+                    + HouseVictoriaToolCatalog.BuildDesktopScreenshotSteering();
+            }
+            else if (allowControl)
+            {
+                text += "\n\n" + HouseVictoriaToolCatalog.BuildComputerUseSessionSteering();
+            }
+
+            if (!hasImage)
+                return text;
+
+            var dataUrl = "data:image/png;base64," + Convert.ToBase64String(png!);
+            return new object[]
+            {
+                new { type = "text", text },
+                new { type = "image_url", image_url = new { url = dataUrl } }
+            };
+        }
+
+        private string ResolveGeneratedFilesPath()
+        {
+            var mediaPath = _config.MediaPath ?? "Media";
+            if (!Path.IsPathRooted(mediaPath))
+                mediaPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, mediaPath);
+            return Path.Combine(mediaPath, "GeneratedFiles");
+        }
+
+        /// <summary>Extracts plain text from a string or an OpenAI multimodal content value.</summary>
+        private static string ExtractText(object? content)
+        {
+            switch (content)
+            {
+                case null:
+                    return string.Empty;
+                case string s:
+                    return s;
+                case System.Text.Json.JsonElement el:
+                    if (el.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return el.GetString() ?? string.Empty;
+                    if (el.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        var parts = new List<string>();
+                        foreach (var item in el.EnumerateArray())
+                        {
+                            if (item.ValueKind == System.Text.Json.JsonValueKind.Object
+                                && item.TryGetProperty("text", out var t)
+                                && t.ValueKind == System.Text.Json.JsonValueKind.String)
+                            {
+                                parts.Add(t.GetString() ?? string.Empty);
+                            }
+                        }
+                        return string.Join("\n", parts);
+                    }
+                    return el.ToString();
+                default:
+                    return content.ToString() ?? string.Empty;
+            }
+        }
+
         private class OpenAIMessage
         {
             [JsonPropertyName("role")]
             public string Role { get; set; } = "user";
 
             [JsonPropertyName("content")]
-            public string Content { get; set; } = string.Empty;
+            public object Content { get; set; } = string.Empty;
         }
 
         private class OpenAIChatRequest
@@ -250,6 +493,10 @@ namespace HouseVictoria.Services.AIServices
 
             [JsonPropertyName("stream")]
             public bool Stream { get; set; }
+
+            [JsonPropertyName("tool_choice")]
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public object? ToolChoice { get; set; }
         }
 
         private class OpenAIChoice

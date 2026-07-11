@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Victoria in the House</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #050205; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// === Configuration ===
+const CONFIG = {
+  seed: 20260709,
+  width: 1920,
+  height: 1080,
+  particleCount: 1800,
+  trailAlpha: 75,
+  burnInFrames: 300,
+  pauseAtStart: false
+};
+
+// === Palette — HSB, 360/100/100/100 ===
+const PALETTE = {
+  voidHue: 340,
+  voidSat: 50,
+  voidBri: 12,
+  wallHue: 345,
+  wallSat: 52,
+  wallBri: 58,
+  ribHue: 352,
+  ribSat: 85,
+  ribBri: 82,
+  skinHue: 348,
+  skinSat: 85,
+  skinBri: 96,
+  emberHue: 28,
+  emberSat: 98,
+  emberBri: 100,
+  glowHue: 340,
+  glowSat: 78,
+  glowBri: 96
+};
+
+let particles = [];
+let structureLayer, trailLayer, glowLayer;
+let t = 0;
+let paused = CONFIG.pauseAtStart;
+
+function setup() {
+  createCanvas(CONFIG.width, CONFIG.height);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  structureLayer = createGraphics(width, height);
+  trailLayer = createGraphics(width, height);
+  glowLayer = createGraphics(width, height);
+
+  [structureLayer, trailLayer, glowLayer].forEach(l => {
+    l.colorMode(HSB, 360, 100, 100, 100);
+    l.pixelDensity(1);
+  });
+
+  drawStructure(structureLayer);
+  spawnParticles();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+
+  background(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri);
+}
+
+function draw() {
+  if (paused) return;
+
+  simulateStep();
+
+  // composite
+  background(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri);
+  image(structureLayer, 0, 0);
+  image(trailLayer, 0, 0);
+  image(glowLayer, 0, 0);
+
+  t += 0.004;
+}
+
+function simulateStep() {
+  // fade trail
+  trailLayer.noStroke();
+  trailLayer.fill(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri, 10);
+  trailLayer.rect(0, 0, width, height);
+
+  // clear glow each frame
+  glowLayer.clear();
+
+  for (let p of particles) {
+    p.update();
+    p.drawTrail();
+    p.drawGlow();
+  }
+}
+
+function drawStructure(layer) {
+  let cx = width / 2;
+  let horizonY = height * 0.62;
+
+  layer.noStroke();
+  layer.background(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri);
+
+  // === back wall: solid with vertical gradient ===
+  let wallGrad = layer.drawingContext.createLinearGradient(0, 0, 0, horizonY);
+  wallGrad.addColorStop(0, layer.color(PALETTE.wallHue, PALETTE.wallSat, PALETTE.wallBri * 0.35, 100).toString());
+  wallGrad.addColorStop(1, layer.color(PALETTE.wallHue, PALETTE.wallSat, PALETTE.wallBri * 0.75, 100).toString());
+  layer.drawingContext.fillStyle = wallGrad;
+  layer.drawingContext.fillRect(0, 0, width, horizonY);
+
+  // === floor: receding tiles as filled trapezoids ===
+  let floorRows = 14;
+  for (let r = 0; r < floorRows; r++) {
+    let yTop = horizonY + r * (height - horizonY) / floorRows;
+    let yBot = horizonY + (r + 1) * (height - horizonY) / floorRows;
+    let pTop = map(yTop, horizonY, height, 0, 1);
+    let pBot = map(yBot, horizonY, height, 0, 1);
+    let spreadTop = lerp(width * 0.12, width * 0.58, pow(pTop, 0.6));
+    let spreadBot = lerp(width * 0.12, width * 0.58, pow(pBot, 0.6));
+    let bri = lerp(PALETTE.wallBri * 0.55, PALETTE.voidBri, pBot);
+    layer.fill(PALETTE.wallHue, PALETTE.wallSat, bri, 100);
+    layer.beginShape();
+    layer.vertex(cx - spreadTop, yTop);
+    layer.vertex(cx + spreadTop, yTop);
+    layer.vertex(cx + spreadBot, yBot);
+    layer.vertex(cx - spreadBot, yBot);
+    layer.endShape(CLOSE);
+  }
+
+  // floor tile grout
+  layer.stroke(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri + 18, 70);
+  layer.strokeWeight(1.5);
+  for (let r = 0; r <= floorRows; r++) {
+    let y = horizonY + r * (height - horizonY) / floorRows;
+    let p = map(y, horizonY, height, 0, 1);
+    let spread = lerp(width * 0.12, width * 0.58, pow(p, 0.6));
+    layer.line(cx - spread, y, cx + spread, y);
+  }
+  for (let i = -8; i <= 8; i++) {
+    if (i === 0) continue;
+    let xNear = cx + i * width * 0.018;
+    let xFar = cx + i * width * 0.13;
+    layer.line(xNear, height, xFar, horizonY);
+  }
+
+  // === ribbed vaults / vertical colonnade ===
+  layer.stroke(PALETTE.ribHue, PALETTE.ribSat, PALETTE.ribBri, 100);
+  layer.strokeWeight(5.0);
+  for (let i = -5; i <= 5; i++) {
+    let xBase = cx + i * width * 0.095;
+    let xTop = cx + i * width * 0.22;
+    layer.line(xBase, height, xTop, horizonY);
+  }
+  // horizontal arched ribs
+  for (let j = 0; j < 6; j++) {
+    let y = height - j * (height * 0.38 / 6);
+    let spread = map(y, height, horizonY, 0.03, 0.34) * width * 0.5;
+    layer.noFill();
+    layer.stroke(PALETTE.ribHue, PALETTE.ribSat, PALETTE.ribBri, 85);
+    layer.strokeWeight(3.2);
+    layer.beginShape();
+    for (let x = cx - spread; x <= cx + spread; x += 18) {
+      let arch = map(abs(x - cx), 0, spread, 0, 1);
+      let yy = y - arch * arch * (height * 0.15);
+      layer.vertex(x, yy);
+    }
+    layer.endShape();
+  }
+
+  // === distant amber windows ===
+  for (let i = -2; i <= 2; i++) {
+    if (i === 0) continue;
+    let wx = cx + i * width * 0.18;
+    let wy = horizonY - height * 0.18;
+    let ww = width * 0.05;
+    let wh = height * 0.2;
+    // window halo
+    for (let r = ww * 3.0; r > 0; r -= 4) {
+      layer.fill(PALETTE.emberHue, PALETTE.emberSat, PALETTE.emberBri, 6.0);
+      layer.noStroke();
+      layer.ellipse(wx, wy + wh * 0.5, r, r * 1.5);
+    }
+    // window frame
+    layer.fill(PALETTE.emberHue, PALETTE.emberSat, PALETTE.emberBri, 95);
+    layer.rect(wx - ww * 0.5, wy, ww, wh, 3);
+    // mullions
+    layer.stroke(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri + 10, 80);
+    layer.strokeWeight(2.5);
+    layer.line(wx, wy, wx, wy + wh);
+    layer.line(wx - ww * 0.5, wy + wh * 0.5, wx + ww * 0.5, wy + wh * 0.5);
+
+    // light beam on floor
+    layer.noStroke();
+    let beamGrad = layer.drawingContext.createLinearGradient(wx, wy + wh, wx, height);
+    beamGrad.addColorStop(0, layer.color(PALETTE.emberHue, PALETTE.emberSat * 0.55, PALETTE.emberBri, 38).toString());
+    beamGrad.addColorStop(1, layer.color(PALETTE.emberHue, PALETTE.emberSat * 0.55, PALETTE.emberBri, 0).toString());
+    layer.drawingContext.fillStyle = beamGrad;
+    layer.drawingContext.beginPath();
+    layer.drawingContext.moveTo(wx - ww * 0.7, wy + wh);
+    layer.drawingContext.lineTo(wx + ww * 0.7, wy + wh);
+    layer.drawingContext.lineTo(wx + ww * 2.6, height);
+    layer.drawingContext.lineTo(wx - ww * 2.6, height);
+    layer.drawingContext.closePath();
+    layer.drawingContext.fill();
+  }
+
+  // === central dais ===
+  layer.noStroke();
+  layer.fill(PALETTE.wallHue, PALETTE.wallSat, PALETTE.wallBri * 1.3, 55);
+  layer.ellipse(cx, height * 0.88, width * 0.3, height * 0.07);
+  layer.fill(PALETTE.wallHue, PALETTE.wallSat, PALETTE.wallBri * 1.5, 30);
+  layer.ellipse(cx, height * 0.88, width * 0.22, height * 0.045);
+
+  // === vignette to focus on figure ===
+  let grad = layer.drawingContext.createRadialGradient(cx, height * 0.55, 0, cx, height * 0.55, width * 0.95);
+  grad.addColorStop(0, layer.color(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri, 0).toString());
+  grad.addColorStop(1, layer.color(PALETTE.voidHue, PALETTE.voidSat, PALETTE.voidBri, 25).toString());
+  layer.drawingContext.fillStyle = grad;
+  layer.drawingContext.fillRect(0, 0, width, height);
+}
+
+function spawnParticles() {
+  particles = [];
+  let cx = width / 2;
+  let baseY = height * 0.88;
+  let figureHeight = height * 0.55;
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    // prefer placing particles within the silhouette volume
+    let progress = random(0.02, 0.98);
+    let silhouette = 1;
+    if (progress < 0.18) {
+      silhouette = map(progress, 0, 0.18, 1.5, 0.85);
+    } else if (progress < 0.55) {
+      silhouette = map(progress, 0.18, 0.55, 0.85, 0.52);
+    } else if (progress < 0.86) {
+      silhouette = map(progress, 0.55, 0.86, 0.52, 1.12);
+    } else {
+      silhouette = map(progress, 0.86, 1.0, 1.12, 0.42);
+    }
+    let y = baseY - progress * figureHeight;
+    let maxW = width * 0.085 * silhouette;
+    let angle = random(TWO_PI);
+    let radius = abs(randomGaussian(0, maxW * 0.35)) + random(maxW * 0.05);
+    let x = cx + cos(angle) * radius;
+    let z = map(radius, 0, maxW, 1.3, 0.5) + random(-0.1, 0.1);
+    z = constrain(z, 0.4, 1.6);
+    particles.push(new Particle(x, y, z));
+  }
+}
+
+class Particle {
+  constructor(x, y, z) {
+    this.homeX = x;
+    this.homeY = y;
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.history = [];
+    this.maxHist = floor(random(18, 45));
+    this.size = random(1.2, 2.6) * z;
+    this.speed = random(0.15, 0.45) * z;
+    this.phase = random(TWO_PI);
+    this.driftHue = PALETTE.skinHue + random(-8, 12);
+    this.driftSat = PALETTE.skinSat + random(-10, 10);
+    this.driftBri = PALETTE.skinBri * random(0.6, 1.1);
+  }
+
+  update() {
+    let cx = width / 2;
+    let figureWidth = width * 0.09 * this.z;
+    let figureHeight = height * 0.55;
+    let baseY = height * 0.88;
+    let headY = baseY - figureHeight * 0.82;
+
+    // figure shape field: taper from shoulders to crown, flare at hips
+    let progress = map(this.homeY, baseY, headY, 0, 1);
+    let silhouette = 1;
+    if (progress < 0.18) {
+      // hips/legs flare
+      silhouette = map(progress, 0, 0.18, 1.6, 0.85);
+    } else if (progress < 0.55) {
+      // waist / torso taper
+      silhouette = map(progress, 0.18, 0.55, 0.85, 0.55);
+    } else if (progress < 0.85) {
+      // shoulders
+      silhouette = map(progress, 0.55, 0.85, 0.55, 1.15);
+    } else {
+      // neck / head taper
+      silhouette = map(progress, 0.85, 1.0, 1.15, 0.45);
+    }
+
+    // noise-driven drift along silhouette
+    let nx = noise(this.homeY * 0.012, t * 0.5 + this.z) * 2 - 1;
+    let targetX = cx + (this.homeX - cx) * silhouette + nx * figureWidth * 0.35;
+    let targetY = this.homeY + sin(t * 1.5 + this.phase) * (2 + this.z * 3);
+
+    this.x = lerp(this.x, targetX, 0.04 * this.z);
+    this.y = lerp(this.y, targetY, 0.04 * this.z);
+
+    this.history.unshift({ x: this.x, y: this.y });
+    if (this.history.length > this.maxHist) this.history.pop();
+  }
+
+  drawTrail() {
+    if (this.history.length < 2) return;
+    trailLayer.noFill();
+    let sw = map(this.z, 0.4, 1.6, 0.5, 1.6);
+    trailLayer.strokeWeight(sw);
+    trailLayer.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      let h = this.history[i];
+      let alpha = map(i, 0, this.history.length, CONFIG.trailAlpha * this.z, 0);
+      trailLayer.stroke(this.driftHue, this.driftSat, this.driftBri, alpha);
+      trailLayer.vertex(h.x, h.y);
+    }
+    trailLayer.endShape();
+
+    // luminous core dot
+    let coreAlpha = min(100, 55 * this.z);
+    trailLayer.noStroke();
+    trailLayer.fill(this.driftHue, this.driftSat * 0.85, this.driftBri * 1.15, coreAlpha);
+    trailLayer.ellipse(this.x, this.y, this.size, this.size);
+  }
+
+  drawGlow() {
+    // subtle bloom for upper-body particles
+    if (this.z < 0.8) return;
+    if (random() > 0.18) return;
+    glowLayer.noStroke();
+    let r = this.size * 10;
+    for (let g = r; g > 0; g -= 4) {
+      let a = map(g, 0, r, 1.4, 0);
+      glowLayer.fill(PALETTE.glowHue, PALETTE.glowSat, PALETTE.glowBri, a);
+      glowLayer.ellipse(this.x, this.y, g, g);
+    }
+  }
+}
+
+function keyPressed() {
+  if (key === ' ' || key === 'p' || key === 'P') {
+    paused = !paused;
+  } else if (key === 's' || key === 'S') {
+    saveCanvas('victoria-in-house-' + CONFIG.seed, 'png');
+  } else if (key === 'g' || key === 'G') {
+    saveGif('victoria-in-house-' + CONFIG.seed, 6);
+  } else if (key === 'r' || key === 'R') {
+    CONFIG.seed = floor(random(9999999));
+    randomSeed(CONFIG.seed);
+    noiseSeed(CONFIG.seed);
+    t = 0;
+    drawStructure(structureLayer);
+    spawnParticles();
+    for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+    paused = false;
+  }
+}
+
+function mousePressed() {
+  // spawn a small burst near the figure
+  let cx = width / 2;
+  for (let i = 0; i < 30; i++) {
+    particles.push(new Particle(
+      cx + random(-width * 0.08, width * 0.08),
+      height * 0.88 - random(height * 0.5),
+      random(0.6, 1.2)
+    ));
+  }
+}
+
+function windowResized() {
+  // keep cinematic 1920x1080; signal responsiveness without distorting composition
+  // canvas already sized at CONFIG dimensions; no resize needed
+}
+</script>
+</body>
+</html>

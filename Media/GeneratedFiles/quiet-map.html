@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiet Map — Emotional Topology of Silence</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #09080d;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<script>
+p5.disableFriendlyErrors = true;
+
+const CONFIG = {
+  seed: null,
+  palette: [
+    { name: "warmth", h: 24, s: 82, b: 98, attract: 0.72 },     // ember amber hearth
+    { name: "distance", h: 210, s: 60, b: 86, attract: 0.24 }, // cool far corners
+    { name: "anticipation", h: 274, s: 76, b: 94, attract: 0.44 }, // violet overhead
+    { name: "patience", h: 46, s: 60, b: 78, attract: 0.30 }    // muted gold horizon
+  ],
+  particleCount: 1400,
+  burnInFrames: 360,
+  trailFadeAlpha: 0.55,
+  bloomFadeAlpha: 0.35,
+  paused: false
+};
+
+let particles = [];
+let trailLayer, bloomLayer, nodeLayer, baseLayer;
+let t = 0;
+let center;
+let attractors = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+
+  CONFIG.seed = floor(random(999999));
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  center = createVector(width * 0.5, height * 0.55);
+
+  baseLayer = createGraphics(width, height);
+  baseLayer.colorMode(HSB, 360, 100, 100, 100);
+  drawBaseLayer();
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.background(245, 28, 11);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.background(245, 28, 11);
+
+  nodeLayer = createGraphics(width, height);
+  nodeLayer.colorMode(HSB, 360, 100, 100, 100);
+  drawNodeLayer();
+
+  spawnAttractors();
+  spawnField();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  loop();
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+  composeFrame();
+}
+
+function simulateStep() {
+  t += 0.002;
+
+  trailLayer.noStroke();
+  trailLayer.fill(245, 28, 12, CONFIG.trailFadeAlpha);
+  trailLayer.rect(0, 0, width, height);
+
+  for (let p of particles) {
+    p.update(attractors);
+    p.display(trailLayer, bloomLayer);
+  }
+
+  bloomLayer.noStroke();
+  bloomLayer.fill(245, 25, 14, CONFIG.bloomFadeAlpha);
+  bloomLayer.rect(0, 0, width, height);
+}
+
+function composeFrame() {
+  background(245, 28, 11);
+  image(baseLayer, 0, 0);
+  image(trailLayer, 0, 0);
+
+  blendMode(ADD);
+  image(bloomLayer, 0, 0);
+  blendMode(BLEND);
+
+  image(nodeLayer, 0, 0);
+
+  drawVignette();
+
+  noStroke();
+  fill(40, 18, 90, 40);
+  textAlign(LEFT, BOTTOM);
+  textSize(14);
+  textFont('monospace');
+  text(`quiet-map · seed ${CONFIG.seed} · [s]ave  [r]eseed  [space]pause`, 24, height - 24);
+}
+
+function drawBaseLayer() {
+  baseLayer.noStroke();
+  for (let r = 0; r < max(width, height) * 0.85; r += 6) {
+    let a = map(r, 0, max(width, height) * 0.85, 22, 0);
+    baseLayer.fill(245, 26, 20, a);
+    baseLayer.ellipse(center.x, center.y, r * 2, r * 2);
+  }
+
+  baseLayer.stroke(245, 18, 28, 22);
+  baseLayer.strokeWeight(1);
+  baseLayer.line(0, height * 0.68, width, height * 0.68);
+}
+
+function drawNodeLayer() {
+  nodeLayer.clear();
+  nodeLayer.noStroke();
+
+  // warmth hearth
+  for (let r = 0; r < 240; r += 1.5) {
+    let a = map(r, 0, 240, 26, 0);
+    nodeLayer.fill(24, 78, 100, a);
+    nodeLayer.ellipse(center.x, center.y, r, r);
+  }
+
+  // distance corners
+  let corners = [
+    createVector(width * 0.10, height * 0.14),
+    createVector(width * 0.90, height * 0.14),
+    createVector(width * 0.07, height * 0.86),
+    createVector(width * 0.93, height * 0.86)
+  ];
+  for (let c of corners) {
+    for (let r = 0; r < 160; r += 1.5) {
+      let a = map(r, 0, 160, 18, 0);
+      nodeLayer.fill(210, 60, 88, a);
+      nodeLayer.ellipse(c.x, c.y, r, r);
+    }
+  }
+
+  // anticipation arc
+  for (let i = 0; i < 9; i++) {
+    let x = map(i, 0, 8, width * 0.16, width * 0.84);
+    let y = height * 0.16 + noise(i * 0.6, CONFIG.seed) * 95;
+    for (let r = 0; r < 85; r += 1.5) {
+      let a = map(r, 0, 85, 16, 0);
+      nodeLayer.fill(274, 76, 96, a);
+      nodeLayer.ellipse(x, y, r, r);
+    }
+  }
+
+  // patience horizon
+  for (let x = 0; x < width; x += 16) {
+    let a = map(abs(x - width / 2), 0, width / 2, 20, 5);
+    nodeLayer.fill(46, 56, 76, a);
+    nodeLayer.ellipse(x, height * 0.67, 16, 8);
+  }
+}
+
+function drawVignette() {
+  // subtle corner darkening only, no center overlay
+  noFill();
+  let maxD = dist(0, 0, width / 2, height / 2);
+  for (let d = maxD * 0.6; d < maxD; d += 16) {
+    let a = map(d, maxD * 0.6, maxD, 0, 14);
+    stroke(248, 30, 4, a);
+    strokeWeight(16);
+    ellipse(width / 2, height / 2, d * 2.2, d * 2.2);
+  }
+}
+
+function spawnAttractors() {
+  attractors = [];
+  for (let c of CONFIG.palette) {
+    let n = floor(map(c.attract, 0, 0.75, 2, 8));
+    for (let i = 0; i < n; i++) {
+      let angle = random(TWO_PI);
+      let rad = random(0.10, 0.40) * min(width, height);
+      let anchor = center.copy();
+      if (c.name === "distance") anchor = createVector(random() > 0.5 ? width * 0.08 : width * 0.92, random(height * 0.12, height * 0.88));
+      if (c.name === "anticipation") anchor = createVector(random(width * 0.15, width * 0.85), random(height * 0.08, height * 0.22));
+      if (c.name === "patience") anchor = createVector(random(width * 0.1, width * 0.9), height * 0.72 + random(-45, 45));
+
+      attractors.push({
+        pos: anchor,
+        color: c,
+        strength: c.attract,
+        phase: random(TWO_PI),
+        orbit: createVector(cos(angle) * rad, sin(angle) * rad)
+      });
+    }
+  }
+}
+
+function spawnField() {
+  particles = [];
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    let pal = random(CONFIG.palette);
+    particles.push(new Particle(pal));
+  }
+}
+
+class Particle {
+  constructor(paletteEntry) {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(0.45, 1.5);
+    this.palette = paletteEntry;
+    this.history = [];
+    this.historyLimit = floor(random(30, 80));
+    this.sw = random(0.8, 2.6);
+    this.phase = random(TWO_PI);
+  }
+
+  update(attractors) {
+    this.acc.mult(0);
+
+    for (let a of attractors) {
+      if (a.color.name !== this.palette.name) continue;
+      let target = p5.Vector.add(a.pos, p5.Vector.mult(a.orbit, sin(t * 0.5 + a.phase) * 0.4));
+      let dir = p5.Vector.sub(target, this.pos);
+      let d = dir.mag();
+      d = constrain(d, 6, 800);
+      dir.normalize();
+      let pull = (a.strength * 220) / (d * 0.5);
+      dir.mult(pull);
+      this.acc.add(dir);
+    }
+
+    let nAngle = noise(this.pos.x * 0.0026, this.pos.y * 0.0026, t) * TWO_PI * 4;
+    let wander = p5.Vector.fromAngle(nAngle);
+    wander.mult(0.07);
+    this.acc.add(wander);
+
+    let home = p5.Vector.sub(center, this.pos);
+    home.normalize();
+    home.mult(0.012);
+    this.acc.add(home);
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+  }
+
+  display(trail, bloom) {
+    if (this.history.length < 2) return;
+
+    let c = this.palette;
+    let alpha = map(this.history.length, 0, this.historyLimit, 35, 90);
+
+    trail.noFill();
+    trail.stroke(c.h, c.s, c.b, alpha);
+    trail.strokeWeight(this.sw);
+    trail.beginShape();
+    for (let v of this.history) {
+      trail.curveVertex(v.x, v.y);
+    }
+    trail.endShape();
+
+    let head = this.history[this.history.length - 1];
+    bloom.noStroke();
+    for (let r = 0; r < 14; r += 0.8) {
+      let a = map(r, 0, 14, 5, 0);
+      bloom.fill(c.h, c.s, 98, a);
+      bloom.ellipse(head.x, head.y, r, r);
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  baseLayer = createGraphics(width, height);
+  baseLayer.colorMode(HSB, 360, 100, 100, 100);
+  drawBaseLayer();
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.background(245, 28, 11);
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.background(245, 28, 11);
+  nodeLayer = createGraphics(width, height);
+  nodeLayer.colorMode(HSB, 360, 100, 100, 100);
+  center = createVector(width * 0.5, height * 0.55);
+  drawNodeLayer();
+  spawnAttractors();
+  spawnField();
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') {
+    saveCanvas(`quiet-map-${CONFIG.seed}`, 'png');
+  }
+  if (key === 'r' || key === 'R') {
+    CONFIG.seed = floor(random(999999));
+    randomSeed(CONFIG.seed);
+    noiseSeed(CONFIG.seed);
+    trailLayer.background(245, 28, 11);
+    bloomLayer.background(245, 28, 11);
+    drawNodeLayer();
+    spawnAttractors();
+    spawnField();
+    for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  }
+  if (key === ' ') {
+    CONFIG.paused = !CONFIG.paused;
+  }
+}
+
+function mousePressed() {
+  for (let p of particles) {
+    let d = dist(mouseX, mouseY, p.pos.x, p.pos.y);
+    if (d < 150) {
+      let push = p5.Vector.sub(p.pos, createVector(mouseX, mouseY));
+      push.normalize();
+      push.mult(map(d, 0, 150, 4, 0.3));
+      p.vel.add(push);
+    }
+  }
+}
+</script>
+</body>
+</html>

@@ -24,28 +24,55 @@
             <Border x:Name="PulseWidget"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"
-                    Width="132"
+                    Width="168"
                     Background="#CC141820"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="1"
                     CornerRadius="0,12,12,0"
                     Padding="6"
                     Cursor="Hand"
-                    ToolTip="Click: open vitals · Double-click: hide to handle"
+                    ToolTip="Live thought streams — click to open vitals"
                     Visibility="{Binding Vitals.IsPulseMode, Converter={StaticResource BoolToVisibilityConverter}}"
                     MouseLeftButtonDown="PulseWidget_MouseLeftButtonDown">
                 <StackPanel>
                     <controls:CognitionVitalsControl Margin="0,0,0,2"
-                                                       WaveHeight="40"
+                                                       CompactMode="True"
+                                                       WaveHeight="46"
+                                                       Subjects="{Binding Vitals.ThoughtSubjects}"
                                                        Rhythm="{Binding Vitals.CognitionRhythm}"
                                                        BeatsPerMinute="{Binding Vitals.CognitionBpm}"
                                                        Intensity="{Binding Vitals.CognitionIntensity}"
                                                        WaveColorHex="{Binding Vitals.CognitionWaveColorHex}"/>
+                    <ItemsControl ItemsSource="{Binding Vitals.ThoughtSubjects}" Margin="0,2,0,2">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,6,2">
+                                    <Ellipse Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,3,0"
+                                             Fill="{Binding WaveColorHex, Converter={StaticResource HexToBrushConverter}}"/>
+                                    <TextBlock Text="{Binding Label}" FontSize="8"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="52"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <TextBlock Text="{Binding Vitals.CognitionRhythmDescription}"
                                FontSize="9"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                TextTrimming="CharacterEllipsis"
                                TextAlignment="Center"/>
+                    <TextBlock Text="{Binding Vitals.LatestThoughtSnippet}"
+                               FontSize="8"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               Opacity="0.75"
+                               TextTrimming="CharacterEllipsis"
+                               TextAlignment="Center"
+                               Margin="0,1,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -102,10 +129,12 @@
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     Width="44"
-                    Height="140"
+                    Height="168"
                     Visibility="{Binding System.IsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -130,6 +159,22 @@
                     <Separator Grid.Row="1" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}"/>
 
                     <Button Grid.Row="2"
+                            Command="{Binding OpenDesktopTabCommand}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            ToolTip="Agent desktop (live)">
+                        <TextBlock Text="&#xE7F4;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+
+                    <Separator Grid.Row="3" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}"/>
+
+                    <Button Grid.Row="4"
                             Command="{Binding System.OpenSystemHealthCommand}"
                             Background="Transparent"
                             BorderThickness="0"
@@ -143,9 +188,9 @@
                                    VerticalAlignment="Center"/>
                     </Button>
 
-                    <Separator Grid.Row="3" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}"/>
+                    <Separator Grid.Row="5" Margin="6,0" Background="{DynamicResource BorderSubtleBrush}"/>
 
-                    <Button Grid.Row="4"
+                    <Button Grid.Row="6"
                             Command="{Binding System.OpenComponentsCommand}"
                             Background="Transparent"
                             BorderThickness="0"
@@ -174,7 +219,7 @@
                     BorderThickness="1"
                     Effect="{StaticResource ObsidianShadowSoft}"
                     Visibility="Collapsed">
-                <TabControl SelectedIndex="{Binding System.SelectedTabIndex}"
+                <TabControl SelectedIndex="{Binding System.SelectedTabIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             Background="Transparent"
                             BorderThickness="0"
                             ItemContainerStyle="{StaticResource InstrumentTabItemStyle}">
@@ -192,6 +237,7 @@
                                     <StackPanel>
                                         <controls:CognitionVitalsControl Margin="0,0,0,4"
                                                                            WaveHeight="56"
+                                                                           Subjects="{Binding Vitals.ThoughtSubjects}"
                                                                            Rhythm="{Binding Vitals.CognitionRhythm}"
                                                                            BeatsPerMinute="{Binding Vitals.CognitionBpm}"
                                                                            Intensity="{Binding Vitals.CognitionIntensity}"
@@ -201,6 +247,13 @@
                                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                                    TextWrapping="Wrap"
                                                    TextAlignment="Center"/>
+                                        <TextBlock Text="{Binding Vitals.LatestThoughtSnippet}"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   Opacity="0.8"
+                                                   TextWrapping="Wrap"
+                                                   TextAlignment="Center"
+                                                   Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Border>
 
@@ -267,7 +320,7 @@
                     </TabItem>
 
                     <!-- Tab 1: Control -->
-                    <TabItem Header="Control">
+                    <TabItem Header="Ctrl">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
                             <StackPanel>
                                 <TextBlock Text="Autonomy &amp; Cognition" FontSize="14" Foreground="{DynamicResource AutonomyAccentBrush}" FontWeight="Bold" Margin="0,0,0,6"/>
@@ -428,7 +481,7 @@
                     </TabItem>
 
                     <!-- Tab 3: Components -->
-                    <TabItem Header="Components">
+                    <TabItem Header="Comp">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,5"
                                       VerticalAlignment="Stretch"
                                       VerticalContentAlignment="Stretch">
@@ -529,6 +582,113 @@
                                         <SolidColorBrush Color="#FF3366" Opacity="0.2"/>
                                     </Button.Background>
                                 </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Tab 4: Agent desktop -->
+                    <TabItem Header="Desktop">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Desktop.StatusText}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource PrimaryBrush}"
+                                           FontWeight="SemiBold"
+                                           Margin="0,0,0,6"/>
+
+                                <CheckBox IsChecked="{Binding Desktop.ShareScreenWithAI, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                          FontSize="11"
+                                          Margin="0,0,0,4"
+                                          Content="Share my screen with Victoria (sends a screenshot with each message)"/>
+                                <TextBlock Text="When on, every message you send Victoria includes a live screenshot so she sees what you see."
+                                           FontSize="9"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,8"/>
+
+                                <CheckBox IsChecked="{Binding Desktop.AllowComputerControl, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"
+                                          FontSize="11"
+                                          Margin="0,0,0,4"
+                                          Content="Let Victoria control my screen (mouse, keyboard, apps)"/>
+                                <TextBlock Text="When on, Victoria may use the computer-use tool to act on your desktop. Off by default — sharing lets her see, this lets her act."
+                                           FontSize="9"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,8"/>
+
+                                <TextBlock Text="{Binding Desktop.LiveSourceLabel}"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,4"
+                                           Visibility="{Binding Desktop.HasLiveFrame, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                <Border Background="#FF0A0C10"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Margin="0,0,0,8"
+                                        MinHeight="140"
+                                        MaxHeight="220">
+                                    <Grid>
+                                        <TextBlock Text="Starting live preview…"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap"
+                                                   Margin="10"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   Visibility="{Binding Desktop.HasLiveFrame, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                        <Image Source="{Binding Desktop.LiveFrame}"
+                                               Stretch="Uniform"
+                                               Margin="2"
+                                               Visibility="{Binding Desktop.HasLiveFrame, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Tool activity" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="1"
+                                            Command="{Binding Desktop.ClearActivityCommand}"
+                                            Style="{StaticResource InstrumentMiniButton}"
+                                            Content="Clear"/>
+                                </Grid>
+
+                                <Border Background="{DynamicResource DarkInputBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        MaxHeight="200">
+                                    <ListBox ItemsSource="{Binding Desktop.ActivityLines}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,2">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Timestamp}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="{Binding KindLabel}" FontSize="9" Foreground="{DynamicResource AutonomyAccentBrush}" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+
+                                <TextBlock Text="~1 fps screen capture + Hermes gateway log while AI works."
+                                           FontSize="9"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="0,6,0,0"
+                                           TextWrapping="Wrap"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>

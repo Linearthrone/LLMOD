@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presence in Absence</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #0e0e20;
+    height: 100%;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<script>
+p5.disableFriendlyErrors = true;
+
+let CONFIG;
+let palette;
+let nodes = [];
+let filaments = [];
+let pulses = [];
+let structureLayer, pulseLayer, glowLayer, overlayLayer;
+let t = 0;
+let breathPhase = 0;
+let simTime = 0;
+let nextPulseTime = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  CONFIG = {
+    seed: floor(random(999999)),
+    nodeCount: 100,
+    maxNeighbors: 3,
+    glowFade: 3.8,
+    pulseRate: 0.004,
+    breathSpeed: 0.0009,
+    burnInFrames: 260,
+    paused: false
+  };
+
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  palette = {
+    void: color(232, 48, 18),
+    deep: color(230, 42, 26),
+    filament: color(172, 48, 96),
+    filament2: color(264, 44, 86),
+    heart: color(345, 24, 100),
+    pulse: color(162, 28, 100),
+    glow: color(178, 26, 100)
+  };
+
+  structureLayer = createGraphics(width, height);
+  pulseLayer = createGraphics(width, height);
+  glowLayer = createGraphics(width, height);
+  overlayLayer = createGraphics(width, height);
+  for (let g of [structureLayer, pulseLayer, glowLayer, overlayLayer]) {
+    g.colorMode(HSB, 360, 100, 100, 100);
+  }
+
+  buildOrganism();
+  drawStructure();
+  drawVignette();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+
+  loop();
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+  background(palette.void);
+  image(structureLayer, 0, 0);
+  image(glowLayer, 0, 0);
+  image(pulseLayer, 0, 0);
+  image(overlayLayer, 0, 0);
+}
+
+function simulateStep() {
+  t += CONFIG.pulseRate;
+  breathPhase += CONFIG.breathSpeed;
+  simTime++;
+  let breath = (sin(breathPhase * TWO_PI) + 1) * 0.5;
+
+  pulseLayer.clear();
+
+  glowLayer.noStroke();
+  glowLayer.fill(hue(palette.void), saturation(palette.void), brightness(palette.void), CONFIG.glowFade);
+  glowLayer.rect(0, 0, width, height);
+
+  let cx = width / 2;
+  let cy = height / 2;
+  let dim = max(width, height);
+  for (let r = dim * 0.48; r > 0; r -= dim * 0.03) {
+    let fade = map(r, 0, dim * 0.48, 1, 0);
+    let c = lerpColor(palette.deep, palette.void, pow(fade, 0.65));
+    let a = fade * fade * (6 + breath * 4);
+    glowLayer.fill(hue(c), saturation(c), brightness(c), a);
+    glowLayer.ellipse(cx, cy, r, r);
+  }
+
+  for (let n of nodes) {
+    n.update();
+    n.draw(pulseLayer, glowLayer, breath);
+  }
+
+  if (simTime >= nextPulseTime) {
+    spawnPulse();
+    nextPulseTime = simTime + floor(random(20, 60) - breath * 10);
+  }
+  for (let i = pulses.length - 1; i >= 0; i--) {
+    pulses[i].update();
+    pulses[i].draw(pulseLayer, glowLayer);
+    if (pulses[i].done()) pulses.splice(i, 1);
+  }
+}
+
+function drawStructure() {
+  structureLayer.background(palette.deep);
+  for (let f of filaments) {
+    f.update();
+    f.drawStructure(structureLayer);
+  }
+}
+
+function buildOrganism() {
+  nodes = [];
+  filaments = [];
+  pulses = [];
+  simTime = 0;
+  nextPulseTime = 10;
+
+  let cx = width / 2;
+  let cy = height / 2;
+  let dim = min(width, height);
+
+  nodes.push(new Node(cx, cy, 'heart'));
+
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    let angle = random(TWO_PI);
+    let radius = randomGaussian() * dim * 0.09 + dim * 0.17;
+    radius = constrain(radius, dim * 0.06, dim * 0.30);
+    let x = cx + cos(angle) * radius;
+    let y = cy + sin(angle) * radius;
+    nodes.push(new Node(x, y, 'periphery'));
+  }
+
+  for (let i = 0; i < nodes.length; i++) {
+    let n = nodes[i];
+    let others = nodes.slice();
+    others.splice(i, 1);
+    others.sort((a, b) => n.pos.dist(a.pos) - n.pos.dist(b.pos));
+    let limit = (n.role === 'heart') ? 12 : CONFIG.maxNeighbors;
+    for (let k = 0; k < min(limit, others.length); k++) {
+      let m = others[k];
+      if (!filamentExists(n, m)) filaments.push(new Filament(n, m));
+    }
+  }
+}
+
+function filamentExists(a, b) {
+  for (let f of filaments) {
+    if ((f.a === a && f.b === b) || (f.a === b && f.b === a)) return true;
+  }
+  return false;
+}
+
+function spawnPulse() {
+  if (filaments.length === 0) return;
+  let heartFilaments = filaments.filter(f => f.a.role === 'heart' || f.b.role === 'heart');
+  let pool = heartFilaments.length ? heartFilaments : filaments;
+  let f = random(pool);
+  pulses.push(new Pulse(f));
+}
+
+function softEllipse(layer, x, y, r, c, peakAlpha, steps) {
+  layer.noStroke();
+  for (let i = steps; i > 0; i--) {
+    let rr = r * (i / steps);
+    let a = peakAlpha * pow(i / steps, 2.2);
+    layer.fill(hue(c), saturation(c), brightness(c), a);
+    layer.ellipse(x, y, rr, rr);
+  }
+}
+
+class Node {
+  constructor(x, y, role) {
+    this.pos = createVector(x, y);
+    this.role = role;
+    this.baseR = (role === 'heart') ? min(width, height) * 0.030 : random(3.2, 6.2);
+    this.phase = random(TWO_PI);
+    this.color = (role === 'heart') ? palette.heart : (random() < 0.55 ? palette.filament : palette.filament2);
+  }
+
+  update() {
+    this.localBreath = (sin(breathPhase * TWO_PI + this.phase) + 1) * 0.5;
+  }
+
+  draw(layer, glow, breath) {
+    let r = this.baseR * (1 + breath * 0.65 + this.localBreath * 0.35);
+    if (this.role === 'heart') r *= 1.55;
+    let coreAlpha = (this.role === 'heart') ? 100 : 82 + breath * 16;
+    softEllipse(glow, this.pos.x, this.pos.y, r * 7.5, this.color, this.role === 'heart' ? 28 : 18, 26);
+    layer.noStroke();
+    layer.fill(hue(this.color), saturation(this.color), brightness(this.color), coreAlpha);
+    layer.ellipse(this.pos.x, this.pos.y, r, r);
+  }
+}
+
+class Filament {
+  constructor(a, b) {
+    this.a = a;
+    this.b = b;
+    this.noiseOffset = random(10000);
+    this.cp1 = createVector();
+    this.cp2 = createVector();
+    this.thickness = random(1.1, 2.4);
+    this.isBridge = (a.role === 'heart' || b.role === 'heart');
+    this.color = this.isBridge ? palette.filament : palette.filament2;
+  }
+
+  update() {
+    let ax = this.a.pos.x, ay = this.a.pos.y;
+    let bx = this.b.pos.x, by = this.b.pos.y;
+    let midX = (ax + bx) * 0.5, midY = (ay + by) * 0.5;
+    let dx = bx - ax, dy = by - ay;
+    let len = sqrt(dx * dx + dy * dy) || 1;
+    let perpX = -dy / len, perpY = dx / len;
+    let breath = (sin(breathPhase * TWO_PI) + 1) * 0.5;
+    let bend = min(width, height) * 0.10 * (1 + breath * 0.30);
+    let n1 = noise(this.noiseOffset, t * 1.2) - 0.5;
+    let n2 = noise(this.noiseOffset + 10000, t * 1.6) - 0.5;
+    this.cp1.set(
+      lerp(ax, midX, 0.5) + perpX * n1 * bend,
+      lerp(ay, midY, 0.5) + perpY * n1 * bend
+    );
+    this.cp2.set(
+      lerp(bx, midX, 0.5) + perpX * n2 * bend,
+      lerp(by, midY, 0.5) + perpY * n2 * bend
+    );
+  }
+
+  drawStructure(layer) {
+    layer.noFill();
+    let alpha = 92;
+    if (this.isBridge) alpha += 38;
+    layer.strokeWeight(this.thickness);
+    layer.stroke(hue(this.color), saturation(this.color), brightness(this.color), alpha);
+    layer.bezier(
+      this.a.pos.x, this.a.pos.y,
+      this.cp1.x, this.cp1.y,
+      this.cp2.x, this.cp2.y,
+      this.b.pos.x, this.b.pos.y
+    );
+  }
+}
+
+class Pulse {
+  constructor(filament) {
+    this.f = filament;
+    this.t = 0;
+    this.speed = random(0.004, 0.010);
+    this.size = random(3.2, 7.2);
+    this.color = palette.pulse;
+    this.reverse = random() < 0.25;
+    if (this.reverse) this.t = 1;
+  }
+
+  update() {
+    this.t += this.reverse ? -this.speed : this.speed;
+  }
+
+  done() {
+    return this.reverse ? this.t <= 0 : this.t >= 1;
+  }
+
+  draw(layer, glow) {
+    let u = 1 - this.t;
+    let x = u*u*u*this.f.a.pos.x + 3*u*u*this.t*this.f.cp1.x + 3*u*this.t*this.t*this.f.cp2.x + this.t*this.t*this.t*this.f.b.pos.x;
+    let y = u*u*u*this.f.a.pos.y + 3*u*u*this.t*this.f.cp1.y + 3*u*this.t*this.t*this.f.cp2.y + this.t*this.t*this.t*this.f.b.pos.y;
+    let envelope = 1 - abs(this.t - 0.5) * 2;
+    let alpha = 100 * envelope;
+    softEllipse(glow, x, y, this.size * 5.5, this.color, alpha * 0.75, 22);
+    layer.noStroke();
+    layer.fill(hue(this.color), saturation(this.color), brightness(this.color), alpha);
+    layer.ellipse(x, y, this.size, this.size);
+  }
+}
+
+function drawVignette() {
+  overlayLayer.clear();
+  overlayLayer.noStroke();
+  let cx = width / 2;
+  let cy = height / 2;
+  let dim = max(width, height);
+  for (let r = dim * 0.95; r > 0; r -= dim * 0.03) {
+    let alpha = map(r, 0, dim * 0.95, 0, 32);
+    overlayLayer.fill(232, 48, 10, alpha);
+    overlayLayer.ellipse(cx, cy, r * 1.2, r * 1.2);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  for (let g of [structureLayer, pulseLayer, glowLayer, overlayLayer]) {
+    g.resizeCanvas(width, height);
+    g.colorMode(HSB, 360, 100, 100, 100);
+  }
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+  buildOrganism();
+  drawStructure();
+  drawVignette();
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('presence-in-absence-' + CONFIG.seed, 'png');
+  if (key === 'r' || key === 'R') {
+    CONFIG.seed = floor(random(999999));
+    randomSeed(CONFIG.seed);
+    noiseSeed(CONFIG.seed);
+    buildOrganism();
+    drawStructure();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function mousePressed() {
+  if (filaments.length === 0) return;
+  let closest = filaments[0];
+  let best = Infinity;
+  let mouse = createVector(mouseX, mouseY);
+  for (let f of filaments) {
+    let mid = p5.Vector.add(f.a.pos, f.b.pos).mult(0.5);
+    let d = p5.Vector.dist(mouse, mid);
+    if (d < best) { best = d; closest = f; }
+  }
+  pulses.push(new Pulse(closest));
+}
+</script>
+</body>
+</html>

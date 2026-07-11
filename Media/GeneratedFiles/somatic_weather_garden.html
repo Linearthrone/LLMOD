@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Somatic Weather Garden — Body-Environment Bridge</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05050a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #e8f4f8;
+    }
+    #weather-garden {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+    #bridge-panel {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 2;
+      width: 280px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(8, 12, 22, 0.52);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      user-select: none;
+    }
+    #bridge-panel h1 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #fff;
+      text-transform: uppercase;
+    }
+    #bridge-panel .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin: 5px 0;
+      color: #b8d4e3;
+    }
+    #bridge-panel .bar {
+      width: 90px;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.12);
+      overflow: hidden;
+      margin-left: 10px;
+    }
+    #bridge-panel .bar span {
+      display: block;
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.2s ease;
+    }
+    #bridge-panel .poem {
+      margin-top: 12px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #9ecadd;
+      font-style: italic;
+    }
+    #integration-orb {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 2;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(200,230,255,0.25) 40%, transparent 70%);
+      box-shadow: 0 0 30px rgba(180, 230, 255, 0.35);
+      pointer-events: none;
+      opacity: 0.6;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="weather-garden"></div>
+  <div id="bridge-panel">
+    <h1>Somatic Weather Garden</h1>
+    <div class="metric">Heart-Rate Variability<div class="bar"><span id="bar-hrv"></span></div></div>
+    <div class="metric">Galvanic Skin Response<div class="bar"><span id="bar-gsr"></span></div></div>
+    <div class="metric">Muscle Tension<div class="bar"><span id="bar-tension"></span></div></div>
+    <div class="metric">Integration Index<div class="bar"><span id="bar-integration"></span></div></div>
+    <div class="poem" id="poem-line">The garden breathes with you.</div>
+  </div>
+  <div id="integration-orb"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script>
+    const sketch = function(p) {
+      // ---------- Somatic state engine ----------
+      const soma = {
+        hrv: 55,      // 0-100: coherence / flexibility
+        gsr: 45,      // 0-100: arousal / activation
+        tension: 35,  // 0-100: strain / load
+        integration: 0,
+        t: 0,
+        update(dt) {
+          this.t += dt;
+          // Slow autonomous rhythms + correlated noise for organic feel
+          const n = p.noise(this.t * 0.08, 7);
+          this.hrv = 50 + 32 * p.sin(this.t * 0.31) + 14 * p.noise(this.t * 0.17, 1);
+          this.gsr = 45 + 30 * p.sin(this.t * 0.47 + 1.7) + 18 * n;
+          this.tension = 35 + 38 * p.sin(this.t * 0.23 + 3.1) + 16 * p.noise(this.t * 0.11, 3);
+          this.hrv = p.constrain(this.hrv, 0, 100);
+          this.gsr = p.constrain(this.gsr, 0, 100);
+          this.tension = p.constrain(this.tension, 0, 100);
+          this.integration = (this.hrv + (100 - p.abs(this.gsr - 50) * 2) + (100 - this.tension)) / 3;
+          this.integration = p.constrain(this.integration, 0, 100);
+        }
+      };
+
+      // ---------- Scene objects ----------
+      let grass = [];
+      let particles = [];
+      let windLines = [];
+      let clouds = [];
+      let lightning = null;
+      let canvas;
+
+      // ---------- Palettes ----------
+      function skyGradient() {
+        const calmTop = p.color('#6dd5fa');
+        const calmBottom = p.color('#d4f1f9');
+        const stormTop = p.color('#1a1f2d');
+        const stormBottom = p.color('#3d4250');
+        const arousal = p.color('#ffcc66');
+        const tNorm = soma.tension / 100;
+        const gNorm = soma.gsr / 100;
+        let topC = p.lerpColor(calmTop, stormTop, tNorm);
+        let botC = p.lerpColor(calmBottom, stormBottom, tNorm);
+        topC = p.lerpColor(topC, arousal, gNorm * 0.18);
+        botC = p.lerpColor(botC, arousal, gNorm * 0.12);
+        return { top: topC, bottom: botC };
+      }
+
+      class GrassBlade {
+        constructor(x, y, h) {
+          this.x = x;
+          this.y = y;
+          this.h = h;
+          this.baseAngle = -p.HALF_PI + p.random(-0.18, 0.18);
+          this.phase = p.random(p.TWO_PI);
+          this.stiffness = p.random(0.6, 1.1);
+          this.strokeW = p.random(1.2, 2.8);
+          this.color = p.color(p.random(40, 90), p.random(140, 200), p.random(60, 110));
+        }
+        draw(wind, hrv, tension) {
+          const breathe = p.sin(soma.t * 0.8 + this.phase) * 0.04;
+          const chaos = (100 - hrv) / 100 * p.noise(this.x * 0.02, soma.t * 0.5) * 0.5;
+          const strain = tension / 100 * p.noise(this.x * 0.05, soma.t * 1.2) * 0.45;
+          const lean = (wind * 0.4 + breathe + chaos + strain) * this.stiffness;
+          const tipX = this.x + p.cos(this.baseAngle + lean) * this.h;
+          const tipY = this.y + p.sin(this.baseAngle + lean) * this.h;
+          const swayMidX = this.x + p.cos(this.baseAngle + lean * 0.5) * (this.h * 0.55);
+          const swayMidY = this.y + p.sin(this.baseAngle + lean * 0.5) * (this.h * 0.55);
+          const c = p.lerpColor(this.color, p.color(120, 140, 160), tension / 200);
+          p.stroke(c);
+          p.strokeWeight(this.strokeW);
+          p.noFill();
+          p.beginShape();
+          p.vertex(this.x, this.y);
+          p.quadraticVertex(swayMidX, swayMidY, tipX, tipY);
+          p.endShape();
+        }
+      }
+
+      class WindLine {
+        constructor() {
+          this.reset();
+        }
+        reset() {
+          this.y = p.random(p.height);
+          this.x = p.random(-100, p.width);
+          this.speed = p.random(0.5, 2.5);
+          this.offset = p.random(1000);
+          this.alpha = p.random(20, 70);
+          this.weight = p.random(0.5, 1.5);
+        }
+        draw(windSpeed, hrv) {
+          const w = windSpeed * this.speed;
+          this.x += w + p.noise(this.offset + soma.t * 0.3) * (hrv / 20);
+          if (this.x > p.width + 80) { this.x = -80; this.y = p.random(p.height); }
+          const y = this.y + p.noise(this.offset, soma.t * 0.2) * 30;
+          p.noFill();
+          p.stroke(255, this.alpha);
+          p.strokeWeight(this.weight);
+          p.beginShape();
+          for (let i = 0; i < 40; i += 5) {
+            p.vertex(this.x + i, y + p.noise(this.offset + i * 0.05, soma.t * 0.4) * 12);
+          }
+          p.endShape();
+        }
+      }
+
+      class Cloud {
+        constructor() {
+          this.reset();
+          this.x = p.random(p.width);
+        }
+        reset() {
+          this.x = -p.random(120, 300);
+          this.y = p.random(p.height * 0.05, p.height * 0.42);
+          this.scale = p.random(0.7, 1.6);
+          this.speed = p.random(0.15, 0.45);
+          this.puffs = [];
+          const n = p.floor(p.random(5, 9));
+          for (let i = 0; i < n; i++) {
+            this.puffs.push({
+              x: p.random(-50, 50),
+              y: p.random(-18, 18),
+              r: p.random(24, 52)
+            });
+          }
+        }
+        draw(wind, tension, gsr) {
+          const w = wind * 0.25 + this.speed;
+          this.x += w;
+          if (this.x > p.width + 140) this.reset();
+          const gray = p.map(tension, 0, 100, 245, 90);
+          const arousalGlow = p.map(gsr, 0, 100, 0, 55);
+          p.noStroke();
+          for (const puff of this.puffs) {
+            const c = p.color(gray + arousalGlow * 0.4, gray - arousalGlow * 0.2, gray - arousalGlow * 0.1, 130);
+            p.fill(c);
+            p.circle(this.x + puff.x * this.scale, this.y + puff.y * this.scale, puff.r * 2 * this.scale);
+          }
+        }
+      }
+
+      class Particle {
+        constructor() {
+          this.reset(true);
+        }
+        reset(randomX = false) {
+          this.x = randomX ? p.random(p.width) : p.random(-30, p.width + 30);
+          this.y = p.random(p.height * 0.45, p.height + 30);
+          this.vx = p.random(-0.4, 0.4);
+          this.vy = p.random(-0.3, -1.2);
+          this.life = p.random(120, 360);
+          this.maxLife = this.life;
+          this.size = p.random(3, 8);
+          this.bloomPhase = p.random(p.TWO_PI);
+          this.hue = p.random(180, 340); // cyan to rose
+        }
+        update(wind, hrv, gsr) {
+          const jitter = (100 - hrv) / 100;
+          this.vx += wind * 0.008 + p.noise(this.x * 0.01, soma.t * 0.2) * 0.04 * (1 + jitter * 2);
+          this.vy += p.noise(this.y * 0.01, soma.t * 0.25) * 0.03 * (1 + jitter);
+          this.vx *= 0.985;
+          this.vy *= 0.985;
+          this.x += this.vx;
+          this.y += this.vy;
+          this.life--;
+          if (this.life <= 0 || this.y < -20 || this.x < -40 || this.x > p.width + 40) {
+            this.reset();
+          }
+        }
+        draw(gsr) {
+          const alive = this.life / this.maxLife;
+          const bloom = 1 + 0.45 * p.sin(soma.t * 2.5 + this.bloomPhase) * (gsr / 100);
+          const alpha = alive * p.map(gsr, 0, 100, 70, 220);
+          const c = p.color(
+            p.map(p.sin(this.hue * 0.01), -1, 1, 160, 255),
+            p.map(p.cos(this.hue * 0.015), -1, 1, 180, 240),
+            240,
+            alpha
+          );
+          p.noStroke();
+          p.fill(c);
+          p.push();
+          p.translate(this.x, this.y);
+          p.rotate(this.bloomPhase + soma.t * 0.3);
+          p.ellipse(0, 0, this.size * bloom, this.size * bloom * 0.7);
+          p.pop();
+        }
+      }
+
+      class LightningBolt {
+        constructor() {
+          this.life = p.floor(p.random(4, 10));
+          this.points = [];
+          let x = p.random(p.width * 0.2, p.width * 0.8);
+          let y = 0;
+          while (y < p.height * 0.55) {
+            this.points.push({x, y});
+            x += p.random(-40, 40);
+            y += p.random(18, 45);
+          }
+        }
+        draw() {
+          if (this.life <= 0) return;
+          p.stroke(220, 240, 255, this.life / 10 * 255);
+          p.strokeWeight(2);
+          for (let i = 1; i < this.points.length; i++) {
+            p.line(this.points[i-1].x, this.points[i-1].y, this.points[i].x, this.points[i].y);
+          }
+          p.noStroke();
+          p.fill(230, 250, 255, this.life / 12 * 60);
+          p.rect(0, 0, p.width, p.height);
+          this.life--;
+        }
+      }
+
+      // ---------- Setup & Draw ----------
+      p.setup = function() {
+        canvas = p.createCanvas(p.windowWidth, p.windowHeight);
+        canvas.parent('weather-garden');
+        p.frameRate(60);
+        p.pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
+        p.noiseDetail(3, 0.5);
+        resetScene();
+      };
+
+      function resetScene() {
+        grass = [];
+        const rows = 7;
+        const bladeCount = p.floor(p.map(p.width, 320, 1920, 240, 900));
+        for (let i = 0; i < bladeCount; i++) {
+          const yBand = p.height * 0.55 + p.random(p.height * 0.45);
+          const x = p.random(p.width);
+          const h = p.map(yBand, p.height * 0.55, p.height, 40, 140) * p.random(0.7, 1.3);
+          grass.push(new GrassBlade(x, yBand, h));
+        }
+        grass.sort((a, b) => a.y - b.y);
+
+        windLines = [];
+        for (let i = 0; i < 28; i++) windLines.push(new WindLine());
+
+        clouds = [];
+        for (let i = 0; i < 6; i++) clouds.push(new Cloud());
+
+        particles = [];
+        for (let i = 0; i < 80; i++) particles.push(new Particle());
+      }
+
+      p.windowResized = function() {
+        p.resizeCanvas(p.windowWidth, p.windowHeight);
+        resetScene();
+      };
+
+      p.draw = function() {
+        soma.update(0.016);
+        const grad = skyGradient();
+        drawGradient(grad.top, grad.bottom);
+
+        // Wind intensity: tension raises speed, HRV lowers turbulence
+        const windBase = p.map(soma.tension, 0, 100, 0.3, 5.5);
+        const wind = windBase + p.noise(soma.t * 0.2) * (1 + (100 - soma.hrv) / 50);
+
+        // Sun / mood light
+        drawSun(wind, soma.gsr, soma.tension);
+
+        // Wind lines (beneath clouds)
+        for (const wl of windLines) wl.draw(wind, soma.hrv);
+
+        // Clouds
+        for (const c of clouds) c.draw(wind, soma.tension, soma.gsr);
+
+        // Lightning
+        if (!lightning && soma.tension > 72 && p.random(1) < soma.tension * 0.00025) {
+          lightning = new LightningBolt();
+        }
+        if (lightning) {
+          lightning.draw();
+          if (lightning.life <= 0) lightning = null;
+        }
+
+        // Grass
+        for (const blade of grass) blade.draw(wind, soma.hrv, soma.tension);
+
+        // Particles
+        const targetCount = p.floor(p.map(soma.gsr, 0, 100, 40, 220));
+        if (particles.length < targetCount) particles.push(new Particle());
+        while (particles.length > targetCount && particles.length > 20) particles.pop();
+        for (const pt of particles) {
+          pt.update(wind, soma.hrv, soma.gsr);
+          pt.draw(soma.gsr);
+        }
+
+        // Integration halo
+        drawBridge();
+
+        // DOM overlay update (throttled to every 6 frames)
+        if (p.frameCount % 6 === 0) updateOverlay();
+      };
+
+      function drawGradient(topC, bottomC) {
+        p.noFill();
+        const steps = p.height / 3;
+        for (let i = 0; i <= steps; i++) {
+          const y = p.map(i, 0, steps, 0, p.height);
+          const c = p.lerpColor(topC, bottomC, i / steps);
+          p.stroke(c);
+          p.line(0, y, p.width, y);
+        }
+      }
+
+      function drawSun(wind, gsr, tension) {
+        const sunX = p.width * 0.78 + wind * 3;
+        const sunY = p.height * 0.18 + p.sin(soma.t * 0.2) * 12;
+        const calmColor = p.color('#fff9c4');
+        const arousalColor = p.color('#ffab40');
+        const stormColor = p.color('#8c9bb3');
+        let c = p.lerpColor(calmColor, arousalColor, gsr / 100);
+        c = p.lerpColor(c, stormColor, tension / 220);
+        const size = p.map(gsr, 0, 100, 70, 130) + p.sin(soma.t * 0.9) * 6;
+        p.noStroke();
+        for (let r = size * 2.8; r > size; r -= 10) {
+          p.fill(p.red(c), p.green(c), p.blue(c), p.map(r, size, size * 2.8, 90, 0));
+          p.circle(sunX, sunY, r);
+        }
+        p.fill(c);
+        p.circle(sunX, sunY, size);
+      }
+
+      function drawBridge() {
+        // Subtle golden lattice that pulses when integration is high
+        const alpha = p.map(soma.integration, 0, 100, 4, 28);
+        p.stroke(255, 230, 180, alpha);
+        p.strokeWeight(1);
+        const cx = p.width / 2;
+        const cy = p.height / 2;
+        const radius = 90 + p.sin(soma.t * 0.5) * 15;
+        const nodes = 16;
+        for (let i = 0; i < nodes; i++) {
+          const a = (i / nodes) * p.TWO_PI + soma.t * 0.05;
+          const x = cx + p.cos(a) * radius;
+          const y = cy + p.sin(a) * radius;
+          for (let j = i + 1; j < nodes; j += 3) {
+            const a2 = (j / nodes) * p.TWO_PI + soma.t * 0.05;
+            const x2 = cx + p.cos(a2) * radius;
+            const y2 = cy + p.sin(a2) * radius;
+            p.line(x, y, x2, y2);
+          }
+        }
+        p.noStroke();
+        p.fill(255, 250, 230, alpha * 2);
+        p.circle(cx, cy, 8 + p.sin(soma.t) * 3);
+      }
+
+      function updateOverlay() {
+        const fmt = v => Math.round(v);
+        const setBar = (id, v, color) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.style.width = fmt(v) + '%';
+            el.style.background = color;
+          }
+        };
+        setBar('bar-hrv', soma.hrv, 'linear-gradient(90deg, #4fd1c5, #63b3ed)');
+        setBar('bar-gsr', soma.gsr, 'linear-gradient(90deg, #f6ad55, #f56565)');
+        setBar('bar-tension', soma.tension, 'linear-gradient(90deg, #a0aec0, #718096)');
+        setBar('bar-integration', soma.integration, 'linear-gradient(90deg, #d6bcfa, #b794f4)');
+
+        const poem = document.getElementById('poem-line');
+        if (poem) {
+          let text = 'The garden breathes with you.';
+          if (soma.tension > 75) text = 'A storm passes through the body.';
+          else if (soma.gsr > 75) text = 'The field quickens, lit from within.';
+          else if (soma.hrv > 75) text = 'Every blade sways in the same breath.';
+          else if (soma.integration > 72) text = 'Body and weather remember each other.';
+          poem.textContent = text;
+        }
+
+        const orb = document.getElementById('integration-orb');
+        if (orb) {
+          const scale = 0.7 + soma.integration / 100 * 0.6;
+          orb.style.transform = 'scale(' + scale.toFixed(2) + ')';
+          orb.style.opacity = (0.35 + soma.integration / 100 * 0.5).toFixed(2);
+          orb.style.boxShadow = '0 0 ' + (20 + soma.integration * 0.4) + 'px rgba(180, 230, 255, ' + (soma.integration / 150).toFixed(2) + ')';
+        }
+      }
+    };
+
+    new p5(sketch, 'weather-garden');
+  </script>
+</body>
+</html>

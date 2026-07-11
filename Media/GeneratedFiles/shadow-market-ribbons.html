@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow-Market Nexus — Live Ribbons</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #05050a; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      color: rgba(200, 210, 255, 0.45);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 8px rgba(100, 120, 255, 0.25);
+    }
+  </style>
+</head>
+<body>
+<div id="info">Shadow-Market Nexus | seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | space pause | click perturb</div>
+<script>
+// === Shadow-Market Nexus: Live Market Ribbons ===
+// Self-contained p5.js generative artwork. Seeded, layered, dark,
+// visualizes abstract market dynamics as flowing, luminous ribbons.
+
+const CONFIG = {
+  seed: floor(random(1000000)),
+  ribbonCount: 48,
+  nodeCount: 24,
+  pulseCount: 90,
+  paused: false,
+  baseHue: 255,
+  flowScale: 0.0016,
+};
+
+// Dark, neon-vein palette tuned for a shadow-market feel.
+const PALETTE = [
+  { h: 255, s: 85, b: 92 },  // violet bloom
+  { h: 190, s: 90, b: 88 },  // cyan edge
+  { h: 320, s: 80, b: 80 },  // magenta pulse
+  { h: 160, s: 70, b: 72 },  // teal ghost
+  { h: 280, s: 60, b: 65 },  // deep indigo
+];
+
+let ribbons = [];
+let pulses = [];
+let trailLayer;
+let bloomLayer;
+let gridLayer;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.pixelDensity(1);
+
+  gridLayer = createGraphics(width, height);
+  gridLayer.colorMode(HSB, 360, 100, 100, 100);
+  gridLayer.pixelDensity(1);
+  drawGrid(gridLayer);
+
+  applySeed(CONFIG.seed);
+  spawnRibbons();
+  spawnPulses();
+
+  document.getElementById('seed').textContent = CONFIG.seed;
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function spawnRibbons() {
+  ribbons = [];
+  trailLayer.background(230, 60, 4);
+  bloomLayer.clear();
+
+  for (let i = 0; i < CONFIG.ribbonCount; i++) {
+    const y = map(i, 0, CONFIG.ribbonCount, height * 0.12, height * 0.88);
+    ribbons.push(new Ribbon(y));
+  }
+}
+
+function spawnPulses() {
+  pulses = [];
+  for (let i = 0; i < CONFIG.pulseCount; i++) {
+    pulses.push(new Pulse());
+  }
+}
+
+function drawGrid(layer) {
+  layer.clear();
+  layer.strokeWeight(1);
+  const step = 64;
+  for (let x = 0; x <= width; x += step) {
+    const a = map(abs(x - width / 2), 0, width / 2, 8, 1, true);
+    layer.stroke(250, 40, 30, a);
+    layer.line(x, 0, x, height);
+  }
+  for (let y = 0; y <= height; y += step) {
+    const a = map(abs(y - height / 2), 0, height / 2, 8, 1, true);
+    layer.stroke(250, 40, 30, a);
+    layer.line(0, y, width, y);
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  t += 0.008;
+
+  // Slow fade on trail layer for ribbon persistence.
+  trailLayer.noStroke();
+  trailLayer.fill(230, 60, 4, 3.5);
+  trailLayer.rect(0, 0, width, height);
+
+  for (let r of ribbons) {
+    r.update();
+    r.display(trailLayer, bloomLayer);
+  }
+
+  bloomLayer.clear();
+  for (let p of pulses) {
+    p.update();
+    p.display(bloomLayer);
+  }
+
+  background(230, 60, 4);
+  image(trailLayer, 0, 0);
+  image(gridLayer, 0, 0);
+  image(bloomLayer, 0, 0);
+}
+
+function mousePressed() {
+  // Perturb nearby ribbons and spawn a burst of pulses.
+  for (let r of ribbons) {
+    const d = abs(r.anchorY - mouseY);
+    if (d < 80) {
+      r.phase += PI;
+      r.speed *= 1.4;
+    }
+  }
+  for (let i = 0; i < 14; i++) {
+    pulses.push(new Pulse(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40)));
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`shadow-market-ribbons-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`shadow-market-ribbons-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    drawGrid(gridLayer);
+    spawnRibbons();
+    spawnPulses();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  const nextTrail = createGraphics(width, height);
+  nextTrail.colorMode(HSB, 360, 100, 100, 100);
+  nextTrail.image(trailLayer, 0, 0);
+  trailLayer = nextTrail;
+
+  const nextBloom = createGraphics(width, height);
+  nextBloom.colorMode(HSB, 360, 100, 100, 100);
+  nextBloom.image(bloomLayer, 0, 0);
+  bloomLayer = nextBloom;
+
+  const nextGrid = createGraphics(width, height);
+  nextGrid.colorMode(HSB, 360, 100, 100, 100);
+  drawGrid(nextGrid);
+  gridLayer = nextGrid;
+}
+
+class Ribbon {
+  constructor(anchorY) {
+    this.anchorY = anchorY;
+    this.phase = random(TWO_PI);
+    this.speed = random(0.4, 1.1);
+    this.amplitude = random(height * 0.04, height * 0.12);
+    this.nodes = [];
+    this.color = random(PALETTE);
+    this.thickness = random(1.2, 3.2);
+    this.history = [];
+    this.historyLimit = floor(random(18, 36));
+
+    const xStep = width / (CONFIG.nodeCount - 1);
+    for (let i = 0; i < CONFIG.nodeCount; i++) {
+      this.nodes.push({ x: i * xStep, y: anchorY, baseX: i * xStep });
+    }
+  }
+
+  update() {
+    // Market "price" undulation: layered sine + noise.
+    const wave = t * this.speed + this.phase;
+    for (let i = 0; i < this.nodes.length; i++) {
+      const n = this.nodes[i];
+      const nx = n.baseX * CONFIG.flowScale;
+      const drift = noise(nx, t * 0.3, this.phase) * 2 - 1;
+      const y = this.anchorY
+        + sin(wave + i * 0.35) * this.amplitude
+        + sin(wave * 1.7 + i * 0.22) * this.amplitude * 0.4
+        + drift * this.amplitude * 0.25;
+      n.x = n.baseX;
+      n.y = y;
+    }
+
+    this.history.push(this.nodes.map(n => ({ x: n.x, y: n.y })));
+    if (this.history.length > this.historyLimit) this.history.shift();
+  }
+
+  display(trails, bloom) {
+    // Core ribbon.
+    trails.noFill();
+    trails.strokeWeight(this.thickness);
+    trails.beginShape();
+    for (let i = 0; i < this.nodes.length; i++) {
+      const n = this.nodes[i];
+      const a = map(i, 0, this.nodes.length, 10, 55, true);
+      trails.stroke(this.color.h, this.color.s, this.color.b, a);
+      trails.curveVertex(n.x, n.y);
+    }
+    trails.endShape();
+
+    // Faint glow echo of the most recent history.
+    bloom.noFill();
+    bloom.strokeWeight(this.thickness * 2.5);
+    bloom.stroke(this.color.h, this.color.s, 100, 6);
+    bloom.beginShape();
+    for (let n of this.nodes) {
+      bloom.curveVertex(n.x, n.y);
+    }
+    bloom.endShape();
+  }
+}
+
+class Pulse {
+  constructor(x, y) {
+    this.pos = createVector(
+      x || random(width),
+      y || random(height)
+    );
+    this.vel = p5.Vector.fromAngle(random(TWO_PI)).mult(random(0.3, 1.4));
+    this.life = random(60, 220);
+    this.maxLife = this.life;
+    this.size = random(1.5, 4.0);
+    this.color = random(PALETTE);
+  }
+
+  update() {
+    const angle = noise(this.pos.x * CONFIG.flowScale, this.pos.y * CONFIG.flowScale, t) * TWO_PI * 2;
+    const force = p5.Vector.fromAngle(angle).mult(0.06);
+    this.vel.add(force);
+    this.vel.limit(1.6);
+    this.pos.add(this.vel);
+    this.life--;
+
+    if (this.life <= 0 || this.pos.x < -20 || this.pos.x > width + 20 || this.pos.y < -20 || this.pos.y > height + 20) {
+      this.pos = createVector(random(width), random(height));
+      this.vel = p5.Vector.fromAngle(random(TWO_PI)).mult(random(0.3, 1.4));
+      this.life = this.maxLife;
+    }
+  }
+
+  display(layer) {
+    const a = map(this.life, 0, this.maxLife, 0, 35, true);
+    layer.noStroke();
+    layer.fill(this.color.h, this.color.s, 100, a);
+    layer.ellipse(this.pos.x, this.pos.y, this.size, this.size);
+  }
+}
+</script>
+</body>
+</html>

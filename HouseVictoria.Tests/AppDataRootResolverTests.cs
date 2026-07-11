@@ -42,6 +42,30 @@ public class AppDataRootResolverTests
         }
     }
 
+    [Fact]
+    public void CoerceDataPath_RemapsBinReleasePathToRepoRoot()
+    {
+        var repoRoot = FindRepoRoot();
+        var appDir = Path.Combine(repoRoot, "HouseVictoria.App", "bin", "Release", "net8.0-windows");
+        var shadow = Path.Combine(appDir, "Data", "Databanks");
+
+        var resolved = AppDataRootResolver.CoerceDataPath(appDir, shadow, "Data/Databanks");
+
+        Assert.Equal(Path.GetFullPath(Path.Combine(repoRoot, "Data", "Databanks")), resolved);
+    }
+
+    [Fact]
+    public void ToPortableDataPath_ReturnsRelativeUnderRepoRoot()
+    {
+        var repoRoot = FindRepoRoot();
+        var appDir = Path.Combine(repoRoot, "HouseVictoria.App", "bin", "Debug", "net8.0-windows");
+        var absolute = Path.Combine(repoRoot, "Data", "Memory");
+
+        var portable = AppDataRootResolver.ToPortableDataPath(appDir, absolute, "Data/Memory");
+
+        Assert.Equal("Data/Memory", portable);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = AppContext.BaseDirectory;

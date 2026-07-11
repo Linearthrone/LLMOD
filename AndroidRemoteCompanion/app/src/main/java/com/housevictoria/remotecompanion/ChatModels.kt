@@ -20,7 +20,9 @@ data class ChatMessage(
     val role: MessageRole,
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val conversationId: String? = null
+    val conversationId: String? = null,
+    val hasMedia: Boolean = false,
+    val mediaType: String? = null
 ) {
     fun formattedTime(): String =
         SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(timestamp))
@@ -30,13 +32,17 @@ data class RemoteMessage(
     val id: String,
     val role: MessageRole,
     val content: String,
-    val timestampMs: Long
+    val timestampMs: Long,
+    val hasMedia: Boolean = false,
+    val mediaType: String? = null
 ) {
     fun toChatMessage(): ChatMessage = ChatMessage(
         id = id.ifBlank { UUID.randomUUID().toString() },
         role = role,
         content = content,
-        timestamp = timestampMs
+        timestamp = timestampMs,
+        hasMedia = hasMedia,
+        mediaType = mediaType
     )
 }
 
@@ -88,6 +94,7 @@ object CompanionPrefs {
     private const val PREFS = "remote_companion_prefs"
     private const val KEY_BASE_URL = "base_url"
     private const val KEY_TOKEN = "token"
+    private const val KEY_THEME = "app_theme"
 
     fun load(context: Context): CompanionConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -95,6 +102,18 @@ object CompanionPrefs {
             baseUrl = prefs.getString(KEY_BASE_URL, "http://127.0.0.1:17890").orEmpty(),
             token = prefs.getString(KEY_TOKEN, "").orEmpty()
         )
+    }
+
+    fun loadThemeId(context: Context): String =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_THEME, AppTheme.HOUSE_VICTORIA.id)
+            .orEmpty()
+
+    fun saveThemeId(context: Context, themeId: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_THEME, themeId)
+            .apply()
     }
 
     fun save(context: Context, config: CompanionConfig) {

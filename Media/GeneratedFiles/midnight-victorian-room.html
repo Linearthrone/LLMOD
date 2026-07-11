@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Midnight Victorian Room</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #050507; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+// === Midnight Victorian Room ===
+// Empty room at midnight. Unseen moonlight drifts across floorboards,
+// dust motes spiral in the beam, and shadows pool in the corners.
+
+const CONFIG = {
+  seed: 20260708,
+  paused: false,
+  dustCount: 360,
+  vignetteFalloff: 0.0012,
+  lightBeamAngle: 0.22,
+  lightSpeed: 0.0010,
+};
+
+const PALETTE = {
+  ink:      { h: 242, s: 46, b: 24 },   // wall/ceiling deep blue-black
+  umber:    { h: 32,  s: 56, b: 46 },  // floorboards warm dark
+  board:    { h: 28,  s: 42, b: 28 },  // board gap / grain
+  moon:     { h: 208, s: 18, b: 98 },  // cool silver light
+  gold:     { h: 44,  s: 38, b: 82 },  // dust mote warm fringe
+  shadow:   { h: 252, s: 60, b: 12 },  // corner shadow
+};
+
+let roomLayer, lightLayer, dustLayer, glowLayer;
+let floorboards = [];
+let dust = [];
+let t = 0;
+let lightOrigin, lightTarget;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  roomLayer  = createGraphics(width, height);
+  lightLayer = createGraphics(width, height);
+  dustLayer  = createGraphics(width, height);
+  glowLayer  = createGraphics(width, height);
+  for (let layer of [roomLayer, lightLayer, dustLayer, glowLayer]) {
+    layer.colorMode(HSB, 360, 100, 100, 100);
+    layer.pixelDensity(1);
+  }
+
+  applySeed(CONFIG.seed);
+  buildRoom();
+  spawnDust();
+
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+}
+
+function buildRoom() {
+  const horizonY = height * 0.34;
+  const backWallLeft  = width * 0.30;
+  const backWallRight = width * 0.70;
+
+  roomLayer.background(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b);
+  roomLayer.noStroke();
+
+  // Wall gradient (subtle upward fade)
+  const wallSteps = 160;
+  for (let i = 0; i <= wallSteps; i++) {
+    const y = map(i, 0, wallSteps, 0, horizonY);
+    const n = noise(i * 0.05);
+    const br = map(n, 0, 1, PALETTE.ink.b, PALETTE.ink.b + 10, true);
+    const sat = map(n, 0, 1, PALETTE.ink.s - 8, PALETTE.ink.s + 4, true);
+    roomLayer.fill(PALETTE.ink.h, sat, br);
+    roomLayer.rect(0, y, width, (horizonY / wallSteps) + 1);
+  }
+
+  // Wall panels / moulding
+  drawWallPanels(roomLayer, backWallLeft, backWallRight, horizonY);
+
+  // Floor gradient
+  const floorSteps = 200;
+  for (let i = 0; i <= floorSteps; i++) {
+    const y = map(i, 0, floorSteps, horizonY, height);
+    const dist = map(i, 0, floorSteps, 0, 1);
+    const baseB = map(dist, 0, 1, PALETTE.umber.b, PALETTE.umber.b * 0.65);
+    const n = noise(i * 0.08, 1);
+    const br = map(n, 0, 1, baseB - 4, baseB + 3, true);
+    roomLayer.fill(PALETTE.umber.h, PALETTE.umber.s, br);
+    roomLayer.rect(0, y, width, ((height - horizonY) / floorSteps) + 1);
+  }
+
+  // Floorboards perspective
+  const vanishX = width * 0.55;
+  const boardCount = floor(map(height, 400, 1400, 22, 60, true));
+  floorboards = [];
+  for (let i = -boardCount; i <= boardCount; i++) {
+    const spread = map(abs(i), 0, boardCount, 0.008, 0.34);
+    const xLeft  = lerp(vanishX, -width * spread, i / boardCount);
+    const xRight = lerp(vanishX, width * (1 + spread), i / boardCount);
+    floorboards.push({ x1: xLeft, y1: horizonY, x2: xRight, y2: height });
+  }
+
+  roomLayer.stroke(PALETTE.board.h, PALETTE.board.s, PALETTE.board.b, 120);
+  roomLayer.strokeWeight(1.6);
+  for (let b of floorboards) {
+    roomLayer.line(b.x1, b.y1, b.x2, b.y2);
+  }
+
+  // Horizontal floor joints
+  roomLayer.stroke(PALETTE.board.h, PALETTE.board.s, PALETTE.board.b, 60);
+  roomLayer.strokeWeight(0.8);
+  for (let i = 0; i < 10; i++) {
+    const y = map(i, 0, 10, horizonY + 4, height * 0.74);
+    roomLayer.line(0, y, width, y);
+  }
+
+  // Baseboard
+  roomLayer.stroke(PALETTE.shadow.h, PALETTE.shadow.s, PALETTE.shadow.b + 8, 120);
+  roomLayer.strokeWeight(3);
+  roomLayer.line(backWallLeft, horizonY, backWallRight, horizonY);
+
+  // Corner shadows
+  roomLayer.noStroke();
+  drawVignetteShadow(roomLayer, 0.0012, PALETTE.shadow, 90);
+  drawSoftShadow(roomLayer, 0, height, width * 0.20, PALETTE.shadow, 1.4);
+  drawSoftShadow(roomLayer, width, height, width * 0.24, PALETTE.shadow, 1.4);
+
+  lightOrigin = createVector(-width * 0.14, -height * 0.05);
+  lightTarget = createVector(width * 0.58, height * 0.68);
+}
+
+function drawWallPanels(layer, left, right, bottom) {
+  const panelCount = 4;
+  const w = right - left;
+  const h = bottom;
+  layer.stroke(PALETTE.shadow.h, PALETTE.shadow.s, PALETTE.shadow.b + 18, 75);
+  layer.strokeWeight(1);
+  layer.noFill();
+  for (let i = 1; i < panelCount; i++) {
+    const x = left + (w * i / panelCount);
+    layer.line(x, 0, x, bottom);
+  }
+  layer.line(left, h * 0.42, right, h * 0.42);
+  layer.line(left, h * 0.76, right, h * 0.76);
+}
+
+function spawnDust() {
+  dust = [];
+  for (let i = 0; i < CONFIG.dustCount; i++) {
+    dust.push(new Mote());
+  }
+}
+
+function draw() {
+  t += CONFIG.lightSpeed;
+
+  lightTarget.x = width * 0.58 + map(noise(t * 0.7, 0), 0, 1, -width * 0.20, width * 0.20);
+  lightTarget.y = height * 0.68 + map(noise(0, t * 0.6), 0, 1, -height * 0.12, height * 0.12);
+
+  // Build light layer fresh each frame
+  lightLayer.background(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b);
+  drawLightBeam(lightLayer);
+  drawFloorPool(lightLayer);
+
+  // Dust layer: trail fade
+  dustLayer.noStroke();
+  dustLayer.fill(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b, 30);
+  dustLayer.rect(0, 0, width, height);
+
+  glowLayer.noStroke();
+  glowLayer.fill(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b, 18);
+  glowLayer.rect(0, 0, width, height);
+
+  const beamDir = p5.Vector.sub(lightTarget, lightOrigin).normalize();
+  for (let m of dust) {
+    m.update(beamDir);
+    m.display(dustLayer, glowLayer);
+  }
+
+  // Composite
+  background(PALETTE.ink.h, PALETTE.ink.s, PALETTE.ink.b);
+  image(roomLayer, 0, 0);
+  blendMode(SCREEN);
+  image(lightLayer, 0, 0);
+  blendMode(BLEND);
+  image(dustLayer, 0, 0);
+  blendMode(ADD);
+  image(glowLayer, 0, 0);
+  blendMode(BLEND);
+
+  drawVignetteShadow(null, CONFIG.vignetteFalloff, PALETTE.shadow, 90);
+}
+
+function drawLightBeam(layer) {
+  const leftEdge  = lightOrigin.copy().add(p5.Vector.sub(lightTarget, lightOrigin).rotate(-CONFIG.lightBeamAngle));
+  const rightEdge = lightOrigin.copy().add(p5.Vector.sub(lightTarget, lightOrigin).rotate(+CONFIG.lightBeamAngle));
+
+  layer.noStroke();
+  const steps = 90;
+  for (let i = 0; i <= steps; i++) {
+    const amt = i / steps;
+    const x1 = lerp(lightOrigin.x, leftEdge.x, amt);
+    const y1 = lerp(lightOrigin.y, leftEdge.y, amt);
+    const x2 = lerp(lightOrigin.x, rightEdge.x, amt);
+    const y2 = lerp(lightOrigin.y, rightEdge.y, amt);
+    const alpha = map(amt, 0, 1, 0, 65, true) * (1 - amt * 0.18);
+    layer.fill(PALETTE.moon.h, PALETTE.moon.s, PALETTE.moon.b, alpha);
+    layer.quad(lightOrigin.x, lightOrigin.y, x1, y1, x2, y2, lightOrigin.x, lightOrigin.y);
+  }
+
+  layer.fill(PALETTE.moon.h, PALETTE.moon.s, PALETTE.moon.b, 24);
+  layer.triangle(lightOrigin.x, lightOrigin.y, leftEdge.x, leftEdge.y, lightTarget.x, lightTarget.y);
+  layer.triangle(lightOrigin.x, lightOrigin.y, rightEdge.x, rightEdge.y, lightTarget.x, lightTarget.y);
+}
+
+function drawFloorPool(layer) {
+  const cx = lightTarget.x;
+  const cy = lightTarget.y;
+  const rx = map(noise(t), 0, 1, width * 0.22, width * 0.36);
+  const ry = rx * 0.36;
+
+  layer.noStroke();
+  const poolSteps = 120;
+  for (let i = poolSteps; i >= 0; i--) {
+    const rr = i / poolSteps;
+    const alpha = map(rr, 0, 1, 0, 55, true) * (1 - rr * rr);
+    const br = map(rr, 0, 1, PALETTE.moon.b, PALETTE.moon.b * 0.72);
+    layer.fill(PALETTE.moon.h, PALETTE.moon.s, br, alpha);
+    layer.ellipse(cx, cy, rx * rr, ry * rr);
+  }
+
+  const coreSteps = 60;
+  for (let i = coreSteps; i >= 0; i--) {
+    const rr = i / coreSteps;
+    const alpha = map(rr, 0, 1, 0, 16, true) * (1 - rr);
+    layer.fill(PALETTE.gold.h, PALETTE.gold.s, PALETTE.gold.b, alpha);
+    layer.ellipse(cx, cy, rx * rr * 0.45, ry * rr * 0.45);
+  }
+}
+
+function drawVignetteShadow(layer, falloff, col, peakAlpha) {
+  const g = layer || window;
+  g.noStroke();
+  const steps = 120;
+  const maxR = Math.max(width, height) * 0.88;
+  for (let i = steps; i >= 0; i--) {
+    const rr = i / steps;
+    const alpha = map(rr, 0, 1, 0, peakAlpha, true) * Math.pow(rr, falloff * 1000);
+    g.fill(col.h, col.s, col.b, alpha);
+    g.ellipse(width * 0.5, height * 0.5, maxR * rr * 2, maxR * rr * 2);
+  }
+}
+
+function drawSoftShadow(layer, x, y, r, col, peakAlpha) {
+  layer.noStroke();
+  const steps = 80;
+  for (let i = steps; i >= 0; i--) {
+    const rr = i / steps;
+    const alpha = map(rr, 0, 1, 0, peakAlpha * 100, true) * (1 - rr * rr);
+    layer.fill(col.h, col.s, col.b, alpha);
+    layer.ellipse(x, y, r * rr * 2, r * rr * 2);
+  }
+}
+
+class Mote {
+  constructor() {
+    this.reset();
+    this.pos.y = random(height * 0.2, height);
+  }
+
+  reset() {
+    if (random() < 0.72) {
+      const along = random(0.15, 1.0);
+      const spread = random(-1, 1) * width * 0.09 * along;
+      const base = p5.Vector.lerp(lightOrigin, lightTarget, along);
+      this.pos = createVector(base.x + spread, base.y + random(-height * 0.10, height * 0.10));
+    } else {
+      this.pos = createVector(random(width), random(height * 0.34, height));
+    }
+    this.vel = createVector(random(-0.35, 0.35), random(-0.18, 0.28));
+    this.size = random(0.9, 3.4);
+    this.twinkle = random(1000);
+    this.warm = random() > 0.55;
+  }
+
+  update(beamDir) {
+    const n = noise(this.pos.x * 0.005, this.pos.y * 0.005, t * 1.5);
+    const drift = p5.Vector.fromAngle(n * TWO_PI * 2).mult(0.28);
+    this.vel.add(drift);
+    this.vel.limit(1.1);
+    this.vel.mult(0.96);
+    this.pos.add(this.vel);
+    this.pos.add(beamDir.copy().mult(0.05));
+    this.twinkle += 0.08;
+
+    if (this.pos.x < -20 || this.pos.x > width + 20 || this.pos.y < -20 || this.pos.y > height + 20) {
+      this.reset();
+    }
+  }
+
+  display(layer, glow) {
+    const br = map(sin(this.twinkle), -1, 1, 80, 100);
+    const alpha = map(sin(this.twinkle * 0.7), -1, 1, 65, 100);
+
+    layer.noStroke();
+    if (this.warm) {
+      layer.fill(PALETTE.gold.h, PALETTE.gold.s, br, alpha);
+    } else {
+      layer.fill(PALETTE.moon.h, PALETTE.moon.s, br, alpha);
+    }
+    layer.ellipse(this.pos.x, this.pos.y, this.size, this.size);
+
+    const halo = this.size * 4.5;
+    const glowAlpha = alpha * 0.40;
+    glow.noStroke();
+    if (this.warm) {
+      glow.fill(PALETTE.gold.h, PALETTE.gold.s, br, glowAlpha);
+    } else {
+      glow.fill(PALETTE.moon.h, PALETTE.moon.s, br, glowAlpha);
+    }
+    glow.ellipse(this.pos.x, this.pos.y, halo, halo);
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`midnight-victorian-room-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`midnight-victorian-room-${CONFIG.seed}`, 5);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildRoom();
+    spawnDust();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  for (let layerName of ['roomLayer', 'lightLayer', 'dustLayer', 'glowLayer']) {
+    const next = createGraphics(width, height);
+    next.colorMode(HSB, 360, 100, 100, 100);
+    next.pixelDensity(1);
+    window[layerName] = next;
+  }
+  buildRoom();
+  spawnDust();
+}
+</script>
+</body>
+</html>

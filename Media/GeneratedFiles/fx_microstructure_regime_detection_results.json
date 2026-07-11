@@ -1,0 +1,13 @@
+{
+  "simulated_ticks": 288000,
+  "toxic_periods_injected": 3,
+  "vpin_90th_normal": 0.1067,
+  "ofi_90th_abs_normal": 113,
+  "resilience_90th_normal": 1.1538,
+  "filter_precision": 0.0,
+  "filter_recall": 0,
+  "filter_f1": 0,
+  "naive_annualized_sharpe": 7.889,
+  "filtered_annualized_sharpe": 11.604,
+  "timestamp_utc": "2026-07-08T20:30:50.739672+00:00"
+}

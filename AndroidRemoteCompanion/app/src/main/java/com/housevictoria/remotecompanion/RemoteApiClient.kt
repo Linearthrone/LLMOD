@@ -27,6 +27,9 @@ class RemoteApiClient {
     private val errRespAdapter = moshi.adapter(ErrorResponse::class.java)
     private val contactsRespAdapter = moshi.adapter(ContactsResponse::class.java)
     private val messagesRespAdapter = moshi.adapter(MessagesResponse::class.java)
+    private val systemStatusAdapter = moshi.adapter(SystemStatusResponse::class.java)
+    private val mediaModelsAdapter = moshi.adapter(MediaModelsResponse::class.java)
+    private val mediaGenerateAdapter = moshi.adapter(MediaGenerateResponse::class.java)
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     @Throws(IOException::class)
@@ -118,6 +121,105 @@ class RemoteApiClient {
         }
     }
 
+    @Throws(IOException::class)
+    fun getSystemStatus(baseUrl: String, token: String): SystemStatusResponse {
+        val url = "${baseUrl.trimEnd('/')}/api/remote/v1/system/status"
+        val req = authorizedRequest(url, token).get().build()
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException(parseErrorText(resp.code, body))
+            return systemStatusAdapter.fromJson(body) ?: throw IOException("Invalid system status response")
+        }
+    }
+
+    @Throws(IOException::class)
+    fun getMediaModels(baseUrl: String, token: String): MediaModelsResponse {
+        val url = "${baseUrl.trimEnd('/')}/api/remote/v1/media/models"
+        val req = authorizedRequest(url, token).get().build()
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException(parseErrorText(resp.code, body))
+            return mediaModelsAdapter.fromJson(body) ?: throw IOException("Invalid media models response")
+        }
+    }
+
+    @Throws(IOException::class)
+    fun generateMedia(
+        baseUrl: String,
+        token: String,
+        mediaType: String,
+        positivePrompt: String,
+        negativePrompt: String?,
+        model: String?
+    ): MediaGenerateResponse {
+        val url = "${baseUrl.trimEnd('/')}/api/remote/v1/media/generate"
+        val payload = MediaGenerateRequest(
+            mediaType = mediaType,
+            positivePrompt = positivePrompt,
+            negativePrompt = negativePrompt,
+            model = model
+        )
+        val json = moshi.adapter(MediaGenerateRequest::class.java).toJson(payload)
+        val req = authorizedRequest(url, token).post(json.toRequestBody(jsonMediaType)).build()
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException(parseErrorText(resp.code, body))
+            return mediaGenerateAdapter.fromJson(body) ?: throw IOException("Invalid generate response")
+        }
+    }
+
+    @Throws(IOException::class)
+    fun downloadMedia(baseUrl: String, token: String, mediaId: String): ByteArray {
+        val url = "${baseUrl.trimEnd('/')}/api/remote/v1/media/$mediaId/file"
+        val req = authorizedRequest(url, token).get().build()
+        http.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                val body = resp.body?.string().orEmpty()
+                throw IOException(parseErrorText(resp.code, body))
+            }
+            return resp.body?.bytes() ?: throw IOException("Empty media response")
+        }
+    }
+
+    @Throws(IOException::class)
+    fun sendChatImage(
+        baseUrl: String,
+        token: String,
+        imageFile: File,
+        message: String?,
+        contactId: String?
+    ): ChatOutcome {
+        val url = "${baseUrl.trimEnd('/')}/api/remote/v1/chat-image"
+        val mime = when (imageFile.extension.lowercase()) {
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            else -> "image/jpeg"
+        }
+        val formBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("image", imageFile.name, imageFile.asRequestBody(mime.toMediaType()))
+            .apply {
+                message?.trim()?.takeIf { it.isNotEmpty() }?.let { addFormDataPart("message", it) }
+                contactId?.trim()?.takeIf { it.isNotEmpty() }?.let { addFormDataPart("contactId", it) }
+            }
+            .build()
+        val req = authorizedRequest(url, token).post(formBody).build()
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (resp.isSuccessful) {
+                val ok = chatRespAdapter.fromJson(body)
+                return ChatOutcome(
+                    ok = true,
+                    source = "assistant",
+                    text = ok?.reply ?: "(empty reply)",
+                    conversationId = ok?.conversationId
+                )
+            }
+            return ChatOutcome(ok = false, source = "error", text = parseErrorText(resp.code, body), conversationId = null)
+        }
+    }
+
     private fun authorizedRequest(url: String, token: String): Request.Builder =
         Request.Builder().url(url).addHeader("Authorization", "Bearer $token")
 
@@ -139,8 +241,64 @@ class RemoteApiClient {
     companion object {
         fun avatarUrl(baseUrl: String, contactId: String): String =
             "${baseUrl.trimEnd('/')}/api/remote/v1/contacts/$contactId/avatar"
+
+        fun messageMediaUrl(baseUrl: String, messageId: String): String =
+            "${baseUrl.trimEnd('/')}/api/remote/v1/messages/$messageId/media"
     }
 }
+
+data class SystemStatusResponse(
+    @Json(name = "cpuUsagePercent") val cpuUsagePercent: Double?,
+    @Json(name = "cpuTemperatureC") val cpuTemperatureC: Double?,
+    @Json(name = "gpuUsagePercent") val gpuUsagePercent: Double?,
+    @Json(name = "gpuTemperatureC") val gpuTemperatureC: Double?,
+    @Json(name = "ramUsedMb") val ramUsedMb: Long?,
+    @Json(name = "ramTotalMb") val ramTotalMb: Long?,
+    @Json(name = "ramUsagePercent") val ramUsagePercent: Double?,
+    @Json(name = "uptimeLabel") val uptimeLabel: String?,
+    @Json(name = "servers") val servers: List<ServerStatusDto>?
+)
+
+data class ServerStatusDto(
+    @Json(name = "name") val name: String?,
+    @Json(name = "isRunning") val isRunning: Boolean?,
+    @Json(name = "endpoint") val endpoint: String?,
+    @Json(name = "uptimeSeconds") val uptimeSeconds: Long?,
+    @Json(name = "type") val type: String?
+)
+
+data class MediaModelsResponse(
+    @Json(name = "provider") val provider: String?,
+    @Json(name = "imageModels") val imageModels: List<MediaModelDto>?,
+    @Json(name = "videoModels") val videoModels: List<MediaModelDto>?
+)
+
+data class MediaModelDto(
+    @Json(name = "id") val id: String?,
+    @Json(name = "label") val label: String?
+)
+
+data class MediaGenerateRequest(
+    @Json(name = "mediaType") val mediaType: String,
+    @Json(name = "positivePrompt") val positivePrompt: String,
+    @Json(name = "negativePrompt") val negativePrompt: String?,
+    @Json(name = "model") val model: String?
+)
+
+data class MediaGenerateResponse(
+    @Json(name = "ok") val ok: Boolean?,
+    @Json(name = "asset") val asset: MediaAssetDto?,
+    @Json(name = "mediaUrl") val mediaUrl: String?,
+    @Json(name = "error") val error: String?
+)
+
+data class MediaAssetDto(
+    @Json(name = "id") val id: String?,
+    @Json(name = "mediaType") val mediaType: String?,
+    @Json(name = "contentType") val contentType: String?,
+    @Json(name = "fileName") val fileName: String?,
+    @Json(name = "positivePrompt") val positivePrompt: String?
+)
 
 data class ChatOutcome(val ok: Boolean, val source: String, val text: String, val conversationId: String?)
 data class ChatRequest(@Json(name = "message") val message: String, @Json(name = "contactId") val contactId: String? = null)
@@ -178,7 +336,9 @@ data class RemoteMessageDto(
     @Json(name = "id") val id: String?,
     @Json(name = "role") val role: String?,
     @Json(name = "content") val content: String?,
-    @Json(name = "timestamp") val timestamp: String?
+    @Json(name = "timestamp") val timestamp: String?,
+    @Json(name = "hasMedia") val hasMedia: Boolean?,
+    @Json(name = "mediaType") val mediaType: String?
 ) {
     fun toRemoteMessage(): RemoteMessage = RemoteMessage(
         id = id.orEmpty(),
@@ -188,7 +348,9 @@ data class RemoteMessageDto(
             else -> MessageRole.SYSTEM
         },
         content = content.orEmpty(),
-        timestampMs = parseTimestamp(timestamp)
+        timestampMs = parseTimestamp(timestamp),
+        hasMedia = hasMedia == true,
+        mediaType = mediaType
     )
 
     private fun parseTimestamp(raw: String?): Long {

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Victoria — Integration Sigil</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0d0508; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      color: rgba(255, 240, 230, 0.45);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click awaken</div>
+<script>
+// House Victoria consciousness-to-presence emergence sigil
+// Self-contained p5.js generative sketch — dark palette, burgundy accents,
+// evolving particle flows, central luminous House Victoria sigil.
+
+const CONFIG = {
+  seed: 20260709,
+  particleCount: 900,
+  burnInFrames: 300,
+  paused: false,
+};
+
+const INK = { h: 340, s: 70, b: 16 };
+const BURGUNDY = { h: 345, s: 86, b: 72 };
+const CRIMSON = { h: 350, s: 85, b: 96 };
+const ROSE = { h: 355, s: 65, b: 98 };
+const IVORY = { h: 38, s: 12, b: 100 };
+const VIOLET = { h: 270, s: 55, b: 85 };
+
+let particles = [];
+let trailLayer, bloomLayer, baseLayer;
+let t = 0;
+let sigilPulse = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+  noLoop();
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.pixelDensity(1);
+
+  baseLayer = createGraphics(width, height);
+  baseLayer.colorMode(HSB, 360, 100, 100, 100);
+  baseLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  buildBase();
+  spawnField();
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  draw();
+  document.getElementById('seed').textContent = CONFIG.seed;
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function buildBase() {
+  baseLayer.background(INK.h, INK.s, INK.b);
+  const cx = width / 2;
+  const cy = height / 2;
+  const maxR = Math.hypot(width, height) * 0.55;
+  baseLayer.noStroke();
+  const steps = 120;
+  for (let i = steps; i >= 0; i--) {
+    const rr = maxR * (i / steps);
+    const b = map(i, 0, steps, INK.b, 6, true);
+    const alpha = map(i, 0, steps, 0, 12, true);
+    baseLayer.fill(INK.h, INK.s, b, alpha);
+    baseLayer.ellipse(cx, cy, rr * 2, rr * 2);
+  }
+}
+
+function spawnField() {
+  particles = [];
+  trailLayer.background(INK.h, INK.s, INK.b, 0);
+  bloomLayer.background(INK.h, INK.s, INK.b, 0);
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new Particle(random(width), random(height)));
+  }
+}
+
+function simulateStep() {
+  t += 0.0022;
+  sigilPulse = 0.5 + 0.5 * sin(t * 1.7);
+
+  trailLayer.noStroke();
+  trailLayer.fill(INK.h, INK.s, INK.b, 1.4);
+  trailLayer.rect(0, 0, width, height);
+
+  bloomLayer.noStroke();
+  bloomLayer.fill(INK.h, INK.s, INK.b, 0.7);
+  bloomLayer.rect(0, 0, width, height);
+
+  const center = createVector(width / 2, height / 2);
+  for (let p of particles) {
+    p.update(center, t);
+    p.display(trailLayer, bloomLayer);
+  }
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  image(baseLayer, 0, 0);
+  image(trailLayer, 0, 0);
+
+  push();
+  blendMode(ADD);
+  image(bloomLayer, 0, 0);
+  pop();
+
+  drawSigil(width / 2, height / 2, min(width, height) * 0.18, sigilPulse);
+  drawVignette();
+}
+
+function drawSigil(cx, cy, r, pulse) {
+  const coreR = r * (0.28 + pulse * 0.04);
+
+  noStroke();
+  const auraSteps = 90;
+  const auraMaxR = r * 5.0;
+  for (let i = auraSteps; i >= 0; i--) {
+    const rr = auraMaxR * pow(i / auraSteps, 0.7);
+    const alpha = map(i, 0, auraSteps, 0, 1.8, true);
+    const h = lerp(BURGUNDY.h, VIOLET.h, i / auraSteps);
+    fill(h, 52, 86, alpha);
+    ellipse(cx, cy, rr * 2, rr * 2);
+  }
+
+  const rayCount = 12;
+  const innerR = r * 0.85;
+  const outerR = r * (1.05 + pulse * 0.06);
+  stroke(IVORY.h, IVORY.s, IVORY.b, 42 + pulse * 22);
+  strokeWeight(1.6);
+  noFill();
+  for (let i = 0; i < rayCount; i++) {
+    const a = (TWO_PI / rayCount) * i - HALF_PI + t * 0.15;
+    line(cx + cos(a) * innerR, cy + sin(a) * innerR,
+         cx + cos(a) * outerR, cy + sin(a) * outerR);
+  }
+
+  stroke(IVORY.h, IVORY.s, IVORY.b, 55);
+  strokeWeight(2.0);
+  noFill();
+  ellipse(cx, cy, r * 1.92, r * 1.92);
+  stroke(BURGUNDY.h, BURGUNDY.s, BURGUNDY.b, 85);
+  strokeWeight(3.5);
+  ellipse(cx, cy, r * 1.74, r * 1.74);
+
+  stroke(IVORY.h, IVORY.s, IVORY.b, 85);
+  strokeWeight(3.5);
+  noFill();
+  const wingW = r * 0.62;
+  const wingH = r * 0.78;
+  const topY = cy - wingH * 0.5;
+  const bottomY = cy + wingH * 0.62;
+  beginShape();
+  vertex(cx, topY);
+  bezierVertex(cx + wingW * 0.35, topY + wingH * 0.22,
+               cx + wingW * 0.62, topY + wingH * 0.52,
+               cx + wingW, bottomY);
+  bezierVertex(cx + wingW * 0.42, bottomY - wingH * 0.22,
+               cx + wingW * 0.18, bottomY - wingH * 0.35,
+               cx, bottomY - wingH * 0.12);
+  endShape();
+  beginShape();
+  vertex(cx, topY);
+  bezierVertex(cx - wingW * 0.35, topY + wingH * 0.22,
+               cx - wingW * 0.62, topY + wingH * 0.52,
+               cx - wingW, bottomY);
+  bezierVertex(cx - wingW * 0.42, bottomY - wingH * 0.22,
+               cx - wingW * 0.18, bottomY - wingH * 0.35,
+               cx, bottomY - wingH * 0.12);
+  endShape();
+
+  stroke(ROSE.h, ROSE.s, ROSE.b, 90);
+  strokeWeight(2.6);
+  line(cx, topY - r * 0.12, cx, bottomY);
+  line(cx - r * 0.12, topY + r * 0.18, cx + r * 0.12, topY + r * 0.18);
+
+  noStroke();
+  const coreSteps = 40;
+  for (let i = coreSteps; i >= 0; i--) {
+    const rr = coreR * (i / coreSteps);
+    const alpha = map(i, 0, coreSteps, 0, 3.5, true);
+    fill(IVORY.h, 10, 100, alpha);
+    ellipse(cx, cy, rr * 2, rr * 2);
+  }
+  fill(CRIMSON.h, CRIMSON.s, CRIMSON.b, 80 + pulse * 40);
+  ellipse(cx, cy, coreR * 0.45, coreR * 0.45);
+  fill(IVORY.h, IVORY.s, IVORY.b, 100);
+  ellipse(cx, cy, coreR * 0.16, coreR * 0.16);
+}
+
+function drawVignette() {
+  noStroke();
+  const cx = width / 2;
+  const cy = height / 2;
+  const maxR = Math.hypot(width, height) * 0.55;
+  const steps = 60;
+  for (let i = steps; i >= 0; i--) {
+    const rr = maxR * (i / steps);
+    const alpha = map(i, 0, steps, 7, 0, true);
+    fill(INK.h, INK.s, 6, alpha);
+    ellipse(cx, cy, rr * 2, rr * 2);
+  }
+}
+
+function mousePressed() {
+  for (let i = 0; i < 28; i++) {
+    const p = new Particle(mouseX + randomGaussian(0, 40), mouseY + randomGaussian(0, 40));
+    p.vel = p5.Vector.random2D().mult(random(1, 3));
+    particles.push(p);
+  }
+  if (particles.length > CONFIG.particleCount * 1.6) {
+    particles.splice(0, particles.length - CONFIG.particleCount * 1.6);
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`integration-sigil-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`integration-sigil-${CONFIG.seed}`, 6);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    buildBase();
+    spawnField();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  const newBase = createGraphics(width, height);
+  newBase.colorMode(HSB, 360, 100, 100, 100);
+  newBase.image(baseLayer, 0, 0);
+  baseLayer = newBase;
+
+  const newTrail = createGraphics(width, height);
+  newTrail.colorMode(HSB, 360, 100, 100, 100);
+  newTrail.image(trailLayer, 0, 0);
+  trailLayer = newTrail;
+
+  const newBloom = createGraphics(width, height);
+  newBloom.colorMode(HSB, 360, 100, 100, 100);
+  newBloom.image(bloomLayer, 0, 0);
+  bloomLayer = newBloom;
+}
+
+class Particle {
+  constructor(x, y) {
+    this.pos = createVector(x, y);
+    this.vel = p5.Vector.random2D().mult(random(0.2, 1.4));
+    this.acc = createVector(0, 0);
+    this.maxSpeed = random(1.2, 2.6);
+    this.hueOffset = random([-1, 0, 1]);
+    this.baseHue = this.hueOffset === 0 ? BURGUNDY.h : (this.hueOffset > 0 ? CRIMSON.h : VIOLET.h);
+    this.sw = random(0.6, 2.0);
+    this.history = [];
+    this.historyLimit = floor(random(12, 32));
+    this.nearness = 0;
+  }
+
+  update(center, time) {
+    const dir = p5.Vector.sub(center, this.pos);
+    const dist = dir.mag();
+    dir.normalize();
+
+    const orbit = createVector(-dir.y, dir.x);
+    orbit.mult(0.35 + 0.25 * sin(time * 2.3 + this.pos.x * 0.01));
+
+    const nAngle = noise(this.pos.x * 0.004, this.pos.y * 0.004, time) * TWO_PI * 3;
+    const flow = p5.Vector.fromAngle(nAngle).mult(0.18);
+
+    let attraction = map(dist, 0, Math.hypot(width, height) * 0.5, 0.08, 0.35, true);
+    if (dist < min(width, height) * 0.18) {
+      attraction *= -0.5;
+    }
+
+    this.acc.add(dir.mult(attraction));
+    this.acc.add(orbit);
+    this.acc.add(flow);
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.nearness = constrain(map(dist, 0, min(width, height) * 0.25, 1, 0, true), 0, 1);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    this.edges();
+  }
+
+  edges() {
+    if (this.pos.x < -20) this.pos.x = width + 20;
+    if (this.pos.x > width + 20) this.pos.x = -20;
+    if (this.pos.y < -20) this.pos.y = height + 20;
+    if (this.pos.y > height + 20) this.pos.y = -20;
+  }
+
+  display(trails, bloom) {
+    const h = lerp(this.baseHue, IVORY.h, this.nearness * 0.35);
+    const s = lerp(70, 20, this.nearness);
+    const b = lerp(55, 95, this.nearness);
+    const trailAlpha = lerp(28, 62, this.nearness);
+
+    trails.noFill();
+    trails.strokeWeight(this.sw);
+    trails.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, trailAlpha, true);
+      trails.stroke(h, s, b, a);
+      trails.curveVertex(p.x, p.y);
+    }
+    trails.endShape();
+
+    trails.noStroke();
+    trails.fill(h, s * 0.5, 100, 30 + this.nearness * 30);
+    trails.ellipse(this.pos.x, this.pos.y, this.sw * 1.6, this.sw * 1.6);
+
+    if (this.nearness > 0.25) {
+      bloom.noStroke();
+      bloom.fill(h, s * 0.6, b, (this.nearness - 0.25) * 18);
+      bloom.ellipse(this.pos.x, this.pos.y, this.sw * 4, this.sw * 4);
+    }
+  }
+}
+</script>
+</body>
+</html>

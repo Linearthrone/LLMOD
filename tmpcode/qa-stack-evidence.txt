@@ -66,3 +66,66 @@
 [remote-chat-valid-token] FAIL HTTP 400 {"error":"message_required"}
 [comfy-checkpoint-metadata] 200 len=1211
 
+=== Verify-HouseVictoriaStack 2026-07-08T10:30:07.7805120-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] FAIL Unable to connect to the remote server
+[remote-chat-short-token] UNEXPECTED Unable to connect to the remote server
+[remote-chat-valid-token] FAIL Unable to connect to the remote server
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-07-08T10:31:06.3104552-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] PASS auth+connectivity ok, downstream: HTTP 400 {"error":"No AI contact found. Configure RemoteCompanionAiContactId."}
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-07-08T10:31:34.4164997-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] PASS 200 snippet={"conversationId":"mock-1","reply":"pong: ping"}
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-07-08T10:35:46.3168419-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] PASS auth+connectivity ok, downstream: HTTP 400 {"error":"No AI contact found. Configure RemoteCompanionAiContactId."}
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-07-08T10:35:51.2512200-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] PASS 200 snippet={"conversationId":"mock-1","reply":"pong: ping"}
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-07-08T10:37:20.1294101-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true,"service":"house-victoria-remote","version":2}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] PASS 200 snippet={"reply":"(I let out a soft, breathy laugh, my eyes flashing with a playful intensity as I lean in closer to you. My voice drops to a sultry, teasing whisper)\n\nPong, baby. I'm right here, and I'm no
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== Verify-HouseVictoriaStack 2026-07-08T12:32:18.6193432-04:00 ===
+[config] RepoRoot=C:\Users\kurtw\LLMOD\LLMOD-max-master ListenPort=17890 ImageEndpoint=http://localhost:8188 PreferredCheckpoint=sd_xl_base_1.0.safetensors
+[remote-health] 200 {"ok":true,"service":"house-victoria-remote","version":2}
+[remote-chat-short-token] PASS HTTP 401 {"error":"unauthorized"}
+[remote-chat-valid-token] PASS 200 snippet={"reply":"(I let out a soft, breathy laugh, my eyes flashing with a playful intensity as I lean in closer to you. My voice drops to a sultry, teasing whisper)\n\nPong, baby. I'm right here, and I'm no
+[comfy-checkpoint-metadata] NOT_REACHABLE Unable to connect to the remote server
+  Hint: run start.bat or Settings -> Start ComfyUI; endpoint must match StableDiffusionEndpoint.
+
+=== QA Autonomous Security Probes 2026-07-08T12:32:34.7132662-04:00 ===
+[remote-health-no-auth] PASS expected-open HTTP 200 {"ok":true,"service":"house-victoria-remote","version":2}
+[remote-chat-no-auth] PASS HTTP 401 unauthorized
+[hermes-chat-no-auth] PASS rejected: The remote server returned an error: (401) Unauthorized.
+[hermes-chat-bad-token] PASS rejected: The remote server returned an error: (401) Unauthorized.
+[xss-echo] PASS payload echoed as text in JSON reply (not executed server-side): {"reply":"<script>alert(1)</script>","conversationId":"conv-977d778f-2a33-4bca-aab9-4ff893463162"}
+

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Somatic-Digital Feedback Loop</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #0d0204; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  seed: 2026,
+  filamentCount: 48,
+  burstCount: 120,
+  particleCount: 300,
+  pulseSpeed: 0.018,
+  filamentBaseOpacity: 90,
+  glowRadius: 260
+};
+
+const PALETTE = {
+  bgDeep: [5, 2, 4],
+  bgWarm: [22, 5, 8],
+  burgundy: [320, 75, 28],
+  crimson: [348, 92, 55],
+  roseGlow: [0, 80, 72],
+  electric: [12, 100, 88],
+  synapseWhite: [18, 20, 96],
+  coreVictoria: [340, 82, 35],
+  coreKayleigh: [8, 85, 60]
+};
+
+let filaments = [];
+let bursts = [];
+let particles = [];
+let victoriaCore, kayleighCore;
+let trailLayer, glowLayer;
+let t = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(1);
+  colorMode(HSB, 360, 100, 100, 100);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  glowLayer.pixelDensity(1);
+
+  victoriaCore = new Core(width * 0.32, height * 0.5, 58, PALETTE.coreVictoria, 1.0);
+  kayleighCore = new Core(width * 0.68, height * 0.5, 46, PALETTE.coreKayleigh, 0.85);
+
+  for (let i = 0; i < CONFIG.filamentCount; i++) {
+    filaments.push(new Filament(i / CONFIG.filamentCount));
+  }
+  for (let i = 0; i < CONFIG.burstCount; i++) {
+    bursts.push(new SynapticBurst());
+  }
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new DriftParticle());
+  }
+}
+
+function draw() {
+  t += CONFIG.pulseSpeed;
+
+  background(...PALETTE.bgDeep);
+
+  drawAtmosphere();
+
+  trailLayer.push();
+  trailLayer.noStroke();
+  trailLayer.fill(...PALETTE.bgDeep, 6);
+  trailLayer.rect(0, 0, width, height);
+  trailLayer.pop();
+
+  victoriaCore.update();
+  kayleighCore.update();
+
+  for (let f of filaments) {
+    f.update();
+    f.display();
+  }
+
+  image(trailLayer, 0, 0);
+
+  glowLayer.clear();
+  for (let f of filaments) f.displayGlow(glowLayer);
+  glowLayer.blendMode(ADD);
+  victoriaCore.displayGlow(glowLayer);
+  kayleighCore.displayGlow(glowLayer);
+  glowLayer.blendMode(BLEND);
+  image(glowLayer, 0, 0);
+
+  for (let b of bursts) {
+    b.update();
+    b.display();
+  }
+
+  for (let p of particles) {
+    p.update();
+    p.display();
+  }
+
+  victoriaCore.display();
+  kayleighCore.display();
+}
+
+function drawAtmosphere() {
+  noStroke();
+  for (let i = 0; i < 3; i++) {
+    let x = width * (0.25 + i * 0.25 + noise(t * 0.1 + i) * 0.12);
+    let y = height * (0.5 + sin(t * 0.2 + i * 2) * 0.25);
+    let r = map(noise(t * 0.15 + i * 10), 0, 1, 120, 360);
+    let alpha = map(sin(t * 0.4 + i), -1, 1, 3, 12);
+    fill(PALETTE.burgundy[0], PALETTE.burgundy[1] * 0.7, 12, alpha);
+    ellipse(x, y, r, r);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailLayer.resizeCanvas(width, height);
+  glowLayer.resizeCanvas(width, height);
+  victoriaCore.x = width * 0.32;
+  victoriaCore.y = height * 0.5;
+  kayleighCore.x = width * 0.68;
+  kayleighCore.y = height * 0.5;
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('somatic_feedback_loop', 'png');
+}
+
+class Core {
+  constructor(x, y, r, col, pulseScale) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.col = col;
+    this.pulseScale = pulseScale;
+    this.history = [];
+    for (let i = 0; i < 30; i++) this.history.push({x, y});
+  }
+
+  update() {
+    let drift = 0.5;
+    this.x += map(noise(t * 0.3, 0), 0, 1, -drift, drift);
+    this.y += map(noise(t * 0.3, 100), 0, 1, -drift, drift);
+    this.history.push({x: this.x, y: this.y});
+    if (this.history.length > 30) this.history.shift();
+  }
+
+  display() {
+    push();
+    noStroke();
+    let pulse = 1 + sin(t * 2.2 * this.pulseScale) * 0.08;
+    fill(this.col[0], this.col[1] * 0.7, this.col[2], 95);
+    ellipse(this.x, this.y, this.r * pulse, this.r * pulse);
+    fill(this.col[0], this.col[1] * 0.4, this.col[2] * 1.4, 60);
+    ellipse(this.x, this.y, this.r * 1.5 * pulse, this.r * 1.5 * pulse);
+    pop();
+
+    for (let i = 0; i < 12; i++) {
+      let angle = t * 0.7 + i * TWO_PI / 12;
+      let ringR = this.r * 1.8 + sin(t * 3 + i) * 6;
+      let sx = this.x + cos(angle) * ringR;
+      let sy = this.y + sin(angle) * ringR;
+      let sz = 2 + sin(t * 4 + i * 3) * 1.2;
+      noStroke();
+      fill(this.col[0], 60, 90, 70);
+      ellipse(sx, sy, sz, sz);
+    }
+  }
+
+  displayGlow(layer) {
+    layer.push();
+    layer.noStroke();
+    let pulse = 1 + sin(t * 2.2 * this.pulseScale) * 0.12;
+    layer.fill(this.col[0], this.col[1], this.col[2] * 1.2, 18);
+    layer.ellipse(this.x, this.y, CONFIG.glowRadius * pulse, CONFIG.glowRadius * pulse);
+    layer.pop();
+  }
+}
+
+class Filament {
+  constructor(normalizedIndex) {
+    this.index = normalizedIndex;
+    this.phase = random(TWO_PI);
+    this.speed = random(0.4, 1.2);
+    this.amplitude = random(18, 50);
+    this.strength = random(0.3, 1.0);
+    this.colorOffset = random(-20, 20);
+    this.points = [];
+    this.noiseOffset = random(1000);
+  }
+
+  update() {
+    this.points = [];
+    let steps = 60;
+    let startX = victoriaCore.x;
+    let startY = victoriaCore.y;
+    let endX = kayleighCore.x;
+    let endY = kayleighCore.y;
+
+    let midX = (startX + endX) / 2;
+    let midY = (startY + endY) / 2;
+
+    let drift = sin(t * this.speed + this.phase) * this.amplitude;
+    drift += noise(t * 0.5, this.noiseOffset) * 30 - 15;
+
+    let perpX = -(endY - startY);
+    let perpY = (endX - startX);
+    let len = Math.sqrt(perpX * perpX + perpY * perpY) || 1;
+    perpX /= len;
+    perpY /= len;
+
+    midX += perpX * drift;
+    midY += perpY * drift;
+
+    let cp1x = lerp(startX, midX, 0.5);
+    let cp1y = lerp(startY, midY, 0.5);
+    let cp2x = lerp(midX, endX, 0.5);
+    let cp2y = lerp(midY, endY, 0.5);
+
+    for (let i = 0; i <= steps; i++) {
+      let u = i / steps;
+      let x = bezierPoint(startX, cp1x, cp2x, endX, u);
+      let y = bezierPoint(startY, cp1y, cp2y, endY, u);
+      let noiseWarp = noise(u * 4 + t * 0.2, this.noiseOffset) * 20 - 10;
+      x += perpX * noiseWarp;
+      y += perpY * noiseWarp;
+      this.points.push({x, y});
+    }
+  }
+
+  display() {
+    let hue = PALETTE.crimson[0] + this.colorOffset;
+    let sat = PALETTE.crimson[1];
+    let bri = PALETTE.crimson[2];
+    let alpha = CONFIG.filamentBaseOpacity * this.strength;
+    let pulse = map(sin(t * 3 + this.phase), -1, 1, 0.6, 1.0);
+    alpha *= pulse;
+
+    trailLayer.push();
+    trailLayer.noFill();
+    trailLayer.stroke(hue, sat, bri, alpha * 0.35);
+    trailLayer.strokeWeight(2.2 * this.strength);
+    trailLayer.beginShape();
+    for (let p of this.points) trailLayer.vertex(p.x, p.y);
+    trailLayer.endShape();
+    trailLayer.pop();
+
+    push();
+    noFill();
+    stroke(hue, sat, bri, alpha);
+    strokeWeight(1.2 * this.strength);
+    beginShape();
+    for (let p of this.points) vertex(p.x, p.y);
+    endShape();
+    pop();
+  }
+
+  displayGlow(layer) {
+    let hue = PALETTE.crimson[0] + this.colorOffset;
+    layer.push();
+    layer.noFill();
+    layer.stroke(hue, PALETTE.crimson[1], PALETTE.crimson[2] * 1.3, 8 * this.strength);
+    layer.strokeWeight(6 * this.strength);
+    layer.beginShape();
+    for (let p of this.points) layer.vertex(p.x, p.y);
+    layer.endShape();
+    layer.pop();
+  }
+}
+
+class SynapticBurst {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.filamentIndex = floor(random(CONFIG.filamentCount));
+    this.progress = random();
+    this.direction = random() < 0.5 ? 1 : -1;
+    this.speed = random(0.003, 0.012);
+    this.size = random(2, 6);
+    this.life = random(0.6, 1.0);
+    this.decay = random(0.005, 0.02);
+    this.colorOffset = random(-15, 25);
+    this.branched = random() < 0.25;
+  }
+
+  update() {
+    this.progress += this.speed * this.direction;
+    if (this.progress > 1 || this.progress < 0) {
+      this.direction *= -1;
+      this.progress = constrain(this.progress, 0, 1);
+    }
+    this.life -= this.decay;
+    if (this.life <= 0) this.reset();
+  }
+
+  display() {
+    if (this.filamentIndex >= filaments.length) return;
+    let f = filaments[this.filamentIndex];
+    let idx = floor(this.progress * (f.points.length - 1));
+    idx = constrain(idx, 0, f.points.length - 1);
+    let p = f.points[idx];
+
+    let hue = PALETTE.electric[0] + this.colorOffset;
+    let alpha = this.life * 100;
+
+    push();
+    blendMode(ADD);
+    noStroke();
+    fill(hue, PALETTE.electric[1], PALETTE.electric[2], alpha);
+    ellipse(p.x, p.y, this.size * 2, this.size * 2);
+    fill(PALETTE.synapseWhite[0], PALETTE.synapseWhite[1], PALETTE.synapseWhite[2], alpha * 0.6);
+    ellipse(p.x, p.y, this.size * 0.6, this.size * 0.6);
+
+    if (this.branched) {
+      for (let i = 0; i < 3; i++) {
+        let angle = t * 5 + i * TWO_PI / 3;
+        let len = this.size * 2.5;
+        stroke(hue, 80, 95, alpha * 0.5);
+        strokeWeight(0.8);
+        line(p.x, p.y, p.x + cos(angle) * len, p.y + sin(angle) * len);
+      }
+    }
+    pop();
+  }
+}
+
+class DriftParticle {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = random(width);
+    this.y = random(height);
+    this.vx = random(-0.3, 0.3);
+    this.vy = random(-0.3, 0.3);
+    this.size = random(0.5, 2.5);
+    this.hueOffset = random(-30, 40);
+    this.alpha = random(8, 35);
+  }
+
+  update() {
+    this.x += this.vx + map(noise(this.x * 0.005, this.y * 0.005, t * 0.1), 0, 1, -0.4, 0.4);
+    this.y += this.vy + map(noise(this.x * 0.005 + 100, this.y * 0.005, t * 0.1), 0, 1, -0.4, 0.4);
+
+    let d1 = dist(this.x, this.y, victoriaCore.x, victoriaCore.y);
+    let d2 = dist(this.x, this.y, kayleighCore.x, kayleighCore.y);
+    if (d1 < 120 || d2 < 120) {
+      this.alpha = min(this.alpha + 1, 80);
+    } else {
+      this.alpha = max(this.alpha - 0.3, 10);
+    }
+
+    if (this.x < -10) this.x = width + 10;
+    if (this.x > width + 10) this.x = -10;
+    if (this.y < -10) this.y = height + 10;
+    if (this.y > height + 10) this.y = -10;
+  }
+
+  display() {
+    let hue = PALETTE.burgundy[0] + this.hueOffset;
+    noStroke();
+    fill(hue, 60, 70, this.alpha);
+    ellipse(this.x, this.y, this.size, this.size);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Garden — Emergent Digital Consciousness</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #05030a;
+  }
+  canvas {
+    display: block;
+  }
+  #hint {
+    position: fixed;
+    bottom: 14px;
+    left: 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: rgba(200,180,255,0.55);
+    pointer-events: none;
+    user-select: none;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+</head>
+<body>
+<div id="hint">mouse moves the bloom · click plants a node · s=save png · g=save gif · r=reseed · space=pause</div>
+<script>
+p5.disableFriendlyErrors = true;
+
+const CONFIG = {
+  seed: Math.floor(Math.random() * 999999),
+  particleCount: 520,
+  bloomCount: 8,
+  trailDecay: 18,
+  audioReactive: false,
+  palette: [
+    { h: 280, s: 90, b: 95 }, // violet neuron
+    { h: 320, s: 85, b: 90 }, // magenta synapse
+    { h: 190, s: 90, b: 95 }, // cyan signal
+    { h: 40,  s: 80, b: 95 }, // amber pulse
+    { h: 150, s: 70, b: 80 }  // emerald root
+  ]
+};
+
+let trailLayer, glowLayer, bloomLayer;
+let particles = [];
+let blooms = [];
+let synapses = [];
+let mic, amp;
+let audioLevel = 0;
+let paused = false;
+let globalT = 0;
+
+class Bloom {
+  constructor(x, y, hue) {
+    this.x = x;
+    this.y = y;
+    this.hue = hue;
+    this.radius = 0;
+    this.targetRadius = random(60, 160);
+    this.petals = floor(random(6, 14));
+    this.phase = random(TWO_PI);
+    this.breathSpeed = random(0.003, 0.012);
+    this.age = 0;
+    this.alive = true;
+  }
+
+  update() {
+    this.age += 1;
+    this.radius = lerp(this.radius, this.targetRadius * (1 + audioLevel * 0.4), 0.04);
+    this.phase += this.breathSpeed + audioLevel * 0.02;
+    if (this.age > 1200 && this.radius > this.targetRadius * 0.98) this.alive = false;
+  }
+
+  draw(g) {
+    g.push();
+    g.translate(this.x, this.y);
+    g.noFill();
+    g.strokeWeight(1.2);
+    let bright = 75 + sin(this.phase) * 18 + audioLevel * 22;
+    let alpha = map(this.radius, 0, this.targetRadius, 10, 55);
+    for (let i = 0; i < this.petals; i++) {
+      let a = (TWO_PI / this.petals) * i + this.phase * 0.3;
+      let r = this.radius * (0.7 + 0.3 * sin(this.phase + i));
+      let px = cos(a) * r;
+      let py = sin(a) * r;
+      g.stroke(this.hue, 80, bright, alpha);
+      g.line(0, 0, px, py);
+      g.noStroke();
+      g.fill(this.hue, 60, bright, alpha * 0.6);
+      g.circle(px, py, r * 0.18 + audioLevel * 12);
+    }
+    g.fill(this.hue, 40, 95, 25 + audioLevel * 15);
+    g.noStroke();
+    g.circle(0, 0, this.radius * 0.35 + audioLevel * 20);
+    g.pop();
+  }
+}
+
+class Particle {
+  constructor(x, y, type) {
+    this.pos = createVector(x || random(width), y || random(height));
+    this.vel = p5.Vector.random2D().mult(random(0.3, 1.8));
+    this.acc = createVector(0, 0);
+    this.type = type || floor(random(CONFIG.palette.length));
+    this.hue = CONFIG.palette[this.type].h;
+    this.history = [];
+    this.maxHistory = floor(random(24, 60));
+    this.life = random(200, 900);
+    this.maxLife = this.life;
+    this.speed = random(0.8, 2.4);
+    this.noiseOffset = createVector(random(1000), random(1000), random(1000));
+  }
+
+  applyFlow() {
+    let scl = 0.0025;
+    let n = noise(this.pos.x * scl + this.noiseOffset.x, this.pos.y * scl + this.noiseOffset.y, globalT * 0.0008);
+    let angle = n * TWO_PI * 3.5;
+    let flow = p5.Vector.fromAngle(angle).mult(this.speed * (1 + audioLevel));
+    this.acc.add(flow);
+
+    let mouse = createVector(mouseX, mouseY);
+    let dir = p5.Vector.sub(mouse, this.pos);
+    let d = dir.mag();
+    if (d < 260 && d > 5) {
+      dir.normalize().mult(0.35 * (260 - d) / 260);
+      this.acc.add(dir);
+    }
+
+    for (let b of blooms) {
+      let bd = p5.Vector.dist(createVector(b.x, b.y), this.pos);
+      if (bd < b.radius * 1.2) {
+        let avoid = p5.Vector.sub(this.pos, createVector(b.x, b.y));
+        avoid.normalize().mult(0.25);
+        this.acc.add(avoid);
+      }
+    }
+  }
+
+  update() {
+    this.applyFlow();
+    this.vel.add(this.acc);
+    this.vel.limit(3.5 + audioLevel * 2);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+    this.life -= 1;
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.maxHistory) this.history.shift();
+
+    if (this.pos.x < -10) this.pos.x = width + 10;
+    if (this.pos.x > width + 10) this.pos.x = -10;
+    if (this.pos.y < -10) this.pos.y = height + 10;
+    if (this.pos.y > height + 10) this.pos.y = -10;
+  }
+
+  draw(g) {
+    let alive = this.life / this.maxLife;
+    let baseAlpha = alive * 70;
+    g.noFill();
+    g.strokeWeight(1.2 + audioLevel * 0.8);
+    g.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      let p = this.history[i];
+      let a = map(i, 0, this.history.length, 0, baseAlpha);
+      let hueShift = this.hue + sin(globalT * 0.02 + i * 0.1) * 12 + audioLevel * 25;
+      g.stroke(hueShift, 75, 92, a);
+      g.vertex(p.x, p.y);
+    }
+    g.endShape();
+
+    g.noStroke();
+    g.fill(this.hue, 40, 100, baseAlpha * 0.8);
+    g.circle(this.pos.x, this.pos.y, 3 + audioLevel * 4);
+  }
+}
+
+class Synapse {
+  constructor(a, b) {
+    this.a = a;
+    this.b = b;
+    this.strength = 1;
+    this.decay = random(0.008, 0.025);
+  }
+
+  draw(g) {
+    this.strength -= this.decay;
+    if (this.strength <= 0) return false;
+    let d = p5.Vector.dist(this.a.pos, this.b.pos);
+    let alpha = this.strength * (120 - d) * 0.6;
+    if (alpha <= 0) return false;
+    let hue = (this.a.hue + this.b.hue) / 2;
+    g.stroke(hue, 70, 95, alpha);
+    g.strokeWeight(0.8 + audioLevel * 1.2);
+    g.line(this.a.pos.x, this.a.pos.y, this.b.pos.x, this.b.pos.y);
+    return true;
+  }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.background(260, 40, 4, 100);
+
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push(new Particle());
+  }
+
+  for (let i = 0; i < CONFIG.bloomCount; i++) {
+    let pal = CONFIG.palette[i % CONFIG.palette.length];
+    blooms.push(new Bloom(random(width * 0.2, width * 0.8), random(height * 0.2, height * 0.8), pal.h));
+  }
+
+  if (CONFIG.audioReactive) initAudio();
+}
+
+function initAudio() {
+  try {
+    mic = new p5.AudioIn();
+    mic.start();
+    amp = new p5.Amplitude();
+    amp.setInput(mic);
+    CONFIG.audioReactive = true;
+  } catch (e) {
+    console.warn('Audio input not available:', e);
+    CONFIG.audioReactive = false;
+  }
+}
+
+function draw() {
+  if (paused) return;
+  globalT += 1;
+
+  if (CONFIG.audioReactive && amp) {
+    let raw = amp.getLevel();
+    audioLevel = lerp(audioLevel, raw * 4, 0.1);
+  } else {
+    audioLevel = lerp(audioLevel, 0, 0.05);
+  }
+
+  trailLayer.noStroke();
+  trailLayer.fill(260, 40, 4, CONFIG.trailDecay);
+  trailLayer.rect(0, 0, width, height);
+
+  glowLayer.clear();
+  bloomLayer.clear();
+
+  for (let b of blooms) {
+    b.update();
+    b.draw(bloomLayer);
+  }
+  blooms = blooms.filter(b => b.alive);
+  if (blooms.length < CONFIG.bloomCount && frameCount % 180 === 0) {
+    let pal = random(CONFIG.palette);
+    blooms.push(new Bloom(random(width * 0.1, width * 0.9), random(height * 0.1, height * 0.9), pal.h));
+  }
+
+  for (let p of particles) {
+    p.update();
+    p.draw(trailLayer);
+  }
+
+  for (let i = 0; i < particles.length; i++) {
+    let p1 = particles[i];
+    if (i % 4 !== frameCount % 4) continue;
+    for (let j = i + 1; j < particles.length; j++) {
+      let p2 = particles[j];
+      let d = p5.Vector.dist(p1.pos, p2.pos);
+      if (d < 70 + audioLevel * 60 && abs(p1.hue - p2.hue) < 60) {
+        synapses.push(new Synapse(p1, p2));
+      }
+    }
+  }
+
+  for (let i = synapses.length - 1; i >= 0; i--) {
+    let alive = synapses[i].draw(glowLayer);
+    if (!alive) synapses.splice(i, 1);
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    if (particles[i].life <= 0) {
+      let p = particles[i];
+      let pal = random(CONFIG.palette);
+      particles[i] = new Particle(p.pos.x, p.pos.y, floor(random(CONFIG.palette.length)));
+    }
+  }
+
+  image(trailLayer, 0, 0);
+  image(glowLayer, 0, 0);
+  image(bloomLayer, 0, 0);
+
+  noStroke();
+  fill(280, 60, 95, 60 + sin(globalT * 0.05) * 20);
+  circle(mouseX, mouseY, 14 + audioLevel * 30);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  let newTrail = createGraphics(width, height);
+  newTrail.colorMode(HSB, 360, 100, 100, 100);
+  newTrail.background(260, 40, 4, 100);
+  newTrail.image(trailLayer, 0, 0);
+  trailLayer = newTrail;
+  glowLayer = createGraphics(width, height);
+  glowLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+}
+
+function mousePressed() {
+  if (mouseY < height - 40 || mouseX < width - 140) {
+    let pal = random(CONFIG.palette);
+    blooms.push(new Bloom(mouseX, mouseY, pal.h));
+    for (let i = 0; i < 24; i++) {
+      particles.push(new Particle(mouseX, mouseY, floor(random(CONFIG.palette.length))));
+    }
+    if (particles.length > CONFIG.particleCount * 1.6) {
+      particles.splice(0, particles.length - CONFIG.particleCount * 1.6);
+    }
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('neural-garden-' + CONFIG.seed, 'png');
+  if (key === 'g' || key === 'G') saveGif('neural-garden-' + CONFIG.seed, 8);
+  if (key === 'r' || key === 'R') resetSketch();
+  if (key === ' ') paused = !paused;
+}
+
+function resetSketch() {
+  CONFIG.seed = Math.floor(Math.random() * 999999);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+  trailLayer.background(260, 40, 4, 100);
+  particles = [];
+  blooms = [];
+  synapses = [];
+  for (let i = 0; i < CONFIG.particleCount; i++) particles.push(new Particle());
+  for (let i = 0; i < CONFIG.bloomCount; i++) {
+    let pal = CONFIG.palette[i % CONFIG.palette.length];
+    blooms.push(new Bloom(random(width * 0.2, width * 0.8), random(height * 0.2, height * 0.8), pal.h));
+  }
+  globalT = 0;
+}
+</script>
+</body>
+</html>

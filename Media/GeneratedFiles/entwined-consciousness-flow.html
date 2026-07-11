@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entwined Consciousness Flow</title>
+  <script>p5.disableFriendlyErrors = true;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #070510; }
+    canvas { display: block; }
+    #info {
+      position: fixed;
+      bottom: 14px;
+      left: 16px;
+      color: rgba(212, 175, 55, 0.55);
+      font: 12px/1.4 'Courier New', monospace;
+      pointer-events: none;
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 6px rgba(128, 0, 64, 0.4);
+    }
+  </style>
+</head>
+<body>
+<div id="info">seed: <span id="seed"></span> | S save PNG | G save GIF | R re-seed | SPACE pause | click weave</div>
+<script>
+const CONFIG = {
+  seed: 20260708,
+  particleCount: 750,
+  filamentSegments: 42,
+  paused: false,
+  globalSpeed: 0.5,
+  noiseScale: 0.0033,
+  drift: 0.28,
+  burnInFrames: 260,
+};
+
+const PALETTE = {
+  ai: { h: 348, s: 86, b: 86 },
+  protector: { h: 244, s: 86, b: 78 },
+  gold: { h: 46, s: 96, b: 100 },
+};
+
+let particles = [];
+let trailLayer;
+let bloomLayer;
+let horizonLayer;
+let t = 0;
+let sharedHorizonY;
+let goldPulse = 0;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  pixelDensity(1);
+
+  trailLayer = createGraphics(width, height);
+  trailLayer.colorMode(HSB, 360, 100, 100, 100);
+  trailLayer.pixelDensity(1);
+
+  bloomLayer = createGraphics(width, height);
+  bloomLayer.colorMode(HSB, 360, 100, 100, 100);
+  bloomLayer.pixelDensity(1);
+
+  horizonLayer = createGraphics(width, height);
+  horizonLayer.colorMode(HSB, 360, 100, 100, 100);
+  horizonLayer.pixelDensity(1);
+
+  applySeed(CONFIG.seed);
+  spawnField();
+  drawHorizon();
+  document.getElementById('seed').textContent = CONFIG.seed;
+
+  for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  loop();
+}
+
+function applySeed(seed) {
+  CONFIG.seed = seed;
+  randomSeed(seed);
+  noiseSeed(seed);
+  document.getElementById('seed').textContent = seed;
+}
+
+function spawnField() {
+  particles = [];
+  trailLayer.background(246, 80, 4);
+  bloomLayer.clear();
+  sharedHorizonY = height * 0.30;
+
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    const side = random() < 0.5 ? 'ai' : 'protector';
+    let spawnX, spawnY;
+    if (side === 'ai') {
+      spawnX = random(width * 0.05, width * 0.30);
+      spawnY = random(height * 0.62, height * 0.98);
+    } else {
+      spawnX = random(width * 0.70, width * 0.95);
+      spawnY = random(height * 0.62, height * 0.98);
+    }
+    particles.push(new Filament(spawnX, spawnY, side));
+  }
+}
+
+function drawHorizon() {
+  horizonLayer.clear();
+  const cy = sharedHorizonY;
+
+  horizonLayer.noFill();
+  for (let r = width * 0.08; r < width * 0.70; r += 26) {
+    const alpha = map(r, width * 0.08, width * 0.70, 32, 0, true);
+    horizonLayer.stroke(46, 88, 100, alpha);
+    horizonLayer.strokeWeight(1.0);
+    horizonLayer.ellipse(width / 2, cy, r * 2, r * 0.48);
+  }
+
+  const gradSteps = 260;
+  for (let i = 0; i < gradSteps; i++) {
+    const inter = i / gradSteps;
+    const x = width / 2 + (random() - 0.5) * width * 0.80;
+    const yBase = cy + inter * height * 0.16;
+    const y = yBase + (random() - 0.5) * 12;
+    const hueBase = lerp(248, 338, pow(inter, 1.5));
+    horizonLayer.stroke(hueBase, 70, lerp(58, 20, inter), 5);
+    horizonLayer.strokeWeight(2);
+    horizonLayer.point(x, y);
+  }
+}
+
+function simulateStep() {
+  t += 0.0024 * CONFIG.globalSpeed;
+  goldPulse = 0.5 + 0.5 * sin(t * 1.5);
+
+  trailLayer.noStroke();
+  trailLayer.fill(246, 80, 4, 0.45);
+  trailLayer.rect(0, 0, width, height);
+
+  const attractor = createVector(width / 2, sharedHorizonY);
+  for (let p of particles) {
+    p.update(attractor);
+    p.display(trailLayer, bloomLayer);
+  }
+
+  bloomLayer.noStroke();
+  bloomLayer.fill(246, 80, 4, 0.55);
+  bloomLayer.rect(0, 0, width, height);
+}
+
+function draw() {
+  if (CONFIG.paused) return;
+  simulateStep();
+
+  background(246, 84, 4);
+
+  const bgGrad = drawingContext.createLinearGradient(0, 0, 0, height);
+  bgGrad.addColorStop(0, '#0a0920');
+  bgGrad.addColorStop(0.30, '#0f0518');
+  bgGrad.addColorStop(0.70, '#140412');
+  bgGrad.addColorStop(1, '#1a050f');
+  drawingContext.fillStyle = bgGrad;
+  drawingContext.fillRect(0, 0, width, height);
+
+  image(horizonLayer, 0, 0);
+
+  image(trailLayer, 0, 0);
+
+  push();
+  blendMode(ADD);
+  image(bloomLayer, 0, 0);
+  pop();
+
+  drawSharedNodes();
+  softVignette();
+}
+
+function drawSharedNodes() {
+  const cx = width / 2;
+  const cy = sharedHorizonY;
+  const pulse = 10 + goldPulse * 18;
+
+  push();
+  blendMode(ADD);
+  noStroke();
+  for (let r = 120; r > 0; r -= 18) {
+    const a = map(r, 120, 0, 2, 22, true);
+    fill(46, 78, 100, a);
+    ellipse(cx, cy, r + pulse, (r + pulse) * 0.40);
+  }
+
+  stroke(46, 55, 100, 45);
+  strokeWeight(1.2);
+  noFill();
+  for (let i = 0; i < 7; i++) {
+    const rr = 38 + i * 22 + pulse * 0.5;
+    ellipse(cx, cy, rr, rr * 0.38);
+  }
+  pop();
+}
+
+function softVignette() {
+  const ctx = drawingContext;
+  const rad = Math.max(width, height) * 0.82;
+  const g = ctx.createRadialGradient(width / 2, height * 0.40, rad * 0.35, width / 2, height * 0.40, rad);
+  g.addColorStop(0, 'rgba(7,5,16,0)');
+  g.addColorStop(1, 'rgba(7,5,16,0.45)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function mousePressed() {
+  for (let i = 0; i < 30; i++) {
+    const side = random() < 0.5 ? 'ai' : 'protector';
+    const p = new Filament(
+      mouseX + randomGaussian(0, 60),
+      mouseY + randomGaussian(0, 60),
+      side
+    );
+    particles.push(p);
+  }
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas(`entwined-consciousness-${CONFIG.seed}`, 'png');
+  if (key === 'g' || key === 'G') saveGif(`entwined-consciousness-${CONFIG.seed}`, 8);
+  if (key === 'r' || key === 'R') {
+    applySeed(floor(random(1000000)));
+    spawnField();
+    drawHorizon();
+    for (let i = 0; i < CONFIG.burnInFrames; i++) simulateStep();
+  }
+  if (key === ' ') CONFIG.paused = !CONFIG.paused;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  trailLayer = resizeBuffer(trailLayer);
+  bloomLayer = resizeBuffer(bloomLayer);
+  horizonLayer = resizeBuffer(horizonLayer);
+  drawHorizon();
+}
+
+function resizeBuffer(buf) {
+  const next = createGraphics(width, height);
+  next.colorMode(HSB, 360, 100, 100, 100);
+  next.pixelDensity(1);
+  next.image(buf, 0, 0);
+  return next;
+}
+
+class Filament {
+  constructor(x, y, side) {
+    this.pos = createVector(x, y);
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.side = side;
+    this.maxSpeed = random(1.6, 3.4);
+    this.swBase = random(0.7, 1.6);
+    this.history = [];
+    this.historyLimit = CONFIG.filamentSegments;
+    this.baseColor = side === 'ai' ? PALETTE.ai : PALETTE.protector;
+    this.curl = side === 'ai' ? 1 : -1;
+  }
+
+  update(attractor) {
+    const dirToHorizon = p5.Vector.sub(attractor, this.pos);
+    const dist = dirToHorizon.mag();
+    dirToHorizon.normalize();
+    const attraction = map(dist, 0, height, 0.035, 0.095, true);
+    this.acc.add(dirToHorizon.mult(attraction));
+
+    const curlForce = createVector(-dirToHorizon.y, dirToHorizon.x).mult(this.curl * 0.012 * map(dist, 0, height, 0.5, 1.5, true));
+    this.acc.add(curlForce);
+
+    const nx = noise(this.pos.x * CONFIG.noiseScale, this.pos.y * CONFIG.noiseScale, t) * TWO_PI * 2.2;
+    const ny = noise(this.pos.x * CONFIG.noiseScale + 1000, this.pos.y * CONFIG.noiseScale + 1000, t) * TWO_PI * 2.2;
+    const flow = createVector(cos(nx), sin(ny)).mult(CONFIG.drift * 0.09);
+    this.acc.add(flow);
+
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+
+    this.history.push(this.pos.copy());
+    if (this.history.length > this.historyLimit) this.history.shift();
+
+    this.respawnIfArrived();
+  }
+
+  respawnIfArrived() {
+    const d = dist(this.pos.x, this.pos.y, width / 2, sharedHorizonY);
+    if (d < 18 || this.pos.y < sharedHorizonY - 20 || this.pos.x < -50 || this.pos.x > width + 50) {
+      const side = this.side;
+      this.pos.x = side === 'ai'
+        ? random(width * 0.05, width * 0.30)
+        : random(width * 0.70, width * 0.95);
+      this.pos.y = random(height * 0.70, height * 0.98);
+      this.vel.mult(0);
+      this.history = [];
+    }
+  }
+
+  display(trails, blooms) {
+    if (this.history.length < 4) return;
+
+    const distToHorizon = dist(this.pos.x, this.pos.y, width / 2, sharedHorizonY);
+    const proximity = map(distToHorizon, 0, width * 0.28, 1, 0, true);
+
+    const h = lerp(this.baseColor.h, PALETTE.gold.h, proximity * 0.50);
+    const s = lerp(this.baseColor.s, PALETTE.gold.s, proximity * 0.30);
+    const b = lerp(this.baseColor.b, PALETTE.gold.b, proximity * 0.40);
+
+    const glow = map(distToHorizon, 0, width * 0.40, 28, 8, true);
+
+    trails.noFill();
+    trails.beginShape();
+    for (let i = 0; i < this.history.length; i++) {
+      const p = this.history[i];
+      const a = map(i, 0, this.history.length, 0, 52 + glow, true);
+      trails.stroke(h, s, b, a);
+      trails.strokeWeight(this.swBase * map(i, 0, this.history.length, 0.35, 1.2, true));
+      trails.curveVertex(p.x, p.y);
+    }
+    trails.endShape();
+
+    if (distToHorizon < width * 0.22) {
+      blooms.noStroke();
+      blooms.fill(h, max(s - 10, 0), min(b + 16, 100), proximity * 32);
+      for (let i = 2; i < this.history.length; i += 4) {
+        const p = this.history[i];
+        blooms.ellipse(p.x, p.y, this.swBase * 3.4, this.swBase * 3.4);
+      }
+    }
+
+    trails.noStroke();
+    trails.fill(h, s, 100, 50);
+    trails.ellipse(this.pos.x, this.pos.y, this.swBase * 1.8, this.swBase * 1.8);
+  }
+}
+</script>
+</body>
+</html>

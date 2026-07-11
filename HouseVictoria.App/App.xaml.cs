@@ -26,6 +26,26 @@ namespace HouseVictoria.App
         public static ServiceProvider? ServiceProvider { get; private set; }
 
         private RemoteCompanionWebHost? _remoteCompanionHost;
+        private Screens.Windows.MainWindow? _mainWindow;
+
+        private static readonly TimeSpan ShutdownServiceBudget = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan ShutdownStepTimeout = TimeSpan.FromSeconds(2);
+
+        /// <summary>
+        /// Dismiss tray UI immediately so Exit does not leave the context menu on screen.
+        /// </summary>
+        public static void PrepareUiForShutdown()
+        {
+            try
+            {
+                if (Current is App app)
+                    app._mainWindow?.PrepareForShutdown();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PrepareUiForShutdown: {ex.Message}");
+            }
+        }
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -138,9 +158,9 @@ namespace HouseVictoria.App
                 try
                 {
                     LoggingHelper.WriteToStartupLog("Creating MainWindow...");
-                    var mainWindow = new Screens.Windows.MainWindow();
-                    mainWindow.Show();
-                    mainWindow.Activate();
+                    _mainWindow = new Screens.Windows.MainWindow();
+                    _mainWindow.Show();
+                    _mainWindow.Activate();
                     LoggingHelper.WriteToStartupLog("MainWindow created and shown");
                     System.Diagnostics.Debug.WriteLine("MainWindow created and shown successfully");
 
@@ -402,10 +422,19 @@ namespace HouseVictoria.App
                 }
                 return new HouseVictoria.Services.Hermes.HermesGatewayService(appConfig, root);
             });
+            services.AddSingleton<IAgentDesktopMonitorService>(sp =>
+                new HouseVictoria.Services.AgentDesktop.AgentDesktopMonitorService(
+                    sp.GetRequiredService<AppConfig>()));
+            services.AddSingleton<ICognitionThoughtStreamService>(sp =>
+                new HouseVictoria.Services.Cognition.CognitionThoughtStreamService(
+                    sp.GetRequiredService<AppConfig>(),
+                    sp.GetService<IAgentDesktopMonitorService>()));
             services.AddSingleton<HermesAIService>(sp =>
                 new HermesAIService(
                     sp.GetRequiredService<AppConfig>(),
-                    sp.GetService<IHermesGatewayService>()));
+                    sp.GetService<IHermesGatewayService>(),
+                    sp.GetService<IAgentDesktopMonitorService>(),
+                    sp.GetService<ICognitionThoughtStreamService>()));
             services.AddSingleton<IAIService>(sp =>
                 new FallbackAIService(
                     sp.GetRequiredService<LmStudioAIService>(),
@@ -502,6 +531,12 @@ namespace HouseVictoria.App
                 sp.GetRequiredService<AppConfig>(),
                 sp.GetService<IPersonaContext>(),
                 sp.GetService<IVictoriaEmbodimentService>()));
+            services.AddSingleton(sp => new RemoteCompanionSystemService(
+                sp.GetRequiredService<ISystemMonitorService>()));
+            services.AddSingleton(sp => new RemoteCompanionMediaService(
+                sp.GetRequiredService<IAIService>(),
+                sp.GetRequiredService<DatabasePersistenceService>(),
+                sp.GetRequiredService<AppConfig>()));
 
             ServiceProvider = services.BuildServiceProvider();
         }
@@ -519,6 +554,7 @@ namespace HouseVictoria.App
                 HermesApiKey = config["HermesApiKey"] ?? string.Empty,
                 HermesModelName = string.IsNullOrWhiteSpace(config["HermesModelName"]) ? "hermes-agent" : (config["HermesModelName"] ?? "hermes-agent"),
                 HermesAutoStart = !bool.TryParse(config["HermesAutoStart"], out var hermesAuto) || hermesAuto,
+                AllowComputerControl = bool.TryParse(config["AllowComputerControl"], out var allowCtrl) && allowCtrl,
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
                 TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8881",
@@ -617,11 +653,8 @@ namespace HouseVictoria.App
 
             // Resolve relative paths to absolute paths (prefer repo root so Debug/Release share one Data folder)
             var appDirectory = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? AppDomain.CurrentDomain.BaseDirectory;
-            appConfig.DataBankPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.DataBankPath);
-            appConfig.LogsPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.LogsPath);
-            appConfig.PersistentMemoryPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.PersistentMemoryPath);
+            HouseVictoria.Core.Utils.AppDataRootResolver.ApplyCoercedDataPaths(appDirectory, appConfig);
             HouseVictoria.Core.Utils.AppDataRootResolver.TryMigrateShadowDataFolder(appDirectory, "Data/Memory");
-            appConfig.AutonomyDataPath = HouseVictoria.Core.Utils.AppDataRootResolver.ResolveDataPath(appDirectory, appConfig.AutonomyDataPath);
             HouseVictoria.Core.Utils.AppDataRootResolver.TryMigrateShadowDataFolder(appDirectory, "Data/Autonomy");
             HouseVictoria.Core.Utils.AppDataRootResolver.TryMigrateShadowDataFolder(appDirectory, "Data/Databanks");
             appConfig.MediaPath = System.IO.Path.IsPathRooted(appConfig.MediaPath)
@@ -644,6 +677,15 @@ namespace HouseVictoria.App
             if (!string.IsNullOrWhiteSpace(appConfig.PgVectorConnectionString) && appConfig.PgVectorConnectionString.Contains("|DataDirectory|"))
             {
                 appConfig.PgVectorConnectionString = appConfig.PgVectorConnectionString.Replace("|DataDirectory|", appDirectory);
+            }
+
+            try
+            {
+                UserSettingsStore.Save(appConfig);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Could not persist sanitized settings: {ex.Message}");
             }
 
             return appConfig;
@@ -671,6 +713,8 @@ namespace HouseVictoria.App
 
         protected override void OnExit(ExitEventArgs e)
         {
+            PrepareUiForShutdown();
+
             try
             {
                 LoggingHelper.WriteToStartupLog("Application shutting down...");
@@ -702,22 +746,26 @@ namespace HouseVictoria.App
             {
                 try
                 {
-                    // Save any unsaved data first
                     SaveUnsavedData();
 
-                    // Stop async services gracefully
-                    StopServicesAsync().GetAwaiter().GetResult();
+                    var stopTask = StopServicesAsync();
+                    if (!stopTask.Wait(ShutdownServiceBudget))
+                        System.Diagnostics.Debug.WriteLine("Service shutdown timed out; continuing exit.");
 
-                    // Dispose service provider (this will dispose all IDisposable services)
-                    ServiceProvider.Dispose();
+                    var provider = ServiceProvider;
+                    ServiceProvider = null;
+                    var disposeTask = Task.Run(() => provider.Dispose());
+                    if (!disposeTask.Wait(TimeSpan.FromSeconds(2)))
+                        System.Diagnostics.Debug.WriteLine("ServiceProvider dispose timed out; continuing exit.");
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Error during shutdown: {ex.Message}");
                     LoggingHelper.WriteExceptionToLog(ex, "ShutdownErrors.log");
                 }
-                ServiceProvider = null;
             }
+
+            _mainWindow = null;
 
             Log.CloseAndFlush();
 
@@ -777,7 +825,10 @@ namespace HouseVictoria.App
                 {
                     try
                     {
-                        await _remoteCompanionHost.DisposeAsync().ConfigureAwait(false);
+                        await AwaitWithTimeoutAsync(
+                            _remoteCompanionHost.DisposeAsync().AsTask(),
+                            ShutdownStepTimeout,
+                            "Remote companion host").ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -792,7 +843,10 @@ namespace HouseVictoria.App
                 {
                     try
                     {
-                        await autonomy.StopAsync().ConfigureAwait(false);
+                        await AwaitWithTimeoutAsync(
+                            autonomy.StopAsync(),
+                            ShutdownStepTimeout,
+                            "Autonomy service").ConfigureAwait(false);
                         System.Diagnostics.Debug.WriteLine("Autonomy service stopped");
                     }
                     catch (Exception ex)
@@ -807,7 +861,10 @@ namespace HouseVictoria.App
                 {
                     try
                     {
-                        await systemMonitorService.ShutdownAllServersAsync().ConfigureAwait(false);
+                        await AwaitWithTimeoutAsync(
+                            systemMonitorService.ShutdownAllServersAsync(),
+                            ShutdownStepTimeout,
+                            "SystemMonitorService").ConfigureAwait(false);
                         System.Diagnostics.Debug.WriteLine("SystemMonitorService servers stopped (including TTS host and COVAS bridge)");
                     }
                     catch (Exception ex)
@@ -825,7 +882,10 @@ namespace HouseVictoria.App
                         var envStatus = await virtualEnvService.GetStatusAsync().ConfigureAwait(false);
                         if (envStatus.IsConnected)
                         {
-                            await virtualEnvService.DisconnectAsync().ConfigureAwait(false);
+                            await AwaitWithTimeoutAsync(
+                                virtualEnvService.DisconnectAsync(),
+                                ShutdownStepTimeout,
+                                "Virtual environment").ConfigureAwait(false);
                             System.Diagnostics.Debug.WriteLine("Virtual environment service disconnected");
                         }
                     }
@@ -844,7 +904,10 @@ namespace HouseVictoria.App
                         var status = await tradingService.GetStatusAsync().ConfigureAwait(false);
                         if (status.IsConnected)
                         {
-                            await tradingService.DisconnectAsync().ConfigureAwait(false);
+                            await AwaitWithTimeoutAsync(
+                                tradingService.DisconnectAsync(),
+                                ShutdownStepTimeout,
+                                "Trading service").ConfigureAwait(false);
                             System.Diagnostics.Debug.WriteLine("Trading service disconnected");
                         }
                     }
@@ -853,13 +916,29 @@ namespace HouseVictoria.App
                         System.Diagnostics.Debug.WriteLine($"Error disconnecting trading service: {ex.Message}");
                     }
                 }
-
-                // Give services a moment to finish cleanup
-                await Task.Delay(500).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error stopping services: {ex.Message}");
+            }
+        }
+
+        private static async Task AwaitWithTimeoutAsync(Task task, TimeSpan timeout, string label)
+        {
+            var completed = await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false);
+            if (completed != task)
+            {
+                System.Diagnostics.Debug.WriteLine($"{label} did not finish within {timeout.TotalSeconds:0.#}s");
+                return;
+            }
+
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"{label} stop error: {ex.Message}");
             }
         }
 

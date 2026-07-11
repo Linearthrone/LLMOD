@@ -33,11 +33,21 @@ namespace HouseVictoria.App.Controls
             DependencyProperty.Register(nameof(CompactMode), typeof(bool), typeof(CognitionVitalsControl),
                 new PropertyMetadata(false, OnVitalChanged));
 
+        public static readonly DependencyProperty SubjectsProperty =
+            DependencyProperty.Register(nameof(Subjects), typeof(IReadOnlyList<CognitionThoughtSubject>), typeof(CognitionVitalsControl),
+                new PropertyMetadata(null, OnSubjectsChanged));
+
         private readonly DispatcherTimer _animTimer;
-        private readonly Polyline _polyline;
-        private double _phase;
-        private readonly List<double> _samples = new();
+        private readonly List<WaveLane> _lanes = new();
         private int _sampleCapacity = 120;
+
+        private sealed class WaveLane
+        {
+            public required Polyline Polyline { get; init; }
+            public required List<double> Samples { get; init; }
+            public double Phase { get; set; }
+            public CognitionThoughtSubject Subject { get; set; } = null!;
+        }
 
         public CognitionVitalRhythm Rhythm
         {
@@ -75,28 +85,24 @@ namespace HouseVictoria.App.Controls
             set => SetValue(CompactModeProperty, value);
         }
 
+        public IReadOnlyList<CognitionThoughtSubject>? Subjects
+        {
+            get => (IReadOnlyList<CognitionThoughtSubject>?)GetValue(SubjectsProperty);
+            set => SetValue(SubjectsProperty, value);
+        }
+
         public CognitionVitalsControl()
         {
             InitializeComponent();
-            _polyline = new Polyline
-            {
-                StrokeThickness = CompactMode ? 3.0 : 2.0,
-                StrokeLineJoin = PenLineJoin.Round,
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round
-            };
-            WaveCanvas.Children.Add(_polyline);
 
             _animTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
             _animTimer.Tick += (_, _) => AdvanceWaveform();
             Loaded += (_, _) =>
             {
                 _sampleCapacity = CompactMode ? 80 : 140;
-                while (_samples.Count < _sampleCapacity)
-                    _samples.Add(0.5);
-                ApplyStroke();
+                EnsureLanes();
                 _animTimer.Start();
-                SizeChanged += (_, _) => Redraw();
+                SizeChanged += (_, _) => RedrawAll();
             };
             Unloaded += (_, _) => _animTimer.Stop();
         }
@@ -105,54 +111,158 @@ namespace HouseVictoria.App.Controls
         {
             if (d is CognitionVitalsControl c)
             {
-                c.ApplyStroke();
+                c.EnsureLanes();
                 c.UpdateBpmLabel();
             }
         }
 
-        private void ApplyStroke()
+        private static void OnSubjectsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is CognitionVitalsControl c)
+            {
+                c.EnsureLanes();
+                c.UpdateBpmLabel();
+            }
+        }
+
+        private void EnsureLanes()
+        {
+            var subjectList = Subjects?.Where(s => s.AttentionWeight > 0.12).Take(4).ToList();
+            var laneCount = subjectList is { Count: > 0 } ? subjectList.Count : 1;
+
+            while (_lanes.Count < laneCount)
+            {
+                var polyline = new Polyline
+                {
+                    StrokeThickness = CompactMode ? 2.5 : 2.0,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round
+                };
+                WaveCanvas.Children.Add(polyline);
+                var samples = new List<double>();
+                while (samples.Count < _sampleCapacity)
+                    samples.Add(0.5);
+                _lanes.Add(new WaveLane { Polyline = polyline, Samples = samples, Phase = 0 });
+            }
+
+            while (_lanes.Count > laneCount)
+            {
+                var last = _lanes[^1];
+                WaveCanvas.Children.Remove(last.Polyline);
+                _lanes.RemoveAt(_lanes.Count - 1);
+            }
+
+            if (subjectList is { Count: > 0 })
+            {
+                for (var i = 0; i < subjectList.Count; i++)
+                {
+                    var lane = _lanes[i];
+                    var subject = subjectList[i];
+                    lane.Subject = subject;
+                    lane.Phase = PhaseSeed(subject.Id);
+                    ApplyStroke(lane.Polyline, subject.WaveColorHex, subject.AttentionWeight);
+                }
+
+                for (var i = subjectList.Count; i < _lanes.Count; i++)
+                    _lanes[i].Polyline.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                var lane = _lanes[0];
+                lane.Subject = new CognitionThoughtSubject
+                {
+                    Id = "fallback",
+                    Rhythm = Rhythm,
+                    BeatsPerMinute = BeatsPerMinute,
+                    Intensity = Intensity,
+                    WaveColorHex = WaveColorHex,
+                    AttentionWeight = 1.0
+                };
+                ApplyStroke(lane.Polyline, WaveColorHex, 1.0);
+            }
+
+            foreach (var lane in _lanes)
+                lane.Polyline.Visibility = Visibility.Visible;
+
+            RedrawAll();
+            UpdateBpmLabel();
+        }
+
+        private static double PhaseSeed(string id)
+        {
+            var hash = 0;
+            foreach (var ch in id)
+                hash = (hash * 31 + ch) % 628;
+            return hash / 100.0;
+        }
+
+        private void ApplyStroke(Polyline polyline, string colorHex, double weight)
         {
             try
             {
-                var converted = new BrushConverter().ConvertFromString(WaveColorHex);
-                if (converted is Brush brush)
+                var converted = new BrushConverter().ConvertFromString(colorHex);
+                if (converted is SolidColorBrush solid)
                 {
+                    var brush = new SolidColorBrush(solid.Color)
+                    {
+                        Opacity = Math.Clamp(0.35 + weight * 0.55, 0.35, 1.0)
+                    };
                     if (brush.CanFreeze)
                         brush.Freeze();
-                    _polyline.Stroke = brush;
+                    polyline.Stroke = brush;
                 }
                 else
-                    _polyline.Stroke = Brushes.Cyan;
+                    polyline.Stroke = Brushes.Cyan;
             }
             catch
             {
-                _polyline.Stroke = Brushes.Cyan;
+                polyline.Stroke = Brushes.Cyan;
             }
 
-            _polyline.StrokeThickness = CompactMode ? 3.0 : 2.0;
-            BpmLabel.Visibility = CompactMode ? Visibility.Collapsed : Visibility.Visible;
-            UpdateBpmLabel();
+            polyline.StrokeThickness = CompactMode
+                ? 2.0 + weight * 1.2
+                : 1.4 + weight * 1.6;
         }
 
         private void UpdateBpmLabel()
         {
-            BpmLabel.Text = $"{BeatsPerMinute:F0} bpm";
+            if (Subjects is { Count: > 0 })
+            {
+                var top = Subjects.OrderByDescending(s => s.AttentionWeight).First();
+                BpmLabel.Text = $"{top.BeatsPerMinute:F0} bpm · {Subjects.Count} thread{(Subjects.Count == 1 ? "" : "s")}";
+            }
+            else
+            {
+                BpmLabel.Text = $"{BeatsPerMinute:F0} bpm";
+            }
+
+            BpmLabel.Visibility = CompactMode ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void AdvanceWaveform()
         {
-            var bpm = Math.Clamp(BeatsPerMinute, 35, 130);
-            var beatHz = bpm / 60.0;
-            _phase += beatHz * 0.04 * 2 * Math.PI;
+            if (_lanes.Count == 0)
+                return;
 
-            var mid = 0.5;
-            var amp = Math.Clamp(Intensity, 0.08, 1.0) * (CompactMode ? 0.35 : 0.42);
-            var y = mid + amp * SampleWave(Rhythm, _phase);
-            y = Math.Clamp(y, 0.05, 0.95);
+            foreach (var lane in _lanes)
+            {
+                var subject = lane.Subject;
+                var bpm = Math.Clamp(subject.BeatsPerMinute, 35, 130);
+                var beatHz = bpm / 60.0;
+                lane.Phase += beatHz * 0.04 * 2 * Math.PI;
 
-            _samples.RemoveAt(0);
-            _samples.Add(y);
-            Redraw();
+                var mid = 0.5;
+                var amp = Math.Clamp(subject.Intensity, 0.08, 1.0) * (CompactMode ? 0.32 : 0.38);
+                amp *= Math.Clamp(subject.AttentionWeight, 0.2, 1.0);
+                var y = mid + amp * SampleWave(subject.Rhythm, lane.Phase);
+                y = Math.Clamp(y, 0.05, 0.95);
+
+                lane.Samples.RemoveAt(0);
+                lane.Samples.Add(y);
+            }
+
+            RedrawAll();
         }
 
         private static double SampleWave(CognitionVitalRhythm rhythm, double phase)
@@ -190,27 +300,30 @@ namespace HouseVictoria.App.Controls
             return x < rate ? 0.4 : 0;
         }
 
-        private void Redraw()
+        private void RedrawAll()
         {
             var w = ActualWidth > 4 ? ActualWidth : (CompactMode ? 110 : 280);
             var h = WaveHeight;
             if (w <= 0 || h <= 0)
                 return;
 
-            var points = new PointCollection();
-            var count = _samples.Count;
-            if (count < 2)
-                return;
-
-            for (var i = 0; i < count; i++)
+            foreach (var lane in _lanes)
             {
-                var x = i / (double)(count - 1) * w;
-                var yNorm = _samples[i];
-                var y = (1.0 - yNorm) * (h - 4) + 2;
-                points.Add(new Point(x, y));
-            }
+                var points = new PointCollection();
+                var count = lane.Samples.Count;
+                if (count < 2)
+                    continue;
 
-            _polyline.Points = points;
+                for (var i = 0; i < count; i++)
+                {
+                    var x = i / (double)(count - 1) * w;
+                    var yNorm = lane.Samples[i];
+                    var y = (1.0 - yNorm) * (h - 4) + 2;
+                    points.Add(new Point(x, y));
+                }
+
+                lane.Polyline.Points = points;
+            }
         }
     }
 }
