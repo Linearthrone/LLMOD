@@ -373,3 +373,19 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Python virtualenvs (never commit)
+.venv/
+venv/
+ENV/
+
+# One-off agent / scratch leftovers (never commit)
+/_*.ps1
+/_*.bat
+/_*.log
+/EOF
+.editorconfig.analysis
+/BrowserCaptureExtension.pem
+
+# Runtime service logs under Media (also covered by *.log)
+/Media/*.log
