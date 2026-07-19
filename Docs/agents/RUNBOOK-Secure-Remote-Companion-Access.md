@@ -167,6 +167,36 @@ In Android app settings, enter the base URL only (no trailing endpoint path). Th
 
 ---
 
+## Push-style notifications (Phase A — polling)
+
+Victoria Link can notify the phone when Victoria sends a message while the app is closed, and when an incoming thread goes unanswered for a while. **Phase A uses HTTP polling only** (no Firebase).
+
+| Piece | Behavior |
+|-------|----------|
+| PC API | `GET /api/remote/v1/notifications/pending` (Bearer token) returns `new_message` and `unread_reminder` items from SQLite `conv-{contactId}` history |
+| PC ack | `POST /api/remote/v1/notifications/ack` with `{ contactId, lastSeenMessageId?, ackReminderForMessageId? }` |
+| Reminder interval | **4 hours** (Release); **1 minute** in Debug PC builds for QA |
+| Android poll | `WorkManager` every **15 minutes** when network is available (`MessagePollWorker`) |
+| Tap action | Opens `ChatActivity` for the contact |
+
+**Battery / Doze:** Android may defer background work on Doze; worst-case latency is one poll interval (~15 min) plus Doze slack. If that is unacceptable in production, plan **Phase B (FCM)** as a follow-up task.
+
+### How to test
+
+1. PC running with remote companion enabled; phone configured with valid base URL + token.
+2. Grant **Notifications** on Android 13+ when prompted on first launch.
+3. Force-stop Victoria Link, send Victoria a message from desktop SMS or another remote client.
+4. Trigger poll manually (faster than waiting 15 min):
+   - Android Studio → **App Inspection → Background Task Inspector** → run `MessagePollWorker`, or
+   - From a debug build, call `NotificationScheduler.runOnceNow(context)` (e.g. temporary button / debugger evaluate).
+5. Expect notification title **Victoria** (or persona name) with message preview; tap opens the correct thread.
+6. Reply from the phone — reminders stop until Victoria sends again.
+7. For unread reminder: leave an incoming message unanswered past the reminder interval (use Debug PC build for 1 min), run worker again — expect **Victoria is waiting** once per thread.
+
+**Logcat filter:** `MessagePollWorker` — lines like `Pending notifications: N item(s)` and `Notified new_message for …`.
+
+---
+
 ## References in repo
 
 - API host: `HouseVictoria.App/RemoteCompanion/RemoteCompanionWebHost.cs`

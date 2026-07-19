@@ -1879,7 +1879,8 @@ namespace HouseVictoria.Services.Communication
                 Content = followUp,
                 Direction = MessageDirection.Incoming,
                 Type = MessageType.Text,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.Now,
+                IsRead = false
             };
 
             if (!_messages.ContainsKey(conversationId))

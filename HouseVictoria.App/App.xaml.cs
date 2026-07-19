@@ -537,6 +537,10 @@ namespace HouseVictoria.App
                 sp.GetRequiredService<IAIService>(),
                 sp.GetRequiredService<DatabasePersistenceService>(),
                 sp.GetRequiredService<AppConfig>()));
+            services.AddSingleton(sp => new RemoteCompanionNotificationService(
+                sp.GetRequiredService<DatabasePersistenceService>(),
+                sp.GetRequiredService<AppConfig>(),
+                sp.GetService<IPersonaContext>()));
 
             ServiceProvider = services.BuildServiceProvider();
         }

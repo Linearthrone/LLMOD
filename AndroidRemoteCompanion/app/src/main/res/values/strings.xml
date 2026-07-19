@@ -86,4 +86,11 @@
 
     <string name="cd_attach_image">Attach image</string>
     <string name="toast_image_sent">Image sent</string>
+
+    <string name="notification_channel_name">Victoria messages</string>
+    <string name="notification_channel_description">New messages and unread reminders from your AI personas</string>
+    <string name="notification_default_title">Victoria</string>
+    <string name="notification_new_message_fallback">Sent you a message</string>
+    <string name="notification_reminder_title">Victoria is waiting</string>
+    <string name="notification_reminder_body">You haven\'t replied yet</string>
 </resources>

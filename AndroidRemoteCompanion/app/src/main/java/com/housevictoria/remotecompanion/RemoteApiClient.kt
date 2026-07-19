@@ -30,6 +30,8 @@ class RemoteApiClient {
     private val systemStatusAdapter = moshi.adapter(SystemStatusResponse::class.java)
     private val mediaModelsAdapter = moshi.adapter(MediaModelsResponse::class.java)
     private val mediaGenerateAdapter = moshi.adapter(MediaGenerateResponse::class.java)
+    private val pendingNotificationsAdapter = moshi.adapter(PendingNotificationsResponse::class.java)
+    private val notificationAckAdapter = moshi.adapter(NotificationAck::class.java)
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     @Throws(IOException::class)
@@ -182,6 +184,34 @@ class RemoteApiClient {
     }
 
     @Throws(IOException::class)
+    fun getPendingNotifications(baseUrl: String, token: String, since: String? = null, contactId: String? = null): PendingNotificationsResponse {
+        val query = buildString {
+            append("${baseUrl.trimEnd('/')}/api/remote/v1/notifications/pending")
+            val params = mutableListOf<String>()
+            if (!since.isNullOrBlank()) params.add("since=${java.net.URLEncoder.encode(since, Charsets.UTF_8.name())}")
+            if (!contactId.isNullOrBlank()) params.add("contactId=${java.net.URLEncoder.encode(contactId, Charsets.UTF_8.name())}")
+            if (params.isNotEmpty()) append('?').append(params.joinToString("&"))
+        }
+        val req = authorizedRequest(query, token).get().build()
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException(parseErrorText(resp.code, body))
+            return pendingNotificationsAdapter.fromJson(body) ?: PendingNotificationsResponse(emptyList())
+        }
+    }
+
+    @Throws(IOException::class)
+    fun ackNotifications(baseUrl: String, token: String, ack: NotificationAck) {
+        val url = "${baseUrl.trimEnd('/')}/api/remote/v1/notifications/ack"
+        val json = notificationAckAdapter.toJson(ack)
+        val req = authorizedRequest(url, token).post(json.toRequestBody(jsonMediaType)).build()
+        http.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) throw IOException(parseErrorText(resp.code, body))
+        }
+    }
+
+    @Throws(IOException::class)
     fun sendChatImage(
         baseUrl: String,
         token: String,
@@ -298,6 +328,31 @@ data class MediaAssetDto(
     @Json(name = "contentType") val contentType: String?,
     @Json(name = "fileName") val fileName: String?,
     @Json(name = "positivePrompt") val positivePrompt: String?
+)
+
+data class PendingNotificationsResponse(
+    @Json(name = "items") val items: List<PendingNotificationItem>?
+)
+
+data class PendingNotificationItem(
+    @Json(name = "contactId") val contactId: String?,
+    @Json(name = "contactName") val contactNameRaw: String?,
+    @Json(name = "messageId") val messageId: String?,
+    @Json(name = "preview") val previewRaw: String?,
+    @Json(name = "createdAt") val createdAt: String?,
+    @Json(name = "kind") val kind: String?
+) {
+    val safeContactId: String get() = contactId.orEmpty()
+    val safeMessageId: String get() = messageId.orEmpty()
+    val safeKind: String get() = kind.orEmpty()
+    val contactName: String get() = contactNameRaw.orEmpty()
+    val preview: String get() = previewRaw.orEmpty()
+}
+
+data class NotificationAck(
+    @Json(name = "contactId") val contactId: String,
+    @Json(name = "lastSeenMessageId") val lastSeenMessageId: String? = null,
+    @Json(name = "ackReminderForMessageId") val ackReminderForMessageId: String? = null
 )
 
 data class ChatOutcome(val ok: Boolean, val source: String, val text: String, val conversationId: String?)

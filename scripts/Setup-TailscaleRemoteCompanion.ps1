@@ -123,6 +123,10 @@ Write-Host ''
 & $ts serve status
 
 $dnsName = (& $ts status --json | ConvertFrom-Json).Self.DNSName
+# MagicDNS often includes a trailing dot; Android/OkHttp reject that in the base URL.
+if (-not [string]::IsNullOrWhiteSpace($dnsName)) {
+    $dnsName = $dnsName.TrimEnd('.')
+}
 if ([string]::IsNullOrWhiteSpace($dnsName)) {
     $dnsName = '(check: tailscale status — use HTTPS MagicDNS hostname)'
 }
@@ -130,6 +134,7 @@ if ([string]::IsNullOrWhiteSpace($dnsName)) {
 Write-Host ''
 Write-Host '=== Android app configuration ===' -ForegroundColor Green
 Write-Host "Base URL:  https://$dnsName"
+Write-Host "(This PC's Tailscale name is '$dnsName' — ignore offline nodes like 'house-victoria' unless that machine is online.)"
 Write-Host 'API token: same value as House Victoria Settings -> Remote companion API token (16+ chars)'
 Write-Host ''
 Write-Host 'On your phone:'

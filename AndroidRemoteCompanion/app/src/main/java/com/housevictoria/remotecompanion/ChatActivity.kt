@@ -241,6 +241,7 @@ class ChatActivity : AppCompatActivity() {
                 messages.addAll(remote.map { it.toChatMessage() })
                 publishMessages()
                 binding.personaStatusLabel.text = getString(R.string.persona_online)
+                ackLatestAssistantMessage(remote)
             }.onFailure {
                 binding.personaStatusLabel.text = getString(R.string.persona_offline)
                 binding.personaOnlineDot.setBackgroundResource(R.drawable.bg_status_dot_error)
@@ -432,6 +433,25 @@ class ChatActivity : AppCompatActivity() {
 
     private fun toast(text: String) {
         Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun ackLatestAssistantMessage(remote: List<RemoteMessage>) {
+        val lastAssistant = remote.lastOrNull { it.role == MessageRole.ASSISTANT } ?: return
+        if (lastAssistant.id.isBlank()) return
+        uiScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    apiClient.ackNotifications(
+                        config.baseUrl,
+                        config.token,
+                        NotificationAck(
+                            contactId = contact.id,
+                            lastSeenMessageId = lastAssistant.id
+                        )
+                    )
+                }
+            }
+        }
     }
 
     companion object {

@@ -46,6 +46,7 @@ namespace HouseVictoria.App.RemoteCompanion
             builder.Services.AddSingleton(_ => serviceProvider.GetRequiredService<RemoteCompanionChatService>());
             builder.Services.AddSingleton(_ => serviceProvider.GetRequiredService<RemoteCompanionSystemService>());
             builder.Services.AddSingleton(_ => serviceProvider.GetRequiredService<RemoteCompanionMediaService>());
+            builder.Services.AddSingleton(_ => serviceProvider.GetRequiredService<RemoteCompanionNotificationService>());
             builder.Services.AddSingleton(_ => cfg);
 
             var bindHost = cfg.RemoteCompanionListenOnLan ? "0.0.0.0" : "127.0.0.1";
@@ -238,6 +239,79 @@ namespace HouseVictoria.App.RemoteCompanion
                 return Results.File(media.Value.Path, media.Value.ContentType);
             });
 
+            app.MapGet("/api/remote/v1/notifications/pending", async (
+                HttpContext http,
+                RemoteCompanionNotificationService notificationService,
+                string? since,
+                string? contactId,
+                CancellationToken ct) =>
+            {
+                if (!IsAuthorized(http, cfg))
+                    return Results.Json(new { error = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+
+                DateTime? sinceUtc = null;
+                if (!string.IsNullOrWhiteSpace(since))
+                {
+                    if (!DateTime.TryParse(since, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsedSince))
+                        return Results.Json(new { error = "invalid_since" }, statusCode: StatusCodes.Status400BadRequest);
+
+                    sinceUtc = parsedSince.Kind == DateTimeKind.Unspecified
+                        ? DateTime.SpecifyKind(parsedSince, DateTimeKind.Utc)
+                        : parsedSince.ToUniversalTime();
+                }
+
+                var pending = await notificationService.GetPendingAsync(sinceUtc, contactId, ct).ConfigureAwait(false);
+                var items = pending.Items.Select(item => new
+                {
+                    contactId = item.ContactId,
+                    contactName = item.ContactName,
+                    messageId = item.MessageId,
+                    preview = item.Preview,
+                    createdAt = item.CreatedAt.ToString("O"),
+                    kind = item.Kind switch
+                    {
+                        RemotePendingNotificationKind.NewMessage => "new_message",
+                        RemotePendingNotificationKind.UnreadReminder => "unread_reminder",
+                        _ => "new_message"
+                    }
+                });
+                return Results.Json(new { items });
+            });
+
+            app.MapPost("/api/remote/v1/notifications/ack", async (
+                HttpContext http,
+                RemoteCompanionNotificationService notificationService,
+                CancellationToken ct) =>
+            {
+                if (!IsAuthorized(http, cfg))
+                    return Results.Json(new { error = "unauthorized" }, statusCode: StatusCodes.Status401Unauthorized);
+
+                RemoteNotificationAckRequest? body;
+                try
+                {
+                    body = await JsonSerializer.DeserializeAsync<RemoteNotificationAckRequest>(
+                        http.Request.Body, JsonOptions, ct).ConfigureAwait(false);
+                }
+                catch
+                {
+                    return Results.Json(new { error = "invalid_json" }, statusCode: StatusCodes.Status400BadRequest);
+                }
+
+                if (body == null || string.IsNullOrWhiteSpace(body.ContactId))
+                    return Results.Json(new { error = "contactId_required" }, statusCode: StatusCodes.Status400BadRequest);
+
+                try
+                {
+                    await notificationService.AckAsync(body, ct).ConfigureAwait(false);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status400BadRequest);
+                }
+
+                return Results.Json(new { ok = true });
+            });
+
             app.MapPost("/api/remote/v1/chat-image", async (
                 HttpContext http,
                 RemoteCompanionChatService chatService,
@@ -280,10 +354,12 @@ namespace HouseVictoria.App.RemoteCompanion
             await app.StartAsync(cancellationToken).ConfigureAwait(false);
             _app = app;
 
+            serviceProvider.GetRequiredService<RemoteCompanionNotificationService>().StartReminderScheduler();
+
             var bind = cfg.RemoteCompanionListenOnLan ? "all interfaces" : "127.0.0.1";
             LoggingHelper.WriteToStartupLog(
                 $"Remote companion API listening on http://{bind}:{cfg.RemoteCompanionListenPort} " +
-                $"(GET /api/remote/v1/contacts, GET .../messages, GET .../avatar, POST .../chat, POST .../chat-audio).");
+                $"(GET /api/remote/v1/contacts, GET .../messages, GET .../notifications/pending, POST .../chat, POST .../chat-audio).");
         }
 
         private static bool IsAuthorized(HttpContext http, AppConfig cfg)

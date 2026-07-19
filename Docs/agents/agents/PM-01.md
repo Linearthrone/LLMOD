@@ -208,7 +208,7 @@ See: `docs/TMPA-Text-Message-Parallel-AI-Architecture-Spec.md` (v3.1)
 | `services/nl2sql_service.py` | NL2SQL full pipeline (refine→retrieve→generate→audit→execute) |
 | `services/field_index.py` | Field-level inverted index (jieba+thefuzz) |
 | `services/llm_service.py` | LLM calls + skill routing prompts |
-| `services/email_service.py` | Email service (SMTP ai@example.com) |
+| `services/email_service.py` | Email service (SMTP `ai@example.com`) |
 | `utils/skills.py` | 12 skill definitions |
 | `utils/intent.py` | Intent detection (db/knowledge/web routing) |
 | `utils/prompt.py` | System prompts |

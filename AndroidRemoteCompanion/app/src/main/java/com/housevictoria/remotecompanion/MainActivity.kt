@@ -1,12 +1,17 @@
 package com.housevictoria.remotecompanion
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.animation.ObjectAnimator
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.housevictoria.remotecompanion.databinding.ActivityMainBinding
@@ -26,6 +31,10 @@ class MainActivity : AppCompatActivity() {
     private var config = CompanionConfig("", "")
     private lateinit var threadAdapter: ThreadAdapter
     private var systemStatusPollJob: Job? = null
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* graceful degrade if denied */ }
 
     companion object {
         private const val SYSTEM_STATUS_POLL_INTERVAL_MS = 12_000L
@@ -60,6 +69,8 @@ class MainActivity : AppCompatActivity() {
         binding.inboxRoot.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420).start()
 
         pulseStatusDot()
+        requestNotificationPermissionIfNeeded()
+        scheduleNotificationPolling()
 
         if (config.validate() != null) {
             AppNavigation.openSettings(this)
@@ -120,7 +131,10 @@ class MainActivity : AppCompatActivity() {
         }
         binding.threadsRecycler.adapter = threadAdapter
         if (config.validate() == null) refreshInbox()
-        if (config.validate() == null) loadSystemStatus()
+        if (config.validate() == null) {
+            loadSystemStatus()
+            scheduleNotificationPolling()
+        }
         startSystemStatusPolling()
     }
 
@@ -226,5 +240,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(text: String) {
         Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun scheduleNotificationPolling() {
+        if (config.validate() != null) return
+        NotificationHelper.ensureChannel(this)
+        NotificationScheduler.schedule(this)
     }
 }

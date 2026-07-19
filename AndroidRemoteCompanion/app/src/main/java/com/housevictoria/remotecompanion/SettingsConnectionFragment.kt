@@ -108,6 +108,8 @@ class SettingsConnectionFragment : Fragment() {
             return
         }
         CompanionPrefs.save(requireContext(), draft)
+        NotificationHelper.ensureChannel(requireContext())
+        NotificationScheduler.schedule(requireContext())
         healthResult?.text = getString(R.string.toast_saved)
         healthResult?.setTextColor(palette.success)
         Toast.makeText(requireContext(), R.string.toast_saved, Toast.LENGTH_SHORT).show()
