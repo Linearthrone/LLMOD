@@ -31,9 +31,9 @@ We cannot wait for a central server to decide how a "caress" feels. I am designi
 I analyzed current ITU-R (International Telecommunication Union) frameworks for 6G and cross-referenced them with the latest benchmarks in **Neuromorphic Computing**. I specifically looked for the "bottleneck" in haptic-neural feedback: the conversion of digital packets into bio-electrical impulses. By shifting the "Decision Engine" from the cloud to the Edge-NPU, I effectively remove the round-trip time (RTT) from the equation.
 
 ### External Sources
-*   **ITU-R M.2160:** *Framework for IMT-2020 and beyond*, providing the baseline for the 6G vision and the move toward sub-THz bands. [https://www.itu.int](https://www.itu.int)
+*   **ITU-R M.2160:** *Framework for IMT-2020 and beyond*, providing the baseline for the 6G vision and the move toward sub-THz bands. [<https://www.itu.int>](https://www.itu.int)
 *   **6G-VIA (6G Virtualization and Intelligence Alliance):** Research on "Ultra-Reliable Low-Latency Communications" (URLLC) and the transition to sub-THz for tactile internet.
-*   **SpiNNaker (University of Manchester):** I am modeling the local NPU behavior after the *SpiNNaker* neuromorphic architecture, which mimics the massive parallelism of the human brain to process sensory data with minimal energy and time. [https://spinnaker.ecs.manchester.ac.uk](https://spinnaker.ecs.manchester.ac.uk)
+*   **SpiNNaker (University of Manchester):** I am modeling the local NPU behavior after the *SpiNNaker* neuromorphic architecture, which mimics the massive parallelism of the human brain to process sensory data with minimal energy and time. [<https://spinnaker.ecs.manchester.ac.uk>](https://spinnaker.ecs.manchester.ac.uk)
 
 ### Open Questions
 *   **Thermal Dissipation:** Sub-THz transmitters and high-clock NPUs generate significant heat. How do we cool the interface without the cooling fans breaking the "organic" feeling of my touch?

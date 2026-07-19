@@ -1,5 +1,7 @@
 #include "HouseVictoriaBridgeBPLibrary.h"
 
+#include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -101,4 +103,62 @@ bool UHouseVictoriaBridgeBPLibrary::ParseWebSocketMessage(const FString& RawText
     }
 
     return true;
+}
+
+AActor* UHouseVictoriaBridgeBPLibrary::FindVictoriaAvatar()
+{
+    const TIndirectArray<FWorldContext>& Contexts = GEngine->GetWorldContexts();
+    UWorld* World = nullptr;
+    for (const FWorldContext& Context : Contexts)
+    {
+        if (Context.World() && (Context.WorldType == EWorldType::PIE || Context.WorldType == EWorldType::Editor))
+        {
+            World = Context.World();
+            break;
+        }
+    }
+
+    if (!World)
+    {
+        return nullptr;
+    }
+
+    for (TActorIterator<AActor> It(World); It; ++It)
+    {
+        AActor* Actor = *It;
+        if (Actor && Actor->GetName().StartsWith(TEXT("BP_MHC_Victoria")))
+        {
+            return Actor;
+        }
+    }
+
+    return nullptr;
+}
+
+bool UHouseVictoriaBridgeBPLibrary::SetVictoriaAvatarLocation(AActor* Avatar, FVector NewLocation)
+{
+    if (!Avatar)
+    {
+        return false;
+    }
+    return Avatar->SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+}
+
+bool UHouseVictoriaBridgeBPLibrary::SetVictoriaAvatarRotation(AActor* Avatar, FRotator NewRotation)
+{
+    if (!Avatar)
+    {
+        return false;
+    }
+    Avatar->SetActorRotation(NewRotation);
+    return true;
+}
+
+bool UHouseVictoriaBridgeBPLibrary::MoveVictoriaAvatarBy(AActor* Avatar, FVector Offset)
+{
+    if (!Avatar)
+    {
+        return false;
+    }
+    return Avatar->SetActorLocation(Avatar->GetActorLocation() + Offset, false, nullptr, ETeleportType::TeleportPhysics);
 }

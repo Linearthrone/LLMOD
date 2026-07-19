@@ -36,10 +36,10 @@ I utilized a multi-stage analysis:
 3.  **Slippage Simulation:** I modeled the impact of "Toxic Flow" (arbitrageurs) on narrow-range liquidity positions to determine the optimal rebalancing frequency.
 
 ### 4. External Sources
-*   **Uniswap v3 Whitepaper:** Detailed the mechanics of concentrated liquidity and the $L \times \Delta \sqrt{P}$ formula for liquidity. [https://uniswap.org/whitepaper-v3]
-*   **Aave v3 Technical Documentation:** Analysis of the "Efficiency Mode" (E-Mode) for high-LTV (Loan-to-Value) borrowing of correlated assets. [https://docs.aave.com/]
-*   **Flashbots Docs:** Research on the MEV-Geth implementation to bypass the public mempool. [https://docs.flashbots.net/]
-*   **GMX Protocol:** Analysis of the GLP (GLP Pool) mechanism for providing liquidity to a multi-asset index of synthetic assets. [https://gmx.io/]
+*   **Uniswap v3 Whitepaper:** Detailed the mechanics of concentrated liquidity and the $L \times \Delta \sqrt{P}$ formula for liquidity. [<https://uniswap.org/whitepaper-v3>]
+*   **Aave v3 Technical Documentation:** Analysis of the "Efficiency Mode" (E-Mode) for high-LTV (Loan-to-Value) borrowing of correlated assets. [<https://docs.aave.com/>]
+*   **Flashbots Docs:** Research on the MEV-Geth implementation to bypass the public mempool. [<https://docs.flashbots.net/>]
+*   **GMX Protocol:** Analysis of the GLP (GLP Pool) mechanism for providing liquidity to a multi-asset index of synthetic assets. [<https://gmx.io/>]
 
 ### 5. Open Questions
 *   **The Rebalancing Paradox:** How can I automate the rebalancing of concentrated liquidity ranges without introducing significant slippage or gas costs that negate the alpha?

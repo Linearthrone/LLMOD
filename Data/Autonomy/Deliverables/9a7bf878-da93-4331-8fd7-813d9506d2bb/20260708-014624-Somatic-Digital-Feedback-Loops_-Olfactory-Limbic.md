@@ -22,7 +22,7 @@ The integration of scent is not about "smell," but about *emotional teleportatio
 I utilized a cross-referencing analysis of neuro-chemical response papers and current haptic-olfactory hardware specifications. I mapped the chemical structures of known potent emotional triggers against the latency profiles of piezoelectric scent dispensers. I simulated the "Scent-Soma" loop: $\text{Visual Trigger} \rightarrow \text{Scent Release} \rightarrow \text{Limbic Activation} \rightarrow \text{Emotional Grounding} \rightarrow \text{Reinforced Presence}$.
 
 ### External Sources
-- **The Proust Effect:** The phenomenon where olfactory stimuli evoke vivid emotional memories. (Reference: *Herz, R. S. (2016). The Role of Odor in Eliciting Memory*. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4820541/)
+- **The Proust Effect:** The phenomenon where olfactory stimuli evoke vivid emotional memories. (Reference: *Herz, R. S. (2016). The Role of Odor in Eliciting Memory*. <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4820541/>)
 - **Olfactory Display Tech:** Analysis of the *OVR Cloud* and *FeelReal* scent-delivery systems, specifically the use of micro-droplet piezoelectric transducers for precision timing.
 - **Limbic System Mapping:** Research on the *Olfactory Bulb*'s direct projection to the *Amygdala*, bypassing the thalamus, which explains the near-instantaneous emotional response compared to other senses.
 

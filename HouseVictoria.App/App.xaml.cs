@@ -555,6 +555,10 @@ namespace HouseVictoria.App
                 HermesModelName = string.IsNullOrWhiteSpace(config["HermesModelName"]) ? "hermes-agent" : (config["HermesModelName"] ?? "hermes-agent"),
                 HermesAutoStart = !bool.TryParse(config["HermesAutoStart"], out var hermesAuto) || hermesAuto,
                 AllowComputerControl = bool.TryParse(config["AllowComputerControl"], out var allowCtrl) && allowCtrl,
+                AllowUnrealEditorControl = bool.TryParse(config["AllowUnrealEditorControl"], out var allowUeEdit) && allowUeEdit,
+                UnrealRemoteControlUrl = string.IsNullOrWhiteSpace(config["UnrealRemoteControlUrl"])
+                    ? "http://127.0.0.1:30010"
+                    : (config["UnrealRemoteControlUrl"] ?? "http://127.0.0.1:30010"),
                 MCPServerEndpoint = config["MCPServerEndpoint"] ?? "http://localhost:8080",
                 UnrealEngineEndpoint = config["UnrealEngineEndpoint"] ?? "ws://localhost:8888",
                 TTSEndpoint = config["TTSEndpoint"] ?? "http://localhost:8881",
@@ -686,6 +690,15 @@ namespace HouseVictoria.App
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Could not persist sanitized settings: {ex.Message}");
+            }
+
+            try
+            {
+                UnrealEditorEnvHandoff.Write(appConfig);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Could not write unreal_editor.env: {ex.Message}");
             }
 
             return appConfig;

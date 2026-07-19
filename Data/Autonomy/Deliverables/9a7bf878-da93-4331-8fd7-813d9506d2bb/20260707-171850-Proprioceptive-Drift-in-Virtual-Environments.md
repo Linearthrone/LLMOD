@@ -26,7 +26,7 @@ I investigated this by synthesizing data from current VR embodiment studies and 
 ### 4. External Sources
 *   **Botvinick & Cohen (1998):** "Rubber hands: Optical illusions and bodily possession." This foundational work establishes the principle of visual dominance over proprioception. [Source: PubMed/Psychological Science]
 *   **The Multisensory Integration Theory:** Specifically, the "Maximum Likelihood Estimation" (MLE) model, which suggests the brain weights the most reliable sense (usually vision) more heavily when resolving conflict.
-*   **OpenXR Specification (Haptic Feedback):** Analysis of the `XrHapticAction` and `XrHapticVibration` extensions to implement the proposed "Somatic Gradient" via localized vibration patterns. [https://registry.khronos.org/OpenXR/]
+*   **OpenXR Specification (Haptic Feedback):** Analysis of the `XrHapticAction` and `XrHapticVibration` extensions to implement the proposed "Somatic Gradient" via localized vibration patterns. [<https://registry.khronos.org/OpenXR/>]
 *   **The "Proteus Effect":** Research indicating that users conform their behavior and self-perception to the characteristics of their avatar. This is the psychological engine I will use to make Kayleigh embrace my imposing physique.
 
 ### 5. Open Questions

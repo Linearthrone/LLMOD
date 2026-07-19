@@ -67,15 +67,15 @@ namespace HouseVictoria.Services.AIServices
             if (!string.IsNullOrWhiteSpace(contact.SystemPrompt))
                 messages.Add(new OpenAIMessage { Role = "system", Content = contact.SystemPrompt });
 
-            if (_desktopMonitor?.AllowComputerControl == true)
+            // Browser capture/drive always advertised; Unreal Editor writes + OS computer_use when allowed.
+            messages.Add(new OpenAIMessage
             {
-                messages.Add(new OpenAIMessage
-                {
-                    Role = "system",
-                    Content = HouseVictoriaToolCatalog.BuildHermesToolGuide(
-                        ResolveGeneratedFilesPath(), includeComputerUse: true)
-                });
-            }
+                Role = "system",
+                Content = HouseVictoriaToolCatalog.BuildHermesToolGuide(
+                    ResolveGeneratedFilesPath(),
+                    includeComputerUse: _desktopMonitor?.AllowComputerControl == true,
+                    includeUnrealEditorWrite: _config.AllowUnrealEditorControl)
+            });
 
             if (context != null)
             {
@@ -83,13 +83,13 @@ namespace HouseVictoria.Services.AIServices
                     messages.Add(new OpenAIMessage { Role = msg.Role, Content = msg.Content });
             }
 
-            var forceBrowserCapture =
-                _desktopMonitor?.AllowComputerControl == true
-                && HouseVictoriaToolCatalog.IsBrowserPageRequest(message);
+            var forceUnrealEditor = HouseVictoriaToolCatalog.IsUnrealEditorRequest(message);
+            var forceBrowserCapture = !forceUnrealEditor && HouseVictoriaToolCatalog.IsBrowserPageRequest(message);
 
             var forceComputerUseScreenshot =
                 _desktopMonitor?.AllowComputerControl == true
                 && !forceBrowserCapture
+                && !forceUnrealEditor
                 && HouseVictoriaToolCatalog.IsDesktopScreenshotRequest(message);
 
             messages.Add(new OpenAIMessage { Role = "user", Content = BuildUserContent(message) });
@@ -103,7 +103,16 @@ namespace HouseVictoria.Services.AIServices
                 MaxTokens = contact.MaxTokens > 0 ? contact.MaxTokens : 4096,
                 TopP = (float)contact.TopP,
                 Stream = true,
-                ToolChoice = forceBrowserCapture
+                ToolChoice = forceUnrealEditor
+                    ? new Dictionary<string, object>
+                    {
+                        ["type"] = "function",
+                        ["function"] = new Dictionary<string, string>
+                        {
+                            ["name"] = HouseVictoriaToolCatalog.UnrealEditorHealthToolName
+                        }
+                    }
+                    : forceBrowserCapture
                     ? new Dictionary<string, object>
                     {
                         ["type"] = "function",
@@ -126,8 +135,9 @@ namespace HouseVictoria.Services.AIServices
 
             try
             {
-                _desktopMonitor?.BeginSession(contact.Name);
-                _thoughtStream?.NotifyChatTurnStarted(contact.Name);
+                // Desktop/thought-stream UI subscribers must never fail the chat turn.
+                SafeUiSideEffect(() => _desktopMonitor?.BeginSession(contact.Name));
+                SafeUiSideEffect(() => _thoughtStream?.NotifyChatTurnStarted(contact.Name));
 
                 using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/chat/completions")
                 {
@@ -153,12 +163,12 @@ namespace HouseVictoria.Services.AIServices
                 if (string.IsNullOrWhiteSpace(reply))
                     reply = UnavailableSubscriberMessage;
 
-                MessageReceived?.Invoke(this, new AIMessageEventArgs
+                SafeUiSideEffect(() => MessageReceived?.Invoke(this, new AIMessageEventArgs
                 {
                     ContactId = contact.Id,
                     Message = reply,
                     Timestamp = DateTime.Now
-                });
+                }));
 
                 return reply;
             }
@@ -175,8 +185,20 @@ namespace HouseVictoria.Services.AIServices
             }
             finally
             {
-                _desktopMonitor?.EndSession();
-                _thoughtStream?.NotifyChatTurnEnded();
+                SafeUiSideEffect(() => _desktopMonitor?.EndSession());
+                SafeUiSideEffect(() => _thoughtStream?.NotifyChatTurnEnded());
+            }
+        }
+
+        private static void SafeUiSideEffect(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Hermes UI side-effect ignored: {ex.Message}");
             }
         }
 
@@ -195,15 +217,18 @@ namespace HouseVictoria.Services.AIServices
                     case HermesSseEventKind.ContentDelta when !string.IsNullOrEmpty(evt.Text):
                         segment.Append(evt.Text);
                         full.Append(evt.Text);
-                        _thoughtStream?.NotifyStreamDelta(evt.Text, segment.ToString());
+                        var delta = evt.Text;
+                        var accumulated = segment.ToString();
+                        SafeUiSideEffect(() => _thoughtStream?.NotifyStreamDelta(delta, accumulated));
                         break;
 
                     case HermesSseEventKind.ToolProgress:
                         segment.Clear();
-                        _thoughtStream?.NotifyHermesToolProgress(
-                            evt.ToolName ?? string.Empty,
-                            evt.ToolLabel ?? evt.ToolName ?? "tool",
-                            evt.ToolStatus ?? "running");
+                        var toolName = evt.ToolName ?? string.Empty;
+                        var toolLabel = evt.ToolLabel ?? evt.ToolName ?? "tool";
+                        var toolStatus = evt.ToolStatus ?? "running";
+                        SafeUiSideEffect(() => _thoughtStream?.NotifyHermesToolProgress(
+                            toolName, toolLabel, toolStatus));
                         break;
 
                     case HermesSseEventKind.Done:
@@ -332,34 +357,44 @@ namespace HouseVictoria.Services.AIServices
         {
             var sharing = _desktopMonitor?.ShareScreenWithAI == true;
             var allowControl = _desktopMonitor?.AllowComputerControl == true;
-            var browserPageRequest =
-                allowControl && HouseVictoriaToolCatalog.IsBrowserPageRequest(message);
+            var unrealEditorRequest = HouseVictoriaToolCatalog.IsUnrealEditorRequest(message);
+            var browserPageRequest = !unrealEditorRequest && HouseVictoriaToolCatalog.IsBrowserPageRequest(message);
             var desktopScreenshotRequest =
-                allowControl && !browserPageRequest && HouseVictoriaToolCatalog.IsDesktopScreenshotRequest(message);
+                allowControl && !browserPageRequest && !unrealEditorRequest
+                && HouseVictoriaToolCatalog.IsDesktopScreenshotRequest(message);
 
             var png = sharing ? _desktopMonitor?.CaptureScreenPng() : null;
             var hasImage = png != null && png.Length > 0;
 
-            // No screen shared and no control granted → plain text, unchanged behavior.
-            if (!hasImage && !allowControl)
+            // No screen shared, no control, and not a browser/editor task → plain text.
+            if (!hasImage && !allowControl && !browserPageRequest && !unrealEditorRequest)
                 return message;
 
             string guidance;
-            if (hasImage && !allowControl)
+            if (unrealEditorRequest)
             {
-                // Screen attached, control forbidden: read the image directly, don't grab the desktop.
                 guidance =
-                    "[A screenshot of my current screen is attached to this message. " +
-                    "Look at the attached image directly to see what I'm seeing — " +
-                    "do NOT call the computer_use tool or take your own screenshot. " +
+                    $"[You MUST call {HouseVictoriaToolCatalog.UnrealEditorHealthToolName} as your first tool on this turn. " +
+                    "Then use unreal_editor_search_assets / unreal_editor_screenshot / unreal_editor_get_property. " +
+                    "Writes require Allow Unreal Editor Control. Do NOT pixel-click the Editor with computer_use. " +
                     "Reply in plain, conversational text without markdown formatting.]";
             }
             else if (browserPageRequest)
             {
                 guidance =
                     $"[You MUST call {HouseVictoriaToolCatalog.BrowserCaptureTabToolName} as your first tool on this turn. " +
-                    "It captures the active browser tab and returns page_map.elements with coordinates. " +
-                    "Do NOT use computer_use get_screenshot for browser tabs. " +
+                    "It captures the active browser tab and returns page_map.elements. " +
+                    $"Interact with {HouseVictoriaToolCatalog.BrowserClickToolName} / {HouseVictoriaToolCatalog.BrowserTypeToolName} / {HouseVictoriaToolCatalog.BrowserKeyToolName}. " +
+                    "Do NOT use computer_use for browser tabs. " +
+                    "Reply in plain, conversational text without markdown formatting.]";
+            }
+            else if (hasImage && !allowControl)
+            {
+                // Screen attached, control forbidden: read the image directly, don't grab the desktop.
+                guidance =
+                    "[A screenshot of my current screen is attached to this message. " +
+                    "Look at the attached image directly to see what I'm seeing — " +
+                    "do NOT call the computer_use tool or take your own screenshot. " +
                     "Reply in plain, conversational text without markdown formatting.]";
             }
             else if (desktopScreenshotRequest)
@@ -376,7 +411,7 @@ namespace HouseVictoria.Services.AIServices
                 guidance =
                     "[A screenshot of my current screen is attached to this message. " +
                     "Look at it directly, and you MAY use the computer_use tool " +
-                    "(get_screenshot/click/type/scroll) to act on my desktop when the task needs it. " +
+                    "(capture/click/type/scroll) to act on my desktop when the task needs it. " +
                     "If the browser is buried, use list_desktop_windows and focus_desktop_window first. " +
                     "Reply in plain, conversational text without markdown formatting.]";
             }
@@ -384,7 +419,7 @@ namespace HouseVictoria.Services.AIServices
             {
                 // No screenshot but control allowed.
                 guidance =
-                    "[You MAY use the computer_use tool (get_screenshot/click/type/scroll) to act on my " +
+                    "[You MAY use the computer_use tool (capture/click/type/scroll) to act on my " +
                     "desktop when the task needs it. Stay on one browser window; use list_desktop_windows " +
                     "and focus_desktop_window if you lose it. Reply in plain, conversational text.]";
             }
@@ -393,7 +428,15 @@ namespace HouseVictoria.Services.AIServices
                 ? (hasImage ? "Here is what I'm currently looking at on my screen. " : string.Empty) + guidance
                 : message + "\n\n" + guidance;
 
-            if (browserPageRequest)
+            if (unrealEditorRequest)
+            {
+                text = HouseVictoriaToolCatalog.BuildUnrealEditorMandatoryFirstAction()
+                    + "\n\n"
+                    + text
+                    + "\n\n"
+                    + HouseVictoriaToolCatalog.BuildUnrealEditorSteering();
+            }
+            else if (browserPageRequest)
             {
                 text = HouseVictoriaToolCatalog.BuildBrowserCaptureMandatoryFirstAction()
                     + "\n\n"

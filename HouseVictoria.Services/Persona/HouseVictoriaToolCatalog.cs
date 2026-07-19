@@ -11,13 +11,37 @@ namespace HouseVictoria.Services.Persona
         /// <summary>Hermes MCP tool name registered by computer-use-mcp on the gateway.</summary>
         public const string ComputerUseMcpToolName = "mcp_computer_use_computer";
 
-        /// <summary>computer-use-mcp action for screenshots (not "screenshot").</summary>
-        public const string ComputerUseScreenshotAction = "get_screenshot";
+        /// <summary>Hermes computer_use action for desktop screenshots (not "get_screenshot" — that name is rejected).</summary>
+        public const string ComputerUseScreenshotAction = "capture";
 
         /// <summary>Hermes MCP tool for browser extension tab capture (house_victoria server).</summary>
         public const string BrowserCaptureTabToolName = "mcp_house_victoria_browser_capture_tab";
 
         public const string BrowserBridgeHealthToolName = "mcp_house_victoria_browser_bridge_health";
+
+        public const string BrowserClickToolName = "mcp_house_victoria_browser_click";
+
+        public const string BrowserTypeToolName = "mcp_house_victoria_browser_type";
+
+        public const string BrowserKeyToolName = "mcp_house_victoria_browser_key";
+
+        public const string BrowserScrollToolName = "mcp_house_victoria_browser_scroll";
+
+        public const string UnrealEditorHealthToolName = "mcp_house_victoria_unreal_editor_health";
+
+        public const string UnrealEditorScreenshotToolName = "mcp_house_victoria_unreal_editor_screenshot";
+
+        public const string UnrealEditorSearchAssetsToolName = "mcp_house_victoria_unreal_editor_search_assets";
+
+        public const string UnrealEditorGetPropertyToolName = "mcp_house_victoria_unreal_editor_get_property";
+
+        public const string UnrealEditorSetPropertyToolName = "mcp_house_victoria_unreal_editor_set_property";
+
+        public const string UnrealEditorCallToolName = "mcp_house_victoria_unreal_editor_call";
+
+        public const string UnrealEditorConsoleToolName = "mcp_house_victoria_unreal_editor_console";
+
+        public const string UnrealEditorSpawnActorToolName = "mcp_house_victoria_unreal_editor_spawn_actor";
 
         public static string BuildChatDeliverableGuide(string? generatedFilesPath = null)
         {
@@ -38,53 +62,76 @@ namespace HouseVictoria.Services.Persona
                 """;
         }
 
-        public static string BuildHermesToolGuide(string? generatedFilesPath = null, bool includeComputerUse = false)
+        public static string BuildHermesToolGuide(
+            string? generatedFilesPath = null,
+            bool includeComputerUse = false,
+            bool includeUnrealEditorWrite = false)
         {
             var pathLine = string.IsNullOrWhiteSpace(generatedFilesPath)
                 ? "Media/GeneratedFiles"
                 : generatedFilesPath;
 
-            // Only advertise desktop control when the user has explicitly allowed it, so the model
-            // is not nudged to grab the mouse/keyboard unprompted.
+            // Browser capture/drive is always available (bridge + extension) — not gated on desktop control.
+            var browserSection = $"""
+
+
+                BROWSER TAB (user's real Chrome/Edge — always use these for web pages):
+                | Tool | When to use |
+                |------|-------------|
+                | {BrowserCaptureTabToolName} | ACTIVE tab screenshot + page_map (NOT computer_use capture) |
+                | {BrowserClickToolName} | Click by selector, page_map.elements[].index, or viewport x/y |
+                | {BrowserTypeToolName} | Type into selector/index or the focused field |
+                | {BrowserKeyToolName} | Keys/combos (Enter, Tab, Ctrl+A) in the tab |
+                | {BrowserScrollToolName} | Scroll by deltas or to an element |
+                | {BrowserBridgeHealthToolName} | Check bridge :17891 if capture/actions time out |
+
+                Browser loop: capture → click/type/key/scroll → capture again to verify.
+                Prefer selector or page_map index; fall back to x/y from page_map.elements[].center.
+                FORBIDDEN for the user's Chrome: browser, browser_navigate, browser_vision, puppeteer_* (ghost Chromium).
+                """;
+
+            var unrealWriteRows = includeUnrealEditorWrite
+                ? $"""
+                | {UnrealEditorSetPropertyToolName} | Set a UObject property (writes allowed) |
+                | {UnrealEditorCallToolName} | Call a UFunction on an object path |
+                | {UnrealEditorConsoleToolName} | Editor console command (destructive cmds blocked) |
+                | {UnrealEditorSpawnActorToolName} | Spawn actor in the current level |
+                """
+                : """
+                | (writes disabled) | Enable Allow Unreal Editor Control in Settings for set/call/console/spawn |
+                """;
+
+            var unrealSection = $"""
+
+
+                UNREAL EDITOR (open .uproject via Remote Control :30010 — NOT the world WebSocket :8888):
+                | Tool | When to use |
+                |------|-------------|
+                | {UnrealEditorHealthToolName} | Check RC before editor work |
+                | {UnrealEditorScreenshotToolName} | Viewport capture request |
+                | {UnrealEditorSearchAssetsToolName} | Search Content Browser assets |
+                | {UnrealEditorGetPropertyToolName} | Read actor/component properties |
+                {unrealWriteRows}
+                Editor loop: health → search/screenshot → mutate (if allowed) → verify with get_property/screenshot.
+                Do NOT use computer_use to click the Unreal Editor UI when these tools apply.
+                """;
+
+            // Only advertise OS desktop control when the user has explicitly allowed it.
             var computerUseSection = includeComputerUse
                 ? $"""
 
 
-                DESKTOP CONTROL (the user has allowed you to act on their computer):
+                DESKTOP CONTROL (non-browser apps / full desktop — user allowed computer control):
                 | Tool | When to use |
                 |------|-------------|
-                | {ComputerUseMcpToolName} (action={ComputerUseScreenshotAction}) | See the LOCAL desktop — use this, NOT browser_vision |
-                | {ComputerUseMcpToolName} (action=left_click / double_click / right_click) | Click a target on screen |
-                | {ComputerUseMcpToolName} (action=type) | Type text into the focused field |
-                | {ComputerUseMcpToolName} (action=scroll / key) | Scroll or press keys |
-                | list_desktop_windows | When you lost the browser — list open window titles + bounds |
-                | focus_desktop_window(title_contains) | Bring the target browser/app to the front BEFORE clicking |
-                | {BrowserCaptureTabToolName} | ACTIVE browser tab screenshot + page map — use for web pages, NOT computer_use |
-                | {BrowserBridgeHealthToolName} | Check extension bridge on :17891 if capture times out |
+                | {ComputerUseMcpToolName} (action={ComputerUseScreenshotAction}) | See the LOCAL desktop outside the browser |
+                | {ComputerUseMcpToolName} (action=left_click / type / scroll / key) | Act on non-browser desktop UI |
+                | list_desktop_windows / focus_desktop_window | Focus a desktop window before OS clicks |
                 | terminal | Run a shell command (NOT for desktop screenshots) |
 
-                FORBIDDEN for local desktop / Maestro / the user's Chrome (they spawn ghost Chrome windows):
-                - browser, browser_navigate, browser_vision, browser_snapshot (Hermes's own Chromium)
-                - mcp__puppeteer__* / puppeteer_navigate / puppeteer_screenshot (separate testing Chromium)
-                USE INSTEAD: {BrowserCaptureTabToolName} to see the user's tab; computer_use + focus_desktop_window to click/type.
-
-                WINDOW FOCUS DISCIPLINE (critical on Windows):
-                - Pick ONE target window (e.g. Chrome/Edge/Firefox) and stay on it for the whole task.
-                - Do NOT open a parallel Hermes browser or Puppeteer session for local desktop work.
-                - For tasks INSIDE a browser tab (web apps, docs, GitHub): call {BrowserCaptureTabToolName}
-                  first — it captures the tab directly and returns a page_map with element coordinates.
-                  Do NOT use {ComputerUseMcpToolName} get_screenshot for browser tabs (House Victoria overlay
-                  pollutes desktop framebuffer captures).
-                - For full-desktop / non-browser tasks: {ComputerUseScreenshotAction} via computer_use.
-                - If House Victoria, Cursor, or another app is on top: call focus_desktop_window with a
-                  substring from list_desktop_windows, then {ComputerUseScreenshotAction} again.
-                - If a click does nothing, the window may not be focused — focus it, screenshot, click again.
-                - Prefer keyboard shortcuts (Ctrl+L, Tab, Enter) over fragile coordinate clicks when possible.
-                - After each action, take another {ComputerUseScreenshotAction} to confirm before continuing.
-
-                For anything on the user's local desktop/screen/window: call {ComputerUseMcpToolName} with
-                action={ComputerUseScreenshotAction} first. Do NOT use browser_vision — it cannot see the local desktop.
-                Take a screenshot first to see the screen, act in small steps, and confirm the result.
+                Do NOT use computer_use for tasks INSIDE a browser tab — use {BrowserCaptureTabToolName}
+                and {BrowserClickToolName}/{BrowserTypeToolName}/{BrowserKeyToolName} instead (overlay-safe).
+                FORBIDDEN ghost browsers: browser, browser_vision, puppeteer_*.
                 {BuildComputerUseWindowFocusReminder()}
                 """
                 : string.Empty;
@@ -103,7 +150,8 @@ namespace HouseVictoria.Services.Persona
                 | mt4_run_backtest | Backtest a strategy on historical data |
                 | memory_store / memory_search | Persist or recall facts |
                 | project_bank_create / knowledge_bank_add | Project & knowledge banks |
-
+                {browserSection}
+                {unrealSection}
                 File Retrieval path on disk: {pathLine}
                 Prefer save_to_file_retrieval OR [FILE]...[/FILE] for user deliverables — not made-up paths like docs/...
                 After a tool succeeds, tell the user the actual filename/path from the tool result.{computerUseSection}
@@ -131,7 +179,7 @@ namespace HouseVictoria.Services.Persona
         /// </summary>
         public static string BuildComputerUseWindowFocusReminder() =>
             """
-            If the target window is off-screen or buried: list_desktop_windows → focus_desktop_window → get_screenshot.
+            If the target window is off-screen or buried: list_desktop_windows → focus_desktop_window → capture.
             """;
 
         /// <summary>
@@ -161,25 +209,31 @@ namespace HouseVictoria.Services.Persona
             $"""
             [MANDATORY FIRST ACTION — browser tab task]
             You MUST call {BrowserCaptureTabToolName} as your FIRST tool call on this turn.
-            It returns a screenshot_path and page_map.elements (interactive elements with viewport coordinates).
-            Do NOT use {ComputerUseMcpToolName} get_screenshot for browser tab content — desktop capture is
+            It returns a screenshot_path and page_map.elements (selector, index, center).
+            Do NOT use {ComputerUseMcpToolName} capture for browser tab content — desktop capture is
             polluted by the House Victoria overlay.
 
             FORBIDDEN on this turn: vision_analyze, browser_vision, browser, terminal, skill-discovery tools.
 
             After the tool returns, answer using the page_map and screenshot evidence.
+            To interact: {BrowserClickToolName} / {BrowserTypeToolName} / {BrowserKeyToolName} (not computer_use).
             """;
 
         public static string BuildBrowserCaptureSteering() =>
             $"""
             [BROWSER TAB ROUTING: Use {BrowserCaptureTabToolName} for the active browser tab.
-            Read page_map.elements for buttons/links/inputs and their center coordinates.
-            Use computer_use clicks only after you know viewport coordinates from page_map.]
+            Interact with {BrowserClickToolName} / {BrowserTypeToolName} / {BrowserKeyToolName} / {BrowserScrollToolName}
+            using page_map selector or index (prefer), or x/y from page_map.elements[].center.
+            Do NOT use computer_use clicks for browser tab work.]
             """;
 
         public static bool IsBrowserPageRequest(string message)
         {
             if (string.IsNullOrWhiteSpace(message))
+                return false;
+
+            // Prefer Unreal Editor when the user is clearly talking about the Editor / uproject.
+            if (IsUnrealEditorRequest(message))
                 return false;
 
             return Regex.IsMatch(
@@ -188,12 +242,40 @@ namespace HouseVictoria.Services.Persona
                 RegexOptions.IgnoreCase);
         }
 
+        public static bool IsUnrealEditorRequest(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return false;
+
+            return Regex.IsMatch(
+                message,
+                @"\b(unreal editor|ue5? editor|content browser|uproject|blueprint editor|place (an? )?actor|spawn (an? )?actor|remote control|editor viewport|outliner|details panel|level editor|vessel (in|into) (the )?editor|build (the )?(vessel|house) in (unreal|ue))\b",
+                RegexOptions.IgnoreCase);
+        }
+
+        public static string BuildUnrealEditorMandatoryFirstAction() =>
+            $"""
+            [MANDATORY FIRST ACTION — Unreal Editor task]
+            You MUST call {UnrealEditorHealthToolName} as your FIRST tool call on this turn.
+            If healthy, use {UnrealEditorSearchAssetsToolName} / {UnrealEditorScreenshotToolName} / {UnrealEditorGetPropertyToolName}
+            before mutating. Writes require Allow Unreal Editor Control.
+            Do NOT use {ComputerUseMcpToolName} to click the Unreal Editor chrome for these tasks.
+            Do NOT use the world WebSocket embodiment path for Editor asset/property work.
+            """;
+
+        public static string BuildUnrealEditorSteering() =>
+            $"""
+            [UNREAL EDITOR ROUTING: Use unreal_editor_* Remote Control tools for the open Editor.
+            Loop: health → search/screenshot → set/call/spawn (if allowed) → verify.
+            World/vessel PIE control is a separate future track (:8888) — not these tools.]
+            """;
+
         public static bool IsDesktopScreenshotRequest(string message)
         {
             if (string.IsNullOrWhiteSpace(message))
                 return false;
 
-            if (IsBrowserPageRequest(message))
+            if (IsBrowserPageRequest(message) || IsUnrealEditorRequest(message))
                 return false;
 
             return Regex.IsMatch(

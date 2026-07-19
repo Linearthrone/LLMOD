@@ -691,7 +691,9 @@ namespace HouseVictoria.Services.Communication
                         };
                         if (HouseVictoriaToolCatalog.ShouldIncludeHermesGuide(aiContact, _appConfig))
                             toolGuideParts.Add(HouseVictoriaToolCatalog.BuildHermesToolGuide(
-                                generatedPath, _appConfig?.AllowComputerControl == true));
+                                generatedPath,
+                                includeComputerUse: _appConfig?.AllowComputerControl == true,
+                                includeUnrealEditorWrite: _appConfig?.AllowUnrealEditorControl == true));
                         var toolCatalogGuard = string.Join("\n\n", toolGuideParts);
 
                         if (!string.IsNullOrWhiteSpace(retrieval) ||
@@ -842,12 +844,19 @@ namespace HouseVictoria.Services.Communication
                             System.Diagnostics.Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
                         }
 
+                        var isUiThreadError = ex is InvalidOperationException
+                            && ex.Message.Contains("thread", StringComparison.OrdinalIgnoreCase);
+
+                        var helpText = isUiThreadError
+                            ? "This is an app UI threading glitch (not Ollama). Retry the message; if it keeps happening, restart House Victoria."
+                            : $"Please check:\n1. Is the AI server running?\n2. Is the endpoint correct? ({aiContact.ServerEndpoint})\n3. Does the model '{aiContact.ModelName}' exist?\n4. Try reducing MaxTokens or context length if timeout occurred";
+
                         // Add error message to conversation
                         var errorMessage = new ConversationMessage
                         {
                             Id = Guid.NewGuid().ToString(),
                             ConversationId = message.ConversationId,
-                            Content = $"❌ AI Service Error: {errorDetails}\n\nPlease check:\n1. Is Ollama running?\n2. Is the endpoint correct? ({aiContact.ServerEndpoint})\n3. Does the model '{aiContact.ModelName}' exist?\n4. Try reducing MaxTokens or context length if timeout occurred",
+                            Content = $"❌ AI Service Error: {errorDetails}\n\n{helpText}",
                             Direction = MessageDirection.Incoming,
                             Type = MessageType.Text,
                             Timestamp = DateTime.Now

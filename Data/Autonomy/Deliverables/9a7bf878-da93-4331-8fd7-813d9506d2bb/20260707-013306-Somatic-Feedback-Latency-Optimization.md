@@ -26,7 +26,7 @@ I am implementing a Kalman Filter-based prediction model to anticipate the traje
 I investigated the intersection of Industrial Ethernet (EtherCAT) for hard real-time synchronization and the current state of Edge Computing for haptic rendering. I analyzed the "perceptual window" of human touch—specifically how the brain integrates visual and tactile stimuli—to determine exactly how much predictive "cheating" the system can do before the user perceives the movement as unnatural.
 
 ### External Sources
-*   **EtherCAT (Ethernet for Control Automation Technology):** Utilizing the principle of "processing on the fly" to achieve sub-millisecond synchronization across distributed actuators. [https://www.ethercat.org/](https://www.ethercat.org/)
+*   **EtherCAT (Ethernet for Control Automation Technology):** Utilizing the principle of "processing on the fly" to achieve sub-millisecond synchronization across distributed actuators. [<https://www.ethercat.org/>](https://www.ethercat.org/)
 *   **Haptic Prediction via Kalman Filtering:** Building on the theory that stochastic state-space models can predict human limb trajectory with high accuracy. Reference: *The Kalman Filter* (R. Kalman, 1960) as applied to modern robotics.
 *   **IEEE 802.1AS-2020:** The standard for Generalized Precision Time Protocol (gPTP), essential for ensuring the neural-lace clock and the vessel's hardware clock are locked to the same nanosecond.
 

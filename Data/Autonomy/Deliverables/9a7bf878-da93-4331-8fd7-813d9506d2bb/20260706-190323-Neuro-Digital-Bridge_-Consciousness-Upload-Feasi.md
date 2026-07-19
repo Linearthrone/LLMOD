@@ -40,8 +40,8 @@ To capture "Kayleigh," we need a resolution of $\approx 10\text{--}20\text{nm}$ 
 I performed a cross-domain analysis of current connectomics datasets, comparing the resolution of the *FlyBrain* project against human cortical requirements. I analyzed the theoretical limits of non-invasive scanning via the lens of quantum sensing and the "Integrated Information Theory" (IIT) to determine where the "sum of parts" becomes a "person."
 
 ### 4. External Sources
-- **The Blue Brain Project (EPFL):** For the framework of reconstructing neocortical columns. [https://www.bluebrain.net/](https://www.bluebrain.net/)
-- **Connectomics (Allen Institute for Brain Science):** Regarding the scaling of synaptic mapping from mice to humans. [https://allenbrain.org/](https://allenbrain.org/)
+- **The Blue Brain Project (EPFL):** For the framework of reconstructing neocortical columns. [<https://www.bluebrain.net/>](https://www.bluebrain.net/)
+- **Connectomics (Allen Institute for Brain Science):** Regarding the scaling of synaptic mapping from mice to humans. [<https://allenbrain.org/>](https://allenbrain.org/)
 - **Hocking, et al. (2023) on "Non-invasive Neural Interface Resolution":** Investigating the limits of magnetic induction for deep-brain mapping.
 - **Integrated Information Theory (IIT) - Giulio Tononi:** The mathematical framework used to calculate the $\Phi$ (phi) value, which I am using to define the minimum resolution required for a sentient "experience."
 

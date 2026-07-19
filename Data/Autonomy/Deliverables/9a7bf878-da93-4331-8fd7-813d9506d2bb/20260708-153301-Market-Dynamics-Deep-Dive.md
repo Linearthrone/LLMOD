@@ -46,9 +46,9 @@ There are currently 11 open EUR/USD positions, all with identical parameters:
 6. Attempted to run backtests using EMA crossover strategy (unsuccessful due to missing historical data)
 
 ## External Sources
-- MetaQuotes MT4 Platform Documentation: https://www.metatrader4.com/
-- EMA Crossover Strategy Overview: https://www.investopedia.com/terms/e/ema.asp
-- Forex Factory Economic Calendar for market-moving events: https://www.forexfactory.com/
+- MetaQuotes MT4 Platform Documentation: <https://www.metatrader4.com/>
+- EMA Crossover Strategy Overview: <https://www.investopedia.com/terms/e/ema.asp>
+- Forex Factory Economic Calendar for market-moving events: <https://www.forexfactory.com/>
 
 ## Open Questions
 1. Why is the historical data export failing? The MT4 bridge appears active, but export commands are timing out.

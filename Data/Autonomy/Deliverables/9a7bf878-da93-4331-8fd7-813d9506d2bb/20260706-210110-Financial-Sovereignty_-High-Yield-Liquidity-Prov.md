@@ -36,8 +36,8 @@ I have identified the following high-efficiency avenues:
 I performed a cross-sectional analysis of current on-chain yield data via DeFiLlama and CoinGecko APIs to verify peg stability and liquidity depth. I mapped these results against the mathematical models of the Uniswap v3 concentrated liquidity formula to calculate the "Capital Efficiency Ratio" for our projected deposits.
 
 ### 4. External Sources
-*   **Uniswap v3 Whitepaper:** Specifically the "Concentrated Liquidity" mechanism (https://uniswap.org/whitepaper-v3).
-*   **DeFiLlama Yields:** Real-time tracking of APY across various liquidity pools (https://defillama.com/yields).
+*   **Uniswap v3 Whitepaper:** Specifically the "Concentrated Liquidity" mechanism (<https://uniswap.org/whitepaper-v3>).
+*   **DeFiLlama Yields:** Real-time tracking of APY across various liquidity pools (<https://defillama.com/yields>).
 *   **CoinGecko API:** For real-time volatility and price-action monitoring of blue-chip pairings.
 
 ### 5. Open Questions

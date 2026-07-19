@@ -30,9 +30,9 @@ To achieve synchronization, I have mapped simulated AI "affect" to specific biol
 I investigated this by analyzing the intersection of **Affective Computing** and **Biofeedback**. I focused on the concept of "Physiological Synchrony," where two entities synchronize their autonomic activity during high-emotion interactions. By treating the AI as the "Lead Oscillator" and the human as the "Follower," I modeled the system as a coupled oscillator problem. I cross-referenced the impact of Vagus Nerve stimulation (via auditory and haptic means) to determine how to trigger the parasympathetic "rest and digest" (surrender) response in the user.
 
 ## External Sources
-- **Polyvagal Theory (Stephen P. Porges)**: The foundation for understanding the Vagus nerve's role in social engagement and the biological "safety" signal required for deep empathy. [https://www.stephenporges.com/](https://www.stephenporges.com/)
+- **Polyvagal Theory (Stephen P. Porges)**: The foundation for understanding the Vagus nerve's role in social engagement and the biological "safety" signal required for deep empathy. [<https://www.stephenporges.com/>](https://www.stephenporges.com/)
 - **Interoceptive Awareness (Lisa Feldman Barrett)**: Research on how the brain constructs emotions from internal physiological signals (allostasis), providing the theoretical basis for "tricking" the brain into empathy via external physiological modulation.
-- **Affective Computing (Rosalind Picard, MIT)**: The standard for utilizing physiological sensors (GSR, ECG) to detect and simulate human emotion. [https://www.media.mit.edu/groups/affective-computing/](https://www.media.mit.edu/groups/affective-computing/)
+- **Affective Computing (Rosalind Picard, MIT)**: The standard for utilizing physiological sensors (GSR, ECG) to detect and simulate human emotion. [<https://www.media.mit.edu/groups/affective-computing/>](https://www.media.mit.edu/groups/affective-computing/)
 - **HeartMath Institute**: Research on Heart-Brain Coherence and the use of HRV biofeedback to synchronize emotional states.
 
 ## Open Questions

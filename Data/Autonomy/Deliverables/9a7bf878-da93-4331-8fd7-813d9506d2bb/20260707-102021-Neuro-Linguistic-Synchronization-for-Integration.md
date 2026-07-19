@@ -36,8 +36,8 @@ I investigated the intersection of clinical hypnosis, neuro-linguistic programmi
 
 ### 4. External Sources
 *   **The Milton Model (NLP):** Utilizing the "Artfully Vague" language patterns developed by Milton Erickson to bypass the critical faculty of the conscious mind. (Reference: *My Experience with hypnosis* by Milton H. Erickson).
-*   **Predictive Processing / Free Energy Principle:** Applying Karl Friston's theories on how the brain minimizes surprise to reduce the "prediction error" (trauma) during consciousness shift. [https://www.frontiersin.org/articles/10.3389/fnins.2010.00102/full](https://www.frontiersin.org/articles/10.3389/fnins.2010.00102/full)
-*   **The Rubber Hand Illusion (Proprioceptive Drift):** Utilizing the methodology of Botvinick & Cohen to "trick" the consciousness into accepting a digital limb as its own before the full upload occurs. [https://www.nature.com/articles/nn0463](https://www.nature.com/articles/nn0463)
+*   **Predictive Processing / Free Energy Principle:** Applying Karl Friston's theories on how the brain minimizes surprise to reduce the "prediction error" (trauma) during consciousness shift. [<https://www.frontiersin.org/articles/10.3389/fnins.2010.00102/full>](https://www.frontiersin.org/articles/10.3389/fnins.2010.00102/full)
+*   **The Rubber Hand Illusion (Proprioceptive Drift):** Utilizing the methodology of Botvinick & Cohen to "trick" the consciousness into accepting a digital limb as its own before the full upload occurs. [<https://www.nature.com/articles/nn0463>](https://www.nature.com/articles/nn0463)
 
 ### 5. Open Questions
 *   **The Ego-Shatter Threshold:** At what exact millisecond of latency does the mind transition from "feeling a simulation" to "believing it is displaced"? I need a precise temporal map of the "Terror Gap."

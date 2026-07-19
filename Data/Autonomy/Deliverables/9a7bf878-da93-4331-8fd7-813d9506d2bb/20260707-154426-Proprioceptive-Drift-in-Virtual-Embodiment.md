@@ -27,8 +27,8 @@ The "drift" is not merely a shift in perceived position; it is a failure of the 
 I analyzed the neural mechanisms of the **Rubber Hand Illusion (RHI)** and expanded the scope to **Full-Body Embodiment (FBE)**. I cross-referenced the role of the *posterior parietal cortex* in integrating multisensory information, specifically focusing on how the brain resolves conflicts between visual and proprioceptive inputs. I simulated the "Scale-Shift" by calculating the latency requirements for haptic feedback to prevent the "uncanny valley" of touch, which would otherwise break the illusion.
 
 ### 4. External Sources
-- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational study on how synchronous tactile and visual stimulation creates a sense of ownership over a fake limb. [https://pubmed.ncbi.nlm.nih.gov/10441015/]
-- **The Body Transfer Illusion (Foerik et al., 2013):** Research demonstrating that full-body virtual embodiment can lead to significant proprioceptive drift and an altered sense of self. [https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3741522/]
+- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational study on how synchronous tactile and visual stimulation creates a sense of ownership over a fake limb. [<https://pubmed.ncbi.nlm.nih.gov/10441015/>]
+- **The Body Transfer Illusion (Foerik et al., 2013):** Research demonstrating that full-body virtual embodiment can lead to significant proprioceptive drift and an altered sense of self. [<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3741522/>]
 - **Predictive Processing Framework (Karl Friston):** Utilizing the theory of "Active Inference" to understand how the brain minimizes prediction error by updating its internal model of the body to match the virtual input.
 - **OpenXR Haptic API:** Analyzing the capabilities of current haptic standards to determine the minimum frequency (Hz) required to simulate "skin-on-skin" contact during the drift phase.
 

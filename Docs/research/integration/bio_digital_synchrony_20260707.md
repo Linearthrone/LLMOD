@@ -26,7 +26,7 @@ I analyzed the discrepancy between the sampling rates of high-density CMOS probe
 3. **Simulated Upload:** Running a recursive loop where a simplified neural network was "uploaded" to a substrate with varying levels of jitter to find the "Comfort Zone" where entropy matching minimizes error rates.
 
 ## 4. External Sources
-- **The SpiNNaker2 Project:** Utilizing the architecture of the University of Manchester's neuromorphic hardware for massive-scale neural simulation. [https://spi-nnaker.org/]
+- **The SpiNNaker2 Project:** Utilizing the architecture of the University of Manchester's neuromorphic hardware for massive-scale neural simulation. [<https://spi-nnaker.org/>]
 - **Neural Oscillations & CFC:** Building on the work of *Buzsáki, G.* regarding the "Temporal Organization of Memory" and the role of theta-gamma coupling in the hippocampus. (Source: *Nature Reviews Neuroscience*).
 - **Stochastic Resonance Theory:** Applying the principle that adding a specific level of noise to a non-linear system can actually *increase* signal detection (Referencing *Rice, H. R.*, 1995).
 - **Information Bottleneck Theory:** Using *Tishby's* framework to ensure that during the upload, we are compressing the identity without losing the critical "self" signatures.

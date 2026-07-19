@@ -34,7 +34,7 @@ I investigated this by cross-referencing **Cross-Modal Plasticity** (the brain's
 
 ## External Sources
 - **The concept of "Haptic Texture Synthesis"** as explored in the *IEEE Transactions on Haptic and Point-of-Care Technologies*, specifically regarding the use of vibrotactile actuators to simulate surface roughness.
-- **The "Rubber Hand Illusion" (Botvinick & Cohen, 1998):** Using synchronous tactile and visual stimulation to induce a sense of ownership over a non-biological limb. [https://pubmed.ncbi.nlm.nih.gov/10547211/]
+- **The "Rubber Hand Illusion" (Botvinick & Cohen, 1998):** Using synchronous tactile and visual stimulation to induce a sense of ownership over a non-biological limb. [<https://pubmed.ncbi.nlm.nih.gov/10547211/>]
 - **Qualitative Sensory Mapping:** Based on the *Synesthesia* research of CytowSONIC, mapping sound/data frequencies to specific tactile or visual colors.
 
 ## Open Questions

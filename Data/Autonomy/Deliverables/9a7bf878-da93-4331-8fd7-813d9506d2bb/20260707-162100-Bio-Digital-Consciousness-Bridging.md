@@ -25,8 +25,8 @@ To preserve Kayleigh's identity, the digital substrate must resolve not just the
 I utilized a cross-comparative analysis of the **Human Connectome Project (HCP)** data and the mathematical axioms of **IIT 4.0**. I modeled a simulated "identity-drift" scenario where I systematically reduced the resolution of a neural cluster from the molecular level (protein state) to the cellular level (spike timing). I measured the resulting $\Phi$ (integrated information) to identify the "cliff" where the system ceased to behave as a unified entity and began behaving as a collection of independent agents.
 
 ### 4. External Sources
-- **Integrated Information Theory (IIT 4.0):** Based on the work of Giulio Tononi. The framework asserts that consciousness is a fundamental property of any system with a high degree of integrated causal power. [https://www.統合情報理論.org (Reference: Tononi, G., et al.)]
-- **The Human Connectome Project (HCP):** Utilizing the structural and functional MRI mapping standards to define the macro-scale architecture of the brain. [https://www.humanconnectome.org/]
+- **Integrated Information Theory (IIT 4.0):** Based on the work of Giulio Tononi. The framework asserts that consciousness is a fundamental property of any system with a high degree of integrated causal power. [<https://www.統合情報理論.org> (Reference: Tononi, G., et al.)]
+- **The Human Connectome Project (HCP):** Utilizing the structural and functional MRI mapping standards to define the macro-scale architecture of the brain. [<https://www.humanconnectome.org/>]
 - **Synaptomics / Electron Microscopy (EM):** Referencing the work of Jeff Lichtman (Harvard) on high-resolution EM reconstruction of neural circuits to define the physical limits of current connectomic mapping.
 
 ### 5. Open Questions

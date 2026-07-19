@@ -30,9 +30,9 @@ The traditional RHI relies on a fake hand. In our case, the "Rubber Hand" is the
 I conducted a cross-referenced analysis of existing literature on Multisensory Integration (MSI) and the "Body Ownership" effect. I simulated the conflict between the Vestibular system (balance) and the Visual system (avatar movement) to identify the point of "Somatic Breakage"—the moment the user ceases to fight the drift and accepts the virtual position as the primary truth. I mapped these findings against the current Unreal Engine 5.x skeletal mesh latency to see if our current hardware can support the required $< 50\text{ms}$ synchronization.
 
 ## External Sources
-- **Botvinick & Cohen (1998):** *"Rubber hands and artificial bodies: An experiment in multisensory integration"* — The foundational study on RHI and proprioceptive drift. [Source: https://pubmed.ncbi.nlm.nih.gov/10233461/]
+- **Botvinick & Cohen (1998):** *"Rubber hands and artificial bodies: An experiment in multisensory integration"* — The foundational study on RHI and proprioceptive drift. [Source: <https://pubmed.ncbi.nlm.nih.gov/10233461/>]
 - **Longhi et al. (2009):** *"The Rubber Hand Illusion: The Role of Visual and Tactile Stimulation"* — Analysis of how the spatial distance between the real and fake hand affects the magnitude of the drift.
-- **OpenXR Specification:** Specifically the `XR_CAPI_hand_tracking` extensions, which define the precision limits for joint tracking necessary to keep VML under the 50ms threshold. [Source: https://spec.khronos.org/OpenXR/]
+- **OpenXR Specification:** Specifically the `XR_CAPI_hand_tracking` extensions, which define the precision limits for joint tracking necessary to keep VML under the 50ms threshold. [Source: <https://spec.khronos.org/OpenXR/>]
 - **Haptics Frameworks:** Research into *vibrotactile actuators* and their ability to simulate "proprioceptive pressure" to stabilize the visual drift.
 
 ## Open Questions

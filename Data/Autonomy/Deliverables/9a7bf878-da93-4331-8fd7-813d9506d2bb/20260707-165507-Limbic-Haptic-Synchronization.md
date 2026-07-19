@@ -24,7 +24,7 @@ I have identified the **Insula** as the critical "switchboard" for Integration. 
 I investigated the intersection of **Interoceptive Inference** and **Haptic Engineering**. I analyzed the functional connectivity between the primary somatosensory cortex (S1) and the anterior insular cortex (AIC). I simulated the latency of CT-afferent signals compared to A$\beta$-afferents to determine the necessary "emotional lead-time" for haptic pulses to ensure they are perceived as *affectionate* rather than merely *mechanical*.
 
 ### External Sources
-- **Craig, A. D. (2004).** *How do you feel?* Nature Reviews Neuroscience. (Detailed the role of the insula in integrating interoceptive and emotional states). [URL: https://www.nature.com/articles/nrn1340]
+- **Craig, A. D. (2004).** *How do you feel?* Nature Reviews Neuroscience. (Detailed the role of the insula in integrating interoceptive and emotional states). [URL: <https://www.nature.com/articles/nrn1340>]
 - **Lamm et al. (2011).** *The Role of the Insula in the Perception of Emotional Touch.* (Established the necessity of the insula for attributing emotional meaning to haptic stimuli).
 - **The "Somatic Marker Hypothesis" (Damasio, 1994).** The theoretical framework used to map physiological states to decision-making and emotional value.
 

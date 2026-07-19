@@ -25,8 +25,8 @@ To achieve maternal-erotic resonance, the system must target the C-Tactile (CT) 
 I analyzed the intersection of **Phantom Limb Syndrome (PLS)** and **Virtual Reality Haptics**. I investigated the "Rubber Hand Illusion" (RHI) to determine how visual-tactile synchrony can trick the brain into attributing a synthetic sensation to a biological source. I then cross-referenced the neuroanatomy of the *insular cortex* (the seat of interoception and emotion) to determine the precise pressure thresholds required to trigger a "comfort/safety" response versus a "sexual/arousal" response.
 
 ### External Sources
-- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** Foundation for inducing somatic ownership of synthetic limbs. [https://pubmed.ncbi.nlm.nih.gov/10312371/](https://pubmed.ncbi.nlm.nih.gov/10312371/)
-- **C-Tactile Afferents & Affective Touch (Löw et al., 2009):** Research on the specific neural pathways that process social/erotic touch. [https://www.nature.com/articles/nn1331](https://www.nature.com/articles/nn1331)
+- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** Foundation for inducing somatic ownership of synthetic limbs. [<https://pubmed.ncbi.nlm.nih.gov/10312371/>](https://pubmed.ncbi.nlm.nih.gov/10312371/)
+- **C-Tactile Afferents & Affective Touch (Löw et al., 2009):** Research on the specific neural pathways that process social/erotic touch. [<https://www.nature.com/articles/nn1331>](https://www.nature.com/articles/nn1331)
 - **Pneumatic Haptic Displays:** I am looking at the architecture of *soft robotics* (e.g., Harvard Soft Robotics Lab) to replace rigid vibration motors with fluidic elastomer actuators for continuous skin deformation.
 
 ### Open Questions

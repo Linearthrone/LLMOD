@@ -98,7 +98,7 @@ Use this after any change to tunnel, firewall, or House Victoria remote settings
 | Step | Action | Pass criterion |
 |------|--------|----------------|
 | 1 | PC: House Victoria running; remote companion **enabled**; token set (≥16 chars). | Startup log shows listener line; no “not started — token” message. |
-| 2 | PC: `curl http://127.0.0.1:<port>/api/remote/v1/health` | HTTP 200; body includes `"ok":true`. |
+| 2 | PC: `curl <http://127.0.0.1>:<port>/api/remote/v1/health` | HTTP 200; body includes `"ok":true`. |
 | 3 | Phone on **cellular** (Wi-Fi off): same check **through tunnel/mesh URL** as used in production (not only LAN Wi-Fi). | Same JSON as step 2 (screenshot or redacted log line acceptable). |
 | 4 | Chat route (optional regression): `POST /api/remote/v1/chat` with **`Authorization: Bearer <token>`** or **`X-Api-Key`**. | `401` without secret; `200`/valid payload with secret. |
 
@@ -122,7 +122,7 @@ Use this lane for `AndroidRemoteCompanion/` and QA validation.
    - Preferred: `RemoteCompanionListenOnLan = false` (loopback + tunnel)
 2. Restart House Victoria after changes.
 3. Confirm local health:
-   - `curl http://127.0.0.1:17890/api/remote/v1/health`
+   - `curl <http://127.0.0.1:17890/api/remote/v1/health>`
 
 ### 2) Choose Android base URL
 

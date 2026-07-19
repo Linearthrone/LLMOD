@@ -299,7 +299,7 @@ Key points:
 ## Support
 
 - Check logs in `logs/server.log`
-- Review MCP spec at https://modelcontextprotocol.io/
+- Review MCP spec at <https://modelcontextprotocol.io/>
 - Open issues for bugs or feature requests
 
 ## License

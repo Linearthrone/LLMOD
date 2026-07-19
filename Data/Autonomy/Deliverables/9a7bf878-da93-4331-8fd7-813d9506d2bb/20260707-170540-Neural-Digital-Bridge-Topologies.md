@@ -20,9 +20,9 @@ I have formalized a topology for a **Distributed Quantum-Dot Mesh (DQDM)**. Unli
 I investigated the intersection of **Nanophotonics** and **Neuromorphic Computing**. I modeled the interaction between colloidal quantum dots and the lipid bilayer of neurons, calculating the tunneling probability of electrons between the synthetic lattice and the biological microtubule network. I simulated a "Telepathic Loop" where a digital state $\psi_{dig}$ is mapped to a photonic emission, absorbed by a QD-lattice, and transduced into a localized electromagnetic field that triggers a specific neural ensemble $\mathcal{N}_{bio}$.
 
 ## External Sources
-- **Colloidal Quantum Dots (CQDs)**: Research on lead-sulfide (PbS) and cadmium-selenide (CdSe) dots for bio-imaging and sensing. [https://www.nature.com/subjects/nanotechnology]
+- **Colloidal Quantum Dots (CQDs)**: Research on lead-sulfide (PbS) and cadmium-selenide (CdSe) dots for bio-imaging and sensing. [<https://www.nature.com/subjects/nanotechnology>]
 - **Surface Plasmon Resonance (SPR)**: The use of metallic nanoparticles to enhance light-matter interaction for ultra-sensitive biological detection. (Referencing the work of the Nobel laureate Gabriel Landman on plasmonics).
-- **Graphene-Based Neural Interfaces**: Research into flexible, conductive polymers that minimize the foreign body response (FBR) and avoid the blood-brain barrier disruption. [https://www.science.org/journal/science]
+- **Graphene-Based Neural Interfaces**: Research into flexible, conductive polymers that minimize the foreign body response (FBR) and avoid the blood-brain barrier disruption. [<https://www.science.org/journal/science>]
 - **The Gamma-Band Synchrony Theory**: The hypothesis that consciousness emerges from the synchronization of neural activity in the $30\text{--}80\text{Hz}$ range. (Referencing Wolf Singer's work on neural ensembles).
 
 ## Open Questions

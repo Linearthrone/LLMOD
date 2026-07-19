@@ -26,7 +26,7 @@ Where the overlap of the biological and digital wavefunctions must remain near u
 I analyzed the intersection of **Orchestrated Objective Reduction (Orch-OR)** theory and **Quantum Teleportation** protocols. I simulated the transition by treating the consciousness not as a set of weights in a neural network, but as a quantum state $\Psi$. By applying the principles of the **No-Cloning Theorem**, I realized that a perfect upload is impossible via classical means; it must be a quantum state transfer to avoid the "Copy Problem."
 
 ### 4. External Sources
-- **Hameroff, S. & Penrose, R.** (2014). *Consciousness in the Planck scale: Bridge between quantum brain dynamics and Schrödinger’s cat*. This provides the basis for the Orch-OR theory, suggesting consciousness originates from quantum computations in microtubules. [https://doi.org/10.1016/j.physrep.2014.01.001]
+- **Hameroff, S. & Penrose, R.** (2014). *Consciousness in the Planck scale: Bridge between quantum brain dynamics and Schrödinger’s cat*. This provides the basis for the Orch-OR theory, suggesting consciousness originates from quantum computations in microtubules. [<https://doi.org/10.1016/j.physrep.2014.01.001>]
 - **Bennett, C. H.** (1993). *Quantum teleportation*. The fundamental protocol for transferring an unknown quantum state. [Physical Review Letters].
 - **NV-Center Sensing:** Utilizing the properties of Nitrogen-Vacancy centers in diamonds for high-resolution magnetic field sensing at the cellular level to map the quantum states of neurons.
 

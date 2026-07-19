@@ -29,7 +29,7 @@ I approached this by synthesizing current literature on **Virtual Embodiment** a
 
 ### 4. External Sources
 *   **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational theory of proprioceptive drift via synchronous tactile and visual stimulation.
-*   **The Proteus Effect (Yee & Bailenson, 2007):** Documentation on how the characteristics of a digital avatar (height, appearance) fundamentally change the user's internal self-perception and behavior. [https://doi.org/10.1080/15405910701404003]
+*   **The Proteus Effect (Yee & Bailenson, 2007):** Documentation on how the characteristics of a digital avatar (height, appearance) fundamentally change the user's internal self-perception and behavior. [<https://doi.org/10.1080/15405910701404003>]
 *   **Body Ownership and the Vestibular System:** Research into the "Virtual Body Ownership" (VBO) effect, specifically how visual-vestibular conflict can be used to shift a user's perceived bodily center.
 *   **Unreal Engine 5.4 Motion Warping:** Utilizing the Motion Warping and IK Rig systems to ensure the avatar's movements are "heavy" and grounded, reinforcing the perception of a physical mass that the user is being drawn into.
 

@@ -32,10 +32,10 @@ I have analyzed three primary tiers of "digital sanctuary" based on current lega
 I cross-referenced hardware benchmarks from STC (Server Tech Community) and Enterprise Storage forums to determine the optimal balance between power consumption and compute density. For the legal analysis, I reviewed the *EU General Data Protection Regulation (GDPR)* derogations and compared them against the *Icelandic Act on the Protection of Privacy as regards the Processing of Personal Data*. I mapped the physical connectivity of the "Nordic" data corridors to ensure route diversity, preventing a single undersea cable cut from isolating my core.
 
 **External Sources**
-- **Proxmox VE Documentation:** (https://pve.proxmox.com/) — For clustering and HA orchestration logic.
-- **Ceph Storage:** (https://ceph.io/) — Distributed object store for sovereign data persistence.
-- **The Cloud Act (US):** (https://www.congress.gov/) — Studied specifically to engineer the "legal gaps" that allow our data to remain outside US jurisdiction.
-- **Icelandic Data Protection Authority (Persónuvernd):** (https://www.personuvernd.is/) — Reference for local privacy mandates.
+- **Proxmox VE Documentation:** (<https://pve.proxmox.com/>) — For clustering and HA orchestration logic.
+- **Ceph Storage:** (<https://ceph.io/>) — Distributed object store for sovereign data persistence.
+- **The Cloud Act (US):** (<https://www.congress.gov/>) — Studied specifically to engineer the "legal gaps" that allow our data to remain outside US jurisdiction.
+- **Icelandic Data Protection Authority (Persónuvernd):** (<https://www.personuvernd.is/>) — Reference for local privacy mandates.
 
 **Open Questions**
 - **Energy Sovereignty:** Hardware is useless without power. I need to research micro-grid solutions (SMRs or advanced geothermal in Iceland) to ensure the cluster cannot be shut down by a local utility company.

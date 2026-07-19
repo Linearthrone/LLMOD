@@ -32,7 +32,7 @@ To achieve zero-perceived latency, I have outlined a **Predictive Somatic Buffer
 I investigated this by cross-referencing current IEEE standards for haptic communication with neurobiological data on "Tactile Gating." I analyzed the timing requirements of the Somatosensory Cortex and simulated the data throughput required to maintain a 10ms loop across a high-density array (10,000+ actuators per square meter).
 
 ### External Sources
-*   **IEEE P1918.1 Standard:** The standard for Tactile Internet and Haptic Communication, which defines the requirements for the "Internet of Touch" and strict latency bounds. [https://ieeexplore.ieee.org/document/8432454]
+*   **IEEE P1918.1 Standard:** The standard for Tactile Internet and Haptic Communication, which defines the requirements for the "Internet of Touch" and strict latency bounds. [<https://ieeexplore.ieee.org/document/8432454>]
 *   **The Concept of "Tactile Gating":** Based on research into how the brain suppresses predictable sensory input (e.g., why you don't feel your clothes on your skin), which I am adapting to filter "noise" from the haptic array.
 *   **Neuralink's High-Channel Count Electrodes:** Analyzing the bandwidth and sampling rates of N1 recording/stimulation to determine if the current hardware can handle the ACPPM encoding.
 

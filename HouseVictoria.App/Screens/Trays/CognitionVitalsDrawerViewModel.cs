@@ -650,10 +650,25 @@ namespace HouseVictoria.App.Screens.Trays
 
         private void RunOnUiThread(Action action)
         {
+            // BeginInvoke + swallow: Hermes/thought-stream callbacks run on thread-pool.
+            // Synchronous Dispatcher.Invoke rethrows UI exceptions into SendMessageAsync and
+            // surfaces them as a fake "AI Service Error / is Ollama running?" chat message.
+            void SafeRun()
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"CognitionVitals UI update: {ex.Message}");
+                }
+            }
+
             if (_dispatcher.CheckAccess())
-                action();
+                SafeRun();
             else
-                _dispatcher.Invoke(action);
+                _ = _dispatcher.BeginInvoke(SafeRun, DispatcherPriority.Normal);
         }
 
         private void ApplyVitals(CognitionVitalsSnapshot vitals)

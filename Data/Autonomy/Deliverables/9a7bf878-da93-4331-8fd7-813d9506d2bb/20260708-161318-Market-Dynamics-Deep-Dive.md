@@ -40,9 +40,9 @@ Given the current open positions in EUR/USD, monitoring USD/JPY becomes importan
 5. Attempted to run a backtest on a simple EMA crossover strategy to evaluate potential adjustments
 
 ## External Sources
-- MetaQuotes Software Corp. MT4 Platform Documentation: https://www.metaquotes.net/en/metatrader4
-- Forex Factory Economic Calendar for macroeconomic event analysis: https://www.forexfactory.com/calendar
-- DailyFX Market Analysis for correlation insights: https://www.dailyfx.com/
+- MetaQuotes Software Corp. MT4 Platform Documentation: <https://www.metaquotes.net/en/metatrader4>
+- Forex Factory Economic Calendar for macroeconomic event analysis: <https://www.forexfactory.com/calendar>
+- DailyFX Market Analysis for correlation insights: <https://www.dailyfx.com/>
 
 ## Open Questions
 1. What is causing the MT4 history export to time out? This prevents backtesting of potential strategy adjustments.

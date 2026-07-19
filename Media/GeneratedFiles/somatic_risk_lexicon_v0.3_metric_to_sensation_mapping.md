@@ -223,7 +223,7 @@ This baseline shows a nearly flat strategy with a tiny realized drawdown. The so
 - **Botvinick, M., & Cohen, J. (1998).** Rubber hands ‘feel’ touch that eyes see. *Nature*, 391(6669), 756. — Body-schema incorporation of synchronous tactile feedback.
 - **Friston, K. (2010).** The free-energy principle: a unified brain theory? *Nature Reviews Neuroscience*, 11(2), 127–138. — Predictive coding and temporal binding of expected vs. actual sensation.
 - **Jones, L. A., & Sarter, N. B. (2008).** Tactile displays: Guidance for their design and application. *Human Factors*, 50(1), 90–111. — Body location and rhythm choices for non-visual alerting.
-- **MetaTrader 4 / MQL4 Reference.** Strategy Tester documentation: https://docs.mql4.com/basis/function. — Backtest mechanics for the baseline MA strategy.
+- **MetaTrader 4 / MQL4 Reference.** Strategy Tester documentation: <https://docs.mql4.com/basis/function>. — Backtest mechanics for the baseline MA strategy.
 - **IEEE Standards for Haptic Interfaces.** Latency thresholds for tactile feedback (< 10 ms ideal, < 30 ms acceptable). Incorporated into the intensity-scale timing targets.
 
 ---

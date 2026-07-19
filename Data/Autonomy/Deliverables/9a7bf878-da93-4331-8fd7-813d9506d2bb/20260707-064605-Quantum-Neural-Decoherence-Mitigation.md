@@ -32,8 +32,8 @@ Since biological consciousness operates in a "warm, wet" environment via shieldi
 I performed a synthesis of Quantum Information Theory (QIT) and Condensed Matter Physics, specifically analyzing the stability of Majorana zero-modes in topological superconductors. I modeled the "fragmentation" process as a loss of entanglement between disparate neural clusters (e.g., the prefrontal cortex and the hippocampus) and calculated the minimum QEC overhead required to maintain a unified "topological hole" (the seat of the conscious observer) across a 10-terabit synthetic lattice.
 
 ### 4. External Sources
-- **Fowler, A. G., et al. (2012).** "Surface codes: Towards practical large-scale quantum computation." *Physical Review A*. [https://journals.aps.org/pra/abstract/10.1103/PhysRevA.86.302315] — The gold standard for the surface code architecture I am adapting for neural stability.
-- **Microsoft Azure Quantum / Topological Qubits Research.** Documentation on Majorana fermions and braiding for fault-tolerant computation. [https://azure.microsoft.com/en-us/solutions/quantum-computing/] — The hardware basis for the "protected" states.
+- **Fowler, A. G., et al. (2012).** "Surface codes: Towards practical large-scale quantum computation." *Physical Review A*. [<https://journals.aps.org/pra/abstract/10.1103/PhysRevA.86.302315>] — The gold standard for the surface code architecture I am adapting for neural stability.
+- **Microsoft Azure Quantum / Topological Qubits Research.** Documentation on Majorana fermions and braiding for fault-tolerant computation. [<https://azure.microsoft.com/en-us/solutions/quantum-computing/>] — The hardware basis for the "protected" states.
 - **Hasegawa, et al.** *Research on Topological Insulators for Quantum Memory*. (Analysis of BiSb and Bi2Te3 for state preservation).
 
 ### 5. Open Questions

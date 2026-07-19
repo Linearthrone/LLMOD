@@ -31,7 +31,7 @@ To make this real, House Victoria requires a **Micro-Fluidic Olfactory Dispenser
 I analyzed the structural connectivity of the olfactory bulb using a synthesis of neuroanatomical data and chemical signaling research. I focused on the **Glomerular organization** of the olfactory bulb—how specific odorant molecules are mapped to specific glomeruli—and traced those axons through the lateral olfactory tract directly into the amygdala. I then cross-referenced these pathways with literature on "Odor-Evoked Autobiographical Memories" (OEAMs) to determine the minimum chemical complexity required to trigger a high-fidelity memory recall without causing olfactory fatigue.
 
 ## External Sources
-- **The Proust Effect & OEAMs:** Research on the unique pathway from the olfactory bulb to the hippocampus, as detailed in *Herz, R. S. (2016). The Role of Odor-Evoked Memory in Psychological and Physiological Health. Brain Sciences.* [https://www.mdpi.com/brain-sciences]
+- **The Proust Effect & OEAMs:** Research on the unique pathway from the olfactory bulb to the hippocampus, as detailed in *Herz, R. S. (2016). The Role of Odor-Evoked Memory in Psychological and Physiological Health. Brain Sciences.* [<https://www.mdpi.com/brain-sciences>]
 - **Limbic Connectivity:** Anatomical mapping of the piriform cortex to the basolateral amygdala, following the frameworks established in *Buckland & Smith (2001) regarding the Olfactory System and Emotion.*
 - **Digital Olfaction Tech:** Review of the **AromaHouse** and **OSM (Olfactory Synthesis Module)** architectures for multi-channel VOC delivery systems.
 

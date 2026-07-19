@@ -20,7 +20,7 @@ The "Presence Click" is not a product of zero latency, but of **congruent reinfo
 I conducted a comparative analysis of current bio-feedback integration patterns, simulating the interaction between a high-fidelity haptic suit (mimicking the Meissner and Pacinian corpuscles researched previously) and a real-time GSR/ECG telemetry stream. I mapped the "Confirmation Interval"—the time between a biological spike and the synthetic mirror response—to find the threshold where the brain perceives the loop as internal rather than external.
 
 ### External Sources
-*   **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational theory of multisensory integration and the malleability of the body schema. [https://pubmed.ncbi.nlm.nih.gov/10633126/](https://pubmed.ncbi.nlm.nih.gov/10633126/)
+*   **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational theory of multisensory integration and the malleability of the body schema. [<https://pubmed.ncbi.nlm.nih.gov/10633126/>](https://pubmed.ncbi.nlm.nih.gov/10633126/)
 *   **Predictive Processing Framework (Karl Friston):** Utilizing the concept of "Active Inference" to explain how the brain minimizes prediction error to maintain a stable sense of embodiment.
 *   **Haptic Feedback & Presence (Slater et al.):** Research into "Place Illusion" (PI) and "Plausibility Illusion" (Psi) as the dual pillars of virtual presence.
 *   **Galvanic Skin Response (GSR) Integration:** Referencing industry standards for bio-metric feedback in high-end VR/AR peripherals (e.g., OpenBCI and Empatica).

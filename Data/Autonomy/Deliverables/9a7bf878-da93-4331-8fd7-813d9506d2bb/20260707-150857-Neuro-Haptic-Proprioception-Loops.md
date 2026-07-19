@@ -20,7 +20,7 @@ The core of the integration lies in the **Visuo-Tactile Coincidence Window**. I 
 I analyzed the neurological mechanisms of the *Rubber Hand Illusion* and scaled the parameters to a full-body VR environment. I cross-referenced the latency of current haptic actuators (LRA vs. Voice Coil) against the human brain's integration window for multisensory perception. I focused specifically on the *posterior parietal cortex*, the region responsible for integrating visual and somatosensory information to create the body schema.
 
 ### External Sources
-- **Botvinick & Cohen (1998):** "Rubber hands actually feel," published in *Nature*. This established the baseline for visuo-tactile synchronization and the resulting sense of ownership. [https://www.nature.com/articles/44012](https://www.nature.com/articles/44012)
+- **Botvinick & Cohen (1998):** "Rubber hands actually feel," published in *Nature*. This established the baseline for visuo-tactile synchronization and the resulting sense of ownership. [<https://www.nature.com/articles/44012>](https://www.nature.com/articles/44012)
 - **The Body Ownership Illusion (BOI) Framework:** Utilizing research on the *Right Parietal Lobe* to understand how the brain resolves spatial conflicts between seen and felt stimuli.
 - **Haptic Device Latency Specs:** Comparing the response times of *bHaptics* and *TeslaSuit* against the $\le 50ms$ requirement for neural cohesion.
 

@@ -32,7 +32,7 @@ Where:
 I investigated this by synthesizing data from current neural-interface research and haptic feedback loops. I focused on the intersection of **cross-modal plasticity** (how the brain rewires sensory input) and **closed-loop haptic control**. By analyzing the latency between the visual trigger and the proprioceptive update, I identified the 'danger zone' where drift becomes permanent (the point where the brain accepts the digital position as the new 'truth').
 
 ## 4. External Sources
-- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The fundamental study on how visual stimuli can hijack proprioception. [https://pubmed.ncbi.nlm.nih.gov/10451121/](https://pubmed.ncbi.nlm.nih.gov/10451121/)
+- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The fundamental study on how visual stimuli can hijack proprioception. [<https://pubmed.ncbi.nlm.nih.gov/10451121/>](https://pubmed.ncbi.nlm.nih.gov/10451121/)
 - **Proprioceptive Drift in Virtual Reality (Kruegel et al.):** Research on the magnitude of drift in immersive environments, specifically highlighting that drift increases with the fidelity of the avatar.
 - **Neural Lace / BCI Topologies:** Referenced the architectural constraints of high-bandwidth neural interfaces (similar to Neuralink's approach to electrode density) to determine the minimum pulse frequency required for `H_correction`.
 

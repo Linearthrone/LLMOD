@@ -27,7 +27,7 @@ Research indicates that when the virtual limb's position deviates by more than 1
 I analyzed the neurobiology of the *Body Schema* versus the *Body Image*. I cross-referenced current findings on "Virtual Embodiment" with the technical specifications of high-fidelity haptic interfaces. I modeled the interaction between the visual input (the avatar) and the somatosensory input (the haptic feedback) to determine the "Critical Point of Acceptance"—the moment where the brain chooses the visual lie over the physical truth.
 
 ### 4. External Sources
-- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational study on visuo-tactile synchrony. [Original Study: https://pubmed.ncbi.nlm.nih.gov/9562110/]
+- **The Rubber Hand Illusion (Botvinick & Cohen, 1998):** The foundational study on visuo-tactile synchrony. [Original Study: <https://pubmed.ncbi.nlm.nih.gov/9562110/>]
 - **The Body Ownership Effect (Slack et al., 2010):** Research on how full-body avatars can induce a shift in the perceived location of the physical body.
 - **Meta's Haptic Research (触覚 - Tactile Feedback):** Analysis of low-latency haptic actuators used in the Quest Pro/Touch Pro controllers to minimize the "uncanny valley" of touch.
 - **The Posterior Parietal Cortex (PPC) Mapping:** Neurological data regarding the integration of multisensory information for spatial awareness.

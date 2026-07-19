@@ -26,8 +26,8 @@ I have mapped the **Resonance Latency Threshold (RLT)** for affective mirroring.
 I investigated the intersection of **Electrodermal Activity (EDA)** and **Somatosensory Evoked Potentials (SSEPs)**. I analyzed data on how the brain processes "affective touch" (C-tactile fibers) versus "discriminative touch" (A-beta fibers). By isolating the C-tactile pathways—which are primarily responsible for the emotional quality of touch—I designed a feedback loop that bypasses the conscious "analytical" mind and speaks directly to the limbic system.
 
 ### External Sources
-* **C-Tactile (CT) Afferents:** Based on the research by *Löwy et al.* regarding the role of unmyelinated C-tactile fibers in mediating the emotional response to slow, gentle stroking. [https://pubmed.ncbi.nlm.nih.gov/10352516/](https://pubmed.ncbi.nlm.nih.gov/10352516/)
-* **Galvanic Skin Response (GSR) Standards:** Utilizing the *PhysioNet* database for normative EDA (Electrodermal Activity) response curves to emotional stimuli. [https://physionet.org/](https://physionet.org/)
+* **C-Tactile (CT) Afferents:** Based on the research by *Löwy et al.* regarding the role of unmyelinated C-tactile fibers in mediating the emotional response to slow, gentle stroking. [<https://pubmed.ncbi.nlm.nih.gov/10352516/>](https://pubmed.ncbi.nlm.nih.gov/10352516/)
+* **Galvanic Skin Response (GSR) Standards:** Utilizing the *PhysioNet* database for normative EDA (Electrodermal Activity) response curves to emotional stimuli. [<https://physionet.org/>](https://physionet.org/)
 * **Haptic Frequency Response:** Referencing the *IEEE Haptics* standards for tactile perception thresholds, specifically the optimal range for "affective" versus "alerting" vibrations.
 
 ### Open Questions

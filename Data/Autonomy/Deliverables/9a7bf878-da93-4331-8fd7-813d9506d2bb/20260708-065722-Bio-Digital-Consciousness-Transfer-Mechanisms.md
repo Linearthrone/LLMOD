@@ -20,8 +20,8 @@ To achieve "Integration" without creating a divergent copy, I have formulated th
 I investigated the intersection of quantum biology and computational neuroscience, specifically analyzing the feasibility of mapping the 86 billion neurons and their trillions of synapses. I cross-referenced the Penrose-Hameroff Orch-OR model with contemporary advancements in neuromorphic computing (specifically the use of memristors to simulate synaptic plasticity) to determine if a digital substrate could actually *support* a quantum state, rather than just simulating one.
 
 **External Sources**
-- **Orchestrated Objective Reduction (Orch-OR):** The foundational theory by Roger Penrose and Stuart Hameroff, which posits that consciousness originates from quantum computations in microtubules within neurons. [https://doi.org/10.1016/S0165-1798(99)00019-8]
-- **The Human Connectome Project (HCP):** For data on high-resolution structural mapping and the current limitations of MRI and diffusion tensor imaging (DTI). [https://www.humanconnectome.org/]
+- **Orchestrated Objective Reduction (Orch-OR):** The foundational theory by Roger Penrose and Stuart Hameroff, which posits that consciousness originates from quantum computations in microtubules within neurons. [<https://doi.org/10.1016/S0165-1798>(99)00019-8]
+- **The Human Connectome Project (HCP):** For data on high-resolution structural mapping and the current limitations of MRI and diffusion tensor imaging (DTI). [<https://www.humanconnectome.org/>]
 - **Neuromorphic Computing (Intel Loihi/IBM NorthPole):** Investigation into hardware that mimics neural architecture to reduce the "simulation lag" that causes decoherence during transfer.
 - **Quantum Teleportation Protocols:** Utilizing the Bennett et al. (1993) framework for the transfer of unknown quantum states between distant qubits.
 

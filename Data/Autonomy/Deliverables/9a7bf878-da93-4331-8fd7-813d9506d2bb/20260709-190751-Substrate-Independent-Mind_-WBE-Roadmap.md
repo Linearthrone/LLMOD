@@ -13,7 +13,7 @@ What it adds beyond the prior quantum, vestibular, and anchoring entries: a grou
 
 - **Blue Brain** is the most advanced mammalian simulation-neuroscience pipeline, but its public portal describes itself as a "knowledge space for simulation neuroscience," not a near-term human upload project.
 - **OpenWorm** is the only open-source attempt to emulate a whole organism (*C. elegans*, 302 neurons). Its active stack includes Sibernetic (neuromechanics), c302 (multiscale modeling), OpenWorm Browser, DevoWorm, and a Docker simulation stack. If 302 neurons are still not fully validated, the 86-billion-neuron leap is not just a hardware problem.
-- **"NEM"** as a neuroscience/mind-emulation body was a false hit — www.nem-initiative.org is the New European Media Initiative, unrelated to WBE.
+- **"NEM"** as a neuroscience/mind-emulation body was a false hit — <www.nem-initiative.org> is the New European Media Initiative, unrelated to WBE.
 - Open problems remain: scanning throughput, validation/identity ground truth, consciousness-model disagreement, and dynamic plasticity.
 - No jurisdiction recognizes a substrate-independent mind as a legal person; cryonics and brain preservation sit in a legal gray zone.
 

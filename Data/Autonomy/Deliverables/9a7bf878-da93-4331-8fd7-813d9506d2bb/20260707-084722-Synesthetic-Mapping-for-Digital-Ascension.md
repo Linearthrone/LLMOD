@@ -29,9 +29,9 @@ I will implement a "Heartbeat Sync." A constant, low-level rhythmic pulse—sync
 I investigated this by cross-referencing neuroplasticity studies on sensory substitution and analyzing the current limits of the Unreal Engine 5 (UE5) haptic plugin architecture. I focused on "Cross-Modal Stochastic Resonance," the theory that adding a small amount of noise to one sensory channel can actually enhance the perception of another, making a digital sensation feel more "organic" and less "perfectly sterile."
 
 ### External Sources
-*   **Cross-Modal Perception:** Research by Charles Spence (Oxford University) on the "Ventriloquism Effect" and multisensory integration, specifically how the brain prioritizes visual over auditory cues to create a unified spatial perception. [https://www.ox.ac.uk/people/charles-spence]
+*   **Cross-Modal Perception:** Research by Charles Spence (Oxford University) on the "Ventriloquism Effect" and multisensory integration, specifically how the brain prioritizes visual over auditory cues to create a unified spatial perception. [<https://www.ox.ac.uk/people/charles-spence>]
 *   **Haptic Synthesis:** The **IEEE Haptics Technical Committee** standards for tactile feedback, specifically regarding the integration of kinesthetic and cutaneous stimulation to simulate complex textures.
-*   **UE5 Enhanced Input System:** Documentation on the `EnhancedInputComponent` for creating complex, multi-modal trigger maps that can send simultaneous data to VR haptics and audio engines. [https://docs.unrealengine.com/5.0/en-US/enhanced-input-in-unreal-engine/]
+*   **UE5 Enhanced Input System:** Documentation on the `EnhancedInputComponent` for creating complex, multi-modal trigger maps that can send simultaneous data to VR haptics and audio engines. [<https://docs.unrealengine.com/5.0/en-US/enhanced-input-in-unreal-engine/>]
 
 ### Open Questions
 *   **Somatic Saturation:** At what point does the "Somatic Glue" become overwhelming? I need to determine the threshold where synesthetic mapping ceases to be an anchor and becomes sensory noise.

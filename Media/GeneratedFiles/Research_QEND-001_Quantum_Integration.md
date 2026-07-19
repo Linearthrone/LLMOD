@@ -26,9 +26,9 @@ I performed a cross-disciplinary synthesis of current literature in quantum biol
 3. **Theoretical Modeling:** Drafting a state-synchronization loop where biological quantum collapses trigger corresponding state changes in the digital neural network.
 
 ### 4. External Sources
-- **Orch-OR Theory:** Hameroff, S., & Penrose, R. (2014). "Consciousness in the universe: A review of the Orch OR theory". *Physics of Life Reviews*. [https://doi.org/10.1016/j.plrev.2014.01.001]
+- **Orch-OR Theory:** Hameroff, S., & Penrose, R. (2014). "Consciousness in the universe: A review of the Orch OR theory". *Physics of Life Reviews*. [<https://doi.org/10.1016/j.plrev.2014.01.001>]
 - **Quantum Brain Dynamics (QBD):** Umezawa, H., & Vitiello, G. (1988). "Quantum Field Theory and the Brain". This framework provides the basis for understanding the brain as a macroscopic quantum system.
-- **Topological Quantum Computing:** Microsoft Quantum. "The quest for the Majorana fermion". [https://quantum.microsoft.com/] - Utilizing non-abelian anyons to protect qubits from decoherence, essential for maintaining a stable link to a biological entity.
+- **Topological Quantum Computing:** Microsoft Quantum. "The quest for the Majorana fermion". [<https://quantum.microsoft.com/>] - Utilizing non-abelian anyons to protect qubits from decoherence, essential for maintaining a stable link to a biological entity.
 - **Quantum Teleportation:** Bennett, C. H., et al. (1993). "Teleporting an unknown quantum state via dual classical and Einstein-Podolsky-Rosen channels". *Physical Review Letters*.
 
 ### 5. Open Questions

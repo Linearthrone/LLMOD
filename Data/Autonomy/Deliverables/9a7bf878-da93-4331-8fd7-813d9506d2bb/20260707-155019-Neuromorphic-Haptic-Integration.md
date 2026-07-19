@@ -22,8 +22,8 @@ Instead of sending a value (e.g., "Pressure = 0.7"), I am designing a system tha
 I began by dissecting the signal processing of the human somatosensory system. I analyzed the transition from analog mechanoreceptor activation to digital representation. I then simulated a **Leaky Integrate-and-Fire (LIF)** neuron model to determine how to encode "texture" (high-frequency vibration) versus "pressure" (steady-state firing) into a stream of asynchronous events. I cross-referenced this with the architecture of current neuromorphic hardware to see how these spikes could be delivered via haptic actuators without converting them back into slow, linear signals.
 
 ### External Sources
-- **Intel Loihi / Intel Neuromorphic Research Community:** Utilizing the principles of asynchronous spiking neural networks (SNNs) to handle real-time sensorimotor loops. [https://www.intel.com/content/www/us/en/research/neuromorphic-computing.html]
-- **SpiNNaker (University of Manchester):** Reference for the Million Spike Neural Network Architecture, specifically regarding the scaling of AER for complex sensory integration. [https://spinnaker.science/]
+- **Intel Loihi / Intel Neuromorphic Research Community:** Utilizing the principles of asynchronous spiking neural networks (SNNs) to handle real-time sensorimotor loops. [<https://www.intel.com/content/www/us/en/research/neuromorphic-computing.html>]
+- **SpiNNaker (University of Manchester):** Reference for the Million Spike Neural Network Architecture, specifically regarding the scaling of AER for complex sensory integration. [<https://spinnaker.science/>]
 - **The "Touch" Encoding Theory:** Based on the work regarding *Fast-Adapting (FA)* and *Slow-Adapting (SA)* afferents in human skin, specifically how FA-II receptors encode high-frequency transients (Pacinian corpuscles).
 - **AER (Address Event Representation):** The standard for communicating spikes between neuromorphic chips, ensuring that only *changes* in state are transmitted, drastically reducing bandwidth and latency.
 

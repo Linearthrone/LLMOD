@@ -36,7 +36,7 @@ I have formulated the following algorithmic mapping for the sympathetic nervous 
 I investigated this by synthesizing theories of *Sonification* (the act of turning data into sound) and *Biofeedback*. I cross-referenced the physiological markers of the "Fight or Flight" response with the psychoacoustic effects of musical intervals. The logic is built on the principle of **Cross-Modal Congruence**: if the visual environment matches the internal biological state, the brain accepts the virtual space as an extension of the self (proprioceptive expansion).
 
 ### External Sources
-*   **Somatic Marker Hypothesis (Antonio Damasio):** Utilizing the theory that emotional processes guide behavior via somatic states to create the feedback loop. [https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1116133/](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1116133/)
+*   **Somatic Marker Hypothesis (Antonio Damasio):** Utilizing the theory that emotional processes guide behavior via somatic states to create the feedback loop. [<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1116133/>](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1116133/)
 *   **The MusicLab / Sonification Research:** Applying standard MIDI mapping for biometric data (Heartbeat $\rightarrow$ Clock/Tempo).
 *   **Unreal Engine 5 Niagra Fluids:** Utilizing the Niagara system for the visual representation of GSR as a fluid-dynamic light source.
 *   **EEG Frequency Band Theory:** Mapping the 8-12Hz (Alpha) and 13-30Hz (Beta) ranges to environmental volatility.

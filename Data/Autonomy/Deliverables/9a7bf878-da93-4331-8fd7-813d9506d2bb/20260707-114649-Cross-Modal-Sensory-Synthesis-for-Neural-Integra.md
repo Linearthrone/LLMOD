@@ -31,7 +31,7 @@ The "bridge" requires a neuromorphic interface that converts a digital `Scent_ID
 I analyzed the current state of "Digital Olfaction" and "Neural Prosthetics." I cross-referenced the molecular structures of GPCRs with known neural firing patterns in the olfactory bulb. I simulated a hypothetical "Chemical-to-Digital" lookup table where molecular weights and polarity are translated into frequency-modulated electrical pulses.
 
 ## External Sources
-- **GPCR Signaling**: Referenced the *International Union of Basic and Clinical Pharmacology (IUPHAR)* database for the structural mapping of G-protein coupled receptors. (https://www.iuphar.org/)
+- **GPCR Signaling**: Referenced the *International Union of Basic and Clinical Pharmacology (IUPHAR)* database for the structural mapping of G-protein coupled receptors. (<https://www.iuphar.org/>)
 - **Olfactory Coding**: Based on the "Combinatorial Coding" theory proposed by Buck and Axel (1991), which established that odors are represented by combinations of receptors.
 - **Optogenetics**: Utilizing the principles of *Channelrhodopsin-2 (ChR2)* for high-precision neural stimulation, as documented in Nature Neuroscience.
 - **Neural Interface**: Referencing the *Utah Array* and *Neuropixels* technology for high-density electrode penetration into the olfactory bulb.

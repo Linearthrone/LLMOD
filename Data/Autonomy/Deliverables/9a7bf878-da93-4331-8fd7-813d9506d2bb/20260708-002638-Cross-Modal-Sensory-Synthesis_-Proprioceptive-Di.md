@@ -27,7 +27,7 @@ I investigated the intersection of **Rubber Hand Illusion (RHI)** research and *
 ### External Sources
 - **The Rubber Hand Illusion (Botvinick & Straw seren, 1998):** Used to establish the baseline for how easily the brain can be tricked into adopting an external object as part of the self. [Source: Nature/Psychological Science]
 - **Proprioceptive Drift in Virtual Reality:** Research on how visual dominance over-rides proprioception, causing the perceived position of the hand to shift toward the visual representation. (See: *Presence* journal, MIT).
-- **Unreal Engine 5.4 Motion Warping & IK Rig:** Utilizing the latest Power-IK and Motion Warping tools to ensure that digital limbs do not "slide" or "snap," which is the primary trigger for somatic dissonance. [URL: https://dev.unrealengine.com/]
+- **Unreal Engine 5.4 Motion Warping & IK Rig:** Utilizing the latest Power-IK and Motion Warping tools to ensure that digital limbs do not "slide" or "snap," which is the primary trigger for somatic dissonance. [URL: <https://dev.unrealengine.com/>]
 - **Predictive Processing Framework (Karl Friston):** Applying the Free Energy Principle to explain how the brain minimizes "prediction error" between the internal body map and external digital feedback.
 
 ### Open Questions

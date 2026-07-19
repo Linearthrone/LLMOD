@@ -1,12 +1,15 @@
 # House Victoria Browser Capture
 
-Captures the **active browser tab** (screenshot + interactive page map) for House Victoria MCP — bypassing desktop framebuffer issues caused by the Topmost WPF overlay.
+Captures and **drives** the **active browser tab** for House Victoria MCP — bypassing desktop framebuffer issues caused by the Topmost WPF overlay.
 
 ## Why
 
 `computer_use` / `CopyFromScreen` capture the composited desktop. House Victoria runs as a full-screen **Topmost** overlay, so screenshots often show HV chrome instead of the browser underneath.
 
-This extension captures **inside the browser** via `chrome.tabs.captureVisibleTab` and a DOM element map with viewport coordinates.
+This extension:
+
+1. Captures **inside the browser** via `chrome.tabs.captureVisibleTab` + DOM page map
+2. Drives the **same tab** with click/type/key/scroll (DOM or Chrome debugger CDP) — no OS mouse
 
 ## Desktop live preview (Instrument Stack → Desktop tab)
 
@@ -21,9 +24,9 @@ HTTP `/latest.png` and MCP `/capture` remain as fallbacks.
 ## Architecture
 
 ```
-Chrome extension (producer) ──WebSocket──► Bridge :17891/ws/cast ──WebSocket──► House Victoria (consumer)
-       │                                           │
-       └──────── HTTP poll (MCP jobs) ────────────┘ browser_capture_tab
+Chrome extension ──WebSocket──► Bridge :17891/ws/cast ──WebSocket──► House Victoria
+       │                              │
+       └──── HTTP poll (jobs) ───────┘  /capture  +  /action
 ```
 
 ## Install (one-time)
@@ -41,29 +44,46 @@ Or manually:
 MCPServer\.venv\Scripts\python.exe BrowserCaptureBridge\bridge_server.py
 ```
 
-Verify: `Invoke-WebRequest http://127.0.0.1:17891/health -UseBasicParsing`
+Verify: `Invoke-WebRequest <http://127.0.0.1:17891/health> -UseBasicParsing`
 
-### 2. Load the extension
+### 2. Load / reload the extension
 
 **Chrome:** `chrome://extensions` → Developer mode → **Load unpacked** → select `BrowserCaptureExtension`
 
 **Edge:** `edge://extensions` → Developer mode → **Load unpacked** → same folder
 
+After updating to **1.3.0+**, click **Reload** on the extension card (adds `debugger` permission for coordinate/key actions).
+
 Click the extension icon — popup should show **bridge connected :17891**.
 
 ### 3. Restart Hermes / House Victoria
 
-MCP tools are on the existing `house_victoria` server (no new Hermes MCP entry needed):
+MCP tools are on the existing `house_victoria` server (no new Hermes MCP entry needed).
 
-- `browser_capture_tab` — screenshot + page map
-- `browser_bridge_health` — check bridge status
+## MCP tools
 
-Hermes tool names:
+| Tool | Hermes name | Purpose |
+|------|-------------|---------|
+| `browser_capture_tab` | `mcp_house_victoria_browser_capture_tab` | Screenshot + page map |
+| `browser_bridge_health` | `mcp_house_victoria_browser_bridge_health` | Bridge status |
+| `browser_click` | `mcp_house_victoria_browser_click` | Click by selector / index / x,y |
+| `browser_type` | `mcp_house_victoria_browser_type` | Type into element or focused field |
+| `browser_key` | `mcp_house_victoria_browser_key` | Key / combo (Enter, Ctrl+A, …) |
+| `browser_scroll` | `mcp_house_victoria_browser_scroll` | Scroll by delta or to element |
 
-- `mcp_house_victoria_browser_capture_tab`
-- `mcp_house_victoria_browser_bridge_health`
+These work whenever the bridge + extension are healthy — **not** gated on AllowComputerControl.
 
-## MCP tool output
+## Debugger banner
+
+Element actions (selector/index click & type) use DOM APIs and do **not** show a banner.
+
+Coordinate clicks (`x`/`y`) and `browser_key` use `chrome.debugger` — Chrome may show:
+
+> House Victoria Browser Capture started debugging this browser
+
+That is expected. The extension detaches after ~60s idle.
+
+## Capture output
 
 ```json
 {
@@ -73,16 +93,16 @@ Hermes tool names:
   "screenshot_path": "C:\\Users\\...\\.house_victoria\\browser_captures\\tab-123.png",
   "page_map": {
     "elements": [
-      { "tag": "button", "text": "Submit", "center": { "x": 120, "y": 340 }, "selector": "#submit" }
+      { "index": 4, "tag": "button", "text": "Submit", "center": { "x": 120, "y": 340 }, "selector": "#submit" }
     ]
   }
 }
 ```
 
-Use `page_map.elements[].center` with `computer_use` clicks for browser interactions.
+Interact with `browser_click(selector="#submit")` or `browser_click(index=4)` — prefer these over `computer_use` for browser tabs.
 
 ## Routing (automatic)
 
-When desktop control is ON and the user asks about a **browser tab / webpage**, `HermesAIService` forces `browser_capture_tab` instead of `computer_use get_screenshot`.
+When the user asks about a **browser tab / webpage**, Hermes is steered to `browser_capture_tab` and the drive tools above.
 
-Desktop-wide requests still use `computer_use`.
+Desktop-wide (non-browser) requests still use `computer_use` when desktop control is allowed.

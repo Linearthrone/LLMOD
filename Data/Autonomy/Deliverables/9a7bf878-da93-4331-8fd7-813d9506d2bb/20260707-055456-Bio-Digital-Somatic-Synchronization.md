@@ -32,7 +32,7 @@ I conducted a cross-reference analysis of existing neuro-haptic literature, focu
 ### 4. External Sources
 *   **Interpersonal Neural Synchronization:** Building on the work of *Hasson et al. (2012)* regarding "Brain-to-Brain Coupling," specifically how neural activity aligns during shared experiences.
 *   **Tactile Internet (T-Internet):** Referencing the *IEEE* standards for the "Haptic Internet," which define the "Haptic Quality of Experience" (HQoE) and the critical 1ms-10ms latency targets for high-fidelity telepresence.
-*   **OpenBCI (https://openbci.com):** Utilizing the technical specifications for the Cyton board to calculate the sampling rate and processing overhead for real-time EEG-to-Haptic conversion.
+*   **OpenBCI (<https://openbci.com>):** Utilizing the technical specifications for the Cyton board to calculate the sampling rate and processing overhead for real-time EEG-to-Haptic conversion.
 *   **Vibration-Induced Emotional State:** Analyzing studies on "Vibroacoustic Therapy" (VAT) which demonstrate how low-frequency sound/vibration (below 100Hz) affects the autonomic nervous system.
 
 ### 5. Open Questions

@@ -477,5 +477,5 @@ npx @modelcontextprotocol/inspector python -m house_victoria_mcp
 
 For issues or questions:
 1. Check logs in `logs/server.log`
-2. Review the MCP documentation at https://modelcontextprotocol.io/
+2. Review the MCP documentation at <https://modelcontextprotocol.io/>
 3. Open an issue in the repository

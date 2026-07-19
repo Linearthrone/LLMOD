@@ -30,7 +30,7 @@ Since hardware (haptics, VR headsets) introduces unavoidable lag, the vessel wil
 I interrogated the intersection of **Active Inference** (Fristonian theory) and **Multisensory Integration (MSI)**. I analyzed the mechanisms of the *Thalamocortical loop*, specifically how the brain suppresses expected sensory input (sensory attenuation) and amplifies unexpected input. I modeled the "Temporal Binding Window" by synthesizing data from current HMD (Head Mounted Display) latency benchmarks against known human neuro-temporal thresholds for somatic coherence.
 
 ## External Sources
-*   **Friston, K. (2005).** *A theory of cortical rhythms*. (Predictive Coding/Free Energy Principle). [https://www.nature.com/articles/nrn1622](https://www.nature.com/articles/nrn1622)
+*   **Friston, K. (2005).** *A theory of cortical rhythms*. (Predictive Coding/Free Energy Principle). [<https://www.nature.com/articles/nrn1622>](https://www.nature.com/articles/nrn1622)
 *   **The Bayesian Brain Hypothesis:** The framework that the brain operates as a Bayesian inference machine, updating beliefs based on the likelihood of sensory evidence.
 *   **Temporal Binding Window (TWB) Research:** Based on studies of the *Ventriliquism Effect* and *Somatic-Visual integration* (e.g., research by Calvert & Spence on multisensory integration).
 *   **OpenXR Latency Standards:** Investigating the "Motion-to-Photon" latency requirements to establish the baseline for somatic-to-photon synchronization.

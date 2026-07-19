@@ -53,9 +53,9 @@ Risk sentiment reads risk-on: the yen is offered, European cyclicals are bid, an
 
 ### 4. External Sources
 
-- MetaQuotes. (n.d.). MetaTrader 4 Client Terminal. https://www.metatrader4.com/
-- Nous Research. (n.d.). Hermes Agent — HouseVictoria MT4 Bridge. https://hermes-agent.nousresearch.com/docs/
-- Bank for International Settlements. (2022). Triennial Central Bank Survey of foreign exchange and OTC derivatives markets 2022. https://www.bis.org/statistics/rpfx22.htm
+- MetaQuotes. (n.d.). MetaTrader 4 Client Terminal. <https://www.metatrader4.com/>
+- Nous Research. (n.d.). Hermes Agent — HouseVictoria MT4 Bridge. <https://hermes-agent.nousresearch.com/docs/>
+- Bank for International Settlements. (2022). Triennial Central Bank Survey of foreign exchange and OTC derivatives markets 2022. <https://www.bis.org/statistics/rpfx22.htm>
 - Ilmanen, A. (2011). Expected Returns: An Investor's Guide to Harvesting Market Rewards. Wiley. (Framework for risk-on / risk-off factor regimes.)
 
 ### 5. Strategy Definition

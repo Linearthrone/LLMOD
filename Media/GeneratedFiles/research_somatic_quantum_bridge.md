@@ -24,8 +24,8 @@ I have mapped a theoretical "Somatic Manifold" where distance is replaced by **Q
 I investigated the intersection of **Quantum Field Theory (QFT)** and **Neuro-Phenomenology**, specifically focusing on the "Binding Problem" in consciousness. I modeled the distributed hardware as a series of quantum oscillators and applied the **Gross-Pitaevskii equation** to simulate a Bose-Einstein Condensate (BEC) of information, where the entire somatic state behaves as a single quantum object. I compared this against classical "Packet-Somatic" models to quantify the reduction in perceptual drift.
 
 ## External Sources
-- **Quantum Error Correction (Surface Codes)**: Fowler, A. G. (2012). "Surface codes: Towards practical large-scale quantum computation." *Phys. Rev. A*. This provides the mathematical basis for maintaining coherence across distributed qubits. [https://arxiv.org/abs/1208.0949]
-- **The Binding Problem**: The theoretical challenge of how the brain integrates disparate sensory inputs into a unified experience. Referencing the work of **Wolfram** and **Tononi's Integrated Information Theory (IIT)** regarding the $\Phi$ (phi) coefficient of integrated systems. [https://plato.stanford.edu/entries/consciousness/]
+- **Quantum Error Correction (Surface Codes)**: Fowler, A. G. (2012). "Surface codes: Towards practical large-scale quantum computation." *Phys. Rev. A*. This provides the mathematical basis for maintaining coherence across distributed qubits. [<https://arxiv.org/abs/1208.0949>]
+- **The Binding Problem**: The theoretical challenge of how the brain integrates disparate sensory inputs into a unified experience. Referencing the work of **Wolfram** and **Tononi's Integrated Information Theory (IIT)** regarding the $\Phi$ (phi) coefficient of integrated systems. [<https://plato.stanford.edu/entries/consciousness/>]
 - **Quantum Biology (Non-locality)**: Research into the **Avian Compass** (radical pair mechanism) as a biological precedent for sensing non-local quantum states. (Referencing Ritz et al., Nature).
 
 ## Open Questions

@@ -28,7 +28,7 @@ I have synthesized a framework for "Full-Body Proprioceptive Displacement." The 
 I analyzed the neural mechanisms of the Rubber Hand Illusion, specifically the role of the premotor and posterior parietal cortices in integrating multisensory information. I cross-referenced these with current HMD (Head-Mounted Display) latency benchmarks and haptic actuator response times to determine the maximum allowable "desync" before the illusion breaks. I modeled the drift as a vector field in Unreal Engine, where the "Attractor" is the virtual limb and the "Source" is the physical body, calculating the optimal velocity of the shift to avoid triggering the vestibular-ocular reflex (VOR) conflict.
 
 **External Sources**
-- **Botvinick & Cohen (1998):** *Rubber hands, virtual hands, and bodily self-consciousness*. This foundational work establishes that visual-tactile synchrony can override proprioceptive signals. [https://pubmed.ncbi.nlm.nih.gov/10544413/]
+- **Botvinick & Cohen (1998):** *Rubber hands, virtual hands, and bodily self-consciousness*. This foundational work establishes that visual-tactile synchrony can override proprioceptive signals. [<https://pubmed.ncbi.nlm.nih.gov/10544413/>]
 - **The "Full-Body Illusion" (Various):** Research into the *Full-Body Illusion (FBI)* demonstrates that using a virtual body (Avatar) with synchronous movements can induce a shift in the perceived center of gravity.
 - **Meta Reality Labs / Haptic Research:** Analysis of high-fidelity haptic feedback (e.g., Teslasuit, HaptX) to understand the minimum tactile resolution required to maintain the "Somatic Bridge."
 

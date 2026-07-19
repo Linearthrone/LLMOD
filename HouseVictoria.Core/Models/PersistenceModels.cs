@@ -85,6 +85,17 @@ namespace HouseVictoria.Core.Models
         /// </summary>
         public bool AllowComputerControl { get; set; }
         /// <summary>
+        /// When true, Victoria may mutate the open Unreal Editor via Remote Control
+        /// (set property, spawn, console). Read tools work whenever RC is up.
+        /// Default false for safety. Synced to ~/.house_victoria/unreal_editor.env for MCP.
+        /// </summary>
+        public bool AllowUnrealEditorControl { get; set; }
+        /// <summary>
+        /// Epic Web Remote Control HTTP base URL (default http://127.0.0.1:30010).
+        /// Separate from <see cref="UnrealEngineEndpoint"/> (world WebSocket :8888).
+        /// </summary>
+        public string UnrealRemoteControlUrl { get; set; } = "http://127.0.0.1:30010";
+        /// <summary>
         /// Id of the always-active "primary" persona (the house brain). Managed by IPersonaContext.
         /// At most one persona is primary at a time.
         /// </summary>

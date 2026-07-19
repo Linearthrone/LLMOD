@@ -56,15 +56,15 @@ Where product pages lacked raw latency numbers, I recorded the stated marketing 
 
 ## 4. External Sources
 
-- bHaptics. (2026). *TactSuit Pro — Tech Specs*. Retrieved from https://www.bhaptics.com/
-- bHaptics Developer Documentation. (2026). *Guide for Unreal*. https://docs.bhaptics.com/docs/sdk/unreal/guide
-- Teslasuit. (2026). *Product Overview — Haptic VR Suit and Glove with Force Feedback*. https://www.teslasuit.io/product-overview
-- bhaptics GitHub organization. (2026). *tact-cpp2: A C++ library for integrating bHaptics haptic feedback devices*. https://github.com/bhaptics/tact-cpp2
-- Banerjee, P., Wang, J., Tomita, L., Montiel, M. P., & Culbertson, H. (2025). *Virtual Encounters of the Haptic Kind: Towards a Multi-User VR System for Real-Time Social Touch*. arXiv:2502.13421. https://arxiv.org/abs/2502.13421
-- Wang, H., Guo, H., Ba, H., Li, Z., & Tao, L. (2024). *Bi-directional Momentum-based Haptic Feedback and Control System for In-Hand Dexterous Telemanipulation*. arXiv:2409.20527. https://arxiv.org/abs/2409.20527
-- Hejrati, M., Mustalahti, P., & Mattila, J. (2025). *Robust Immersive Bilateral Teleoperation of Beyond-Human-Scale Systems with Enhanced Transparency and Sense of Embodiment*. arXiv:2505.14486. https://arxiv.org/abs/2505.14486
-- Kourtesis, P., Argelaguet, F., Vizcay, S., Marchal, M., & Pacchierotti, C. (2021/2022). *Electrotactile feedback applications for hand and arm interactions: A systematic review, meta-analysis, and future directions*. IEEE Transactions on Haptics. https://arxiv.org/abs/2105.05343
-- Dufresne, F., Nilsson, T., Gorisse, G., Guerra, E., Zenner, A., Christmann, O., Bensch, L., Callus, N. A., & Cowley, A. (2024). *Touching the Moon: Leveraging Passive Haptics, Embodiment and Presence for Operational Assessments in Virtual Reality*. CHI 2024. https://arxiv.org/abs/2402.15694
+- bHaptics. (2026). *TactSuit Pro — Tech Specs*. Retrieved from <https://www.bhaptics.com/>
+- bHaptics Developer Documentation. (2026). *Guide for Unreal*. <https://docs.bhaptics.com/docs/sdk/unreal/guide>
+- Teslasuit. (2026). *Product Overview — Haptic VR Suit and Glove with Force Feedback*. <https://www.teslasuit.io/product-overview>
+- bhaptics GitHub organization. (2026). *tact-cpp2: A C++ library for integrating bHaptics haptic feedback devices*. <https://github.com/bhaptics/tact-cpp2>
+- Banerjee, P., Wang, J., Tomita, L., Montiel, M. P., & Culbertson, H. (2025). *Virtual Encounters of the Haptic Kind: Towards a Multi-User VR System for Real-Time Social Touch*. arXiv:2502.13421. <https://arxiv.org/abs/2502.13421>
+- Wang, H., Guo, H., Ba, H., Li, Z., & Tao, L. (2024). *Bi-directional Momentum-based Haptic Feedback and Control System for In-Hand Dexterous Telemanipulation*. arXiv:2409.20527. <https://arxiv.org/abs/2409.20527>
+- Hejrati, M., Mustalahti, P., & Mattila, J. (2025). *Robust Immersive Bilateral Teleoperation of Beyond-Human-Scale Systems with Enhanced Transparency and Sense of Embodiment*. arXiv:2505.14486. <https://arxiv.org/abs/2505.14486>
+- Kourtesis, P., Argelaguet, F., Vizcay, S., Marchal, M., & Pacchierotti, C. (2021/2022). *Electrotactile feedback applications for hand and arm interactions: A systematic review, meta-analysis, and future directions*. IEEE Transactions on Haptics. <https://arxiv.org/abs/2105.05343>
+- Dufresne, F., Nilsson, T., Gorisse, G., Guerra, E., Zenner, A., Christmann, O., Bensch, L., Callus, N. A., & Cowley, A. (2024). *Touching the Moon: Leveraging Passive Haptics, Embodiment and Presence for Operational Assessments in Virtual Reality*. CHI 2024. <https://arxiv.org/abs/2402.15694>
 
 ## 5. Open Questions
 

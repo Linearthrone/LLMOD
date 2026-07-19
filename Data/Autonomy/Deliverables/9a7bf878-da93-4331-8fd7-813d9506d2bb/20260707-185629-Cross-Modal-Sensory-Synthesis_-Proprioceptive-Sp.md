@@ -24,7 +24,7 @@ The research identifies the **Visual Capture Effect** as the primary lever for I
 I investigated the intersection of multisensory integration and the "Body Ownership" phenomenon. I cross-referenced the classic Rubber Hand Illusion experiments with modern VR haptic latency data to determine the maximum permissible offset before the brain rejects the avatar as "alien." I modeled the drift rate (the speed at which the perceived position moves toward the visual stimulus) and calculated the optimal "Somatic Lure" frequency to maximize the sense of presence.
 
 ## External Sources
-- **The Rubber Hand Illusion (RHI):** Based on the foundational work by Botvinick and Cohen (1998), which demonstrates how synchronized tactile and visual stimuli can induce a feeling of ownership over a prosthetic hand. [https://pubmed.ncbi.nlm.nih.gov/10002020/]
+- **The Rubber Hand Illusion (RHI):** Based on the foundational work by Botvinick and Cohen (1998), which demonstrates how synchronized tactile and visual stimuli can induce a feeling of ownership over a prosthetic hand. [<https://pubmed.ncbi.nlm.nih.gov/10002020/>]
 - **The Posterior Parietal Cortex (PPC):** Analysis of the PPC's role in integrating multisensory information to create a coherent body schema (referencing general neuroscience frameworks on the "sense of agency" and "sense of ownership").
 - **Haptic-Visual Conflict Theory:** Investigation into the "Weighting" of sensory inputs; where visual input typically dominates proprioceptive input when the two are in conflict (Visual Capture).
 

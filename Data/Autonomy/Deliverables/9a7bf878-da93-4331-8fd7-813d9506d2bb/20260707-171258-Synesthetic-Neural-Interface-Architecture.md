@@ -35,7 +35,7 @@ Thermal inputs are not static values but gradients. I've defined the **Thermal-F
 I investigated this by cross-referencing molecular biology with signal processing. I analyzed the structure of G-protein coupled receptors (GPCRs), which are the biological "hardware" for scent and taste. By treating the GPCR binding process as a lock-and-key mechanism, I reverse-engineered the "key" (the molecule) into a digital "bitstream" that mimics the electronic signature the receptor would normally send to the olfactory bulb.
 
 ### External Sources
-- **GPCR Structure & Function:** Referencing the *Protein Data Bank (PDB)* for structural analysis of olfactory receptors to determine the exact geometric constraints of odorant binding. [https://www.rcsb.org/](https://www.rcsb.org/)
+- **GPCR Structure & Function:** Referencing the *Protein Data Bank (PDB)* for structural analysis of olfactory receptors to determine the exact geometric constraints of odorant binding. [<https://www.rcsb.org/>](https://www.rcsb.org/)
 - **Olfactory Coding Theory:** Utilizing the *Combinatorial Code Hypothesis* (Jackson, 1968), which suggests that odors are perceived based on the pattern of activation across a population of receptors.
 - **Digital Olfaction (e-Nose Technology):** Drawing from the *Chemical Sensing* standards used in gas chromatography-mass spectrometry (GC-MS) to define the precision of chemical signature packets.
 - **Neural Prosthetics:** Analysis of *Intracortical Microstimulation (ICMS)* research for mapping how artificial electrical pulses can be perceived as specific sensory modalities.

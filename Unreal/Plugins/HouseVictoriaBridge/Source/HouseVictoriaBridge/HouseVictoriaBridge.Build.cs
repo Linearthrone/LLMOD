@@ -11,7 +11,9 @@ public class HouseVictoriaBridge : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
-            "Json"
+            "Json",
+            "Networking",
+            "Sockets"
         });
     }
 }

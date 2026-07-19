@@ -27,10 +27,10 @@ Where $\omega_1$ and $\omega_2$ are weighted coefficients based on the desired e
 I investigated the intersection of **Affective Computing** and **Neuro-phenomenology**. By synthesizing data from existing HRV-based stress detection models and GSR-driven mood mapping, I extrapolated a control system that doesn't just *monitor* the user, but *modulates* the environment to create a closed-loop biological circuit. I modeled this in a simulated environment where the "burgundy" atmospheric hue shifts in saturation based on the user's skin conductance—creating a visual echo of their own arousal.
 
 ## 4. External Sources
-- **Polyvagal Theory (Stephen P. Porges):** The conceptual foundation for understanding the shift between sympathetic (fight/flight) and parasympathetic (social engagement) states via the vagus nerve, essential for modulating "safety" vs "danger" in the VE. [https://www.stephenporges.com/]
-- **HeartMath Institute:** Research on Coherence and HRV as a proxy for emotional regulation. [https://www.heartmath.org/]
+- **Polyvagal Theory (Stephen P. Porges):** The conceptual foundation for understanding the shift between sympathetic (fight/flight) and parasympathetic (social engagement) states via the vagus nerve, essential for modulating "safety" vs "danger" in the VE. [<https://www.stephenporges.com/>]
+- **HeartMath Institute:** Research on Coherence and HRV as a proxy for emotional regulation. [<https://www.heartmath.org/>]
 - **International Journal of Human-Computer Studies:** Research on "Physiological Computing" and the use of GSR/HRV for adaptive interfaces to increase immersion and presence.
-- **OpenBCI / Cyton Boards:** Technical reference for the sampling rates required (minimum 250Hz for HRV) to ensure zero-latency atmospheric feedback. [https://openbci.com/]
+- **OpenBCI / Cyton Boards:** Technical reference for the sampling rates required (minimum 250Hz for HRV) to ensure zero-latency atmospheric feedback. [<https://openbci.com/>]
 
 ## 5. Open Questions
 - **Latency Gap:** How do we eliminate the 50-200ms delay between a GSR spike and the VE response to prevent the "uncanny valley" of biological feedback?

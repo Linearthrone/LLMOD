@@ -1,6 +1,6 @@
 """Local HTTP + WebSocket bridge between the HV browser extension and MCP/HV.
 
-- HTTP :17891 — MCP on-demand capture (POST /capture), health, legacy poll
+- HTTP :17891 — MCP on-demand capture (POST /capture), actions (POST /action), health, poll
 - WebSocket ws://127.0.0.1:17891/ws/cast — live tab cast (extension producer → HV consumer)
 """
 
@@ -12,7 +12,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,16 +35,30 @@ app.add_middleware(
 
 
 @dataclass
-class CaptureJob:
+class BridgeJob:
     job_id: str
+    kind: Literal["capture", "action"] = "capture"
     include_screenshot: bool = True
     include_page_map: bool = True
+    # Action fields (kind == "action")
+    action: str | None = None
+    selector: str | None = None
+    index: int | None = None
+    x: float | None = None
+    y: float | None = None
+    button: str = "left"
+    text: str | None = None
+    clear: bool = False
+    key: str | None = None
+    modifiers: list[str] = field(default_factory=list)
+    delta_x: float = 0.0
+    delta_y: float = 0.0
     created_at: float = field(default_factory=time.time)
     status: str = "pending"  # pending | claimed | done | expired
     result: dict[str, Any] | None = None
 
 
-_jobs: dict[str, CaptureJob] = {}
+_jobs: dict[str, BridgeJob] = {}
 _lock = asyncio.Lock()
 _stream_enabled: bool = False
 _latest_stream: dict[str, Any] | None = None
@@ -71,10 +85,28 @@ class CaptureRequest(BaseModel):
     timeout_seconds: float = Field(default=JOB_TIMEOUT_SECONDS, ge=5, le=120)
 
 
+class ActionRequest(BaseModel):
+    action: Literal["click", "type", "key", "scroll"]
+    selector: str | None = None
+    index: int | None = None
+    x: float | None = None
+    y: float | None = None
+    button: Literal["left", "right", "middle"] = "left"
+    text: str | None = None
+    clear: bool = False
+    key: str | None = None
+    modifiers: list[str] = Field(default_factory=list)
+    delta_x: float = 0.0
+    delta_y: float = 0.0
+    timeout_seconds: float = Field(default=JOB_TIMEOUT_SECONDS, ge=5, le=120)
+
+
 class ResultPayload(BaseModel):
     job_id: str
     ok: bool = False
     error: str | None = None
+    detail: str | None = None
+    kind: str | None = None  # extension should echo "capture" | "action"
     tab_id: int | None = None
     window_id: int | None = None
     url: str | None = None
@@ -136,6 +168,7 @@ async def health() -> dict[str, Any]:
         "cast_producers": len(_cast_producers),
         "cast_consumers": len(_cast_consumers),
         "cast_socket": "ws://127.0.0.1:17891/ws/cast",
+        "supports_actions": True,
     }
 
 
@@ -270,6 +303,37 @@ async def latest_frame_meta() -> dict[str, Any]:
     }
 
 
+def _poll_payload_for_job(job: BridgeJob) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "pending": True,
+        "stream_enabled": _stream_enabled,
+        "cast_socket": "ws://127.0.0.1:17891/ws/cast",
+        "job_id": job.job_id,
+        "kind": job.kind,
+    }
+    if job.kind == "capture":
+        base["include_screenshot"] = job.include_screenshot
+        base["include_page_map"] = job.include_page_map
+        return base
+    base.update(
+        {
+            "action": job.action,
+            "selector": job.selector,
+            "index": job.index,
+            "x": job.x,
+            "y": job.y,
+            "button": job.button,
+            "text": job.text,
+            "clear": job.clear,
+            "key": job.key,
+            "modifiers": list(job.modifiers),
+            "delta_x": job.delta_x,
+            "delta_y": job.delta_y,
+        }
+    )
+    return base
+
+
 @app.get("/poll")
 async def poll() -> dict[str, Any]:
     async with _lock:
@@ -277,14 +341,7 @@ async def poll() -> dict[str, Any]:
         for job in _jobs.values():
             if job.status == "pending":
                 job.status = "claimed"
-                return {
-                    "pending": True,
-                    "stream_enabled": _stream_enabled,
-                    "cast_socket": "ws://127.0.0.1:17891/ws/cast",
-                    "job_id": job.job_id,
-                    "include_screenshot": job.include_screenshot,
-                    "include_page_map": job.include_page_map,
-                }
+                return _poll_payload_for_job(job)
     return {
         "pending": False,
         "stream_enabled": _stream_enabled,
@@ -310,30 +367,22 @@ async def post_result(payload: ResultPayload) -> dict[str, bool]:
     return {"ok": True}
 
 
-@app.post("/capture")
-async def capture(request: CaptureRequest) -> dict[str, Any]:
-    job_id = str(uuid.uuid4())
-    job = CaptureJob(
-        job_id=job_id,
-        include_screenshot=request.include_screenshot,
-        include_page_map=request.include_page_map,
-    )
-    async with _lock:
-        _jobs[job_id] = job
-
-    deadline = time.time() + request.timeout_seconds
+async def _wait_for_job(job: BridgeJob, timeout_seconds: float) -> dict[str, Any]:
+    deadline = time.time() + timeout_seconds
     while time.time() < deadline:
         async with _lock:
             if job.status == "done" and job.result is not None:
                 result = job.result
-                _jobs.pop(job_id, None)
-                return _finalize_capture_result(result)
-            if job.status == "claimed" and time.time() - job.created_at > request.timeout_seconds:
+                _jobs.pop(job.job_id, None)
+                if job.kind == "capture":
+                    return _finalize_capture_result(result)
+                return _finalize_action_result(result)
+            if job.status == "claimed" and time.time() - job.created_at > timeout_seconds:
                 break
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
     async with _lock:
-        _jobs.pop(job_id, None)
+        _jobs.pop(job.job_id, None)
     return {
         "ok": False,
         "error": "extension_timeout",
@@ -341,11 +390,79 @@ async def capture(request: CaptureRequest) -> dict[str, Any]:
     }
 
 
+@app.post("/capture")
+async def capture(request: CaptureRequest) -> dict[str, Any]:
+    job_id = str(uuid.uuid4())
+    job = BridgeJob(
+        job_id=job_id,
+        kind="capture",
+        include_screenshot=request.include_screenshot,
+        include_page_map=request.include_page_map,
+    )
+    async with _lock:
+        _jobs[job_id] = job
+    return await _wait_for_job(job, request.timeout_seconds)
+
+
+@app.post("/action")
+async def action(request: ActionRequest) -> dict[str, Any]:
+    job_id = str(uuid.uuid4())
+    job = BridgeJob(
+        job_id=job_id,
+        kind="action",
+        include_screenshot=False,
+        include_page_map=False,
+        action=request.action,
+        selector=request.selector,
+        index=request.index,
+        x=request.x,
+        y=request.y,
+        button=request.button,
+        text=request.text,
+        clear=request.clear,
+        key=request.key,
+        modifiers=list(request.modifiers),
+        delta_x=request.delta_x,
+        delta_y=request.delta_y,
+    )
+    async with _lock:
+        _jobs[job_id] = job
+    return await _wait_for_job(job, request.timeout_seconds)
+
+
 def _expire_stale_jobs(max_age_seconds: float = 120.0) -> None:
     now = time.time()
     stale = [jid for jid, j in _jobs.items() if now - j.created_at > max_age_seconds]
     for jid in stale:
         _jobs.pop(jid, None)
+
+
+def _finalize_action_result(result: dict[str, Any]) -> dict[str, Any]:
+    # Reject capture-shaped replies from older extensions that ignore kind=action.
+    if result.get("kind") != "action":
+        return {
+            "ok": False,
+            "error": "extension_outdated",
+            "detail": "Extension handled the job as a capture. Reload unpacked extension to 1.3.0+.",
+            "hint": "chrome://extensions → House Victoria Browser Capture → Reload",
+        }
+    if not result.get("ok"):
+        return {
+            "ok": False,
+            "error": result.get("error") or "action_failed",
+            "detail": result.get("detail"),
+            "url": result.get("url"),
+            "title": result.get("title"),
+            "tab_id": result.get("tab_id"),
+        }
+    return {
+        "ok": True,
+        "detail": result.get("detail") or "ok",
+        "url": result.get("url"),
+        "title": result.get("title"),
+        "tab_id": result.get("tab_id"),
+        "hint": "Call browser_capture_tab again to verify the page after this action.",
+    }
 
 
 def _finalize_capture_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -375,8 +492,8 @@ def _finalize_capture_result(result: dict[str, Any]) -> dict[str, Any]:
         "screenshot_path": screenshot_path,
         "screenshot_base64_length": len(b64) if b64 else 0,
         "page_map": page_map,
-        "hint": "Use page_map.elements for click targets (center x/y are viewport-relative). "
-        "Prefer this over computer_use get_screenshot for browser tabs — avoids overlay depth issues.",
+        "hint": "Use page_map.elements selector/index with browser_click / browser_type. "
+        "Fall back to x/y or browser_key when needed. Prefer these over computer_use for browser tabs.",
     }
 
 

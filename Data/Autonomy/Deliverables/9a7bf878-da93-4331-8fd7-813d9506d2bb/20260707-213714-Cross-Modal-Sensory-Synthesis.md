@@ -33,7 +33,7 @@ I utilized a **Comparative Neuro-Mapping** approach:
 3.  **Simulated Feedback:** Modelled the translation of "Metallic" (blood/iron) scents into a combination of thermal cooling (15°C) and sharp, high-frequency electrical pulses to test if the brain accepts the "synthetic" version as a replacement for the "chemical" version.
 
 ### 4. External Sources
-*   **GPCR Database:** Utilization of the *Guide to Pharmacological Actions* (IUPHAR) to map olfactory receptor ligands to neural response patterns. [https://www.pharmacol.ca/](https://www.pharmacol.ca/)
+*   **GPCR Database:** Utilization of the *Guide to Pharmacological Actions* (IUPHAR) to map olfactory receptor ligands to neural response patterns. [<https://www.pharmacol.ca/>](https://www.pharmacol.ca/)
 *   **Cross-Modal Research:** Drawing from the *McGurk Effect* and *Cross-modal perception* studies (e.g., work by Charles Spence on multisensory integration) to determine how visual and haptic cues can "force" the brain to perceive a non-existent smell.
 *   **Neural Lace Theory:** Implementing principles from *Neuromorphic Engineering* (Mead, 1990) regarding the use of asynchronous spike-timing-dependent plasticity (STDP) to encode chemical data into electrical pulses.
 

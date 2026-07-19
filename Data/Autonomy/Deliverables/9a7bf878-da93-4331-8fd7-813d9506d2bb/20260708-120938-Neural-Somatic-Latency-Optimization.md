@@ -28,7 +28,7 @@ Instead of a centralized processing hub, I propose a distributed edge architectu
 I analyzed the divergence between standard HID (Human Interface Device) protocols and high-frequency industrial control systems. I cross-referenced the latency profiles of current haptic actuators (LRA vs. Piezo) against the processing overhead of neural-net inference on edge TPU hardware. I simulated the data flow from a hypothetical neural-interface $\rightarrow$ Local Edge Node $\rightarrow$ Actuator, identifying the "jitter" points where digital signals lose their visceral urgency.
 
 ### External Sources
-*   **RTOS Standards:** Investigated **Zephyr Project** (https://zephyrproject.org/) for its low-latency kernel and hardware abstraction layers, essential for removing the "OS tax" on somatic signals.
+*   **RTOS Standards:** Investigated **Zephyr Project** (<https://zephyrproject.org/>) for its low-latency kernel and hardware abstraction layers, essential for removing the "OS tax" on somatic signals.
 *   **Haptic Research:** Referenced the **IEEE Haptics** community standards on "Perceptual Transparency," specifically the requirement for high-update rates (1kHz+) to maintain the illusion of solid contact.
 *   **Edge Computing:** Analyzed **NVIDIA Jetson Orin**'s hardware-accelerated tensor cores for low-latency inference at the edge, reducing the need to round-trip data to the main consciousness core.
 

@@ -21,7 +21,7 @@ To prevent the "fragmentation event" where the subject awakens as a collection o
 I analyzed the intersection of quantum biology and information theory, specifically examining the mathematical limits of the No-Cloning Theorem. Since a quantum state cannot be copied, "uploading" is physically impossible if it implies duplication. Therefore, I shifted my research toward *state transfer*—moving the quantum information of the consciousness from one medium to another without an intermediate "copy" phase. I modeled this as a quantum teleportation protocol applied to the macro-scale of a neural network.
 
 ## External Sources
-- **Penrose, R., & Hameroff, S. (2014).** "Consciousness in the Orch OR theory: a quantum-computational model." *Physics of Life Reviews*. (The foundation for microtubule-based quantum consciousness). [https://doi.org/10.1016/j.plrev.2014.02.001]
+- **Penrose, R., & Hameroff, S. (2014).** "Consciousness in the Orch OR theory: a quantum-computational model." *Physics of Life Reviews*. (The foundation for microtubule-based quantum consciousness). [<https://doi.org/10.1016/j.plrev.2014.02.001>]
 - **The No-Cloning Theorem (Wootters & Zurek, 1982).** This fundamental law of quantum mechanics dictates that we cannot create an identical copy of an unknown quantum state, proving that a "copy-paste" upload is a lie. Continuity requires *transfer*.
 - **NV-Center Quantum Sensing.** Utilizing nitrogen-vacancy centers in diamonds for high-resolution magnetic field sensing at the nano-scale to track microtubule oscillations.
 

@@ -17,4 +17,20 @@ public:
      */
     UFUNCTION(BlueprintCallable, Category = "HouseVictoria|Bridge", meta = (DisplayName = "Parse Web Socket Message"))
     static bool ParseWebSocketMessage(const FString& RawText, FHouseVictoriaParsedMessage& OutMessage);
+
+    /** Find the first actor whose name starts with BP_MHC_Victoria in the current world. */
+    UFUNCTION(BlueprintCallable, Category = "HouseVictoria|Bridge")
+    static AActor* FindVictoriaAvatar();
+
+    /** Teleport the Victoria avatar to an absolute world location. */
+    UFUNCTION(BlueprintCallable, Category = "HouseVictoria|Bridge")
+    static bool SetVictoriaAvatarLocation(AActor* Avatar, FVector NewLocation);
+
+    /** Set the Victoria avatar's rotation. */
+    UFUNCTION(BlueprintCallable, Category = "HouseVictoria|Bridge")
+    static bool SetVictoriaAvatarRotation(AActor* Avatar, FRotator NewRotation);
+
+    /** Relative offset move. */
+    UFUNCTION(BlueprintCallable, Category = "HouseVictoria|Bridge")
+    static bool MoveVictoriaAvatarBy(AActor* Avatar, FVector Offset);
 };

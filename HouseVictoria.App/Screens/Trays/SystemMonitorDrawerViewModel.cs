@@ -29,10 +29,25 @@ namespace HouseVictoria.App.Screens.Trays
             get => _isDrawerOpen;
             set
             {
-                if (SetProperty(ref _isDrawerOpen, value))
+                if (!SetProperty(ref _isDrawerOpen, value))
+                    return;
+
+                void ApplyVisibility()
                 {
-                    _drawerPanel.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+                    try
+                    {
+                        _drawerPanel.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Drawer visibility: {ex.Message}");
+                    }
                 }
+
+                if (_dispatcher.CheckAccess())
+                    ApplyVisibility();
+                else
+                    _ = _dispatcher.BeginInvoke(ApplyVisibility, DispatcherPriority.Normal);
             }
         }
 
@@ -293,10 +308,22 @@ namespace HouseVictoria.App.Screens.Trays
 
         private void RunOnUiThread(Action action)
         {
+            void SafeRun()
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"SystemMonitor UI update: {ex.Message}");
+                }
+            }
+
             if (_dispatcher.CheckAccess())
-                action();
+                SafeRun();
             else
-                _dispatcher.Invoke(action);
+                _ = _dispatcher.BeginInvoke(SafeRun, DispatcherPriority.Normal);
         }
 
         private void OnVirtualEnvironmentStatusChanged(object? sender, VirtualEnvironmentEventArgs e)
@@ -367,20 +394,23 @@ namespace HouseVictoria.App.Screens.Trays
 
             try
             {
-                VirtualEnvironmentConnectButtonText = "Connecting...";
-                var connected = await _virtualEnvironmentService.ConnectAsync(endpoint);
+                RunOnUiThread(() => VirtualEnvironmentConnectButtonText = "Connecting...");
+                var connected = await _virtualEnvironmentService.ConnectAsync(endpoint).ConfigureAwait(false);
                 if (!connected)
                 {
-                    MessageBox.Show($"Failed to connect to Virtual Environment at {endpoint}. Please check that Unreal Engine is running and the WebSocket server is active.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await _dispatcher.InvokeAsync(() =>
+                        MessageBox.Show($"Failed to connect to Virtual Environment at {endpoint}. Please check that Unreal Engine is running and the WebSocket server is active.", "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Warning));
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error connecting to Virtual Environment: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                await _dispatcher.InvokeAsync(() =>
+                    MessageBox.Show($"Error connecting to Virtual Environment: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error));
             }
             finally
             {
-                VirtualEnvironmentConnectButtonText = VirtualEnvironmentIsConnected ? "Reconnect" : "Connect";
+                RunOnUiThread(() =>
+                    VirtualEnvironmentConnectButtonText = VirtualEnvironmentIsConnected ? "Reconnect" : "Connect");
             }
         }
 

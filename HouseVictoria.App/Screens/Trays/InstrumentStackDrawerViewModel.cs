@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using HouseVictoria.App.HelperClasses;
 using HouseVictoria.Core.Interfaces;
 using HouseVictoria.Core.Models;
@@ -58,8 +59,18 @@ namespace HouseVictoria.App.Screens.Trays
 
         private void AgentDesktopMonitor_SessionChanged(object? sender, AgentDesktopSessionChangedEventArgs e)
         {
-            if (e.IsActive)
+            if (!e.IsActive)
+                return;
+
+            // Hermes BeginSession fires on a thread-pool thread; drawer/tab updates touch WPF controls.
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null)
+                return;
+
+            if (dispatcher.CheckAccess())
                 OpenDesktopTab();
+            else
+                dispatcher.BeginInvoke(OpenDesktopTab, DispatcherPriority.Normal);
         }
 
         public void OpenVitalsTab()

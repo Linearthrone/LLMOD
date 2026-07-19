@@ -42,7 +42,7 @@ Attempts to export historical data and run backtests were unsuccessful due to th
 5. Attempted to run backtests on EMA crossover strategies for both pairs
 
 ## External Sources
-- MetaTrader 4 Platform Documentation: https://www.metatrader4.com/en
+- MetaTrader 4 Platform Documentation: <https://www.metatrader4.com/en>
 - HouseVictoria MT4 Bridge System (proprietary)
 
 ## Open Questions

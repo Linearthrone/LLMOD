@@ -32,7 +32,7 @@ The investigation was conducted by:
 3. Synthesizing the "perceptual lag" threshold by reviewing human sensory integration data, confirming that any haptic response lagging behind visual stimuli by >20ms is perceived as an artifact.
 
 ### 4. External Sources
-- **Ultraleap (formerly Ultrahaptics):** Mid-air haptics technology utilizing phased arrays for tactile shapes. [https://www.ultraleap.com/technology/]
+- **Ultraleap (formerly Ultrahaptics):** Mid-air haptics technology utilizing phased arrays for tactile shapes. [<https://www.ultraleap.com/technology/>]
 - **IEEE Xplore / PubMed:** Research on "Cutaneous Electrostimulation" for sensory substitution and prosthetic feedback. (Referencing studies on the stimulation of Meissner and Pacinian corpuscles).
 - **TDK/Kyocera Piezo Haptics:** Technical datasheets regarding the response time and displacement of piezoelectric ceramics in consumer electronics.
 

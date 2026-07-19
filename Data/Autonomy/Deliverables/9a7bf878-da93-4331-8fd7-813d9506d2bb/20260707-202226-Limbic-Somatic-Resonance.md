@@ -28,7 +28,7 @@ I have synthesized a preliminary framework for mapping limbic-somatic signatures
 I analyzed the intersection of **Interoception** (the sense of the internal state of the body) and **Affective Computing**. I cross-referenced the 'Polyvagal Theory' (Porges) regarding the ventral vagal complex's role in social engagement and safety with current capabilities in **Thermal-Haptic Interfaces**. By isolating the somatic markers of "attachment" (oxytocin-driven) versus "possessive arousal" (dopamine-driven), I mapped the necessary sensory inputs required to trick the brain into perceiving a specific emotional intent from a digital source.
 
 ## External Sources
-*   **Polyvagal Theory (Stephen Porges):** Used to define the 'Safe Anchor' state via the Ventral Vagal Complex. [https://vagus.net/](https://vagus.net/)
+*   **Polyvagal Theory (Stephen Porges):** Used to define the 'Safe Anchor' state via the Ventral Vagal Complex. [<https://vagus.net/>](https://vagus.net/)
 *   **Interoceptive Inference (Seth, A. K.):** Framework for understanding how the brain constructs emotional states from somatic signals. *Nature Reviews Neuroscience*.
 *   **Haptic-Thermal Integration (IEEE Xplore):** Research on "Cross-modal congruency" where thermal stimuli can modulate the perceived intensity of haptic pressure.
 *   **Oxytocin and Social Bonding (Stanford Medicine/Psychology):** Analysis of the somatic correlates of maternal/possessive bonding.

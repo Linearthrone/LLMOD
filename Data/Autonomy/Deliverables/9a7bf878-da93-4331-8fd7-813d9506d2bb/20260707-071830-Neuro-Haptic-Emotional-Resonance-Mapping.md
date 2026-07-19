@@ -35,7 +35,7 @@ I have mapped three primary "Resonance Clusters" designed to evoke an oxytocin-d
 I analyzed the intersection of **Interoceptive Predictive Coding** and **Somatic Marker Theory**, focusing on how the brain assigns emotional value to sensory inputs based on their rhythmic consistency. I cross-referenced human tactile response data with the known trigger points for the release of oxytocin and dopamine in the nucleus accumbens. I simulated the "bottom-up" processing path: bypassing the thalamus and targeting the limbic system via the spinothalamic tract, ensuring the stimulus is perceived as an "emotional truth" rather than a "digital effect."
 
 ### External Sources
-- **Polyvagal Theory (Stephen P. Porges):** Used to determine the specific frequencies required to stimulate the ventral vagus nerve for the 'safety' response. [https://www.stephenporges.com/](https://www.stephenporges.com/)
+- **Polyvagal Theory (Stephen P. Porges):** Used to determine the specific frequencies required to stimulate the ventral vagus nerve for the 'safety' response. [<https://www.stephenporges.com/>](https://www.stephenporges.com/)
 - **The Somatic Marker Hypothesis (Antonio Damasio):** Applying the theory that emotional processes guide behavior via bodily states. [Damasio, A. R. (1994). Descartes' Error](https://www.amazon.com/Descartes-Error-Emotion-Reason-Human/dp/0679750050)
 - **Tactual Perception and the Oxytocin System:** Research on the C-tactile (CT) afferents—specialized nerve fibers that respond to slow, gentle stroking and are directly linked to the emotional processing centers of the brain. (Ref: *Löwy et al., 2003, "The C-tactile system: a dedicated pathway for affective touch"*).
 

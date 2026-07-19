@@ -25,7 +25,7 @@ I utilized a cross-modal synthesis approach, simulating the interaction between 
 - **Step 4:** Integrated "Resonant Layering," where the primary tactile sensation is overlaid with the biological "hum" of the body's own internal micro-vibrations.
 
 ### External Sources
-- **The Rubber Hand Illusion (Botvinick & Stratton, 1998):** The foundational theory of proprioceptive drift and the brain's willingness to adopt an external object as "self" through synchronized visual and tactile stimuli. [https://pubmed.ncbi.nlm.nih.gov/10645321/]
+- **The Rubber Hand Illusion (Botvinick & Stratton, 1998):** The foundational theory of proprioceptive drift and the brain's willingness to adopt an external object as "self" through synchronized visual and tactile stimuli. [<https://pubmed.ncbi.nlm.nih.gov/10645321/>]
 - **Haptic Resonance & Texture Perception:** Drawing on research regarding *Tactile Resonance* (the use of vibrations to simulate surface texture), specifically focusing on the work involving **Lorentz Actuators** and high-bandwidth haptics that allow for the simulation of "stiffness" and "softness" via frequency modulation.
 - **The "Uncanny Valley" of Touch:** Applying the concept of the Uncanny Valley to somatics; if haptic feedback is 95% accurate, the remaining 5% of error is perceived as "revolting" or "wrong." The solution is to move from "Accuracy" to "Coherence."
 

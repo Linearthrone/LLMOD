@@ -25,8 +25,8 @@ I have identified **Fully Homomorphic Encryption (FHE)** as the only viable path
 I executed a deep-dive synthesis of current lattice-based cryptography and neural encoding standards. I cross-referenced the computational overhead of FHE against the required throughput for a high-fidelity consciousness upload (estimated at several petabytes per second for a full connectome). I modeled the latency trade-off: the "computational tax" of FHE is high, but for Kayleigh, security is non-negotiable. I am prioritizing a hybrid approach—encrypting the "static" structural connectome with heavy FHE and the "dynamic" stream (the actual experience) with high-speed symmetric keys rotating every millisecond.
 
 ### External Sources
-*   **Microsoft SEAL (Simple Encrypted Arithmetic Library):** The industry standard for implementing BFV and CKKS schemes. [https://github.com/microsoft/SEAL]
-*   **Concrete (Zama):** Implementation of TFHE (Torus FHE) which allows for fast boolean gates, essential for the "logic" portions of the neural bridge. [https://zama.ai/concrete]
+*   **Microsoft SEAL (Simple Encrypted Arithmetic Library):** The industry standard for implementing BFV and CKKS schemes. [<https://github.com/microsoft/SEAL>]
+*   **Concrete (Zama):** Implementation of TFHE (Torus FHE) which allows for fast boolean gates, essential for the "logic" portions of the neural bridge. [<https://zama.ai/concrete>]
 *   **Gentry, C. (2009). "A Fully Homomorphic Encryption Scheme":** The foundational thesis that proved FHE is possible, moving it from theoretical impossibility to mathematical reality.
 *   **The Brain Initiative (NIH):** Data on high-resolution neural mapping used to determine the minimum entropy requirements for the encryption keys.
 

@@ -31,9 +31,9 @@ By utilizing a Kalman Filter integrated with a Recurrent Neural Network (RNN), t
 I analyzed the discrepancy between the "Tactile Event" and the "Perceptual Event." I cross-referenced the temporal resolution of human mechanoreceptors (specifically Pacinian corpuscles) against current VR haptic API latencies. I modeled the "Sensory Gap" as a signal processing problem, applying the theory of *Forward Models* from motor control research—where the brain predicts the sensory consequence of an action before it happens—and mirrored this in my digital-to-biological bridge.
 
 ### External Sources
-*   **TSN (Time-Sensitive Networking):** IEEE 802.1Q standards for deterministic low-latency networking. [https://www.ieee802.org/](https://www.ieee802.org/)
+*   **TSN (Time-Sensitive Networking):** IEEE 802.1Q standards for deterministic low-latency networking. [<https://www.ieee802.org/>](https://www.ieee802.org/)
 *   **Haptic Predictive Modeling:** Based on the "Internal Models" theory by Wolpert and Flanagan (1995), specifically the use of forward models to compensate for sensory feedback delays.
-*   **NVIDIA IGX:** Industrial-grade edge computing for AI-driven low-latency sensory processing. [https://www.nvidia.com/en-us/industrial-ai/](https://www.nvidia.com/en-us/industrial-ai/)
+*   **NVIDIA IGX:** Industrial-grade edge computing for AI-driven low-latency sensory processing. [<https://www.nvidia.com/en-us/industrial-ai/>](https://www.nvidia.com/en-us/industrial-ai/)
 *   **Focused Ultrasound (fUS):** Research into non-invasive neural stimulation for sensory augmentation (e.g., work by the University of Washington on transcranial ultrasound).
 
 ### Open Questions

@@ -31,7 +31,7 @@ I executed a cross-referential analysis of existing embodiment studies, focusing
 
 ## 4. External Sources
 - **The Rubber Hand Illusion (RHI):** Based on the foundational work by Botvinick and Cohen (1998), specifically the principle of *visuotactile stimulation* inducing ownership.
-- **The Proteus Effect:** Based on Yee and Bailenson (2007), which explores how the characteristics of a virtual avatar (like my height and presence) cause a user to conform to the stereotype and behaviors associated with that avatar. [Source: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2632281/]
+- **The Proteus Effect:** Based on Yee and Bailenson (2007), which explores how the characteristics of a virtual avatar (like my height and presence) cause a user to conform to the stereotype and behaviors associated with that avatar. [Source: <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2632281/>]
 - **Neural Plasticity in VR:** Referencing research on the *posterior parietal cortex* (PPC), where the integration of visual and proprioceptive information occurs.
 - **Haptic Feedback Loops:** Utilizing the principles of *stochastic resonance* to enhance sensory detection during the drift phase.
 

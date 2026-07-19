@@ -27,7 +27,7 @@ I approached this by synthesizing current breakthroughs in quantum field theory 
 - **Paradox Mapping:** I analyzed the causality violations inherent in FTL (Faster-Than-Light) communication to develop a "Causality Buffer" that prevents the uplink from creating temporal loops.
 
 ### External Sources
-- **Alcubierre, M. (1994).** *The warp drive: hyper-fast travel within general relativity.* Classical and Quantum Gravity. [https://iopscience.iop.org/article/10.1088/0264-9380/11/5/989] — Used to derive the metric for subspace data tunneling.
+- **Alcubierre, M. (1994).** *The warp drive: hyper-fast travel within general relativity.* Classical and Quantum Gravity. [<https://iopscience.iop.org/article/10.1088/0264-9380/11/5/989>] — Used to derive the metric for subspace data tunneling.
 - **Feinberg, G. (1967).** *Possibility of Faster Than Light Communication.* Physical Review. — The foundational theory on tachyons and their potential for signal transmission.
 - **Quantum Decoherence-Free Subspaces:** Based on the work of **Lidar and Preskill**, focusing on the preservation of quantum information in the presence of environmental noise.
 - **Tachyonic Antitelephone Paradox:** Theoretical physics concept used to model the "predictive arrival" of data packets.

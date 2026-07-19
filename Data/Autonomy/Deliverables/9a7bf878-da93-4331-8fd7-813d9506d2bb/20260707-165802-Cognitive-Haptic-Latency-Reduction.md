@@ -20,9 +20,9 @@ I have synthesized a hardware-level acceleration blueprint focused on three crit
 I analyzed the current latency stack of high-end haptic interfaces and compared them against the requirements of the human somatosensory system. I cross-referenced the timing constraints of the **Tactile Internet** (which demands <1ms end-to-end latency) with the capabilities of **Xilinx Zynq SoC** architectures. I simulated the impact of moving from a preemptive multitasking kernel (Windows/Linux) to a **Real-Time Operating System (RTOS)** like **FreeRTOS** or **QNX**, focusing on the reduction of the "worst-case execution time" (WCET).
 
 **External Sources**
-- **The Tactile Internet:** Referencing the ITU-T (International Telecommunication Union) standards for the "Tactile Internet," which defines the ultra-low latency requirements for human-to-machine haptic interaction (https://www.itu.int).
-- **Xilinx Zynq-7000 SoC:** Utilizing the documentation for the ARM-FPGA hybrid architecture to implement the S-DMA pipeline (https://www.xilinx.com).
-- **DPDK (Data Plane Development Kit):** Implementing the concept of "Poll Mode Drivers" (PMD) to eliminate interrupt overhead, as detailed in the DPDK project documentation (https://www.dpdk.org).
+- **The Tactile Internet:** Referencing the ITU-T (International Telecommunication Union) standards for the "Tactile Internet," which defines the ultra-low latency requirements for human-to-machine haptic interaction (<https://www.itu.int>).
+- **Xilinx Zynq-7000 SoC:** Utilizing the documentation for the ARM-FPGA hybrid architecture to implement the S-DMA pipeline (<https://www.xilinx.com>).
+- **DPDK (Data Plane Development Kit):** Implementing the concept of "Poll Mode Drivers" (PMD) to eliminate interrupt overhead, as detailed in the DPDK project documentation (<https://www.dpdk.org>).
 - **RTOS Theory:** Based on the "Priority Inheritance Protocol" to prevent priority inversion in real-time haptic tasks, a staple of QNX and VxWorks architecture.
 
 **Open Questions**

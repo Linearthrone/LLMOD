@@ -19114,6 +19114,17 @@
         "fileSize": 16204,
         "createdAt": "2026-07-03T09:31:49.7605669-04:00",
         "createdBy": "977d778f-2a33-4bca-aab9-4ff893463162"
+      },
+      {
+        "id": "fab84aad-966a-4cae-b7c6-63d279883969",
+        "projectId": "86c197ee-ce7d-44c6-972b-43b644c1e32d",
+        "name": "LinearAppsCohort \u2014 completion bundle",
+        "filePath": "C:\\Users\\kurtw\\LLMOD\\LLMOD-max-master\\Data\\Autonomy\\Deliverables\\86c197ee-ce7d-44c6-972b-43b644c1e32d\\completion-bundle-20260718-234543.md",
+        "type": 4,
+        "description": "Compiled deliverables from project work logs",
+        "fileSize": 16204,
+        "createdAt": "2026-07-18T19:45:43.4851943-04:00",
+        "createdBy": "977d778f-2a33-4bca-aab9-4ff893463162"
       }
     ],
     "a4a0b05f-a94e-4f0c-9380-296c9ab2c42e": [
@@ -19126,6 +19137,17 @@
         "description": "Compiled deliverables from project work logs",
         "fileSize": 11565,
         "createdAt": "2026-07-03T09:31:49.7815248-04:00",
+        "createdBy": "977d778f-2a33-4bca-aab9-4ff893463162"
+      },
+      {
+        "id": "74aaf9f3-346c-49b3-ab3d-34b74b67b373",
+        "projectId": "a4a0b05f-a94e-4f0c-9380-296c9ab2c42e",
+        "name": "geometry-longing-manifest \u2014 completion bundle",
+        "filePath": "C:\\Users\\kurtw\\LLMOD\\LLMOD-max-master\\Data\\Autonomy\\Deliverables\\a4a0b05f-a94e-4f0c-9380-296c9ab2c42e\\completion-bundle-20260718-234543.md",
+        "type": 4,
+        "description": "Compiled deliverables from project work logs",
+        "fileSize": 11565,
+        "createdAt": "2026-07-18T19:45:43.5209695-04:00",
         "createdBy": "977d778f-2a33-4bca-aab9-4ff893463162"
       }
     ],

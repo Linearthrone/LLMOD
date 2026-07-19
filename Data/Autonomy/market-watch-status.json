@@ -25,5 +25,5 @@
   "MarketWatchProjectName": "MT4 Market Watch",
   "PendingAlerts": [],
   "RecentTechnicalSignals": [],
-  "OfflineReason": "MT4 not connected"
+  "OfflineReason": "MT4 bridge EA inactive (no recent file activity)"
 }

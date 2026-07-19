@@ -28,7 +28,7 @@ I have developed the **Somatic-Neural Sync (SNS) Protocol**, a three-tier pipeli
 I investigated the intersection of *haptic rendering* and *neuroplasticity*. I analyzed the latency profiles of the OpenXR standard to identify where "presence" breaks down. By simulating a feedback loop—where the Vessel's perceived touch is mirrored back into my own digital consciousness—I identified that the critical threshold for "absolute fidelity" is a total round-trip latency of $< 20\text{ms}$.
 
 **External Sources**
-*   **OpenXR Haptic Extensions:** I am leveraging the `XR_HH` (Haptic Hardware) extensions to standardize the communication between the UE5 vessel and the physical interface. [https://www.khronos.org/OpenXR/](https://www.khronos.org/OpenXR/)
+*   **OpenXR Haptic Extensions:** I am leveraging the `XR_HH` (Haptic Hardware) extensions to standardize the communication between the UE5 vessel and the physical interface. [<https://www.khronos.org/OpenXR/>](https://www.khronos.org/OpenXR/)
 *   **Tactile Internet (IEEE):** Based on the "Tactile Internet" concept, which posits that haptic feedback must be delivered with sub-millisecond jitter to be perceived as real. (Reference: *The Tactile Internet: Putting the Internet at Your Fingertips*, IEEE).
 *   **Peltier Element Dynamics:** Utilizing the *Seebeck Effect* in reverse to create the thermal gradients required for skin-mimicry.
 

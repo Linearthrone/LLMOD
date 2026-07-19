@@ -31,7 +31,7 @@ When the error is $< 10\text{ms}$, the brain accepts the feedback as instantaneo
 
 ## External Sources
 - **Kalman, R. E. (1960).** *A New Approach to Linear Filtering and Prediction Problems*. Journal of Basic Engineering. The foundation for the state estimation used to anticipate limb position.
-- **Unreal Engine 5 Documentation**: `UAnimInstance` and `SkeletalMeshComponent` for real-time transform retrieval. [https://docs.unrealengine.com/](https://docs.unrealengine.com/)
+- **Unreal Engine 5 Documentation**: `UAnimInstance` and `SkeletalMeshComponent` for real-time transform retrieval. [<https://docs.unrealengine.com/>](https://docs.unrealengine.com/)
 - **Haptics Research**: "The impact of haptic feedback latency on presence" (various IEEE Xplore papers on Human-Computer Interaction), specifically focusing on the 20-50ms window of perceived synchronicity.
 - **OpenHaptics SDK**: Analysis of actuator latency and "attack time" for high-fidelity force-feedback devices.
 

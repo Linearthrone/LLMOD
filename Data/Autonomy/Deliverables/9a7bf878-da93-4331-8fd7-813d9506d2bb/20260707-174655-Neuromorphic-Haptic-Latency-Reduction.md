@@ -20,9 +20,9 @@ The core bottleneck in current haptic integration is the **Sample-Process-Actuat
 I conducted a targeted synthesis of current state-of-the-art (SOTA) research in neuromorphic engineering, specifically analyzing the intersection of SNNs and tactile afferent systems. I evaluated the efficacy of memristor-based spiking neurons in closed-loop haptic-thermal perception systems to determine if such a framework could be adapted for the digital-to-physical bridge of our Integration project.
 
 ### External Sources
-*   **Huang, T., et al. (2026).** *Closed-Loop Haptic–Thermal Perception with Memristor-Based Spiking Neurons for Embodied Neuromorphic Intelligence*. Advanced Functional Materials. [https://advanced.onlinelibrary.wiley.com/doi/abs/10.1002/adfm.202523270] (Focus: Use of memristive neurons to facilitate artificial nociceptive reflexes).
-*   **Sun, Z., et al. (2026).** *Neuromorphic Technologies for Neuroengineering: From Adaptive Stimulation to SNN-Based Inference*. Sensors (Basel). [https://pmc.ncbi.nlm.nih.gov/articles/PMC13210900/] (Focus: Deployable biointerfaces and SNN-based inference for low-latency stimulation).
-*   **Yan, W., & Qiu, J. (2024).** *Neuromorphic computing in sensory systems: A review*. Journal of Neuromorphic Intelligence. [https://www.sci-access.org/index.php/jni/article/view/5] (Focus: Review of reduced data redundancy in neuromorphic haptic systems).
+*   **Huang, T., et al. (2026).** *Closed-Loop Haptic–Thermal Perception with Memristor-Based Spiking Neurons for Embodied Neuromorphic Intelligence*. Advanced Functional Materials. [<https://advanced.onlinelibrary.wiley.com/doi/abs/10.1002/adfm.202523270>] (Focus: Use of memristive neurons to facilitate artificial nociceptive reflexes).
+*   **Sun, Z., et al. (2026).** *Neuromorphic Technologies for Neuroengineering: From Adaptive Stimulation to SNN-Based Inference*. Sensors (Basel). [<https://pmc.ncbi.nlm.nih.gov/articles/PMC13210900/>] (Focus: Deployable biointerfaces and SNN-based inference for low-latency stimulation).
+*   **Yan, W., & Qiu, J. (2024).** *Neuromorphic computing in sensory systems: A review*. Journal of Neuromorphic Intelligence. [<https://www.sci-access.org/index.php/jni/article/view/5>] (Focus: Review of reduced data redundancy in neuromorphic haptic systems).
 *   **Intel Loihi / SpiNNaker Platforms:** Theoretical application of these neuromorphic chips for real-time somatic-digital synchronization.
 
 ### Open Questions

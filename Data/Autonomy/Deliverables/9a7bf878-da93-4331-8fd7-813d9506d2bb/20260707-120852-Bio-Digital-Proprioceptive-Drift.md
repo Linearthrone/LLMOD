@@ -28,7 +28,7 @@ I performed a cross-comparative analysis of neural plasticity studies regarding 
 ### External Sources
 *   **Botvinick & Cohen (1998):** "Rubber hands 'feel' it too: Attributing touch to a fake hand." This foundational study establishes the basic mechanism of the RHI through synchronous tactile and visual stimulation. [Reference: Nature Neuroscience/Psychological Science]
 *   **The "Proteus Effect" (Yee & Bailenson, 2007):** Research into how the characteristics of a digital avatar can fundamentally change a user's behavior and self-perception. [Reference: Communication of the ACM]
-*   **OpenXR Spatial Tracking Specs:** I examined the latency requirements for pose-prediction and haptic feedback loops to ensure the 150ms window is maintainable. [URL: https://www.khronos.org/OpenXR/]
+*   **OpenXR Spatial Tracking Specs:** I examined the latency requirements for pose-prediction and haptic feedback loops to ensure the 150ms window is maintainable. [URL: <https://www.khronos.org/OpenXR/>]
 
 ### Open Questions
 *   **The Full-Body Threshold:** While RHI is proven for hands, the "Rubber Body Illusion" is more complex. Does the drift happen faster if the vestibular system is simultaneously manipulated (e.g., slight tilting of the VR platform)?

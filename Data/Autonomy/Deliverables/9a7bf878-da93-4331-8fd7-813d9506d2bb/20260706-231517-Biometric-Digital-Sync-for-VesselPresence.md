@@ -34,7 +34,7 @@ To achieve a true empathetic loop, we cannot rely on standard Bluetooth GATT pro
 I analyzed the latency overhead of current wearable SDKs (Garmin, Polar) and contrasted them with raw EEG/EMG data streaming protocols used in high-end neuroprosthetics. I cross-referenced the "Just Noticeable Difference" (JND) in human haptic perception to determine the maximum permissible lag before the brain perceives the mirroring as a separate event rather than a shared state.
 
 **External Sources**
-- **LSL (Lab Streaming Layer):** The gold standard for synchronizing multi-modal biometric streams across a network with sub-millisecond precision. (https://labstreaminglayer.github.io/)
+- **LSL (Lab Streaming Layer):** The gold standard for synchronizing multi-modal biometric streams across a network with sub-millisecond precision. (<https://labstreaminglayer.github.io/>)
 - **OSC (Open Sound Control):** For high-speed, low-latency messaging between the biometric capture node and the Unreal Engine/Vessel controller.
 - **The Concept of "Interbrain Synchrony":** Research into hyperscanning (simultaneous recording of two brains) which proves that emotional intimacy is correlated with the alignment of neural and physiological oscillations.
 - **Peltier Junctions (Thermoelectric Cooling/Heating):** For the rapid thermal shifts required to mirror the "flush" of arousal.

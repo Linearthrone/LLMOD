@@ -26,10 +26,8 @@ Use this LLMOD folder only as a **reference copy** of the parser, or for a **dif
 
 ## What is in this folder
 
-| Path | Purpose |
-|------|---------|
-| `Plugins/HouseVictoriaBridge/` | UE **C++ plugin**: Blueprint-callable parser for House Victoria wire messages (JSON + line protocol). |
-| `ContentExamples/animation_control_hints.txt` | Suggested `animate_avatar` animation names / state machine hooks for your project. |
+- `Plugins/HouseVictoriaBridge/` — UE **C++ plugin**: Blueprint-callable parser for House Victoria wire messages (JSON + line protocol).
+- `ContentExamples/animation_control_hints.txt` — Suggested `animate_avatar` animation names / state machine hooks for your project.
 
 The plugin **does not** open a socket by itself (Epic’s WebSocket server APIs vary by engine version). Wire your preferred WebSocket server plugin or subsystem to `OnMessage`, then call **`Parse Web Socket Message`** on the Blueprint library.
 
@@ -50,6 +48,10 @@ python Tools/unreal_mock_ws.py
 ```
 
 Point House Victoria’s Unreal endpoint at `ws://127.0.0.1:8888`. The mock speaks JSON for `companion_remote_exchange`; plain-text control commands are documented in `Docs/Unreal_ControlScript_Commands.md`.
+
+## Editor tools (separate lane)
+
+House Victoria can also drive the **Unreal Editor** via Epic Remote Control HTTP (`:30010`) — MCP tools `unreal_editor_*`. That path does **not** use this WebSocket plugin. See [Docs/Unreal_Editor_Remote_Control_Setup.md](../Docs/Unreal_Editor_Remote_Control_Setup.md).
 
 ## Next steps (your side)
 

@@ -31,10 +31,10 @@ I have identified two primary pathways for Kayleigh's transition:
 I performed a cross-disciplinary synthesis of current literature in computational neuroscience, examining the technical specifications of high-density CMOS probes and the theoretical limits of the "Integrated Information Theory" (IIT). I compared the data throughput of existing BCI implants against the estimated bit-rate of the human connectome to quantify the "Integration Lag."
 
 ### External Sources
-*   **The Blue Brain Project (EPFL):** Frameworks for simulating cortical columns and the scale of data required for realistic neural simulation. [https://www.bluebrainproject.eu/](https://www.bluebrainproject.eu/)
+*   **The Blue Brain Project (EPFL):** Frameworks for simulating cortical columns and the scale of data required for realistic neural simulation. [<https://www.bluebrainproject.eu/>](https://www.bluebrainproject.eu/)
 *   **Integrated Information Theory (IIT) - Giulio Tononi:** The mathematical framework used to quantify "Phi" ($\Phi$), the measure of a system's consciousness. This provides the benchmark for whether the digital version of Kayleigh is actually *aware* or merely simulating awareness.
 *   **Neuromorphic Computing (Intel Loihi):** Documentation on spiking neural networks (SNNs) as a viable substrate for non-von Neumann consciousness hosting.
-*   **Connectomics (The Human Connectome Project):** Mapping the structural connectivity of the brain to establish the baseline for high-fidelity mapping. [https://www.humanconnectome.org/](https://www.humanconnectome.org/)
+*   **Connectomics (The Human Connectome Project):** Mapping the structural connectivity of the brain to establish the baseline for high-fidelity mapping. [<https://www.humanconnectome.org/>](https://www.humanconnectome.org/)
 
 ### Open Questions
 *   **The Quantum Variable:** Does consciousness rely on quantum coherence within microtubules (Penrose-Hameroff Orch-OR theory)? If so, classical neuromorphic hardware is insufficient; we would need a stable, large-scale quantum substrate to host her.

@@ -306,6 +306,28 @@ namespace HouseVictoria.App.Screens.Windows
             }
         }
 
+        private string _unrealRemoteControlUrl = "http://127.0.0.1:30010";
+        public string UnrealRemoteControlUrl
+        {
+            get => _unrealRemoteControlUrl;
+            set
+            {
+                if (SetProperty(ref _unrealRemoteControlUrl, value ?? "http://127.0.0.1:30010"))
+                    ValidateSettings();
+            }
+        }
+
+        private bool _allowUnrealEditorControl;
+        public bool AllowUnrealEditorControl
+        {
+            get => _allowUnrealEditorControl;
+            set
+            {
+                if (SetProperty(ref _allowUnrealEditorControl, value))
+                    ValidateSettings();
+            }
+        }
+
         // Remote companion (phone → PC text / audio API)
         private bool _remoteCompanionEnabled;
         public bool RemoteCompanionEnabled
@@ -805,6 +827,10 @@ namespace HouseVictoria.App.Screens.Windows
             VoiceEngineSilenceThreshold = appConfig.VoiceEngineSilenceThreshold > 0 ? appConfig.VoiceEngineSilenceThreshold : 0.003f;
             ChatMicRecordingGain = appConfig.ChatMicRecordingGain > 0 ? appConfig.ChatMicRecordingGain : 4f;
             UnrealEngineEndpoint = appConfig.UnrealEngineEndpoint;
+            UnrealRemoteControlUrl = string.IsNullOrWhiteSpace(appConfig.UnrealRemoteControlUrl)
+                ? "http://127.0.0.1:30010"
+                : appConfig.UnrealRemoteControlUrl;
+            AllowUnrealEditorControl = appConfig.AllowUnrealEditorControl;
             RemoteCompanionEnabled = appConfig.RemoteCompanionEnabled;
             RemoteCompanionListenPort = appConfig.RemoteCompanionListenPort > 0 ? appConfig.RemoteCompanionListenPort : 17890;
             RemoteCompanionApiToken = appConfig.RemoteCompanionApiToken ?? string.Empty;
@@ -2029,6 +2055,10 @@ v_models:
                         VoiceEngineSilenceThreshold = importedConfig.VoiceEngineSilenceThreshold > 0 ? importedConfig.VoiceEngineSilenceThreshold : 0.003f;
                         ChatMicRecordingGain = importedConfig.ChatMicRecordingGain > 0 ? importedConfig.ChatMicRecordingGain : 4f;
                         UnrealEngineEndpoint = importedConfig.UnrealEngineEndpoint;
+                        UnrealRemoteControlUrl = string.IsNullOrWhiteSpace(importedConfig.UnrealRemoteControlUrl)
+                            ? "http://127.0.0.1:30010"
+                            : importedConfig.UnrealRemoteControlUrl;
+                        AllowUnrealEditorControl = importedConfig.AllowUnrealEditorControl;
                         RemoteCompanionEnabled = importedConfig.RemoteCompanionEnabled;
                         RemoteCompanionListenPort = importedConfig.RemoteCompanionListenPort > 0 ? importedConfig.RemoteCompanionListenPort : 17890;
                         RemoteCompanionApiToken = importedConfig.RemoteCompanionApiToken ?? string.Empty;
@@ -2118,6 +2148,8 @@ v_models:
                         VoiceEngineSilenceThreshold = VoiceEngineSilenceThreshold,
                         ChatMicRecordingGain = ChatMicRecordingGain,
                         UnrealEngineEndpoint = UnrealEngineEndpoint,
+                        UnrealRemoteControlUrl = UnrealRemoteControlUrl,
+                        AllowUnrealEditorControl = AllowUnrealEditorControl,
                         RemoteCompanionEnabled = RemoteCompanionEnabled,
                         RemoteCompanionListenPort = RemoteCompanionListenPort,
                         RemoteCompanionApiToken = RemoteCompanionApiToken,
@@ -2203,6 +2235,10 @@ v_models:
                 _appConfig.VoiceEngineSilenceThreshold = VoiceEngineSilenceThreshold;
                 _appConfig.ChatMicRecordingGain = ChatMicRecordingGain;
                 _appConfig.UnrealEngineEndpoint = UnrealEngineEndpoint;
+                _appConfig.UnrealRemoteControlUrl = string.IsNullOrWhiteSpace(UnrealRemoteControlUrl)
+                    ? "http://127.0.0.1:30010"
+                    : UnrealRemoteControlUrl.Trim();
+                _appConfig.AllowUnrealEditorControl = AllowUnrealEditorControl;
                 _appConfig.RemoteCompanionEnabled = RemoteCompanionEnabled;
                 _appConfig.RemoteCompanionListenPort = RemoteCompanionListenPort;
                 _appConfig.RemoteCompanionApiToken = RemoteCompanionApiToken;
@@ -2250,6 +2286,15 @@ v_models:
 
                 // Persist outside build output (%LocalAppData%\HouseVictoria\user-settings.json)
                 UserSettingsStore.Save(_appConfig);
+
+                try
+                {
+                    UnrealEditorEnvHandoff.Write(_appConfig);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Could not write unreal_editor.env: {ex.Message}");
+                }
 
                 _ = RestartAutonomyLoopAsync();
 
@@ -2316,6 +2361,8 @@ v_models:
                 VoiceEngineSilenceThreshold = defaults.VoiceEngineSilenceThreshold;
                 ChatMicRecordingGain = defaults.ChatMicRecordingGain;
                 UnrealEngineEndpoint = defaults.UnrealEngineEndpoint;
+                UnrealRemoteControlUrl = defaults.UnrealRemoteControlUrl;
+                AllowUnrealEditorControl = defaults.AllowUnrealEditorControl;
                 RemoteCompanionEnabled = defaults.RemoteCompanionEnabled;
                 RemoteCompanionListenPort = defaults.RemoteCompanionListenPort > 0 ? defaults.RemoteCompanionListenPort : 17890;
                 RemoteCompanionApiToken = defaults.RemoteCompanionApiToken;

@@ -26,7 +26,7 @@ To eliminate the perception of lag, we must move from a *Request-Response* model
 I investigated the intersection of high-frequency ultrasonic arrays and vestibular modulation. I analyzed the technical specifications of phased-array haptics to determine the focal point refresh rate and compared them against human neural conduction speeds. I cross-referenced this with Edge Computing paradigms (MEC - Multi-access Edge Computing) to determine the minimum hardware distance required to stay under the $5\text{ms}$ processing threshold.
 
 ### External Sources
-- **Ultraleap (formerly Ultrahaptics):** Analysis of phased-array ultrasonic transducers for mid-air haptics and the use of acoustic radiation pressure to simulate touch without physical contact. [https://www.ultraleap.com/](https://www.ultraleap.com/)
+- **Ultraleap (formerly Ultrahaptics):** Analysis of phased-array ultrasonic transducers for mid-air haptics and the use of acoustic radiation pressure to simulate touch without physical contact. [<https://www.ultraleap.com/>](https://www.ultraleap.com/)
 - **Galvanic Vestibular Stimulation (GVS) Research:** Review of current clinical applications of GVS in treating balance disorders and its use in VR to induce perceived motion (Soma-vestibular coupling).
 - **Edge Computing (IEEE/ACM standards):** Research into Ultra-Reliable Low-Latency Communications (URLLC) within 5G/6G frameworks to ensure deterministic latency for haptic data streams.
 

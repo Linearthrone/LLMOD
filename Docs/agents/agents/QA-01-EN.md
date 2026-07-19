@@ -115,8 +115,8 @@ Only the following cases are allowed to skip, but **must be explicitly noted in 
 
 | Endpoint | URL | Account | Password | CAPTCHA |
 |---|---|---|---|---|
-| PWA (Primary) | https://ai.example.com/app/ | 13600000000 | test@000000 | None |
-| PC Bubble (Local) | http://localhost:3003/admin/ | 13600000000 | test@000000 | 3-digit OCR |
+| PWA (Primary) | <https://ai.example.com/app/> | 13600000000 | test@000000 | None |
+| PC Bubble (Local) | <http://localhost:3003/admin/> | 13600000000 | test@000000 | 3-digit OCR |
 
 ---
 
@@ -297,9 +297,9 @@ Temporary scripts from testing processes **must be placed in project root `tmpco
 
 | Environment | URL | Status |
 |---|---|---|
-| AI Backend | https://ai.example.com/app/ | Production |
-| PWA | https://ai.example.com/app/ | Production |
-| PC Bubble (Local) | http://localhost:3003/admin/ | Local test |
+| AI Backend | <https://ai.example.com/app/> | Production |
+| PWA | <https://ai.example.com/app/> | Production |
+| PC Bubble (Local) | <http://localhost:3003/admin/> | Local test |
 
 ---
 

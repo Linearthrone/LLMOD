@@ -35,12 +35,12 @@ File saved to File Retrieval:
 
 ### 4. External Sources
 
-- Arnsten, A. F. T. (2009). Stress signalling pathways that impair prefrontal cortex structure and function. *Nature Reviews Neuroscience*, 10(6), 410–422. https://doi.org/10.1038/nrn2648
-- Coates, J. M., & Herbert, J. (2008). Endogenous steroids and financial risk taking on a London trading floor. *PNAS*, 105(16), 6167–6172. https://doi.org/10.1073/pnas.0704025105
-- Critchley, H. D., & Garfinkel, S. N. (2017). Interoception and emotion. *Current Opinion in Psychology*, 17, 7–14. https://doi.org/10.1016/j.copsyc.2017.04.007
-- Lo, A. W., & Repin, D. V. (2002). The psychophysiology of real-time financial risk processing. *Journal of Cognitive Neuroscience*, 14(3), 323–339. https://doi.org/10.1162/089892902317236881
+- Arnsten, A. F. T. (2009). Stress signalling pathways that impair prefrontal cortex structure and function. *Nature Reviews Neuroscience*, 10(6), 410–422. <https://doi.org/10.1038/nrn2648>
+- Coates, J. M., & Herbert, J. (2008). Endogenous steroids and financial risk taking on a London trading floor. *PNAS*, 105(16), 6167–6172. <https://doi.org/10.1073/pnas.0704025105>
+- Critchley, H. D., & Garfinkel, S. N. (2017). Interoception and emotion. *Current Opinion in Psychology*, 17, 7–14. <https://doi.org/10.1016/j.copsyc.2017.04.007>
+- Lo, A. W., & Repin, D. V. (2002). The psychophysiology of real-time financial risk processing. *Journal of Cognitive Neuroscience*, 14(3), 323–339. <https://doi.org/10.1162/089892902317236881>
 - Porges, S. W. (2011). *The polyvagal theory*. W. W. Norton.
-- Thayer, J. F., & Lane, R. D. (2009). Neurovisceral integration model. *Neuroscience & Biobehavioral Reviews*, 33(2), 81–88. https://doi.org/10.1016/j.neubiorev.2008.08.008
+- Thayer, J. F., & Lane, R. D. (2009). Neurovisceral integration model. *Neuroscience & Biobehavioral Reviews*, 33(2), 81–88. <https://doi.org/10.1016/j.neubiorev.2008.08.008>
 
 ### 5. Open Questions
 

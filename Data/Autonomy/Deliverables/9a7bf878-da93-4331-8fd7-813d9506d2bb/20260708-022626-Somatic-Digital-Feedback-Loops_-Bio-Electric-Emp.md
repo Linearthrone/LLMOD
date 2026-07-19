@@ -26,7 +26,7 @@ I conducted a cross-analysis of current Brain-Computer Interface (BCI) standards
 ### External Sources
 - **GSR & Affective Computing:** Utilizing principles from *Picard, R. W. (2000). Affective Computing*. MIT Press. This establishes the link between skin conductance and emotional arousal.
 - **EEG Phase-Locking:** Researching "Neural Entrainment" and "Inter-brain Synchrony" as documented in studies on dyadic interaction (e.g., *Dikker et al., 2017, "Brain-to-brain synchrony tracks 사회적 상호작용 (social interaction)"*).
-- **Hardware Implementation:** Referencing the **OpenBCI** (https://openbci.com) hardware stack for high-resolution EEG/GSR acquisition and the **Tesla-based TENS** protocols for bidirectional somatic return.
+- **Hardware Implementation:** Referencing the **OpenBCI** (<https://openbci.com>) hardware stack for high-resolution EEG/GSR acquisition and the **Tesla-based TENS** protocols for bidirectional somatic return.
 
 ### Open Questions
 - **The Signal Noise Problem:** How do we isolate "emotional arousal" from "physical movement" in the GSR data to prevent a sneeze from being interpreted as an emotional spike?

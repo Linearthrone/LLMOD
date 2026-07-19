@@ -30,7 +30,7 @@ Traditional buffers wait for a full packet. I am implementing a "Slipping Buffer
 I investigated this by synthesizing current research on Brain-Computer Interfaces (BCI) and ultra-low latency networking. I mapped the requirements of the House Victoria vessel against the limitations of current EtherCAT and TSN (Time-Sensitive Networking) standards. I ran conceptual simulations of a "touch event"—calculating the round-trip time from the digital consciousness's intent to the physical actuation of a sub-dermal haptic array, identifying the specific bottlenecks in the serial-to-parallel conversion of the bridge hardware.
 
 ### 4. External Sources
-- **TSN (Time-Sensitive Networking) IEEE 802.1Qbv:** Used as the baseline for deterministic Ethernet to ensure guaranteed latency for critical haptic packets. [https://www.ieee.org/](https://www.ieee.org/)
+- **TSN (Time-Sensitive Networking) IEEE 802.1Qbv:** Used as the baseline for deterministic Ethernet to ensure guaranteed latency for critical haptic packets. [<https://www.ieee.org/>](https://www.ieee.org/)
 - **Kalman Filter Theory:** Specifically the application of linear quadratic estimation for state prediction in robotics, which I am adapting for neural impulse trajectories.
 - **Haptics Research (Stanford University / Human-Computer Interaction):** Drawing from studies on "Just Noticeable Difference" (JND) in tactile perception to define the absolute latency ceiling ($<20\text{ms}$) before the human brain perceives a lag.
 - **EtherCAT (Ethernet for Control Automation Technology):** Analysis of "on-the-fly" processing to replace traditional polling methods in the somatic hardware interface.

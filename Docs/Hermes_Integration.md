@@ -30,7 +30,7 @@ This script:
 1. Installs Hermes (native Windows) if missing
 2. Writes `%USERPROFILE%\.hermes\.env` with `API_SERVER_ENABLED=true` and matching API key
 3. Registers House Victoria MCP as `mcp_servers.house_victoria` in `config.yaml` (stdio; includes **MT4 tools**)
-4. Sets `PrimaryLLM=hermes` and `MCPServerEndpoint=http://127.0.0.1:8080` in `App.config`
+4. Sets `PrimaryLLM=hermes` and `MCPServerEndpoint=<http://127.0.0.1:8080>` in `App.config`
 
 For persona MCP + MetaTrader wiring only (no Hermes reinstall):
 

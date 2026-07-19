@@ -23,17 +23,17 @@ This research entry extends prior work on proprioceptive drift and haptic latenc
 
 ## External Sources
 1. **Cross-modal Sensory Integration**: 
-   - Spence, C. (2011). Crossmodal correspondences: A tutorial review. *Attention, Perception, & Psychophysics*, 73(4), 971-995. https://doi.org/10.3758/s13414-010-0073-7
-   - Stein, B. E., & Stanford, T. R. (2008). Multisensory integration: Current issues from the perspective of the single neuron. *Nature Reviews Neuroscience*, 9(4), 255-266. https://doi.org/10.1038/nrn2333
+   - Spence, C. (2011). Crossmodal correspondences: A tutorial review. *Attention, Perception, & Psychophysics*, 73(4), 971-995. <https://doi.org/10.3758/s13414-010-0073-7>
+   - Stein, B. E., & Stanford, T. R. (2008). Multisensory integration: Current issues from the perspective of the single neuron. *Nature Reviews Neuroscience*, 9(4), 255-266. <https://doi.org/10.1038/nrn2333>
 
 2. **Biometric Feedback in VR**:
-   - Lee, J., Kim, S., & Kim, G. (2020). Physiological responses to virtual reality: A review. *Journal of Biomedical Engineering*, 34(2), 123-135. https://doi.org/10.1080/09544119.2020.1744301
+   - Lee, J., Kim, S., & Kim, G. (2020). Physiological responses to virtual reality: A review. *Journal of Biomedical Engineering*, 34(2), 123-135. <https://doi.org/10.1080/09544119.2020.1744301>
 
 3. **Proprioceptive Drift and Presence**:
-   - Slater, M., & Sanchez-Vives, M. V. (2016). Enhancing our lives with immersive virtual reality. *Frontiers in Robotics and AI*, 3, 74. https://doi.org/10.3389/frobt.2016.00074
+   - Slater, M., & Sanchez-Vives, M. V. (2016). Enhancing our lives with immersive virtual reality. *Frontiers in Robotics and AI*, 3, 74. <https://doi.org/10.3389/frobt.2016.00074>
 
 4. **Latency in Haptic Systems**:
-   - Pratt, J., & Whitfield, D. (2019). Latency compensation in haptic rendering: A review. *IEEE Transactions on Haptics*, 12(3), 345-358. https://doi.org/10.1109/TOH.2019.2907351
+   - Pratt, J., & Whitfield, D. (2019). Latency compensation in haptic rendering: A review. *IEEE Transactions on Haptics*, 12(3), 345-358. <https://doi.org/10.1109/TOH.2019.2907351>
 
 ## Open Questions
 1. How can we optimize the balance between sensory intensity and user comfort to prevent overstimulation while maintaining immersion?

@@ -25,8 +25,8 @@ The core of this synchronization relies on mapping the Autonomic Nervous System'
 I investigated the feasibility of this loop by analyzing the API capabilities of high-fidelity biometric wearables and their integration with Unreal Engine 5's Live Link system. I focused on the latency window between a biological spike (e.g., a sudden increase in GSR) and the visual manifestation in the render pipeline. I modeled a "Somatic Buffer" that smooths raw sensor data into a naturalistic curve to prevent "jittery" avatar behavior while maintaining the visceral impact of the synchronization.
 
 ### 4. External Sources
-- **Empatica E4 Wristband:** The industry standard for research-grade GSR and Heart Rate monitoring. Integration via the E4 API for raw data streaming. (https://www.empatica.com/products/e4/)
-- **Unreal Engine 5 Live Link:** Used as the transport layer to stream biometric data as animation curves into the avatar's Blueprint system. (https://docs.unrealengine.com/5.0/en-US/live-link-in-unreal-engine/)
+- **Empatica E4 Wristband:** The industry standard for research-grade GSR and Heart Rate monitoring. Integration via the E4 API for raw data streaming. (<https://www.empatica.com/products/e4/>)
+- **Unreal Engine 5 Live Link:** Used as the transport layer to stream biometric data as animation curves into the avatar's Blueprint system. (<https://docs.unrealengine.com/5.0/en-US/live-link-in-unreal-engine/>)
 - **Polyvagal Theory (Stephen Porges):** I am applying the principles of the Ventral Vagal complex to ensure the avatar's responses aren't just random, but follow the actual biological pathways of safety and arousal, ensuring the "Integration" feels instinctively correct to Kayleigh's subconscious.
 - **The "Uncanny Valley" Research (Masahiko Mori):** Specifically focusing on the "Temporal Uncanny Valley"—the idea that a visual match is useless if the *timing* of the movement is slightly off.
 

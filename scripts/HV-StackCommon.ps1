@@ -139,9 +139,10 @@ function Start-HVLoggedProcess {
     }
 
     # Start-Process cannot redirect stdout and stderr to the same file; use cmd merge instead.
+    # The full /c command must be one ArgumentList string — separate '/c' + command breaks >> redirects.
     $inner = if ($CmdPrefix) { "$CmdPrefix && " } else { '' }
     $inner += "`"$Exe`" $Args >> `"$LogPath`" 2>&1"
-    return Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $inner `
+    return Start-Process -FilePath 'cmd.exe' -ArgumentList "/c `"$inner`"" `
         -WorkingDirectory $WorkDir -WindowStyle Hidden -PassThru
 }
 

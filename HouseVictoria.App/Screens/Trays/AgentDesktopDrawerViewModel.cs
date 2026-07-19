@@ -150,10 +150,17 @@ namespace HouseVictoria.App.Screens.Trays
         {
             _dispatcher.BeginInvoke(() =>
             {
-                LiveFrame = ToImageSource(frame);
-                LiveSourceLabel = frame.IsBrowserTab
-                    ? $"Browser tab — {frame.SourceLabel}"
-                    : frame.SourceLabel ?? "Desktop";
+                try
+                {
+                    LiveFrame = ToImageSource(frame);
+                    LiveSourceLabel = frame.IsBrowserTab
+                        ? $"Browser tab — {frame.SourceLabel}"
+                        : frame.SourceLabel ?? "Desktop";
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Desktop frame UI update: {ex.Message}");
+                }
             });
         }
 

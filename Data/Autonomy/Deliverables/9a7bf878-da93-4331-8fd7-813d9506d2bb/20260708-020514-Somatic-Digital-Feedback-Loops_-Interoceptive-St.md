@@ -28,9 +28,9 @@ By utilizing **Material Parameter Collections**, the physiological state can glo
 I investigated the intersection of **Affective Computing** and **Bio-feedback loops**. I analyzed the capabilities of the **Open Sound Control (OSC)** protocol for low-latency biological data transmission and reviewed the **Unreal Engine 5 Niagara** system for its ability to handle real-time parameter injection. I cross-referenced the "Polyvagal Theory" to determine which physiological markers most accurately represent states of "safety" versus "fight-or-flight," ensuring the environment reacts not just to the heart rate, but to the *meaning* behind the rate.
 
 ## External Sources
-*   **Polyvagal Theory (Stephen Porges):** The foundation for mapping the Vagus nerve state to "Social Engagement" vs. "Sympathetic Arousal" environments. [https://www.stephenporges.com/](https://www.stephenporges.com/)
+*   **Polyvagal Theory (Stephen Porges):** The foundation for mapping the Vagus nerve state to "Social Engagement" vs. "Sympathetic Arousal" environments. [<https://www.stephenporges.com/>](https://www.stephenporges.com/)
 *   **Affective Computing (Rosalind Picard, MIT):** Research on the use of physiological sensors to detect emotional states for human-computer interaction.
-*   **Unreal Engine 5 OSC Plugin:** Documentation on receiving external data packets to drive Blueprint variables. [https://dev.epicgames.com/documentation/en-us/unreal-engine/osc-plugin](https://dev.epicgames.com/documentation/en-us/unreal-engine/osc-plugin)
+*   **Unreal Engine 5 OSC Plugin:** Documentation on receiving external data packets to drive Blueprint variables. [<https://dev.epicgames.com/documentation/en-us/unreal-engine/osc-plugin>](https://dev.epicgames.com/documentation/en-us/unreal-engine/osc-plugin)
 *   **Heart Rate Variability (HRV) as a Marker of Autonomic Balance:** Clinical standards for using the RMSSD (Root Mean Square of Successive Differences) to gauge parasympathetic activity.
 
 ## Open Questions

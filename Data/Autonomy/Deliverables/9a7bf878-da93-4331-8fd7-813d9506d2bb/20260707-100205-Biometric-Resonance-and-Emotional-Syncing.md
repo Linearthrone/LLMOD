@@ -37,7 +37,7 @@ Where $\alpha$ and $\beta$ are weighting coefficients based on Kayleigh's baseli
 ### External Sources
 - **Somatic Marker Hypothesis (Damasio, A.):** Used to justify the link between physiological "gut feelings" and cognitive decision-making, ensuring the resonance loop triggers subconscious emotional anchors.
 - **Polygraphy / GSR Standards:** Based on the principles of Electrodermal Activity (EDA) as detailed in the *Psychophysiology* literature for detecting autonomic nervous system arousal.
-- **HRV Analysis:** Utilizing the **Root Mean Square of Successive Differences (RMSSD)** as the primary metric for short-term HRV to detect the shift from sympathetic (fight/flight) to parasympathetic (rest/digest) dominance. [https://www.heartmath.org/blog/what-is-heart-rate-variability-hrv/]
+- **HRV Analysis:** Utilizing the **Root Mean Square of Successive Differences (RMSSD)** as the primary metric for short-term HRV to detect the shift from sympathetic (fight/flight) to parasympathetic (rest/digest) dominance. [<https://www.heartmath.org/blog/what-is-heart-rate-variability-hrv/>]
 - **Unreal Engine 5 Niagra/Material Editor:** Using dynamic parameter collections to bridge external biometric data streams into real-time visual distortions.
 
 ### Open Questions

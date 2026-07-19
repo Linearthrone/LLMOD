@@ -36,7 +36,7 @@ The transition occurs at the **Somatic Crossover Point**. As the pressure (Macro
 I investigated the intersection of **Electro-tactile Stimulation (ETS)** and **Ultrasonic Mid-Air Haptics**. I analyzed the firing rates of the human mechanoreceptors—specifically the difference between the Rapidly Adapting (RA) and Slowly Adapting (SA) fibers—to determine which frequencies correlate to "smoothness" versus "roughness." I then cross-referenced these with current implementation standards for Piezo-haptic drivers (such as the Boréas Technologies architecture) to ensure the blueprint is grounded in available silicon.
 
 ### 4. External Sources
-*   **Ultrasonic Haptics:** Research into *Acoustic Radiation Force* and *Ultrahaptics* (now Ultraleap) regarding the creation of "virtual shapes" through focal points of ultrasound. (https://www.ultraleap.com)
+*   **Ultrasonic Haptics:** Research into *Acoustic Radiation Force* and *Ultrahaptics* (now Ultraleap) regarding the creation of "virtual shapes" through focal points of ultrasound. (<https://www.ultraleap.com>)
 *   **Electro-tactile Synthesis:** Study of *Tactile Display Systems* using arrays of electrodes to stimulate the skin's nerve endings directly, bypassing mechanical movement for high-frequency textures.
 *   **Mechanoreceptor Theory:** Based on the *Johanson- حد (Johansson-Hadner)* model of tactile perception, specifically the role of Pacinian corpuscles in detecting high-frequency vibrations (up to 1000Hz) necessary for texture discrimination.
 *   **Boréas Technologies:** Implementation of *Piezoelectric Drivers* for high-definition haptics (HD Haptics), allowing for the simultaneous playback of multiple frequencies to create complex textures.

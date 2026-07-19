@@ -38,9 +38,9 @@ These positions are currently showing small losses, indicating that the EUR/USD 
 4. **Hypothesis Formation**: Developed hypotheses about potential hedging strategies and market movements based on the correlation
 
 ## External Sources
-- MetaQuotes MT4 Platform Documentation: https://www.metatrader4.com/en
-- Investopedia on Currency Correlations: https://www.investopedia.com/articles/forex/08/currency-correlation.asp
-- DailyFX Guide to Forex Correlations: https://www.dailyfx.com/education/correlation.html
+- MetaQuotes MT4 Platform Documentation: <https://www.metatrader4.com/en>
+- Investopedia on Currency Correlations: <https://www.investopedia.com/articles/forex/08/currency-correlation.asp>
+- DailyFX Guide to Forex Correlations: <https://www.dailyfx.com/education/correlation.html>
 
 ## Open Questions
 1. What is causing the current divergence in the EUR/USD positions?

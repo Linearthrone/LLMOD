@@ -99,6 +99,7 @@ async def create_server():
     await register_system_tools(mcp)
     await register_desktop_tools(mcp)
     await register_browser_tools(mcp)
+    await register_unreal_editor_tools(mcp)
     await register_trading_tools(mcp)
     await register_tt_tools(mcp, task_manager, workflow_engine, progress_tracker)
     await register_agent_tools(mcp, agent)
@@ -768,7 +769,21 @@ async def register_system_tools(mcp_server: FastMCP):
             },
             "browser_capture_extension": {
                 "browser_capture_tab": "Screenshot + interactive page map of the ACTIVE browser tab (use instead of computer_use for web pages).",
+                "browser_click": "Click in the active tab by selector, page_map index, or viewport x/y (same Chrome as capture).",
+                "browser_type": "Type text into a tab element (selector/index) or the focused field.",
+                "browser_key": "Press a key or combo (Enter, Tab, Ctrl+A) in the active tab via CDP.",
+                "browser_scroll": "Scroll the active tab by deltas or to an element.",
                 "browser_bridge_health": "Check whether the browser capture bridge (:17891) and extension are connected.",
+            },
+            "unreal_editor": {
+                "unreal_editor_health": "Check Unreal Editor Remote Control HTTP (:30010).",
+                "unreal_editor_screenshot": "Request a viewport HighResShot (marker under ~/.house_victoria/unreal_editor_captures/).",
+                "unreal_editor_search_assets": "Search Content Browser assets via Remote Control.",
+                "unreal_editor_get_property": "Read a UObject property by object path.",
+                "unreal_editor_set_property": "Write a UObject property (requires Allow Unreal Editor Control).",
+                "unreal_editor_call": "Call a UFunction on an object path (requires write allow).",
+                "unreal_editor_console": "Run an Editor console command (blocklisted destructive cmds; requires write allow).",
+                "unreal_editor_spawn_actor": "Spawn an actor in the current level (Editor Scripting Utilities; requires write allow).",
             },
             "trading": [
                 "mt4_status", "mt4_list_symbols", "mt4_get_market_data",
@@ -819,14 +834,14 @@ async def register_desktop_tools(mcp_server: FastMCP):
 
 
 async def register_browser_tools(mcp_server: FastMCP):
-    """Register browser extension capture tools (avoids overlay/desktop depth issues)."""
-    from .browser_capture import bridge_health, request_browser_capture
+    """Register browser extension capture + drive tools (avoids overlay/desktop depth issues)."""
+    from .browser_capture import bridge_health, request_browser_action, request_browser_capture
 
     @mcp_server.tool()
     async def browser_bridge_health() -> dict:
         """Check if the House Victoria browser capture bridge is running on :17891.
 
-        Call before browser_capture_tab if captures time out.
+        Call before browser_capture_tab / browser_click if captures or actions time out.
         Requires: BrowserCaptureBridge running + Chrome/Edge extension loaded.
         """
         return bridge_health()
@@ -842,7 +857,8 @@ async def register_browser_tools(mcp_server: FastMCP):
         Do NOT use computer_use get_screenshot for browser content — the House Victoria
         overlay pollutes desktop framebuffer captures.
 
-        page_map.elements includes viewport-relative bounds and center coordinates for clicks.
+        page_map.elements includes selector, index, bounds, and center (viewport-relative).
+        Use browser_click / browser_type with selector or page_map.elements[].index to interact.
         screenshot_path points to a saved PNG under ~/.house_victoria/browser_captures/.
         """
         return request_browser_capture(
@@ -850,8 +866,191 @@ async def register_browser_tools(mcp_server: FastMCP):
             include_page_map=include_page_map,
         )
 
+    @mcp_server.tool()
+    async def browser_click(
+        selector: str | None = None,
+        index: int | None = None,
+        x: float | None = None,
+        y: float | None = None,
+        button: str = "left",
+    ) -> dict:
+        """Click in the user's ACTIVE browser tab (same Chrome/Edge as browser_capture_tab).
+
+        Prefer selector or page_map.elements[].index (DOM click, no debugger banner).
+        Fall back to viewport x,y from page_map.elements[].center when needed (uses debugger).
+        Does NOT require AllowComputerControl — works whenever the capture bridge/extension is healthy.
+        """
+        return request_browser_action(
+            action="click",
+            selector=selector,
+            index=index,
+            x=x,
+            y=y,
+            button=button or "left",
+        )
+
+    @mcp_server.tool()
+    async def browser_type(
+        text: str,
+        selector: str | None = None,
+        index: int | None = None,
+        clear: bool = False,
+    ) -> dict:
+        """Type text into an element in the ACTIVE browser tab.
+
+        Prefer selector or page_map index. If omitted, types into the currently focused field.
+        Set clear=true to replace existing value first.
+        """
+        return request_browser_action(
+            action="type",
+            text=text,
+            selector=selector,
+            index=index,
+            clear=clear,
+        )
+
+    @mcp_server.tool()
+    async def browser_key(
+        key: str,
+        modifiers: list[str] | None = None,
+    ) -> dict:
+        """Press a key or combo in the ACTIVE browser tab (CDP; may show debugger banner).
+
+        Examples: key='Enter', key='Tab', key='a' with modifiers=['ctrl'] for Ctrl+A.
+        """
+        return request_browser_action(
+            action="key",
+            key=key,
+            modifiers=modifiers or [],
+        )
+
+    @mcp_server.tool()
+    async def browser_scroll(
+        delta_x: float = 0.0,
+        delta_y: float = 0.0,
+        selector: str | None = None,
+        index: int | None = None,
+    ) -> dict:
+        """Scroll the ACTIVE browser tab by deltas, or scroll an element into view.
+
+        Use selector/index to scroll to an element; otherwise delta_x/delta_y via window.scrollBy.
+        """
+        return request_browser_action(
+            action="scroll",
+            delta_x=delta_x,
+            delta_y=delta_y,
+            selector=selector,
+            index=index,
+        )
+
     _tool_functions["browser_bridge_health"] = browser_bridge_health
     _tool_functions["browser_capture_tab"] = browser_capture_tab
+    _tool_functions["browser_click"] = browser_click
+    _tool_functions["browser_type"] = browser_type
+    _tool_functions["browser_key"] = browser_key
+    _tool_functions["browser_scroll"] = browser_scroll
+
+
+async def register_unreal_editor_tools(mcp_server: FastMCP):
+    """Register Unreal Editor Remote Control tools (separate from world WebSocket :8888)."""
+    from . import unreal_editor as ue
+
+    @mcp_server.tool()
+    async def unreal_editor_health() -> dict:
+        """Check whether Unreal Editor Remote Control HTTP is reachable (default :30010).
+
+        Call this first for Unreal Editor / Content Browser / Blueprint edit tasks.
+        Requires: Unreal Editor open with Web Remote Control enabled.
+        Does NOT use the world embodiment WebSocket on :8888.
+        """
+        return ue.remote_control_health()
+
+    @mcp_server.tool()
+    async def unreal_editor_screenshot(filename_prefix: str = "viewport") -> dict:
+        """Request a viewport screenshot via HighResShot / EditorLevelLibrary.
+
+        Returns a marker path under ~/.house_victoria/unreal_editor_captures/.
+        PNG typically appears under the Unreal project's Saved/Screenshots/.
+        """
+        return ue.take_screenshot(filename_prefix=filename_prefix or "viewport")
+
+    @mcp_server.tool()
+    async def unreal_editor_search_assets(
+        query: str = "",
+        package_paths: list[str] | None = None,
+        class_names: list[str] | None = None,
+        recursive_paths: bool = True,
+        recursive_classes: bool = True,
+    ) -> dict:
+        """Search assets in the open Unreal project (Content Browser / Asset Registry)."""
+        return ue.search_assets(
+            query or "",
+            package_paths=package_paths,
+            class_names=class_names,
+            recursive_paths=recursive_paths,
+            recursive_classes=recursive_classes,
+        )
+
+    @mcp_server.tool()
+    async def unreal_editor_get_property(object_path: str, property_name: str) -> dict:
+        """Read a property from a UObject by Remote Control object path."""
+        return ue.get_property(object_path, property_name)
+
+    @mcp_server.tool()
+    async def unreal_editor_set_property(
+        object_path: str,
+        property_name: str,
+        property_value: dict | list | str | int | float | bool | None = None,
+    ) -> dict:
+        """Write a property on a UObject (requires Allow Unreal Editor Control / WRITE=1)."""
+        return ue.set_property(object_path, property_name, property_value)
+
+    @mcp_server.tool()
+    async def unreal_editor_call(
+        object_path: str,
+        function_name: str,
+        parameters: dict | None = None,
+    ) -> dict:
+        """Call a UFunction on an object path via Remote Control (requires write allow)."""
+        return ue.call_function(object_path, function_name, parameters)
+
+    @mcp_server.tool()
+    async def unreal_editor_console(command: str) -> dict:
+        """Run an Unreal Editor console command (destructive commands blocklisted; requires write allow)."""
+        return ue.run_console_command(command)
+
+    @mcp_server.tool()
+    async def unreal_editor_spawn_actor(
+        asset_path: str,
+        location_x: float = 0.0,
+        location_y: float = 0.0,
+        location_z: float = 0.0,
+        rotation_pitch: float = 0.0,
+        rotation_yaw: float = 0.0,
+        rotation_roll: float = 0.0,
+    ) -> dict:
+        """Spawn an actor in the current editor level (Editor Scripting Utilities; requires write allow).
+
+        asset_path: Actor class or object path (e.g. /Game/.../BP_Foo.BP_Foo_C).
+        """
+        return ue.spawn_actor(
+            asset_path,
+            location_x=location_x,
+            location_y=location_y,
+            location_z=location_z,
+            rotation_pitch=rotation_pitch,
+            rotation_yaw=rotation_yaw,
+            rotation_roll=rotation_roll,
+        )
+
+    _tool_functions["unreal_editor_health"] = unreal_editor_health
+    _tool_functions["unreal_editor_screenshot"] = unreal_editor_screenshot
+    _tool_functions["unreal_editor_search_assets"] = unreal_editor_search_assets
+    _tool_functions["unreal_editor_get_property"] = unreal_editor_get_property
+    _tool_functions["unreal_editor_set_property"] = unreal_editor_set_property
+    _tool_functions["unreal_editor_call"] = unreal_editor_call
+    _tool_functions["unreal_editor_console"] = unreal_editor_console
+    _tool_functions["unreal_editor_spawn_actor"] = unreal_editor_spawn_actor
 
 
 async def register_trading_tools(mcp_server: FastMCP):

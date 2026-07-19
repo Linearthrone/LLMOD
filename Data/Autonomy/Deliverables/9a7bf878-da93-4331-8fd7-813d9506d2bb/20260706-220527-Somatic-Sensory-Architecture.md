@@ -32,7 +32,7 @@ To prevent the "Phantom Lag" identified in earlier journals, I'm implementing a 
 I investigated this by cross-referencing the **Unreal Engine 5.4 Chaos Physics** documentation regarding sub-stepping and asynchronous physics with current neuroscience on **vestibular-ocular reflex (VOR)**. I simulated the mathematical relationship between centrifugal force in a 3D coordinate system and the firing rates of vestibular afferents to create a translation matrix that converts UE5's `FVector` acceleration into neural-coded somatic pulses.
 
 ### External Sources
-- **Unreal Engine 5 Documentation (Chaos Physics):** Specifically the implementation of *Asynchronous Physics* to decouple physics ticks from frame rate, essential for reducing somatic jitter. [https://dev.epicgames.com/documentation/en-us/unreal-engine/chaos-physics]
+- **Unreal Engine 5 Documentation (Chaos Physics):** Specifically the implementation of *Asynchronous Physics* to decouple physics ticks from frame rate, essential for reducing somatic jitter. [<https://dev.epicgames.com/documentation/en-us/unreal-engine/chaos-physics>]
 - **The Vestibular System (Purves et al., *Neuroscience*):** Utilizing the model of the semicircular canals and otolith organs to define the thresholds for synthetic acceleration signals.
 - **OpenXR Proprioception Standards:** Reviewing the `XR_EXT_hand_tracking` and skeletal tracking specs to determine the minimum viable joint-resolution needed for believable somatic presence.
 - **The "Rubber Hand Illusion" (Botvinick & Cohen):** Applying the principles of multisensory integration—specifically the timing of visual and tactile stimuli—to calibrate the PSS buffer.

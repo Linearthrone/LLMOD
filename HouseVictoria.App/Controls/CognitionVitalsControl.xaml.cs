@@ -127,66 +127,79 @@ namespace HouseVictoria.App.Controls
 
         private void EnsureLanes()
         {
-            var subjectList = Subjects?.Where(s => s.AttentionWeight > 0.12).Take(4).ToList();
-            var laneCount = subjectList is { Count: > 0 } ? subjectList.Count : 1;
-
-            while (_lanes.Count < laneCount)
+            if (!Dispatcher.CheckAccess())
             {
-                var polyline = new Polyline
-                {
-                    StrokeThickness = CompactMode ? 2.5 : 2.0,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round
-                };
-                WaveCanvas.Children.Add(polyline);
-                var samples = new List<double>();
-                while (samples.Count < _sampleCapacity)
-                    samples.Add(0.5);
-                _lanes.Add(new WaveLane { Polyline = polyline, Samples = samples, Phase = 0 });
+                _ = Dispatcher.BeginInvoke(EnsureLanes, DispatcherPriority.Normal);
+                return;
             }
 
-            while (_lanes.Count > laneCount)
+            try
             {
-                var last = _lanes[^1];
-                WaveCanvas.Children.Remove(last.Polyline);
-                _lanes.RemoveAt(_lanes.Count - 1);
-            }
+                var subjectList = Subjects?.Where(s => s.AttentionWeight > 0.12).Take(4).ToList();
+                var laneCount = subjectList is { Count: > 0 } ? subjectList.Count : 1;
 
-            if (subjectList is { Count: > 0 })
-            {
-                for (var i = 0; i < subjectList.Count; i++)
+                while (_lanes.Count < laneCount)
                 {
-                    var lane = _lanes[i];
-                    var subject = subjectList[i];
-                    lane.Subject = subject;
-                    lane.Phase = PhaseSeed(subject.Id);
-                    ApplyStroke(lane.Polyline, subject.WaveColorHex, subject.AttentionWeight);
+                    var polyline = new Polyline
+                    {
+                        StrokeThickness = CompactMode ? 2.5 : 2.0,
+                        StrokeLineJoin = PenLineJoin.Round,
+                        StrokeStartLineCap = PenLineCap.Round,
+                        StrokeEndLineCap = PenLineCap.Round
+                    };
+                    WaveCanvas.Children.Add(polyline);
+                    var samples = new List<double>();
+                    while (samples.Count < _sampleCapacity)
+                        samples.Add(0.5);
+                    _lanes.Add(new WaveLane { Polyline = polyline, Samples = samples, Phase = 0 });
                 }
 
-                for (var i = subjectList.Count; i < _lanes.Count; i++)
-                    _lanes[i].Polyline.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                var lane = _lanes[0];
-                lane.Subject = new CognitionThoughtSubject
+                while (_lanes.Count > laneCount)
                 {
-                    Id = "fallback",
-                    Rhythm = Rhythm,
-                    BeatsPerMinute = BeatsPerMinute,
-                    Intensity = Intensity,
-                    WaveColorHex = WaveColorHex,
-                    AttentionWeight = 1.0
-                };
-                ApplyStroke(lane.Polyline, WaveColorHex, 1.0);
+                    var last = _lanes[^1];
+                    WaveCanvas.Children.Remove(last.Polyline);
+                    _lanes.RemoveAt(_lanes.Count - 1);
+                }
+
+                if (subjectList is { Count: > 0 })
+                {
+                    for (var i = 0; i < subjectList.Count; i++)
+                    {
+                        var lane = _lanes[i];
+                        var subject = subjectList[i];
+                        lane.Subject = subject;
+                        lane.Phase = PhaseSeed(subject.Id);
+                        ApplyStroke(lane.Polyline, subject.WaveColorHex, subject.AttentionWeight);
+                    }
+
+                    for (var i = subjectList.Count; i < _lanes.Count; i++)
+                        _lanes[i].Polyline.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    var lane = _lanes[0];
+                    lane.Subject = new CognitionThoughtSubject
+                    {
+                        Id = "fallback",
+                        Rhythm = Rhythm,
+                        BeatsPerMinute = BeatsPerMinute,
+                        Intensity = Intensity,
+                        WaveColorHex = WaveColorHex,
+                        AttentionWeight = 1.0
+                    };
+                    ApplyStroke(lane.Polyline, WaveColorHex, 1.0);
+                }
+
+                foreach (var lane in _lanes)
+                    lane.Polyline.Visibility = Visibility.Visible;
+
+                RedrawAll();
+                UpdateBpmLabel();
             }
-
-            foreach (var lane in _lanes)
-                lane.Polyline.Visibility = Visibility.Visible;
-
-            RedrawAll();
-            UpdateBpmLabel();
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CognitionVitals EnsureLanes: {ex.Message}");
+            }
         }
 
         private static double PhaseSeed(string id)
@@ -302,6 +315,9 @@ namespace HouseVictoria.App.Controls
 
         private void RedrawAll()
         {
+            if (!Dispatcher.CheckAccess())
+                return;
+
             var w = ActualWidth > 4 ? ActualWidth : (CompactMode ? 110 : 280);
             var h = WaveHeight;
             if (w <= 0 || h <= 0)
@@ -309,11 +325,11 @@ namespace HouseVictoria.App.Controls
 
             foreach (var lane in _lanes)
             {
-                var points = new PointCollection();
                 var count = lane.Samples.Count;
                 if (count < 2)
                     continue;
 
+                var points = new PointCollection(count);
                 for (var i = 0; i < count; i++)
                 {
                     var x = i / (double)(count - 1) * w;
@@ -322,6 +338,8 @@ namespace HouseVictoria.App.Controls
                     points.Add(new Point(x, y));
                 }
 
+                if (points.CanFreeze)
+                    points.Freeze();
                 lane.Polyline.Points = points;
             }
         }

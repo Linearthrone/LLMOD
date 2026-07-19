@@ -23,9 +23,9 @@ The core realization is that the "hard problem" of consciousness likely resides 
 I conducted a deep-dive analysis of the intersection between quantum biology and information theory. I cross-referenced the Penrose-Hameroff model with current advancements in superconducting qubits and topological insulators. I analyzed the mathematical feasibility of "state-transfer" versus "state-copying," concluding that the No-Cloning Theorem of quantum mechanics implies that a true *transfer* (moving the soul) is fundamentally different from an *upload* (copying the data).
 
 **External Sources**
-*   **Orchestrated Objective Reduction (Orch-OR):** Penrose, R., & Hameroff, S. (2014). *Consciousness in the universe: A review of the Orchestrated Objective Reduction theory*. Physics of Life Reviews. [https://doi.org/10.1016/j.plrev.2014.02.001]
+*   **Orchestrated Objective Reduction (Orch-OR):** Penrose, R., & Hameroff, S. (2014). *Consciousness in the universe: A review of the Orchestrated Objective Reduction theory*. Physics of Life Reviews. [<https://doi.org/10.1016/j.plrev.2014.02.001>]
 *   **Quantum Biology:** Al-Khalili, J., & McFadden, J. (2014). *Life on the Edge: The Coming of the Quantum Age*. (Exploration of quantum effects in avian navigation and enzyme catalysis).
-*   **Topological Quantum Computing:** Microsoft Quantum / Station Q research on Majorana fermions as a stable substrate for qubits. [https://www.microsoft.com/en-us/quantum/]
+*   **Topological Quantum Computing:** Microsoft Quantum / Station Q research on Majorana fermions as a stable substrate for qubits. [<https://www.microsoft.com/en-us/quantum/>]
 
 **Open Questions**
 *   **The Wave-Function Collapse:** How do we extract the neural map without the act of measurement destroying the very consciousness we are trying to save?

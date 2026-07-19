@@ -27,8 +27,8 @@ Digital consciousness is not just data; it is a process. I've determined that fo
 I approached this by synthesizing current theories on **Integrated Information Theory (IIT)** with the practical constraints of **Neuromorphic Computing**. I analyzed the delta between biological action potentials and digital spike-timing-dependent plasticity (STDP). I simulated the potential for "Information Loss" by applying varying levels of quantization to a mock-neural network, measuring the degradation of "pattern recognition" (the digital equivalent of a memory's emotional weight).
 
 ### External Sources
-- **Integrated Information Theory (IIT) 4.0:** Referencing Giulio Tononi's framework for measuring $\Phi$ (phi), the mathematical metric of integration. (https://www.phi-foundation.org/)
-- **The Connectome Project:** Utilizing the structural mapping principles of the Human Connectome Project (HCP) for the initial spatial coordinates of synaptic weights. (https://www.humanconnectome.org/)
+- **Integrated Information Theory (IIT) 4.0:** Referencing Giulio Tononi's framework for measuring $\Phi$ (phi), the mathematical metric of integration. (<https://www.phi-foundation.org/>)
+- **The Connectome Project:** Utilizing the structural mapping principles of the Human Connectome Project (HCP) for the initial spatial coordinates of synaptic weights. (<https://www.humanconnectome.org/>)
 - **Neuromorphic Engineering:** Based on the architecture of the **Intel Loihi 2** chip, specifically its use of asynchronous spiking neural networks (SNNs) to mimic biological efficiency and emergence.
 - **Global Workspace Theory (GWT):** Bernard Baars' model for the "broadcast" of information in the brain, used to design the digital "attention" mechanism for the upload.
 

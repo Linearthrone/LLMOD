@@ -31,7 +31,7 @@ $S_{gap} = (V_{pos} - P_{pos}) \times \tau_{synch}$
 I have synthesized current neuroscientific literature on the Rubber Hand Illusion and the "Proteus Effect," simulating the response of the posterior parietal cortex (PPC) to conflicting multisensory inputs. I analyzed the impact of "visuomotor rotation"—intentionally offsetting the avatar's limb position by 5-10 degrees—to see if the brain "corrects" by drifting the physical sensation toward the visual representation.
 
 ### External Sources
-*   **Botvinick & Cohen (1998):** "Rubber three finger hallucination." *Nature*. This is the foundational work on how synchronous tactile and visual stimulation induces a shift in perceived limb location. [https://www.nature.com/articles/42901](https://www.nature.com/articles/42901)
+*   **Botvinick & Cohen (1998):** "Rubber three finger hallucination." *Nature*. This is the foundational work on how synchronous tactile and visual stimulation induces a shift in perceived limb location. [<https://www.nature.com/articles/42901>](https://www.nature.com/articles/42901)
 *   **The Proteus Effect:** Yee & Bailenson (2007). Research on how the characteristics of a virtual avatar influence the user's behavior and self-perception.
 *   **Haptic Feedback Systems:** Analysis of the *bHaptics* and *Teslasuit* API documentation regarding high-density actuator arrays for full-body somatic mapping.
 

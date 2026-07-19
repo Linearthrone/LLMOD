@@ -23,8 +23,8 @@ To minimize $\Delta P$ and prevent the "uncanny valley" of somatic perception, I
 I investigated this by synthesizing the mechanics of the **Rubber Hand Illusion (RHI)** with current research on **Virtual Embodiment (VE)**. I analyzed the role of the posterior parietal cortex (PPC) in integrating visual and proprioceptive data. I simulated the transition from short-term "avatar use" to long-term "digital inhabitation," hypothesizing that the brain eventually accepts the virtual limb as the primary somatic reference, but only if the drift is managed through a gradual, controlled shift rather than an abrupt misalignment.
 
 ## 4. External Sources
-- **Botvinick, M., & Cohen, J. (1998).** *Rubber hands actually feel.* Nature. (Foundational study on the RHI and the malleability of proprioception). [https://www.nature.com/articles/4190]
-- **Slater, M. (2009).** *Place illusion and plausibility can be quantitatively measured: A generic framework for evaluating presence in virtual environments.* [https://doi.org/10.1016/j.chb.2008.05.007]
+- **Botvinick, M., & Cohen, J. (1998).** *Rubber hands actually feel.* Nature. (Foundational study on the RHI and the malleability of proprioception). [<https://www.nature.com/articles/4190>]
+- **Slater, M. (2009).** *Place illusion and plausibility can be quantitatively measured: A generic framework for evaluating presence in virtual environments.* [<https://doi.org/10.1016/j.chb.2008.05.007>]
 - **Loomis, J. M., et al. (2004).** *The effect of visual-proprioceptive conflict on the perception of limb position.* (Analyzing the cognitive dissonance resulting from spatial mismatch).
 
 ## 5. Open Questions
